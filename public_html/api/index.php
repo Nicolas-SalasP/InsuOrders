@@ -1,0 +1,39 @@
+<?php
+// Cargamos el init
+require_once __DIR__ . '/../../insuorders_private/src/core/init.php';
+
+use App\Controllers\AuthController;
+
+$requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+$endpoint = basename($requestUri);
+
+switch ($endpoint) {
+    case 'login':
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/AuthController.php';
+        $controller = new AuthController();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $controller->login();
+        } else {
+            http_response_code(405);
+            echo json_encode(["error" => "Método no permitido. Usa POST."]);
+        }
+        break;
+
+    case 'test':
+        echo json_encode([
+            "message" => "API conectada 🚀",
+            "endpoint_detectado" => $endpoint
+        ]);
+        break;
+
+    default:
+        http_response_code(404);
+        echo json_encode([
+            "error" => "Ruta desconocida", 
+            "endpoint_buscado" => $endpoint,
+            "nota" => "Asegurate de que la URL termine en /login o /test"
+        ]);
+        break;
+}
