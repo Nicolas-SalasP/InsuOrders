@@ -1,7 +1,6 @@
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import 'bootstrap/dist/css/bootstrap.min.css';
 
 const Login = () => {
     const { login } = useContext(AuthContext);
@@ -27,57 +26,61 @@ const Login = () => {
     };
 
     return (
-        <div className="container d-flex justify-content-center align-items-center vh-100">
-            <div className="card shadow-lg" style={{ width: '400px', borderRadius: '15px' }}>
+        <div className="vw-100 vh-100 d-flex justify-content-center align-items-center bg-light">
+            
+            <div className="card shadow-lg border-0" style={{ width: '100%', maxWidth: '400px', borderRadius: '15px' }}>
                 <div className="card-body p-5">
                     <div className="text-center mb-4">
-                        <h2 className="fw-bold text-primary">InsuOrders</h2>
-                        <p className="text-muted">Gestión de Activos y Compras</p>
+                        <div className="display-1 text-primary mb-2">🏭</div>
+                        <h2 className="fw-bold text-dark">InsuOrders</h2>
+                        <p className="text-muted">Acceso al Sistema</p>
                     </div>
 
                     {error && (
-                        <div className="alert alert-danger text-center" role="alert">
-                            {error}
+                        <div className="alert alert-danger text-center py-2" role="alert">
+                            <small>{error}</small>
                         </div>
                     )}
 
                     <form onSubmit={handleSubmit}>
-                        <div className="mb-3">
-                            <label className="form-label fw-bold">Usuario</label>
+                        <div className="form-floating mb-3">
                             <input
                                 type="text"
-                                className="form-control form-control-lg"
-                                placeholder="Ej: nsalas"
+                                className="form-control"
+                                id="floatingInput"
+                                placeholder="Usuario"
                                 value={input.username}
                                 onChange={(e) => setInput({ ...input, username: e.target.value })}
                                 required
                                 autoFocus
                             />
+                            <label htmlFor="floatingInput">Usuario</label>
                         </div>
 
-                        <div className="mb-4">
-                            <label className="form-label fw-bold">Contraseña</label>
+                        <div className="form-floating mb-4">
                             <input
                                 type="password"
-                                className="form-control form-control-lg"
-                                placeholder="••••••••"
+                                className="form-control"
+                                id="floatingPassword"
+                                placeholder="Contraseña"
                                 value={input.password}
                                 onChange={(e) => setInput({ ...input, password: e.target.value })}
                                 required
                             />
+                            <label htmlFor="floatingPassword">Contraseña</label>
                         </div>
 
                         <button 
                             type="submit" 
-                            className="btn btn-primary w-100 btn-lg mb-3"
+                            className="btn btn-primary w-100 btn-lg mb-3 shadow-sm"
                             disabled={isSubmitting}
                         >
-                            {isSubmitting ? 'Verificando...' : 'Iniciar Sesión'}
+                            {isSubmitting ? 'Verificando...' : 'Entrar'}
                         </button>
                     </form>
                     
-                    <div className="text-center">
-                        <small className="text-muted">¿Olvidaste tu clave? Contacta a TI</small>
+                    <div className="text-center mt-4">
+                        <small className="text-muted">© 2024 Insuban Ltda.</small>
                     </div>
                 </div>
             </div>

@@ -12,7 +12,7 @@ switch ($endpoint) {
     case 'login':
         require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/AuthController.php';
         $controller = new AuthController();
-        
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $controller->login();
         } else {
@@ -28,10 +28,44 @@ switch ($endpoint) {
         ]);
         break;
 
+    case 'proveedores/auxiliares':
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/ProveedorController.php';
+        $controller = new \App\Controllers\ProveedorController();
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $controller->auxiliares();
+        }
+        break;
+
+    case 'proveedores':
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/ProveedorController.php';
+        $controller = new \App\Controllers\ProveedorController();
+
+        $method = $_SERVER['REQUEST_METHOD'];
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (isset($_GET['id'])) {
+                $controller->update();
+            } else {
+                $controller->store();
+            }
+        }
+        if ($method === 'GET') {
+            $controller->index();
+        } elseif ($method === 'POST') {
+            $controller->store();
+        } elseif ($method === 'PUT') {
+            $controller->update();
+        } elseif ($method === 'DELETE') {
+            $controller->delete();
+        } else {
+            http_response_code(405);
+            echo json_encode(["error" => "Método no permitido"]);
+        }
+        break;
+
     default:
         http_response_code(404);
         echo json_encode([
-            "error" => "Ruta desconocida", 
+            "error" => "Ruta desconocida",
             "endpoint_buscado" => $endpoint,
             "nota" => "Asegurate de que la URL termine en /login o /test"
         ]);
