@@ -33,7 +33,6 @@ class ProveedorRepository {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // AUXILIARES: Traer toda la geografía para los selectores en cascada
     public function getAuxiliares() {
         return [
             'tipos_venta' => $this->db->query("SELECT * FROM tipos_venta")->fetchAll(PDO::FETCH_ASSOC),
@@ -43,7 +42,6 @@ class ProveedorRepository {
         ];
     }
 
-    // VALIDACIÓN: Verificar si RUT existe (exceptuando un ID si es editar)
     public function existeRut($rut, $idExcluir = null) {
         $sql = "SELECT COUNT(*) as total FROM proveedores WHERE rut = :rut";
         if ($idExcluir) $sql .= " AND id != :id";
@@ -56,7 +54,6 @@ class ProveedorRepository {
         return $stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0;
     }
 
-    // LOGS: Registrar cambios
     public function registrarLog($accion, $id, $descripcion) {
         $usuarioId = 1;
         

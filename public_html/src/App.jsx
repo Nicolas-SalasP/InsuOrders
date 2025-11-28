@@ -4,16 +4,14 @@ import { AuthProvider } from './context/AuthContext';
 import AuthContext from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Proveedores from './pages/Proveedores'; // <--- 1. IMPORTANTE: Importar la página nueva
+import Proveedores from './pages/Proveedores';
 import Layout from './components/Layout';
+import Inventario from './pages/Inventario';
 
-// Componente para proteger rutas privadas
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
     
     if (loading) return <div className="p-5 text-center">Cargando...</div>;
-    
-    // Si no hay usuario, mandar al login
     return auth.token ? <Outlet /> : <Navigate to="/login" />;
 };
 
@@ -28,7 +26,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/dashboard" />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/proveedores" element={<Proveedores />} />
-                <Route path="/inventario" element={<h2>Módulo de Inventario (Próximamente)</h2>} />
+                <Route path="/inventario" element={<Inventario />} />
                 <Route path="/compras" element={<h2>Módulo de Compras (Próximamente)</h2>} />
                 <Route path="/mantencion" element={<h2>Módulo de Mantención (Próximamente)</h2>} />
             </Route>
