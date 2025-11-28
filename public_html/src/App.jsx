@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Proveedores from './pages/Proveedores';
 import Layout from './components/Layout';
 import Inventario from './pages/Inventario';
+import Compras from './pages/Compras'; 
 
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
@@ -27,8 +28,9 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/proveedores" element={<Proveedores />} />
                 <Route path="/inventario" element={<Inventario />} />
-                <Route path="/compras" element={<h2>Módulo de Compras (Próximamente)</h2>} />
+                <Route path="/compras" element={<Compras />} />
                 <Route path="/mantencion" element={<h2>Módulo de Mantención (Próximamente)</h2>} />
+                
             </Route>
           </Route>
         </Routes>
