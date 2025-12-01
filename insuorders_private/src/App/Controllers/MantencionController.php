@@ -22,11 +22,18 @@ class MantencionController
         echo json_encode(["success" => true, "data" => $this->service->listarActivos()]);
     }
 
-    public function store()
+    // MODIFICADO: Acepta $usuarioId
+    public function store($usuarioId = null)
     {
         $data = json_decode(file_get_contents("php://input"), true);
+
+        if (!$usuarioId) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "Usuario no identificado"]);
+            return;
+        }
+
         try {
-            $usuarioId = 1;
             $id = $this->service->crearOT($data, $usuarioId);
             echo json_encode(["success" => true, "message" => "OT #$id creada exitosamente"]);
         } catch (\Exception $e) {
@@ -70,7 +77,6 @@ class MantencionController
         echo json_encode(["success" => true, "data" => $this->service->obtenerDetalleOT($id)]);
     }
 
-    // Métodos auxiliares para Kits y Docs
     public function getKit()
     {
         $repo = new MantencionRepository();
@@ -102,6 +108,7 @@ class MantencionController
         $uploadDir = __DIR__ . '/../../../../public_html/uploads/activos/';
         if (!is_dir($uploadDir))
             mkdir($uploadDir, 0777, true);
+
         $fileName = "act_{$id}_" . time() . "_" . basename($_FILES['archivo']['name']);
         if (move_uploaded_file($_FILES['archivo']['tmp_name'], $uploadDir . $fileName)) {
             $repo = new MantencionRepository();
@@ -119,6 +126,25 @@ class MantencionController
         try {
             $repo->createActivo($data);
             echo json_encode(["success" => true]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
+    public function finalizar()
+    {
+        $data = json_decode(file_get_contents("php://input"), true);
+        $id = $data['id'] ?? null;
+        $usuarioId = 1;
+
+        try {
+            if (!$id) throw new \Exception("Falta ID");
+            
+            $repo = new MantencionRepository();
+            $repo->finalizarOT($id, $usuarioId);
+            
+            echo json_encode(["success" => true, "message" => "OT Finalizada. Pendientes cancelados/devueltos."]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);

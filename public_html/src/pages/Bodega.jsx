@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axiosConfig';
 import MessageModal from '../components/MessageModal';
+import ModalEntregaBodega from '../components/ModalEntregaBodega'; // <--- IMPORTAR
 
 const Bodega = () => {
     const [pendientes, setPendientes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [msg, setMsg] = useState({ show: false, title:'', text:'', type:'info' });
+    
+    // Estado para el Modal de Entrega
+    const [entregaModal, setEntregaModal] = useState({ show: false, item: null });
 
     useEffect(() => { cargarPendientes(); }, []);
 
@@ -16,21 +20,33 @@ const Bodega = () => {
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
-    const entregarMaterial = async (item) => {
-        if(!window.confirm(`¿Confirmar entrega de ${item.cantidad} ${item.unidad_medida} de ${item.insumo}? Esto descontará el stock físico.`)) return;
-        
+    // Esta función la llamará el Modal al confirmar
+    const procesarEntrega = async (detalleId, cantidad, receptorId) => {
         try {
-            await api.post('/index.php/bodega/entregar', { detalle_id: item.detalle_id });
-            setMsg({ show: true, title: "Entregado", text: "Stock descontado correctamente.", type: "success" });
+            await api.post('/index.php/bodega/entregar', { 
+                detalle_id: detalleId,
+                cantidad: cantidad,
+                receptor_id: receptorId 
+            });
+            setEntregaModal({ show: false, item: null });
+            setMsg({ show: true, title: "Entregado", text: "Entrega registrada exitosamente.", type: "success" });
             cargarPendientes();
         } catch (error) {
-            setMsg({ show: true, title: "Error", text: error.response?.data?.message, type: "error" });
+            alert(error.response?.data?.message || "Error al entregar");
         }
     };
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             <MessageModal show={msg.show} onClose={()=>setMsg({...msg, show:false})} title={msg.title} message={msg.text} type={msg.type} />
+            
+            {/* Modal Entrega */}
+            <ModalEntregaBodega 
+                show={entregaModal.show} 
+                item={entregaModal.item} 
+                onClose={() => setEntregaModal({ show: false, item: null })} 
+                onConfirm={procesarEntrega}
+            />
 
             <div className="card shadow-sm border-0 flex-grow-1">
                 <div className="card-header bg-white py-3">
@@ -45,9 +61,8 @@ const Bodega = () => {
                                 <tr>
                                     <th className="ps-4">OT Origen</th>
                                     <th>Insumo</th>
-                                    <th>Solicitante</th>
-                                    <th>Máquina</th>
-                                    <th className="text-center">Cantidad</th>
+                                    <th>Solicitante / Máquina</th>
+                                    <th className="text-center">Pendiente</th>
                                     <th className="text-end pe-4">Acción</th>
                                 </tr>
                             </thead>
@@ -62,18 +77,23 @@ const Bodega = () => {
                                             <div className="fw-bold">{p.insumo}</div>
                                             <small className="text-muted">{p.codigo_sku}</small>
                                         </td>
-                                        <td>{p.solicitante} {p.solicitante_apellido}</td>
-                                        <td><small>{p.maquina || 'General'}</small></td>
-                                        <td className="text-center fw-bold fs-5">{parseFloat(p.cantidad)} <small className="fs-6 text-muted fw-normal">{p.unidad_medida}</small></td>
+                                        <td>
+                                            <div className="fw-medium">{p.solicitante} {p.solicitante_apellido}</div>
+                                            <small className="text-muted"><i className="bi bi-gear-fill me-1"></i>{p.maquina}</small>
+                                        </td>
+                                        <td className="text-center fw-bold fs-5 text-primary">
+                                            {parseFloat(p.cantidad)} <small className="fs-6 text-muted fw-normal">{p.unidad_medida}</small>
+                                        </td>
                                         <td className="text-end pe-4">
-                                            <button className="btn btn-success btn-sm fw-bold px-3" onClick={() => entregarMaterial(p)}>
-                                                <i className="bi bi-check-lg me-2"></i>Entregar
+                                            <button className="btn btn-success btn-sm fw-bold px-3" 
+                                                onClick={() => setEntregaModal({ show: true, item: p })}>
+                                                <i className="bi bi-box-arrow-right me-2"></i>Entregar
                                             </button>
                                         </td>
                                     </tr>
                                 ))}
                                 {pendientes.length === 0 && (
-                                    <tr><td colSpan="6" className="text-center py-5 text-muted">✅ No hay entregas pendientes</td></tr>
+                                    <tr><td colSpan="5" className="text-center py-5 text-muted">✅ No hay entregas pendientes</td></tr>
                                 )}
                             </tbody>
                         </table>

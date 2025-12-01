@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
                 };
                 setAuth(userData);
                 localStorage.setItem("insuorders_user", JSON.stringify(userData));
-                return { success: true };
+                return { success: true, role: userData.rol };
             }
         } catch (error) {
             console.error(error);
@@ -45,6 +45,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         setAuth({});
         localStorage.removeItem("insuorders_user");
+        window.location.href = "/login";
     };
 
     return (

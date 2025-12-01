@@ -99,11 +99,28 @@ class MantencionRepository
 
     public function getDetallesOT($id)
     {
-        $sql = "SELECT d.insumo_id as id, d.cantidad, d.estado_linea,
-                    i.nombre, i.codigo_sku, i.stock_actual, i.unidad_medida, i.precio_costo as precio
+        $sql = "SELECT 
+                    d.id as detalle_id,
+                    d.insumo_id as id,
+                    d.cantidad, 
+                    d.estado_linea,
+                    i.nombre, 
+                    i.codigo_sku, 
+                    i.stock_actual, 
+                    i.unidad_medida, 
+                    i.precio_costo as precio,
+                    oc.id as oc_id,
+                    prov.nombre as oc_proveedor,
+                    emp.nombre_completo as retirado_por,
+                    DATE_FORMAT(mov.fecha, '%d/%m/%Y %H:%i') as fecha_retiro
                 FROM detalle_solicitud d
                 JOIN insumos i ON d.insumo_id = i.id
+                LEFT JOIN ordenes_compra oc ON d.orden_compra_id = oc.id
+                LEFT JOIN proveedores prov ON oc.proveedor_id = prov.id
+                LEFT JOIN movimientos_inventario mov ON mov.referencia_id = d.id AND mov.tipo_movimiento_id = 2
+                LEFT JOIN empleados emp ON mov.empleado_id = emp.id
                 WHERE d.solicitud_id = :id";
+                
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -156,7 +173,7 @@ class MantencionRepository
         ]);
     }
 
-    // PARA BODEGA: Buscar líneas reservadas
+    // --- BODEGA ---
     public function getPendientesEntrega()
     {
         $sql = "SELECT 
@@ -172,39 +189,114 @@ class MantencionRepository
                 LEFT JOIN usuarios u ON s.usuario_solicitante_id = u.id
                 LEFT JOIN activos a ON s.activo_id = a.id
                 WHERE ds.estado_linea = 'EN_BODEGA' 
-                AND s.estado_id IN (1, 2)
+                AND s.estado_id IN (1, 2, 4)
                 ORDER BY s.fecha_solicitud ASC";
 
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // PARA BODEGA: Confirmar entrega física
-    public function entregarMaterial($detalleId, $usuarioId)
+    public function entregarMaterial($detalleId, $usuarioId, $cantidadEntregar, $receptorId)
     {
         try {
             $this->db->beginTransaction();
-            $stmt = $this->db->prepare("SELECT insumo_id, cantidad FROM detalle_solicitud WHERE id = :id");
+            
+            $stmt = $this->db->prepare("SELECT solicitud_id, insumo_id, cantidad FROM detalle_solicitud WHERE id = :id FOR UPDATE");
             $stmt->execute([':id' => $detalleId]);
             $linea = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$linea)
-                throw new \Exception("Línea no encontrada");
+            if (!$linea) throw new \Exception("Línea no encontrada");
 
+            $cantidadOriginal = (float)$linea['cantidad'];
+            $cantidadEntregar = (float)$cantidadEntregar;
 
-            $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id) 
-                    VALUES (:iid, 2, :cant, :uid, 'Entrega por OT', :ref)";
+            if ($cantidadEntregar > $cantidadOriginal) {
+                throw new \Exception("No puedes entregar más de lo solicitado ({$cantidadOriginal}).");
+            }
+
+            $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, empleado_id) 
+                    VALUES (:iid, 2, :cant, :uid, 'Entrega por OT', :ref, :emp)";
             $this->db->prepare($sqlMov)->execute([
                 ':iid' => $linea['insumo_id'],
-                ':cant' => $linea['cantidad'],
+                ':cant' => $cantidadEntregar,
                 ':uid' => $usuarioId,
-                ':ref' => $detalleId
+                ':ref' => $detalleId,
+                ':emp' => $receptorId
             ]);
 
             $this->db->prepare("UPDATE insumos SET stock_actual = stock_actual - :cant WHERE id = :id")
-                ->execute([':cant' => $linea['cantidad'], ':id' => $linea['insumo_id']]);
+                ->execute([':cant' => $cantidadEntregar, ':id' => $linea['insumo_id']]);
 
-            $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'ENTREGADO' WHERE id = :id")
-                ->execute([':id' => $detalleId]);
+            if ($cantidadEntregar == $cantidadOriginal) {
+                $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'ENTREGADO' WHERE id = :id")
+                    ->execute([':id' => $detalleId]);
+            } else {
+                $this->db->prepare("UPDATE detalle_solicitud SET cantidad = :cant, estado_linea = 'ENTREGADO' WHERE id = :id")
+                    ->execute([':cant' => $cantidadEntregar, ':id' => $detalleId]);
+
+                $remanente = $cantidadOriginal - $cantidadEntregar;
+                $sqlNew = "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, estado_linea) 
+                        VALUES (:sid, :iid, :cant, 'EN_BODEGA')";
+                $this->db->prepare($sqlNew)->execute([
+                    ':sid' => $linea['solicitud_id'],
+                    ':iid' => $linea['insumo_id'],
+                    ':cant' => $remanente
+                ]);
+            }
+
+            $this->recalcularEstadoOT($linea['solicitud_id']);
+
+            $this->db->commit();
+            return true;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    // --- FUNCIONES AUXILIARES DE ESTADO ---
+
+    public function recalcularEstadoOT($otId)
+    {
+        $sql = "SELECT COUNT(*) FROM detalle_solicitud 
+                WHERE solicitud_id = :id 
+                AND estado_linea NOT IN ('ENTREGADO', 'CANCELADO')";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $otId]);
+        $pendientes = $stmt->fetchColumn();
+        $nuevoEstado = ($pendientes == 0) ? 5 : 4; 
+        $this->updateEstado($otId, $nuevoEstado);
+    }
+
+    public function finalizarOT($otId, $usuarioId)
+    {
+        try {
+            $this->db->beginTransaction();
+
+            $stmt = $this->db->prepare("SELECT id, insumo_id, cantidad, estado_linea FROM detalle_solicitud 
+                                        WHERE solicitud_id = :id AND estado_linea NOT IN ('ENTREGADO', 'CANCELADO')");
+            $stmt->execute([':id' => $otId]);
+            $lineas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($lineas as $linea) {
+                if ($linea['estado_linea'] === 'EN_BODEGA') {
+                    $this->db->prepare("UPDATE insumos SET stock_actual = stock_actual + :cant WHERE id = :id")
+                        ->execute([':cant' => $linea['cantidad'], ':id' => $linea['insumo_id']]);
+                    
+                    $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id) 
+                                        VALUES (:id, 3, :cant, :uid, 'Devolución Cierre OT', :ref)")
+                        ->execute([
+                            ':id' => $linea['insumo_id'], 
+                            ':cant' => $linea['cantidad'], 
+                            ':uid' => $usuarioId, 
+                            ':ref' => $linea['id']
+                        ]);
+                }
+
+                $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'CANCELADO' WHERE id = :id")
+                    ->execute([':id' => $linea['id']]);
+            }
+
+            $this->updateEstado($otId, 5);
 
             $this->db->commit();
             return true;

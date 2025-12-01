@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/axiosConfig';
 import NuevaSolicitudModal from '../components/NuevaSolicitudModal';
 import MessageModal from '../components/MessageModal';
-import ConfirmModal from '../components/ConfirmModal'; // Nuevo
+import ConfirmModal from '../components/ConfirmModal';
 
 const Mantencion = () => {
     const [solicitudes, setSolicitudes] = useState([]);
@@ -28,11 +28,10 @@ const Mantencion = () => {
     const handleNew = () => { setOtEditar(null); setShowModal(true); };
 
     const handleEdit = (ot) => {
-        // Bloquear edición si ya no está pendiente
-        if (ot.estado !== 'Pendiente') {
-            return setMsg({ show: true, title: "No editable", text: `No puedes editar una OT en estado '${ot.estado}'.`, type: "warning" });
-        }
-        setOtEditar(ot); setShowModal(true);
+        // Permitimos abrir el modal en cualquier estado para ver la trazabilidad
+        // El modal se encargará de bloquear la edición si corresponde
+        setOtEditar(ot); 
+        setShowModal(true);
     };
 
     const solicitarAnulacion = (id) => {
@@ -47,6 +46,21 @@ const Mantencion = () => {
             setMsg({ show: true, title: "Anulada", text: "La Orden de Trabajo ha sido anulada.", type: "success" });
         } catch (error) {
             setMsg({ show: true, title: "Error", text: "No se pudo anular la solicitud.", type: "error" });
+        }
+    };
+
+    // Nueva función para cerrar OT y liberar remanentes
+    const handleFinalizar = async (id) => {
+        if (!window.confirm("¿Deseas FINALIZAR esta OT?\n\n- Se cancelarán los ítems pendientes de compra.\n- Se devolverán al inventario los ítems reservados no retirados.\n- La OT quedará como 'Completada'.")) {
+            return;
+        }
+
+        try {
+            await api.post('/index.php/mantencion/finalizar', { id });
+            setMsg({ show: true, title: "Finalizada", text: "La OT ha sido cerrada correctamente.", type: "success" });
+            cargarData();
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: "No se pudo finalizar.", type: "error" });
         }
     };
 
@@ -101,21 +115,33 @@ const Mantencion = () => {
                                         <td>{s.solicitante_nombre} {s.solicitante_apellido}</td>
                                         <td>{new Date(s.fecha_solicitud).toLocaleDateString()}</td>
                                         <td>
-                                            <span className={`badge ${s.estado === 'Pendiente' ? 'bg-warning text-dark' : s.estado === 'Anulada' ? 'bg-secondary' : 'bg-success'}`}>
+                                            <span className={`badge ${
+                                                s.estado === 'Pendiente' ? 'bg-warning text-dark' : 
+                                                s.estado === 'Anulada' ? 'bg-secondary' : 
+                                                s.estado === 'Completada' ? 'bg-success' : 'bg-primary'
+                                            }`}>
                                                 {s.estado}
                                             </span>
                                         </td>
                                         <td className="text-end pe-4">
-                                            {/* Solo permitir editar/borrar si no está anulada */}
-                                            {s.estado !== 'Anulada' && (
-                                                <>
-                                                    <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(s)} title="Editar">
-                                                        <i className="bi bi-pencil"></i>
-                                                    </button>
-                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarAnulacion(s.id)} title="Anular">
-                                                        <i className="bi bi-x-circle"></i>
-                                                    </button>
-                                                </>
+                                            
+                                            {/* Ver Detalle / Editar (Disponible siempre, el modal gestiona permisos) */}
+                                            <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(s)} title="Ver Detalle / Trazabilidad">
+                                                <i className="bi bi-eye"></i>
+                                            </button>
+
+                                            {/* Finalizar (Nuevo) - Solo si no está terminada */}
+                                            {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
+                                                <button className="btn btn-sm btn-success me-2" onClick={() => handleFinalizar(s.id)} title="Finalizar / Cerrar OT">
+                                                    <i className="bi bi-check2-circle"></i>
+                                                </button>
+                                            )}
+
+                                            {/* Anular (Solo si está pendiente pura) */}
+                                            {s.estado === 'Pendiente' && (
+                                                <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarAnulacion(s.id)} title="Anular">
+                                                    <i className="bi bi-x-circle"></i>
+                                                </button>
                                             )}
                                         </td>
                                     </tr>

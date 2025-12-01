@@ -11,7 +11,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     const [proveedorId, setProveedorId] = useState('');
     const [moneda, setMoneda] = useState('CLP');
     const [tipoCambio, setTipoCambio] = useState(1);
-    const [numeroCotizacion, setNumeroCotizacion] = useState(''); // Nuevo campo
+    const [numeroCotizacion, setNumeroCotizacion] = useState('');
 
     // Ítems
     const [items, setItems] = useState([]);
@@ -27,16 +27,27 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     useEffect(() => {
         if (show) {
             // Cargar listas
-            api.get('/index.php/proveedores').then(res => setProveedores(res.data.data));
-            api.get('/index.php/inventario').then(res => setInsumos(res.data.data));
-            api.get('/index.php/inventario/auxiliares').then(res => setCategorias(res.data.data.categorias));
+            api.get('/index.php/proveedores').then(res => {
+                if (res.data.success) setProveedores(res.data.data);
+            });
+            api.get('/index.php/inventario').then(res => {
+                if (res.data.success) setInsumos(res.data.data);
+            });
+            api.get('/index.php/inventario/auxiliares').then(res => {
+                if (res.data.success) setCategorias(res.data.data.categorias);
+            });
 
             // Resetear formulario
-            setProveedorId(''); setMoneda('CLP'); setTipoCambio(1); setNumeroCotizacion('');
-            setModoNuevo(false); setBusqueda('');
+            setProveedorId(''); 
+            setMoneda('CLP'); 
+            setTipoCambio(1); 
+            setNumeroCotizacion('');
+            setModoNuevo(false); 
+            setBusqueda('');
             setNuevoProd({ nombre: '', categoria_id: '', unidad: 'UN', precio: '', cantidad: '' });
 
-            // Si vienen ítems precargados (desde Alerta Mantención), usarlos
+            // Cargar ítems iniciales (Alerta Mantención)
+            // IMPORTANTE: Aquí se cargan los 'origen_ids' que vienen de Compras.jsx
             if (itemsIniciales.length > 0) {
                 setItems(itemsIniciales);
             } else {
@@ -49,17 +60,11 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     const insumosFiltrados = busqueda
         ? insumos.filter(i =>
             i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-            i.codigo_sku.toLowerCase().includes(busqueda.toLowerCase())
+            (i.codigo_sku && i.codigo_sku.toLowerCase().includes(busqueda.toLowerCase()))
         )
         : [];
 
     const agregarItemExistente = (insumo) => {
-        // Verificar si ya existe para no duplicar (opcional, a veces se quiere duplicar)
-        if (items.find(i => i.id === insumo.id)) {
-            // alert("El producto ya está en la lista"); // Opcional
-            // return;
-        }
-
         setItems([...items, {
             id: insumo.id,
             nombre: insumo.nombre,
@@ -106,12 +111,13 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
         setLoading(true);
         try {
+            // El objeto 'items' lleva implícitamente los 'origen_ids' si vinieron en itemsIniciales
             await api.post('/index.php/compras', {
                 proveedor_id: proveedorId,
                 moneda,
                 tipo_cambio: tipoCambio,
                 numero_cotizacion: numeroCotizacion,
-                items
+                items // Aquí viaja la trazabilidad
             });
             onSave();
             onClose();
@@ -193,7 +199,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             <input type="text" className="form-control" placeholder="Escribe nombre o SKU..."
                                                 value={busqueda} onChange={e => setBusqueda(e.target.value)} />
                                         </div>
-                                        {insumosFiltrados.length > 0 && (
+                                        {insumosFiltrados.length > 0 && busqueda && (
                                             <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 100, maxHeight: '200px', overflowY: 'auto' }}>
                                                 {insumosFiltrados.map(ins => (
                                                     <li key={ins.id} className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center"
@@ -258,7 +264,11 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                     {items.map((item, idx) => (
                                         <tr key={idx}>
                                             <td>
-                                                <div className="fw-medium">{item.nombre}</div>
+                                                <div className="fw-medium">
+                                                    {item.nombre}
+                                                    {/* Indicador visual de Trazabilidad (Opcional) */}
+                                                    {item.origen_ids && <span className="badge bg-warning text-dark ms-2" title="Viene de Mantención"><i className="bi bi-link-45deg"></i> OT</span>}
+                                                </div>
                                                 <small className="text-muted" style={{ fontSize: '0.75rem' }}>{item.sku !== 'NUEVO' ? `SKU: ${item.sku}` : ''}</small>
                                             </td>
                                             <td className="text-center">

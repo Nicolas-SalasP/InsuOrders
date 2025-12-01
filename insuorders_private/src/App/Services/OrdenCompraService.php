@@ -19,7 +19,6 @@ class OrdenCompraService {
     }
 
     public function obtenerDetalleOrden($id) {
-        // Usa el método completo del repo para traer cabecera + detalles
         return $this->repo->getOrdenCompleta($id);
     }
 
@@ -27,32 +26,29 @@ class OrdenCompraService {
         if (empty($data['items'])) throw new \Exception("La orden está vacía.");
         if (empty($data['proveedor_id'])) throw new \Exception("Falta el proveedor.");
 
-        // 1. Procesar Ítems
         $itemsProcesados = [];
         $montoNeto = 0;
+
+        $idsOrigenGlobales = [];
 
         foreach ($data['items'] as $item) {
             $insumoId = null;
 
-            // Si tiene ID, es producto existente
             if (!empty($item['id'])) {
                 $insumoId = $item['id'];
             } 
-            // Si no, es NUEVO -> Crear en Inventario
             else {
-                // Generar SKU temporal o incremental
                 $skuTemp = 'NEW-' . strtoupper(substr($item['nombre'], 0, 3)) . rand(1000,9999);
-                
                 $nuevoInsumo = [
                     'codigo_sku' => $skuTemp,
                     'nombre' => $item['nombre'],
                     'descripcion' => 'Ingresado desde Compras',
                     'categoria_id' => $item['categoria_id'],
-                    'ubicacion_id' => 1, // Ubicación por defecto (Bodega General)
+                    'ubicacion_id' => 1, 
                     'stock_actual' => 0,
                     'stock_minimo' => 0,
                     'precio_costo' => $item['precio'],
-                    'moneda' => $data['moneda'] ?? 'CLP', // Guardamos la moneda base
+                    'moneda' => $data['moneda'] ?? 'CLP',
                     'unidad_medida' => $item['unidad']
                 ];
                 $insumoId = $this->insumoRepo->create($nuevoInsumo);
@@ -67,17 +63,24 @@ class OrdenCompraService {
                 'precio' => $item['precio'],
                 'total' => $subtotal
             ];
+
+            if (!empty($item['origen_ids'])) {
+                if (is_array($item['origen_ids'])) {
+                    $idsOrigenGlobales = array_merge($idsOrigenGlobales, $item['origen_ids']);
+                } else {
+                    $exploded = explode(',', $item['origen_ids']);
+                    $idsOrigenGlobales = array_merge($idsOrigenGlobales, $exploded);
+                }
+            }
         }
 
-        // 2. Cálculos Finales
         $moneda = $data['moneda'] ?? 'CLP';
         $tipoCambio = $data['tipo_cambio'] ?? 1;
         $numeroCotizacion = $data['numero_cotizacion'] ?? null;
         
-        $iva = $montoNeto * 0.19; // IVA Chile
+        $iva = $montoNeto * 0.19;
         $total = $montoNeto + $iva;
 
-        // 3. Guardar Orden (Cabecera)
         $ordenId = $this->repo->create([
             'proveedor_id' => $data['proveedor_id'],
             'usuario_id' => $usuarioId,
@@ -89,22 +92,21 @@ class OrdenCompraService {
             'numero_cotizacion' => $numeroCotizacion
         ]);
 
-        // 4. Guardar Detalles
         foreach ($itemsProcesados as $item) {
             $this->repo->addDetalle(array_merge($item, ['orden_id' => $ordenId]));
+        }
+
+        if (!empty($idsOrigenGlobales)) {
+            $this->repo->asociarSolicitudesAOrden($ordenId, array_unique($idsOrigenGlobales));
         }
 
         return $ordenId;
     }
 
     public function generarPDF($ordenId) {
-        // Obtener la orden completa con todos los datos enriquecidos (proveedor, usuario, etc.)
         $data = $this->repo->getOrdenCompleta($ordenId);
+        if (!$data || !$data['cabecera']) throw new \Exception("Orden #$ordenId no encontrada.");
         
-        if (!$data || !$data['cabecera']) {
-            throw new \Exception("Orden #$ordenId no encontrada.");
-        }
-
         $pdf = new PDFService();
         $pdf->setOrdenData($data['cabecera']);
         return $pdf->generarPDF($data['detalles']);
@@ -112,5 +114,9 @@ class OrdenCompraService {
 
     public function adjuntarArchivo($id, $url) {
         return $this->repo->updateArchivo($id, $url);
+    }
+
+    public function recepcionarOrden($ordenId, $items, $usuarioId) {
+        return $this->repo->recepcionarOrden($ordenId, $items, $usuarioId);
     }
 }

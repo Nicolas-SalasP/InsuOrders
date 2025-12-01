@@ -18,7 +18,19 @@ const Login = () => {
         const result = await login(input.username, input.password);
 
         if (result.success) {
-            navigate('/dashboard');
+            switch (result.role) {
+                case 'Compras':
+                    navigate('/compras');
+                    break;
+                case 'Bodega':
+                    navigate('/bodega');
+                    break;
+                case 'Mantencion':
+                    navigate('/mantencion');
+                    break;
+                default:
+                    navigate('/dashboard');
+            }
         } else {
             setError(result.message);
             setIsSubmitting(false);
@@ -27,7 +39,6 @@ const Login = () => {
 
     return (
         <div className="vw-100 vh-100 d-flex justify-content-center align-items-center bg-light">
-            
             <div className="card shadow-lg border-0" style={{ width: '100%', maxWidth: '400px', borderRadius: '15px' }}>
                 <div className="card-body p-5">
                     <div className="text-center mb-4">

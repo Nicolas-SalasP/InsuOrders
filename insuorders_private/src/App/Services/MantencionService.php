@@ -62,25 +62,50 @@ class MantencionService
 
     private function procesarItems($otId, $items)
     {
-        $insumos = $this->insumoRepo->getAll();
+        $insumosRaw = $this->insumoRepo->getAll();
+        $insumos = [];
+        foreach ($insumosRaw as $ins) {
+            $insumos[$ins['id']] = $ins;
+        }
 
         foreach ($items as $item) {
             $stockActual = 0;
-            foreach ($insumos as $i) {
-                if ($i['id'] == $item['id']) {
-                    $stockActual = $i['stock_actual'];
-                    break;
-                }
+            if (isset($insumos[$item['id']])) {
+                $stockActual = (float) $insumos[$item['id']]['stock_actual'];
             }
+            $cantidadSolicitada = (float) $item['cantidad'];
 
-            $$estadoLinea = 'REQUIERE_COMPRA';
+            // === LÓGICA DE SPLIT INTELIGENTE ===
+            if ($stockActual >= $cantidadSolicitada) {
+                $this->repo->addDetalle([
+                    'solicitud_id' => $otId,
+                    'insumo_id' => $item['id'],
+                    'cantidad' => $cantidadSolicitada,
+                    'estado_linea' => 'EN_BODEGA'
+                ]);
+            } elseif ($stockActual > 0 && $stockActual < $cantidadSolicitada) {
+                $this->repo->addDetalle([
+                    'solicitud_id' => $otId,
+                    'insumo_id' => $item['id'],
+                    'cantidad' => $stockActual,
+                    'estado_linea' => 'EN_BODEGA'
+                ]);
 
-            $this->repo->addDetalle([
-                'solicitud_id' => $otId,
-                'insumo_id' => $item['id'],
-                'cantidad' => $item['cantidad'],
-                'estado_linea' => $estadoLinea
-            ]);
+                $faltante = $cantidadSolicitada - $stockActual;
+                $this->repo->addDetalle([
+                    'solicitud_id' => $otId,
+                    'insumo_id' => $item['id'],
+                    'cantidad' => $faltante,
+                    'estado_linea' => 'REQUIERE_COMPRA'
+                ]);
+            } else {
+                $this->repo->addDetalle([
+                    'solicitud_id' => $otId,
+                    'insumo_id' => $item['id'],
+                    'cantidad' => $cantidadSolicitada,
+                    'estado_linea' => 'REQUIERE_COMPRA'
+                ]);
+            }
         }
     }
 }

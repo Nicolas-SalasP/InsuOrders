@@ -24,11 +24,17 @@ class OrdenCompraController
         echo json_encode(["success" => true, "data" => $this->service->obtenerDetalleOrden($id)]);
     }
 
-    public function store()
+    public function store($usuarioId = null)
     {
         $data = json_decode(file_get_contents("php://input"), true);
+
+        if (!$usuarioId) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "Usuario no identificado"]);
+            return;
+        }
+
         try {
-            $usuarioId = 1;
             $id = $this->service->crearOrden($data, $usuarioId);
             echo json_encode(["success" => true, "message" => "Orden #$id creada exitosamente", "id" => $id]);
         } catch (\Exception $e) {
@@ -70,8 +76,10 @@ class OrdenCompraController
             $uploadDir = __DIR__ . '/../../../../public_html/uploads/ordenes/';
             if (!is_dir($uploadDir))
                 mkdir($uploadDir, 0777, true);
+
             $ext = pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION);
             $fileName = "OC_{$id}_" . time() . ".{$ext}";
+
             if (move_uploaded_file($_FILES['archivo']['tmp_name'], $uploadDir . $fileName)) {
                 $this->service->adjuntarArchivo($id, "/uploads/ordenes/" . $fileName);
                 echo json_encode(["success" => true, "message" => "Archivo subido", "url" => "/uploads/ordenes/" . $fileName]);
@@ -84,13 +92,37 @@ class OrdenCompraController
         }
     }
 
-    // Endpoint de alertas
     public function pendientes()
     {
         try {
             $repo = new OrdenCompraRepository();
             $data = $repo->getPendientesMantencion();
             echo json_encode(["success" => true, "data" => $data]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
+    public function recepcionar($usuarioId)
+    {
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        if (!$usuarioId) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "No autorizado"]);
+            return;
+        }
+
+        if (empty($data['orden_id']) || empty($data['items'])) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Datos incompletos"]);
+            return;
+        }
+
+        try {
+            $res = $this->service->recepcionarOrden($data['orden_id'], $data['items'], $usuarioId);
+            echo json_encode(["success" => true, "message" => "Recepción registrada correctamente", "data" => $res]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
