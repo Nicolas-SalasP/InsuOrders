@@ -8,6 +8,9 @@ import Proveedores from './pages/Proveedores';
 import Layout from './components/Layout';
 import Inventario from './pages/Inventario';
 import Compras from './pages/Compras'; 
+import Mantencion from './pages/Mantencion';
+import Activos from './pages/Activos';
+import Bodega from './pages/Bodega';
 
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
@@ -28,9 +31,10 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/proveedores" element={<Proveedores />} />
                 <Route path="/inventario" element={<Inventario />} />
+                <Route path="/bodega" element={<Bodega />} />
                 <Route path="/compras" element={<Compras />} />
-                <Route path="/mantencion" element={<h2>Módulo de Mantención (Próximamente)</h2>} />
-                
+                <Route path="/mantencion" element={<Mantencion />} />
+                <Route path="/activos" element={<Activos />} />
             </Route>
           </Route>
         </Routes>

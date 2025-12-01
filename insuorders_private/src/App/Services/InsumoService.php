@@ -55,4 +55,10 @@ class InsumoService
     {
         return $this->repo->delete($id);
     }
+
+    private function formatearNombre($nombre)
+    {
+        $nombre = mb_strtolower($nombre, 'UTF-8');
+        return mb_convert_case($nombre, MB_CASE_TITLE, 'UTF-8');
+    }
 }
