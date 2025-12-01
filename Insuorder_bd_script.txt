@@ -1,0 +1,408 @@
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ==========================================
+-- 1. CREACIÓN DE BASE DE DATOS
+-- ==========================================
+DROP DATABASE IF EXISTS insuban_db;
+CREATE DATABASE insuban_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE insuban_db;
+
+-- ==========================================
+-- 2. ESTRUCTURA DE TABLAS
+-- ==========================================
+
+-- Tablas Geográficas y Auxiliares
+CREATE TABLE paises (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE regiones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    pais_id INT NOT NULL,
+    FOREIGN KEY (pais_id) REFERENCES paises(id)
+);
+
+CREATE TABLE comunas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    region_id INT NOT NULL,
+    FOREIGN KEY (region_id) REFERENCES regiones(id)
+);
+
+CREATE TABLE tipos_venta (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    descripcion VARCHAR(50) NOT NULL
+);
+
+-- Tablas de Sistema y Usuarios
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion VARCHAR(100)
+);
+
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    apellido VARCHAR(50) NOT NULL,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    telefono VARCHAR(20),
+    rol_id INT NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (rol_id) REFERENCES roles(id)
+);
+
+-- Inventario y Activos
+CREATE TABLE activos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo_interno VARCHAR(20) UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    ubicacion VARCHAR(100)
+);
+
+CREATE TABLE categorias_insumo (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE insumos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo_sku VARCHAR(50) UNIQUE,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion TEXT,
+    categoria_id INT,
+    stock_actual DECIMAL(10,2) DEFAULT 0,
+    stock_minimo DECIMAL(10,2) DEFAULT 5,
+    unidad_medida VARCHAR(20) DEFAULT 'UN',
+    ubicacion_bodega VARCHAR(50),
+    FOREIGN KEY (categoria_id) REFERENCES categorias_insumo(id)
+);
+
+CREATE TABLE tipos_movimiento (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    factor INT NOT NULL
+);
+
+CREATE TABLE movimientos_inventario (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    insumo_id INT NOT NULL,
+    tipo_movimiento_id INT NOT NULL,
+    cantidad DECIMAL(10,2) NOT NULL,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    usuario_id INT NOT NULL,
+    referencia_id INT,
+    observacion TEXT,
+    FOREIGN KEY (insumo_id) REFERENCES insumos(id),
+    FOREIGN KEY (tipo_movimiento_id) REFERENCES tipos_movimiento(id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+);
+
+-- Compras y Proveedores
+CREATE TABLE proveedores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    rut VARCHAR(12) UNIQUE NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    direccion VARCHAR(150),
+    email VARCHAR(100),
+    telefono VARCHAR(50),
+    contacto_vendedor VARCHAR(100),
+    tipo_venta_id INT,
+    comuna_id INT,
+    FOREIGN KEY (tipo_venta_id) REFERENCES tipos_venta(id),
+    FOREIGN KEY (comuna_id) REFERENCES comunas(id)
+);
+
+CREATE TABLE proveedor_docs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    proveedor_id INT NOT NULL,
+    nombre_archivo VARCHAR(255) NOT NULL,
+    ruta_archivo VARCHAR(255) NOT NULL,
+    tipo_documento VARCHAR(50), -- Ej: 'Formulario SII', 'Contrato'
+    fecha_subida DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE CASCADE
+);
+
+CREATE TABLE sistema_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT, -- Quién hizo el cambio
+    accion VARCHAR(50), -- 'CREAR', 'EDITAR', 'ELIMINAR'
+    tabla_afectada VARCHAR(50), -- 'proveedores'
+    registro_id INT, -- ID del proveedor afectado
+    descripcion TEXT, -- "Cambió nombre de 'A' a 'B'"
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE estados_orden_compra (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE ordenes_compra (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    proveedor_id INT NOT NULL,
+    usuario_creador_id INT NOT NULL,
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    estado_id INT NOT NULL,
+    monto_neto DECIMAL(15,2) DEFAULT 0,
+    impuesto DECIMAL(15,2) DEFAULT 0,
+    monto_total DECIMAL(15,2) DEFAULT 0,
+    FOREIGN KEY (proveedor_id) REFERENCES proveedores(id),
+    FOREIGN KEY (usuario_creador_id) REFERENCES usuarios(id),
+    FOREIGN KEY (estado_id) REFERENCES estados_orden_compra(id)
+);
+
+CREATE TABLE detalle_orden_compra (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    orden_compra_id INT NOT NULL,
+    insumo_id INT NOT NULL,
+    cantidad_solicitada DECIMAL(10,2) NOT NULL,
+    cantidad_recibida DECIMAL(10,2) DEFAULT 0,
+    precio_unitario DECIMAL(15,2),
+    total_linea DECIMAL(15,2),
+    FOREIGN KEY (orden_compra_id) REFERENCES ordenes_compra(id),
+    FOREIGN KEY (insumo_id) REFERENCES insumos(id)
+);
+
+-- Mantenimiento
+CREATE TABLE estados_solicitud (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE solicitudes_ot (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_solicitante_id INT NOT NULL,
+    activo_id INT,
+    fecha_solicitud DATETIME DEFAULT CURRENT_TIMESTAMP,
+    estado_id INT NOT NULL,
+    descripcion_trabajo TEXT,
+    FOREIGN KEY (usuario_solicitante_id) REFERENCES usuarios(id),
+    FOREIGN KEY (activo_id) REFERENCES activos(id),
+    FOREIGN KEY (estado_id) REFERENCES estados_solicitud(id)
+);
+
+CREATE TABLE detalle_solicitud (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    solicitud_id INT NOT NULL,
+    insumo_id INT NOT NULL,
+    cantidad DECIMAL(10,2) NOT NULL,
+    estado_linea VARCHAR(20) DEFAULT 'PENDIENTE',
+    FOREIGN KEY (solicitud_id) REFERENCES solicitudes_ot(id),
+    FOREIGN KEY (insumo_id) REFERENCES insumos(id)
+);
+
+-- ==========================================
+-- 3. INSERCIÓN DE DATOS MAESTROS Y MIGRACIÓN
+-- ==========================================
+
+-- Roles
+INSERT INTO roles (id, nombre, descripcion) VALUES 
+(1, 'Admin', 'Acceso total'), (2, 'Mantencion', 'Gestión OT'), (3, 'Compras', 'Gestión OC'), (4, 'Bodega', 'Inventario');
+
+-- Estados y Tipos
+INSERT INTO estados_solicitud (nombre) VALUES ('Pendiente'), ('Aprobada'), ('Rechazada'), ('En Espera Material'), ('Completada');
+INSERT INTO estados_orden_compra (nombre) VALUES ('Borrador'), ('Emitida'), ('Recepcion Parcial'), ('Recepcion Total'), ('Anulada');
+INSERT INTO tipos_movimiento (nombre, factor) VALUES ('Ingreso Compra', 1), ('Salida Mantención', -1), ('Ajuste (+)', 1), ('Ajuste (-)', -1), ('Devolución', 1);
+INSERT INTO categorias_insumo (nombre) VALUES ('General'), ('Eléctrico'), ('Hidráulico'), ('Mecánico'), ('EPP'), ('Lubricantes'), ('Herramientas');
+INSERT INTO tipos_venta (id, descripcion) VALUES (1, 'Contado'), (2, 'Crédito'), (3, 'Efectivo'), (4, 'Cheque'), (5, 'Transferencia');
+
+-- Paises
+INSERT INTO paises (id, nombre) VALUES 
+(1, 'Chile'), (2, 'España'), (3, 'Argentina'), (4, 'Dinamarca'), (5, 'México'), (6, 'Estados Unidos'), (7, 'Paraguay');
+
+-- Regiones
+INSERT INTO regiones (id, nombre, pais_id) VALUES 
+(1, 'Antártica Chilena', 1), (2, 'Antofagasta', 1), (3, 'Araucanía', 1), (4, 'Arica y Parinacota', 1), 
+(5, 'Aysén', 1), (6, 'Atacama', 1), (7, 'Biobío', 1), (8, 'Coquimbo', 1), (9, 'Los Lagos', 1), 
+(10, 'Los Ríos', 1), (11, 'Magallanes', 1), (12, 'Maule', 1), (13, 'Ñuble', 1), (14, 'OHiggins', 1), 
+(15, 'Region Metropolitana', 1), (16, 'Tarapacá', 1), (17, 'Valparaíso', 1),
+(18, 'Andalucía', 2), (19, 'Cataluña', 2), (20, 'Madrid', 2), (21, 'Valencia', 2),
+(22, 'Buenos Aires', 3), (23, 'CABA', 3), (24, 'Mendoza', 3), (25, 'Santa Fe', 3), (26, 'Córdoba', 3),
+(27, 'Hovedstaden', 4), (28, 'Midtjylland', 4), (29, 'Nordjylland', 4), (30, 'Syddanmark', 4),
+(31, 'Ciudad de México', 5), (32, 'Jalisco', 5), (33, 'Nuevo León', 5), (34, 'Puebla', 5),
+(35, 'California', 6), (36, 'Texas', 6), (37, 'Florida', 6), (38, 'New York', 6),
+(39, 'Asunción', 7), (40, 'Central', 7), (41, 'Alto Paraná', 7), (42, 'Itapúa', 7);
+
+-- Comunas
+INSERT INTO comunas (id, nombre, region_id) VALUES 
+(1, 'Antártica', 1), (2, 'Puerto Williams', 1), (3, 'Puerto Toro', 1), (4, 'Navarino', 1),
+(5, 'Antofagasta', 2), (6, 'Mejillones', 2), (7, 'Calama', 2), (8, 'Taltal', 2),
+(9, 'Temuco', 3), (10, 'Angol', 3), (11, 'Villarrica', 3), (12, 'Pucón', 3),
+(13, 'Arica', 4), (14, 'Putre', 4), (15, 'Camarones', 4), (16, 'General Lagos', 4),
+(17, 'Coyhaique', 5), (18, 'Chile Chico', 5), (19, 'Aysén', 5), (20, 'Cisnes', 5),
+(21, 'Copiapó', 6), (22, 'Vallenar', 6), (23, 'Caldera', 6), (24, 'Tierra Amarilla', 6),
+(25, 'Concepción', 7), (26, 'Talcahuano', 7), (27, 'Los Ángeles', 7), (28, 'Hualpén', 7),
+(29, 'La Serena', 8), (30, 'Coquimbo', 8), (31, 'Ovalle', 8), (32, 'Andacollo', 8),
+(33, 'Puerto Montt', 9), (34, 'Castro', 9), (35, 'Osorno', 9), (36, 'Puerto Varas', 9),
+(37, 'Valdivia', 10), (38, 'La Unión', 10), (39, 'Río Bueno', 10), (40, 'Lago Ranco', 10),
+(41, 'Punta Arenas', 11), (42, 'Puerto Natales', 11), (43, 'Porvenir', 11), (44, 'Cabo de Hornos', 11),
+(45, 'Talca', 12), (46, 'Curicó', 12), (47, 'Linares', 12), (48, 'Molina', 12),
+(49, 'Chillán', 13), (50, 'San Carlos', 13), (51, 'Quirihue', 13), (52, 'Ninhue', 13),
+(53, 'Doñihue', 14), (54, 'Rancagua', 14), (55, 'Graneros', 14), (56, 'Pichilemu', 14), (57, 'Codegua', 14),
+(58, 'Buin', 15), (59, 'Calera de Tango', 15), (60, 'Cerrillos', 15), (61, 'Colina', 15), (62, 'Conchali', 15), (63, 'El Bosque', 15), (64, 'El Monte', 15), 
+(65, 'Estación Central', 15), (66, 'Huechuraba', 15), (67, 'Independencia', 15), (68, 'Isla de Maipo', 15), (69, 'La Cisterna', 15), (70, 'La Florida', 15), 
+(71, 'La Granja', 15), (72, 'La Pintana', 15), (73, 'La Reina', 15), (74, 'Lampa', 15), (75, 'Las Condes', 15), (76, 'Lo Barnechea', 15), (77, 'Lo Espejo', 15), 
+(78, 'Lo Prado', 15), (79, 'Macul', 15), (80, 'Maipu', 15), (81, 'Maria Pinto', 15), (82, 'Ñuñoa', 15), (83, 'Padre Hurtado', 15), (84, 'Paine', 15), 
+(85, 'Pedro Aguirre Cerda', 15), (86, 'Peñaflor', 15), (87, 'Peñalolén', 15), (88, 'Providencia', 15), (89, 'Pudahuel', 15), (90, 'Quilicura', 15), 
+(91, 'Quinta Normal', 15), (92, 'San Bernardo', 15), (93, 'San Jose de Maipo', 15), (94, 'Santiago', 15), (95, 'Talagante', 15), (96, 'Tiltil', 15), 
+(97, 'Iquique', 16), (98, 'Alto Hospicio', 16), (99, 'Pica', 16), (100, 'Camiña', 16),
+(101, 'Valparaíso', 17), (102, 'Viña del Mar', 17), (103, 'San Antonio', 17), (104, 'Quillota', 17),
+(111, 'Quilpue', 17), (112, 'Rosario', 14), (113, 'San Miguel', 15), (114, 'San Ramon', 15), (115, 'San Joaquin', 15), (116, 'Vitacura', 15), (117, 'Renca', 15), (118, 'Recoleta', 15);
+
+-- Proveedores (Data histórica completa)
+INSERT IGNORE INTO proveedores (rut, nombre, direccion, email, telefono, tipo_venta_id, contacto_vendedor, comuna_id) VALUES
+('76242249-2', 'induslab spa', 'enrique matte 1462', 'ventas@induslab.cl', '225677363', 1, 'david brill', 113),
+('77021940-k', 'comercial industrial market ltda', 'constantino 539', 'ventas6@refrimarket.com', '226833268', 1, 'joan vivas', 91),
+('76046809-6', 'dap ducasse diseño ltda', 'av. libertador bernardo ohiggins 1460, piso 5', 'nuvia.hormazabal@dapducasse.cl', '56232937000', 1, 'nuvia hormazabal', 94),
+('77508307-7', 'nico cruzat', 'la capitania 80- oficina 108', 'nico@nicocruzat.cl', '56979007536', 1, NULL, 75),
+('87717600-2', 'aceros y metales spa', NULL, 'tmoreno@acermet.cl', '225845200', 2, 'tania moreno', 91),
+('76279430-6', 'sociedad comercial orellana y vidal', 'cordillera 551', 'servicio@oyvrental.cl', '940269651', 1, 'rodrigo carrasco g', 89),
+('76127937-8', 'román y de col y cía. ltda.', 'circunvalacion americo vespucio 1940', 'aroman@autorodec.com', NULL, 1, 'alvaro roman', 62),
+('78730890-2', 'induacril spa', 'camino el guanaco 6813', 'ventas@induacril.cl', '944047029', 1, 'linda sanchez', 66),
+('93020000-k', 'tecnigen sa.', 'av. carlos valdovinos 450', 'info@tecnigen.cl', '223960600', 1, 'rolando elgueta', 115),
+('76166794-7', 'trichem ltda', 'alcalde barrera 9165', 'trichem@trichemci.com', '225272844', 2, 'gabriela ojeda', 69),
+('76097502-8', 'quality rubber sa', 'av. americo vespucio 1151', 'maraneda@qrubber.cl', '968344053', 1, 'marcela aranda', 90),
+('26452499-7', 'omar bandres servicios de ingenieria y seguridad', 'valle lo campino', 'bctronicsl@gmail.com', '976026030', 1, 'omar brandes', 90),
+('76925886-8', 'arriendo lusomaq spa', 'calle progreso 1309', 'contacto@lusomaq.cl', '977577061', 1, 'franchesca ibarra', 91),
+('77222312-9', 'robert tamayo matriceria torneria y metalmecancia eirl', 'av traiguen 1432', NULL, '999465649', 2, 'robert tamayo', 89),
+('76122343-7', 'importadora cromtek spa', 'av. del valle sur 576, of 703', 'contacto@cromtek.cl', '227333480', 2, 'sandra caceres', 66),
+('91806000-6', 'abastible sa', 'av apoquindo', 'elizabeth.espinozad@abastible.cl', '226939909', 1, 'elizabeth espinoza dinamarca', 94),
+('76516761-2', 'obinu y cia ltda', 'sargento aldea 194', 'info@obinu.cl', '225273443', 1, 'yaret arancibia', 63),
+('77142419-8', 'servicios eberall', 'huerfanos 1055', 'ventas@eberall.cl', '56962975169', 1, 'elennys garcia', 94),
+('96605640-1', 'comercial vimaroni spa', 'del alheli 2332', 'ventas@vimaroni.cl', '2827061', 1, 'paola olmos', 111),
+('78382590-2', 'valck', 'camino san pedro 9600', 'josefina@valck.cl', '225523860', 1, 'josefina valck', 89),
+('76339652-5', 'of quimica spa', 'parinacota #239', 'ventas@ofquimica.cl', '224791204', 2, 'karina saavedra', 90),
+('79728570-6', 'farmalatina ltda', 'las encinas 1495, valle grande', 'analitica@farmalatina.cl', '228385019', 1, 'flor saldaña', 74),
+('76206859-4', 'metabali consultores ltda', 'av. apoquindo 6410 of 210', 'melisa@metabali.cl', '56998871878', 1, 'maria elsa tabali', 75),
+('78131420-k', 'ingenieria desimat limitada', 'puerto vespucio 9670', 'facturacion@desimat.cl', '225851200', 1, 'ingenieria desimat', 89),
+('76463059-9', 'gramlit spa', 'las hortensias 972', 'ventas@gramlit.com', '225381002', 1, 'maria emilia', 60),
+('76730517-6', 'servicios integrales y proyectos marcelo perez eirl', 'nemesio antunez 353', 'mperezm@mymproyectos.cl', '944083275', 2, 'marcelo perez', 80),
+('16711057-6', 'carolina diaz paillalef', 'los pamperos 238', 'hielos.gradocero@gmail.com', '56975685662', 1, 'carolina diaz', 118),
+('77537533-7', 'cleaning spa', 'ahumada 312 of 715', 'ventas@insumoscleaning.cl', '56930984761', 1, 'marcia maira', 94),
+('99535580-9', 'asesorias industriales enotec sa', 'carlos edwards 1135', 'servicio@enotec.cl', '56225213450', 1, 'carolina morales', 113),
+('86778100-5', 'plasticos haddad sa', 'jose ananias lama 444', 'ventas@haddad.cl', '56224627200', 1, 'camila campos', 79),
+('76117967-5', 'taag technologies sa', 'rio refugio 9641', 'njofre@taag-genetics.com', '229353200', 1, 'felipe hinojosa', 89),
+('79629010-2', 'chesterton international chile ltda', 'av. los vientos 20090 bodega b', 'alfonso.jaramillo@chesterton.com', '229444631', 2, 'alfonso jaramillo', 89),
+('76051243-5', 'comercial hidraulica restock ltda', 'brasil 81', 'ccuadros@hidraulicarestock.cl', '226964812', 1, NULL, 94),
+('76218782-5', 'genesys analitica spa', 'jose domingo cañar 574', 'mgonzalez@genesysanalitica.cl', '942192561', 1, 'mariela gonzalez', 82),
+('76163793-2', 'plasticentro sa', 'camino la montaña 355', 'sandro.becerra@plasticentro.cl', '223864700', 1, 'sandro becerra', 74),
+('16536886-k', 'maria muñoz navarrete', 'los lilium 1266', 'marymuoz26@gmail.com', '930800778', 1, 'maria muñoz', 9),
+('77736990-3', 'villegas y perez ltda', 'san ignacio 1460', 'contacto@vilyper.cl', '5550450', 1, 'javier puschel', 94),
+('79722860-5', 'winkler limitada', 'el quillay #466 parque industrial', 'pflores@winklerltda.com', '56224826500', 2, 'priscila flores', 74),
+('78240410-5', 'aginox comercial ltda', 'conferencia 956', 'j.ventas@aginox.cl', '228625600', 2, 'jorge alderete', 94),
+('76496798-k', 'ansa spa', 'ojos del salado 840', 'naguad@imaqingenieria.cl', '227390054', 2, 'nagib aguad', 90),
+('85417200-k', 'nalco industrial services chile ltda', 'avenida isidora goyenechea 2800 of 1102', 'serviciocliente@nalco.com', '56940136123', 1, 'barbara payera', 75),
+('80326500-3', 'oxiquim sa', 'av. sta maria 2050', 'ricardo.lara@oxiquim.com', '224788000', 2, 'ricardo lara', 88),
+('78972190-4', 'hanna instruments equipos ltda', 'lo echevers 311', 'eduim@hannachile.com', '56950021734', 2, 'eduim barrios', 90),
+('77459130-3', 'ahorromat', 'av. gral san martin 590', 'oyarcecontreras@gmail.com', '222449523', 2, 'marcelo oyarce', 90),
+('92681000-6', 'airolite sa', 'camino lo echevers 550 bodega 30', 'cgatica@airolite.cl', '23455200', 1, 'carolina gatica', 90),
+('77218776-9', 'taglermaq spa', 'presidente german riesco 8736-1', 'mponce@taglermaq.cl', NULL, 1, 'marco ponce', 117),
+('76312131-3', 'alti tec ltda', 'av. club hipico 4676 torre norte piso 8', 'proyectos@altitecchile.cl', '228870113', 2, 'jorge reyes', 85),
+('76013877-0', 'amezaga ingenieria y suministros sa', 'providencia 2594 oficina 621', 'contacto@tech-oh.cl', '223357779', 1, 'ruben ramirez', 88),
+('76433951-7', 'aura oyarzun seguridad y proteccion eirl', 'vicxuña mackenna 8219', 'gerencia@cercoalarm', '982890839', 1, 'aura oyarzun', 70),
+('96919040-0', 'bomba espa s.a.', 'calle dos 9447, parque industrial buenaventura', 'rhofmann@espachile.cl', '227266900', 2, 'raimund hofmann', 90),
+('96598550-6', 'bombas imchisa sa', 'calle dos 9447, parque industrial buenaventura', 'cspate@espa.cl', '227266900', 1, 'claudia spate', 90),
+('76774170-7', 'busch chile s.a', 'av presidente frei montalva 7070 bod 9', 'jromero@busch.cl', '223765136', 1, 'julio romero', 90),
+('80960800-k', 'carmelo tala y cia ltda', 'av. padre alberto hurtado 0101', 'ventas@carmelotala.cl', '227791407', 2, NULL, 65),
+('83030600-5', 'casa royal', 'avenida libertador bernardo o’higgins 845', 'contacto@casaroyal.cl', '226900000', 3, NULL, 94),
+('81185000-4', 'cesmec sa', 'avda marathon 2595', 'victor.lastra@bureauveritas.com', '223502100', 1, 'victor lastra', 79),
+('78983170-k', 'cimtec sa', 'av. las montañana 39 los libertadores', 'ventas@cimtec.cl', '225447900', 1, 'alejandra gonzalez', 61),
+('76554904-3', 'clapps chile spa', 'monjitas 550 of. 19', 'pamela@clappschile.cl', '226891576', 2, 'pamela suarez', 94),
+('96974100-8', 'codepack', 'parinacota 381 modulo 9', 'osandoval@codepack.cl', '228166700', 2, 'oscar sandoval', 90),
+('78769930-8', 'comercial allen ltda', 'eduardo matte 1830', 'emonsalve@allen.cl', '225553918', 1, 'eduardo monsalve', 94),
+('77137860-9', 'comercial k limitada', 'crucero peralillo s/n', 'g.molina@mk.cl', '226788141', 1, 'gisella molina', 74),
+('76644817-8', 'comercial pro-technology ltda.', 'vicuña mackenna 7255 of.707', 'andrea.villalobos@protechnology.cl', '222978401', 2, 'andrea villalobos', 70),
+('79993310-1', 'comercial versluys', 'el quilo 5535', 'carolinaversluys@gmail.com', '22228231', 2, 'carolina', 91),
+('76096776-9', 'comercializadora ambiente ltda', 'la martina 455 bodega x9', 'ventas@cambiente.cl', '976670966', 1, 'carlos mendez', 89),
+('76804728-6', 'd&v aceros spa', 'rodolfo jaramillo906', 'vhgonzalez14@gmail.com', NULL, 2, 'victor hugo gonzalez', 83),
+('89396900-4', 'distribuidora electrica vitel sa', 'chiloe 1189', 'jcalderon@vitel.cl', '225562646', 2, 'jennifer calderon villalobos', 94),
+('76082923-4', 'dyntec chile spa', 'camino isla norte s/n', 'ronald.jurgens@eco-dyntec.com', NULL, 1, 'ronald jurgens', 57),
+('78887880-k', 'ecokorp ltda.', 'los alamos 2394', 'ventas@ecokorp.cl', '227845431', 2, 'tamara salinas', 72),
+('85541900-9', 'edapi s.a.', 'chile españa 414 ñuñoa', 'aalarcon@edapi.cl', '223752600', 2, 'alicia alarcon h.', 94),
+('76085401-8', 'eduardo jose fierro plasticos eirl', 'quinahue 7116', 'msanz@angelplast.cl', NULL, 2, 'maria jose sanz', 70),
+('25270730-1', 'edwart perez', NULL, 'edwartperez@gmail.com', NULL, 3, 'edwart perez', 94),
+('96896480-1', 'sonepar chile sa', 'av. vicuña mackenna 2301', 'eliseo.salazar@sonepar.cl', '991624487', 2, 'eliseo salazar', 94),
+('80409800-3', 'electricidad gobantes s.a.', 'av. matta 1195', 'contactenos@gobantes.cl', '226900000', 3, NULL, 94),
+('79748470-9', 'electricidad guzman', 'avda. fresia 2196', 'r.gonzalez@guzman.cl', '223871111', 2, 'rebeca gonzalez', 117),
+('76371984-7', 'electronline', 'san antonio 378, of. 211', 'ventas@electronline.cl', '223023149', 3, NULL, 94),
+('52003384-k', 'evolta', 'apoquindo 4100, of 301, piso 3', 'ventas@evolta.cl', '222429434', 1, NULL, 75),
+('76867361-6', 'extintores malaga spa', 'radal 643', NULL, '22864254', 2, 'maria chico', 91),
+('96863240-k', 'fibro chile sa', 'el juncal 900 - buenaventura', 'vpoblete@freevac.cl', NULL, 2, NULL, 90),
+('83045600-7', 'galvez e hijos ltda', 'general mackennna 1579', 'ventas@galvezehijos.cl', '22699339', 1, 'ximena millar soriano', 94),
+('76842605-8', 'sociedad comercial rodastock ltda', 'vergara 38-40', 'ventas@rodastock.cl', '227841560', 2, 'monica salas', 94),
+('78377470-4', 'gmp', 'cirujano guzmán 131', 'ebocaz@gmp.cl', '223468182', 2, 'erika bocaz c', 88),
+('76124702-6', 'hakansson sawblades chile ltda', 'avda. einstein 760', 'fsalinas@hakanssonchile.cl', NULL, 2, 'francisco salinas', 118),
+('78627210-6', 'hipermercados tottus s.a.', NULL, NULL, NULL, 3, NULL, 94),
+('76753396-9', 'importadora best store spa', 'guardia vieja 490 oficina d', NULL, '223331673', 1, NULL, 88),
+('83083700-0', 'importadora dilaco sa', 'perez valenzuela 1138', 'azambrando@dilaco.com', '224029700', 1, 'alesandra zambrano', 88),
+('76711569-5', 'importadora rc spa', 'av. americo vespucio 2022', 'ventas@importadorarc.cl', NULL, 1, 'victor', 114),
+('76129541-1', 'importadora y exportadora jorge bravo eirl', 'huerfanos 2204', 'jalyon.cia@tie.cl', '226994979', 1, 'miriam colimil', 94),
+('83297700-4', 'impresos y cartonajes sa', 'las encinas 441', 'mpinero@imicar.cl', NULL, 2, 'manuel piñero', 60),
+('76150343-k', 'indura s.a', 'av. las americas 585, cerrillos-santiago', 'acorrea@indura.net', '6006003039', 1, 'alberto luis correa quiro', 60),
+('76452427-6', 'innovaprint chile spa', 'av.del parque 5339 of. 105 ciudad empresarial', 'ventas2@innovaprint.cl', '226047127', 2, 'maria eugenia idrogo', 66),
+('76732331-k', 'inofliss', 'avenida apoquindo 6410 of. 605', 'venta@inofliss.cl', '228147038', 1, 'carlos bravo', 75),
+('96582680-7', 'intermec chile s.a.', 'coronel 2330 of 11', 'elias.moraga@intermec.cl', '222341419', 1, 'elias moraga', 88),
+('76215357-2', 'karcher chile spa', 'los libertadores 16500', NULL, '223806100', 1, 'ariel martinez', 61),
+('80478200-1', 'lapiz lopez', NULL, NULL, NULL, 3, NULL, 94),
+('5817368-1', 'laura rosa quevedo alvarez', 'simon bolivar casa 2 parcela d-1', 'farepa.gac@gmail.com', NULL, 2, 'hans quevedo', 89),
+('76134946-5', 'lider', NULL, 'contactosodimac@sodimac.cl', NULL, 3, NULL, 94),
+('76006708-3', 'luis matta armijo servcio refrigeracion eirl', 'segunda avenida 376', 'friomatt@hotmail.com', '228111269', 2, 'luis matta', 83),
+('76720742-5', 'mantencion y reparacion fricsotek spa', 'progreso 1309', 'r.salinas@fricsotek.cl', '56963685421', 2, 'ricardo salinas', 91),
+('93320000-0', 'marienberg y cia', 'santa marta 1600', 'jgs@marienberg.cl', '229474000', 2, 'jaqueline gonzalez', 80),
+('76229937-2', 'masmauco ltda', 'avda. el salto 4001 of. 91', 'pedido@rentokil-initial.com', NULL, 2, NULL, 66),
+('76490300-5', 'materias primas claudia escobar sa', 'colombia 0390', NULL, NULL, 1, 'veronica toro', 118),
+('76875136-6', 'maxinnovation', NULL, NULL, NULL, 1, 'david hidalgo', 94),
+('76854670-3', 'metalrome.i.r.l', 'camino el colera s7n cerrillos', 'jr.metalrom@gmail.com', '72463447', 2, 'jonathan roman a', 53),
+('9954930-6', 'multivac chile sa', 'calle rio refugioi 9665', 'maximiliano.paninao@cl.multivac.com', '27996000', 2, 'maximiliano paninao', 89),
+('76172535-1', 'nebulan', 'av. suecia 0155, oficina 304', NULL, NULL, 1, 'gonzalo campbell', 88),
+('77251280-5', 'newchem technologies ltda', 'campo de deportes 421', NULL, NULL, 2, 'claudina plaza', 82),
+('83017600-4', 'nibsa sa', 'juan griego 4429999999999', 'trinidad.garcia@nibsa.com', '224898100', 1, 'trinidad garcia', 115),
+('6682543-4', 'orlando arcadio diaz diaz', 'recreo 539', 'mecanizadosdiaz@yahoo.es', '227763392', 2, 'orlando diaz diaz', 65),
+('76019839-0', 'patricio salamanca y cia ltda', 'autipista 8360 bloque int.', 'jm.salamanca@forymar.cl', NULL, 2, 'juan manuel salamanca', 26),
+('78885550-8', 'pc factory s.a', NULL, NULL, NULL, 3, NULL, 94),
+('77507670-4', 'pinxcel graphics ltda.', 'avda. picarte 327, módulo 26', 'ngarcia@pinxcel.cl', '(63) 2202042', 2, 'norma garcia', 37),
+('96501500-0', 'plastigen spa', 'av lo boza 370', 'sbecerra@plastigen.cl', '223323900', 2, 'sandro becerra', 89),
+('96567010-6', 'politec sa', 'camino coquimbo 16064', 'jdaniel.lozada@femoglas.com', '223947100', 1, 'daniel lozada', 61),
+('96980910-9', 'precision sa', 'avenida el salto 4291', 'oc_cliente@precision.cl', NULL, 1, 'maria eugenia aguilera', 66),
+('76826870-3', 'pronto comunicaciones', 'av. del valle sur 577', 'mrodriguez@prontoip.com', '228580678', 2, 'marcelo rodriguez', 66),
+('96556940-5', 'proveedores integrales prisa s.a.', 'las rosas 5757', 'ytoberp@prisa.cl', '8206000', 2, 'yolanda tobar', 94),
+('77949040-8', 'punto hidraulico ltda', 'san isidro 1466', 'nestor@puntohidraulico.cl', '225541878', 2, 'nestor castillo', 94),
+('92556000-6', 'refrigeracion y repuestos s.a.c', 'av. condel 1064', 'ventas@ryrsac.cl', '229047724', 1, 'cristian seguel', 88),
+('78421810-4', 'rodacenter', 'av. americo vespucio 1391', 'murdaneta@rodacenter.cl', '226272727', 2, 'marcos urdaneta', 90),
+('99510910-7', 'segurycel industrial celume y gonzalez', 'avenida ejercito libertador 740', 'j.figueroa@segurycel.cl', '227075774', 2, 'jessica figueroa', 94),
+('10935449-k', 'servicarl spa', NULL, 'crivas@procesadoracrl.cl', '92401098', 2, 'cesar rivas liberona', 112),
+('76709668-2', 'servicios de saludarboroa spa', 'almarza #110', 'coordinadora@beatself.cl', '223591721', 2, 'maria moreno gaete', 54),
+('8906900-5', 'smc pneumatics chile sa', 'av la montaña 1115', 'neris.acosta@smcchile.cl', '222708600', 2, 'neris acosta', 74),
+('77099530-2', 'soc plasticos tecnicos spa', 'camino santa ines', NULL, NULL, 2, 'manuel espinola', 59),
+('77990830-5', 'sociedad comercial de marketing m&v spa', 'americo vespucio norte 1385 depto 34-35', 'ventas@exoset.cl', NULL, 2, 'diego mellado', 90),
+('76567567-7', 'sociedad comercializadora unifilm ltda.', 'marchant pereira #3282', 'ventas@unifilm.cl', '222096350', 1, 'marcela velasquez', 82),
+('76214282-1', 'sociedad muller sa', 'camino la montaña sitio 56 loteo', 'marlene.muller@interpanel.cl', NULL, 2, 'marlene muller', 61),
+('96792430-k', 'sodimac s.a.', NULL, 'contactosodimac@sodimac.cl', NULL, 3, NULL, 94),
+('77419950-0', 'sodiper vivaceta limitda', 'fermin vivaceta 660', 'jorge.jove@sodiper.cl', '227959283', 1, 'jorge jove', 67),
+('76589179-5', 'solucionesrg reyes limitada', 'cayupil 0337', 'solucionesrgchile@gmail.com', '998132416', 2, 'ricardo garcia', 80),
+('76799430-3', 'sp digital', 'padre mariano 356', NULL, '226567043', 1, 'elisa santos', 88),
+('76333980-7', 'spartan de chile ltda', 'cerro santa lucia 9873', 'ivan.marquez@spartan.cl', NULL, 2, NULL, 90),
+('9896306-5', 't & c computer', 'san diego 965 local 12', 'ventas@tyccomputer.cl', '226628859', 3, NULL, 94),
+('76764877-4', 'tecmetal chile spa', 'calle cerro san cristobal', 'tecmetal@gmail.com', '967049200', 2, 'walter aguirre', 90),
+('89769600-3', 'tecnilñub limitada', 'alcalde pedro alarcon 726', 'aquevedo@tecnilub.cl', '227951300', 2, 'arturo quevedo', 94),
+('96542490-3', 'treck sa', 'santa rosa 5220', 'paulina.cerda@treck.cl', '24909986', 1, 'paulina cerda', 115),
+('82525800-0', 'veto y compañía limitada', 'san eugenio 567', 'ventas412@veto.cl', '223554400', 1, 'hernan flores', 82),
+('76741064-6', 'vp servicios generales spa', 'mac iver 142 oficina 411 - santiago', 'ventas3@vpservicios.cl', '232305776', 2, 'melva portales', 94),
+('92147000-2', 'wenco sa', 'av. americo vespucio 1125', 'silvana.leiva@wenco.cl', NULL, 2, 'silvana leiva', 66),
+('78701740-1', 'wurth chile ltda', 'coronel santiago buena 1345', 'lcodina@wurth.cl', NULL, 2, 'laura codina', 83),
+('79961910-5', 'xylem water solutions chile sa', 'alcalde guzman 1480', 'mario.reyes@xyleminc.com', '225628600', 2, 'mario reyes', 90),
+('80565900-9', 'yolito balart hnos ltda', 'antillanca', 'rsolis@yolito.cl', '224820800', 1, 'richard solis', 90),
+('76057953-k', 'greenclean chile ltda', 'av. condell 1470', 'contacto@greencleanchile.cl', '226656194', 2, 'bernardita lira', 88),
+('76524695-4', 'manufacturas de telas spa', 'avda portugal 1357', 'erika.gatica.ca@gmail.com', NULL, 2, 'erika gatica', 94);
+
+-- Crear usuario Admin por defecto
+INSERT INTO usuarios (nombre, apellido, username, password_hash, email, telefono, rol_id) 
+VALUES ('Nicolas', 'Salas', 'nsalas', '$2y$10$EjemploHashDePasswordSeguro...', 'nsalas@insuban.cl', '229458504', 1);
+
+SET FOREIGN_KEY_CHECKS = 1;
