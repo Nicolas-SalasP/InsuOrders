@@ -3,7 +3,9 @@ import api from '../api/axiosConfig';
 
 const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
     const [detalles, setDetalles] = useState([]);
-    const [inputs, setInputs] = useState({}); // { detalle_id: cantidad_a_ingresar }
+    // Solo guardamos cantidad por ID
+    const [inputs, setInputs] = useState({}); 
+    
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -17,7 +19,6 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
 
     const cargarDetalles = async () => {
         try {
-            // Reutilizamos el endpoint de detalle que ya existe
             const res = await api.get(`/index.php/compras?id=${ordenId}`);
             if (res.data.success) {
                 setDetalles(res.data.data.detalles);
@@ -32,7 +33,7 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
     };
 
     const handleSubmit = async () => {
-        // Filtrar solo items con cantidad > 0
+        // Filtrar items con cantidad > 0
         const itemsAEnviar = Object.keys(inputs)
             .filter(key => parseFloat(inputs[key]) > 0)
             .map(key => ({
@@ -50,7 +51,7 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
                 orden_id: ordenId,
                 items: itemsAEnviar
             });
-            onSave(); // Refrescar tabla padre
+            onSave();
             onClose();
         } catch (err) {
             setError(err.response?.data?.message || "Error al procesar la recepción.");
@@ -66,12 +67,17 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
             <div className="modal-dialog modal-lg">
                 <div className="modal-content shadow">
                     <div className="modal-header bg-success text-white">
-                        <h5 className="modal-title"><i className="bi bi-truck me-2"></i>Recepción de Mercadería (OC #{ordenId})</h5>
+                        <h5 className="modal-title"><i className="bi bi-truck me-2"></i>Recepción Administrativa (OC #{ordenId})</h5>
                         <button className="btn-close btn-close-white" onClick={onClose}></button>
                     </div>
                     <div className="modal-body">
                         {error && <div className="alert alert-danger">{error}</div>}
                         
+                        <div className="alert alert-light border small text-muted">
+                            <i className="bi bi-info-circle-fill me-2"></i>
+                            Ingresa la cantidad que indica la Guía de Despacho o Factura. La ubicación física la asignará Bodega posteriormente.
+                        </div>
+
                         <div className="table-responsive">
                             <table className="table table-hover align-middle">
                                 <thead className="table-light">
@@ -100,7 +106,7 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
                                                 <td className="text-center">{recibido}</td>
                                                 <td className="text-center fw-bold">{Math.max(0, pendiente)}</td>
                                                 <td>
-                                                    {!esTotal && (
+                                                    {!esTotal ? (
                                                         <input 
                                                             type="number" 
                                                             className="form-control text-center border-success fw-bold text-success"
@@ -110,8 +116,9 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
                                                             value={inputs[d.id] || ''}
                                                             onChange={e => handleInputChange(d.id, e.target.value)}
                                                         />
+                                                    ) : (
+                                                        <div className="text-center text-success small"><i className="bi bi-check-circle-fill"></i> OK</div>
                                                     )}
-                                                    {esTotal && <div className="text-center text-success small"><i className="bi bi-check-circle-fill"></i> OK</div>}
                                                 </td>
                                             </tr>
                                         );

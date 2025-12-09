@@ -80,7 +80,7 @@ class OrdenCompraRepository
                 JOIN solicitudes_ot s ON ds.solicitud_id = s.id
                 JOIN insumos i ON ds.insumo_id = i.id
                 WHERE ds.estado_linea = 'REQUIERE_COMPRA'
-                AND s.estado_id IN (1, 2)
+                AND s.estado_id IN (1, 2, 4)
                 GROUP BY ds.insumo_id";
 
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
@@ -106,22 +106,20 @@ class OrdenCompraRepository
 
         $this->db->prepare($sql)->execute([':oc_id' => $ordenId]);
 
-        if (!empty($idsStr)) {
-            $sqlOTs = "SELECT DISTINCT solicitud_id FROM detalle_solicitud WHERE id IN ($idsStr)";
-            $ots = $this->db->query($sqlOTs)->fetchAll(PDO::FETCH_COLUMN);
+        $sqlOTs = "SELECT DISTINCT solicitud_id FROM detalle_solicitud WHERE id IN ($idsStr)";
+        $ots = $this->db->query($sqlOTs)->fetchAll(PDO::FETCH_COLUMN);
 
-            if (!empty($ots)) {
-                $idsOTs = implode(',', $ots);
-                $this->db->query("UPDATE solicitudes_ot SET estado_id = 4 WHERE id IN ($idsOTs)");
-            }
+        if (!empty($ots)) {
+            $idsOTs = implode(',', $ots);
+            $this->db->query("UPDATE solicitudes_ot SET estado_id = 4 WHERE id IN ($idsOTs)");
         }
     }
 
     public function create($cabecera)
     {
         $sql = "INSERT INTO ordenes_compra 
-                (proveedor_id, usuario_creador_id, estado_id, monto_neto, impuesto, monto_total, moneda, tipo_cambio, numero_cotizacion) 
-                VALUES (:prov, :user, :estado, :neto, :impuesto, :total, :moneda, :tc, :cotiz)";
+                (proveedor_id, usuario_creador_id, estado_id, monto_neto, impuesto, monto_total, moneda, tipo_cambio, numero_cotizacion, impuesto_porcentaje) 
+                VALUES (:prov, :user, :estado, :neto, :impuesto, :total, :moneda, :tc, :cotiz, :iva_pct)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':prov' => $cabecera['proveedor_id'],
@@ -132,7 +130,8 @@ class OrdenCompraRepository
             ':total' => $cabecera['total'],
             ':moneda' => $cabecera['moneda'],
             ':tc' => $cabecera['tipo_cambio'],
-            ':cotiz' => $cabecera['numero_cotizacion'] ?? null
+            ':cotiz' => $cabecera['numero_cotizacion'] ?? null,
+            ':iva_pct' => $cabecera['impuesto_porcentaje']
         ]);
         return $this->db->lastInsertId();
     }
@@ -156,11 +155,11 @@ class OrdenCompraRepository
         $this->db->prepare($sql)->execute([':url' => $url, ':id' => $id]);
     }
 
-
     public function recepcionarOrden($ordenId, $itemsRecibidos, $usuarioId)
     {
         try {
             $this->db->beginTransaction();
+
             $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id");
             $stmt->execute([':id' => $ordenId]);
             $estadoActual = $stmt->fetchColumn();
@@ -178,30 +177,44 @@ class OrdenCompraRepository
 
                 $stmtDet = $this->db->prepare("SELECT insumo_id, cantidad_solicitada, cantidad_recibida FROM detalle_orden_compra WHERE id = :id");
                 $stmtDet->execute([':id' => $detalleId]);
-                $linea = $stmtDet->fetch(\PDO::FETCH_ASSOC);
+                $linea = $stmtDet->fetch(PDO::FETCH_ASSOC);
 
                 if (!$linea)
-                    throw new \Exception("Línea no encontrada");
+                    throw new \Exception("Línea de detalle no encontrada");
 
                 $nuevoRecibido = $linea['cantidad_recibida'] + $cantidadIngresa;
+
                 if ($nuevoRecibido > $linea['cantidad_solicitada']) {
                     throw new \Exception("Exceso de cantidad en insumo ID: " . $linea['insumo_id']);
                 }
 
+                // 1. Actualizar Detalle OC
                 $this->db->prepare("UPDATE detalle_orden_compra SET cantidad_recibida = :cant WHERE id = :id")
                     ->execute([':cant' => $nuevoRecibido, ':id' => $detalleId]);
 
+                // 2. Aumentar Stock Global SOLAMENTE
+                // IMPORTANTE: NO tocamos insumo_stock_ubicacion aquí. Eso lo hace Bodega en "Organizar".
                 $this->db->prepare("UPDATE insumos SET stock_actual = stock_actual + :cant WHERE id = :id")
                     ->execute([':cant' => $cantidadIngresa, ':id' => $linea['insumo_id']]);
 
-                $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, referencia_id, observacion) VALUES (:insumo, 1, :cant, :user, :ref, 'Recepción OC #' || :oc)")
-                    ->execute([':insumo' => $linea['insumo_id'], ':cant' => $cantidadIngresa, ':user' => $usuarioId, ':ref' => $ordenId, ':oc' => $ordenId]);
+                // 3. Kardex
+                $this->db->prepare("INSERT INTO movimientos_inventario 
+                    (insumo_id, tipo_movimiento_id, cantidad, usuario_id, referencia_id, observacion) 
+                    VALUES (:insumo, 1, :cant, :user, :ref, 'Recepción OC #' || :oc)")
+                    ->execute([
+                        ':insumo' => $linea['insumo_id'],
+                        ':cant' => $cantidadIngresa,
+                        ':user' => $usuarioId,
+                        ':ref' => $ordenId,
+                        ':oc' => $ordenId
+                    ]);
 
+                // 4. Liberar OTs (Pasan a En Bodega para retiro)
                 $sqlRelease = "UPDATE detalle_solicitud 
-                        SET estado_linea = 'EN_BODEGA' 
-                        WHERE orden_compra_id = :oc_id 
-                        AND insumo_id = :insumo_id 
-                        AND estado_linea = 'COMPRADO'";
+                               SET estado_linea = 'EN_BODEGA' 
+                               WHERE orden_compra_id = :oc_id 
+                               AND insumo_id = :insumo_id 
+                               AND estado_linea = 'COMPRADO'";
 
                 $this->db->prepare($sqlRelease)->execute([
                     ':oc_id' => $ordenId,
@@ -211,9 +224,11 @@ class OrdenCompraRepository
                 $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 4 WHERE id IN (SELECT solicitud_id FROM detalle_solicitud WHERE orden_compra_id = :oc)")
                     ->execute([':oc' => $ordenId]);
             }
+
+            // Recalcular estado OC
             $stmtTotales = $this->db->prepare("SELECT SUM(cantidad_solicitada) as sol, SUM(cantidad_recibida) as rec FROM detalle_orden_compra WHERE orden_compra_id = :id");
             $stmtTotales->execute([':id' => $ordenId]);
-            $totales = $stmtTotales->fetch(\PDO::FETCH_ASSOC);
+            $totales = $stmtTotales->fetch(PDO::FETCH_ASSOC);
 
             $nuevoEstado = 2;
             if ($totales['rec'] > 0 && $totales['rec'] < $totales['sol']) {

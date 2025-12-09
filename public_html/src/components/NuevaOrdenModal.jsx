@@ -12,6 +12,9 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     const [moneda, setMoneda] = useState('CLP');
     const [tipoCambio, setTipoCambio] = useState(1);
     const [numeroCotizacion, setNumeroCotizacion] = useState('');
+    
+    // MEJORA: Estado para Impuesto Variable (Por defecto 19)
+    const [impuestoPorcentaje, setImpuestoPorcentaje] = useState(19);
 
     // Ítems
     const [items, setItems] = useState([]);
@@ -42,12 +45,12 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
             setMoneda('CLP'); 
             setTipoCambio(1); 
             setNumeroCotizacion('');
+            setImpuestoPorcentaje(19); // Reset a 19%
             setModoNuevo(false); 
             setBusqueda('');
             setNuevoProd({ nombre: '', categoria_id: '', unidad: 'UN', precio: '', cantidad: '' });
 
             // Cargar ítems iniciales (Alerta Mantención)
-            // IMPORTANTE: Aquí se cargan los 'origen_ids' que vienen de Compras.jsx
             if (itemsIniciales.length > 0) {
                 setItems(itemsIniciales);
             } else {
@@ -111,13 +114,14 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
         setLoading(true);
         try {
-            // El objeto 'items' lleva implícitamente los 'origen_ids' si vinieron en itemsIniciales
             await api.post('/index.php/compras', {
                 proveedor_id: proveedorId,
                 moneda,
                 tipo_cambio: tipoCambio,
                 numero_cotizacion: numeroCotizacion,
-                items // Aquí viaja la trazabilidad
+                // Enviamos el impuesto variable
+                impuesto_porcentaje: impuestoPorcentaje,
+                items // Aquí viajan los items y los origen_ids
             });
             onSave();
             onClose();
@@ -128,9 +132,9 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
         }
     };
 
-    // Cálculos Totales
+    // Cálculos Totales con IVA Variable
     const totalNeto = items.reduce((acc, i) => acc + (i.cantidad * i.precio), 0);
-    const totalIVA = totalNeto * 0.19; // IVA Chile
+    const totalIVA = totalNeto * (impuestoPorcentaje / 100);
     const totalFinal = totalNeto + totalIVA;
 
     if (!show) return null;
@@ -161,21 +165,36 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                         <input type="text" className="form-control" placeholder="Ej: COT-100"
                                             value={numeroCotizacion} onChange={e => setNumeroCotizacion(e.target.value)} />
                                     </div>
-                                    <div className="col-md-3">
+                                    <div className="col-md-2">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Moneda</label>
                                         <select className="form-select" value={moneda} onChange={e => { setMoneda(e.target.value); if (e.target.value === 'CLP') setTipoCambio(1); }}>
-                                            <option value="CLP">Peso Chileno (CLP)</option>
+                                            <option value="CLP">CLP</option>
                                             <option value="UF">UF</option>
-                                            <option value="USD">Dólar (USD)</option>
-                                            <option value="EUR">Euro (EUR)</option>
+                                            <option value="USD">USD</option>
+                                            <option value="EUR">EUR</option>
                                         </select>
                                     </div>
-                                    <div className="col-md-3">
+                                    <div className="col-md-2">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Tipo Cambio</label>
                                         <input type="number" className="form-control"
                                             value={tipoCambio} onChange={e => setTipoCambio(e.target.value)}
                                             disabled={moneda === 'CLP'}
                                         />
+                                    </div>
+                                    
+                                    {/* MEJORA: Campo de Impuesto Variable */}
+                                    <div className="col-md-2">
+                                        <label className="form-label fw-bold small text-uppercase text-muted">Impuesto %</label>
+                                        <div className="input-group">
+                                            <input 
+                                                type="number" 
+                                                className="form-control" 
+                                                value={impuestoPorcentaje} 
+                                                onChange={e => setImpuestoPorcentaje(parseFloat(e.target.value) || 0)} 
+                                                min="0" max="100" step="0.1"
+                                            />
+                                            <span className="input-group-text">%</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -266,7 +285,6 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             <td>
                                                 <div className="fw-medium">
                                                     {item.nombre}
-                                                    {/* Indicador visual de Trazabilidad (Opcional) */}
                                                     {item.origen_ids && <span className="badge bg-warning text-dark ms-2" title="Viene de Mantención"><i className="bi bi-link-45deg"></i> OT</span>}
                                                 </div>
                                                 <small className="text-muted" style={{ fontSize: '0.75rem' }}>{item.sku !== 'NUEVO' ? `SKU: ${item.sku}` : ''}</small>
@@ -308,7 +326,8 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                         <strong>{totalNeto.toLocaleString('es-CL', { maximumFractionDigits: 2 })}</strong>
                                     </li>
                                     <li className="list-group-item d-flex justify-content-between">
-                                        <span className="text-muted">IVA (19%):</span>
+                                        {/* Etiqueta dinámica con el % seleccionado */}
+                                        <span className="text-muted">IVA ({impuestoPorcentaje}%):</span>
                                         <span>{totalIVA.toLocaleString('es-CL', { maximumFractionDigits: 2 })}</span>
                                     </li>
                                     <li className="list-group-item d-flex justify-content-between bg-light">

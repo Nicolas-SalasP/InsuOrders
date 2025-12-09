@@ -28,8 +28,6 @@ const Mantencion = () => {
     const handleNew = () => { setOtEditar(null); setShowModal(true); };
 
     const handleEdit = (ot) => {
-        // Permitimos abrir el modal en cualquier estado para ver la trazabilidad
-        // El modal se encargará de bloquear la edición si corresponde
         setOtEditar(ot); 
         setShowModal(true);
     };
@@ -64,6 +62,21 @@ const Mantencion = () => {
         }
     };
 
+    const handleExportar = () => {
+        setLoading(true);
+        api.get('/index.php/exportar?modulo=mantencion', { responseType: 'blob' })
+            .then((res) => {
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Mantencion_${new Date().toISOString().slice(0,10)}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+            })
+            .catch(() => alert("Error al exportar"))
+            .finally(() => setLoading(false));
+    };
+
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             {/* Modales Auxiliares */}
@@ -84,9 +97,14 @@ const Mantencion = () => {
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-wrench-adjustable me-2"></i>Mantención</h4>
-                    <button className="btn btn-warning fw-bold shadow-sm" onClick={handleNew}>
-                        <i className="bi bi-plus-lg me-2"></i>Crear OT
-                    </button>
+                    <div>
+                        <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
+                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
+                        </button>
+                        <button className="btn btn-warning fw-bold shadow-sm" onClick={handleNew}>
+                            <i className="bi bi-plus-lg me-2"></i>Crear OT
+                        </button>
+                    </div>
                 </div>
 
                 <div className="card-body p-0 flex-grow-1 overflow-auto">

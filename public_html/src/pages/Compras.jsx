@@ -8,7 +8,7 @@ import RecepcionCompraModal from '../components/RecepcionCompraModal';
 const Compras = () => {
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
-    
+
     // Estados de Modales
     const [showModal, setShowModal] = useState(false); // Nueva Orden
     const [verModal, setVerModal] = useState({ show: false, id: null }); // Ver Detalle
@@ -67,6 +67,21 @@ const Compras = () => {
         setShowModal(true);
     };
 
+    const handleExportar = () => {
+        setLoading(true);
+        api.get('/index.php/exportar?modulo=compras', { responseType: 'blob' })
+            .then((res) => {
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Compras_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+            })
+            .catch(() => alert("Error al exportar"))
+            .finally(() => setLoading(false));
+    };
+
     const limpiarFiltros = () => {
         setFiltroProveedor('');
         setFiltroEstado('');
@@ -77,10 +92,9 @@ const Compras = () => {
     const ordenesFiltradas = ordenes.filter(oc => {
         const matchProveedor = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
         const matchEstado = filtroEstado ? oc.estado === filtroEstado : true;
-        
+
         // Comparación de fechas (YYYY-MM-DD)
-        // Asumimos que oc.fecha_creacion viene como "YYYY-MM-DD HH:mm:ss"
-        const fechaOC = oc.fecha_creacion.split(' ')[0]; 
+        const fechaOC = oc.fecha_creacion.split(' ')[0];
         const matchFecha = filtroFecha ? fechaOC === filtroFecha : true;
 
         return matchProveedor && matchEstado && matchFecha;
@@ -105,34 +119,39 @@ const Compras = () => {
                 onSave={() => { cargarOrdenes(); cargarPendientes(); }}
                 itemsIniciales={itemsPrecargados}
             />
-            
-            <DetalleOrdenModal 
-                show={verModal.show} 
-                onClose={() => setVerModal({ show: false, id: null })} 
-                ordenId={verModal.id} 
-            />
-            
-            <SubirArchivoModal 
-                show={uploadModal.show} 
-                onClose={() => setUploadModal({ show: false, id: null })} 
-                ordenId={uploadModal.id} 
-                onSave={cargarOrdenes} 
+
+            <DetalleOrdenModal
+                show={verModal.show}
+                onClose={() => setVerModal({ show: false, id: null })}
+                ordenId={verModal.id}
             />
 
-            <RecepcionCompraModal 
-                show={recepcionModal.show} 
-                onClose={() => setRecepcionModal({ show: false, id: null })} 
-                ordenId={recepcionModal.id} 
-                onSave={() => { cargarOrdenes(); cargarPendientes(); }} 
+            <SubirArchivoModal
+                show={uploadModal.show}
+                onClose={() => setUploadModal({ show: false, id: null })}
+                ordenId={uploadModal.id}
+                onSave={cargarOrdenes}
+            />
+
+            <RecepcionCompraModal
+                show={recepcionModal.show}
+                onClose={() => setRecepcionModal({ show: false, id: null })}
+                ordenId={recepcionModal.id}
+                onSave={() => { cargarOrdenes(); cargarPendientes(); }}
             />
 
             {/* --- CONTENIDO PRINCIPAL --- */}
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
                     <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-cart3 me-2"></i>Gestión de Compras</h4>
-                    <button className="btn btn-primary" onClick={handleNewOrder}>
-                        <i className="bi bi-plus-lg me-2"></i>Nueva Orden
-                    </button>
+                    <div>
+                        <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
+                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
+                        </button>
+                        <button className="btn btn-primary" onClick={handleNewOrder}>
+                            <i className="bi bi-plus-lg me-2"></i>Nueva Orden
+                        </button>
+                    </div>
                 </div>
 
                 {/* --- BARRA DE FILTROS --- */}
@@ -141,9 +160,9 @@ const Compras = () => {
                         <div className="col-md-3">
                             <div className="input-group">
                                 <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
-                                <input 
-                                    type="text" 
-                                    className="form-control border-start-0" 
+                                <input
+                                    type="text"
+                                    className="form-control border-start-0"
                                     placeholder="Buscar proveedor..."
                                     value={filtroProveedor}
                                     onChange={(e) => setFiltroProveedor(e.target.value)}
@@ -160,9 +179,9 @@ const Compras = () => {
                             </select>
                         </div>
                         <div className="col-md-3">
-                            <input 
-                                type="date" 
-                                className="form-control" 
+                            <input
+                                type="date"
+                                className="form-control"
                                 value={filtroFecha}
                                 onChange={(e) => setFiltroFecha(e.target.value)}
                             />
@@ -228,11 +247,11 @@ const Compras = () => {
                                                 <span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span>
                                             </td>
                                             <td className="text-end pe-4">
-                                                
-                                                {/* BOTÓN RECEPCIONAR (Solo si no está anulada ni cerrada) */}
+
+                                                {/* BOTÓN RECEPCIONAR */}
                                                 {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && (
-                                                    <button 
-                                                        className="btn btn-sm btn-warning me-2 text-dark" 
+                                                    <button
+                                                        className="btn btn-sm btn-warning me-2 text-dark"
                                                         title="Recepcionar Mercadería"
                                                         onClick={() => setRecepcionModal({ show: true, id: oc.id })}
                                                     >

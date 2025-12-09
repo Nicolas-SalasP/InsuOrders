@@ -66,6 +66,21 @@ const Proveedores = () => {
         setShowModal(true);
     };
 
+    const handleExportar = () => {
+        setLoading(true);
+        api.get('/index.php/exportar?modulo=proveedores', { responseType: 'blob' })
+            .then((res) => {
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Proveedores_${new Date().toISOString().slice(0,10)}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+            })
+            .catch(() => alert("Error al exportar"))
+            .finally(() => setLoading(false));
+    };
+
     const limpiarFiltros = () => {
         setBusqueda('');
         setFiltroPais('');
@@ -113,10 +128,15 @@ const Proveedores = () => {
                     <h4 className="mb-0 text-primary fw-bold">
                         <i className="bi bi-people-fill me-2"></i>Proveedores
                     </h4>
-                    <button className="btn btn-primary d-flex align-items-center gap-2" onClick={handleNew}>
-                        <i className="bi bi-plus-lg"></i>
-                        <span className="d-none d-sm-inline">Nuevo</span>
-                    </button>
+                    <div>
+                        <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
+                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
+                        </button>
+                        <button className="btn btn-primary d-flex align-items-center gap-2 d-inline-flex" onClick={handleNew}>
+                            <i className="bi bi-plus-lg"></i>
+                            <span className="d-none d-sm-inline">Nuevo</span>
+                        </button>
+                    </div>
                 </div>
                 
                 {/* --- BARRA DE FILTROS --- */}

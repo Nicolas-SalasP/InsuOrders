@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
 
-const InsumoModal = ({ show, onClose, onSave }) => {
+const InsumoModal = ({ show, onClose, onSave, insumo }) => {
     const initialState = {
         codigo_sku: '', nombre: '', descripcion: '', 
         categoria_id: '', ubicacion_id: '', 
@@ -10,31 +10,42 @@ const InsumoModal = ({ show, onClose, onSave }) => {
     };
 
     const [formData, setFormData] = useState(initialState);
-    
-    // Agregamos 'sectores' a las listas disponibles
     const [listas, setListas] = useState({ categorias: [], sectores: [], ubicaciones: [] });
-    
-    // Estado para manejar el filtrado en cascada
     const [sectorSeleccionado, setSectorSeleccionado] = useState('');
     const [ubicacionesFiltradas, setUbicacionesFiltradas] = useState([]);
 
     useEffect(() => {
         if (show) {
-            // Cargar auxiliares (Categorías, Sectores, Ubicaciones)
             api.get('/index.php/inventario/auxiliares').then(res => {
                 if (res.data.success) {
-                    setListas(res.data.data);
+                    const dataAux = res.data.data;
+                    setListas(dataAux);
+                    if (insumo) {
+                        setFormData({
+                            ...insumo,
+                            stock_actual: parseFloat(insumo.stock_actual),
+                            stock_minimo: parseFloat(insumo.stock_minimo),
+                            precio_costo: parseFloat(insumo.precio_costo),
+                            categoria_id: insumo.categoria_id || '',
+                            ubicacion_id: insumo.ubicacion_id || ''
+                        });
+                        if (insumo.ubicacion_id && dataAux.ubicaciones) {
+                            const ubiEncontrada = dataAux.ubicaciones.find(u => u.id == insumo.ubicacion_id);
+                            if (ubiEncontrada) {
+                                setSectorSeleccionado(ubiEncontrada.sector_id);
+                            }
+                        }
+                    } else {
+                        setFormData(initialState);
+                        setSectorSeleccionado('');
+                    }
                 }
             });
-            setFormData(initialState);
-            setSectorSeleccionado('');
-            setUbicacionesFiltradas([]);
         }
-    }, [show]);
+    }, [show, insumo]);
 
-    // Efecto para filtrar ubicaciones cuando cambia el sector
     useEffect(() => {
-        if (sectorSeleccionado) {
+        if (sectorSeleccionado && listas.ubicaciones.length > 0) {
             const filtradas = listas.ubicaciones.filter(u => u.sector_id == sectorSeleccionado);
             setUbicacionesFiltradas(filtradas);
         } else {
@@ -50,11 +61,9 @@ const InsumoModal = ({ show, onClose, onSave }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const res = await api.post('/index.php/inventario', formData);
-            if (res.data.success) {
-                onSave();
-                onClose();
-            }
+            await api.post('/index.php/inventario', formData);
+            onSave();
+            onClose();
         } catch (error) {
             alert("Error: " + (error.response?.data?.message || "Error desconocido"));
         }
@@ -67,7 +76,9 @@ const InsumoModal = ({ show, onClose, onSave }) => {
             <div className="modal-dialog modal-lg">
                 <div className="modal-content border-0 shadow-lg">
                     <div className="modal-header bg-dark text-white">
-                        <h5 className="modal-title fw-bold">✨ Nuevo Producto / Insumo</h5>
+                        <h5 className="modal-title fw-bold">
+                            {insumo ? '✏️ Editar Producto' : '✨ Nuevo Producto / Insumo'}
+                        </h5>
                         <button className="btn-close btn-close-white" onClick={onClose}></button>
                     </div>
                     <form onSubmit={handleSubmit}>
@@ -80,7 +91,8 @@ const InsumoModal = ({ show, onClose, onSave }) => {
                                     <label className="form-label small fw-bold text-uppercase">Código SKU</label>
                                     <input type="text" name="codigo_sku" className="form-control font-monospace" 
                                         placeholder="Ej: ELEC-001" required
-                                        value={formData.codigo_sku} onChange={handleChange} />
+                                        value={formData.codigo_sku} onChange={handleChange}  
+                                    />
                                 </div>
                                 <div className="col-md-8">
                                     <label className="form-label small fw-bold text-uppercase">Nombre del Artículo</label>
@@ -90,12 +102,17 @@ const InsumoModal = ({ show, onClose, onSave }) => {
                                 </div>
                                 <div className="col-12">
                                     <label className="form-label small text-muted">Descripción (Opcional)</label>
-                                    <textarea name="descripcion" className="form-control form-control-sm" rows="2"
-                                        value={formData.descripcion} onChange={handleChange}></textarea>
+                                    <textarea 
+                                        name="descripcion" 
+                                        className="form-control form-control-sm" 
+                                        rows="2"
+                                        value={formData.descripcion || ''} 
+                                        onChange={handleChange}
+                                    ></textarea>
                                 </div>
                             </div>
 
-                            {/* Sección 2: Clasificación y Ubicación (ACTUALIZADO) */}
+                            {/* Sección 2: Clasificación y Ubicación */}
                             <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold">Clasificación y Ubicación</h6>
                             <div className="row g-3 mb-4">
                                 <div className="col-md-4">
@@ -114,7 +131,7 @@ const InsumoModal = ({ show, onClose, onSave }) => {
                                         value={sectorSeleccionado} 
                                         onChange={(e) => {
                                             setSectorSeleccionado(e.target.value);
-                                            setFormData(prev => ({ ...prev, ubicacion_id: '' })); // Resetear ubicación hija
+                                            setFormData(prev => ({ ...prev, ubicacion_id: '' }));
                                         }}>
                                         <option value="">Seleccione Sector...</option>
                                         {listas.sectores && listas.sectores.map(s => (
@@ -129,7 +146,7 @@ const InsumoModal = ({ show, onClose, onSave }) => {
                                     <select name="ubicacion_id" className="form-select" required
                                         value={formData.ubicacion_id} 
                                         onChange={handleChange}
-                                        disabled={!sectorSeleccionado} // Deshabilitar si no hay sector
+                                        disabled={!sectorSeleccionado} 
                                     >
                                         <option value="">Seleccione Ubicación...</option>
                                         {ubicacionesFiltradas.map(u => (
@@ -168,9 +185,10 @@ const InsumoModal = ({ show, onClose, onSave }) => {
                                     </select>
                                 </div>
                                 <div className="col-md-3">
-                                    <label className="form-label small fw-bold text-success">Stock Inicial</label>
+                                    <label className="form-label small fw-bold text-success">Stock Actual</label>
                                     <input type="number" name="stock_actual" className="form-control" min="0"
-                                        value={formData.stock_actual} onChange={handleChange} />
+                                        value={formData.stock_actual} onChange={handleChange} 
+                                    />
                                 </div>
                                 <div className="col-md-2">
                                     <label className="form-label small fw-bold text-danger">Mínimo</label>
@@ -183,7 +201,7 @@ const InsumoModal = ({ show, onClose, onSave }) => {
                         <div className="modal-footer bg-light">
                             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
                             <button type="submit" className="btn btn-primary px-4">
-                                <i className="bi bi-save me-2"></i>Guardar Producto
+                                <i className="bi bi-save me-2"></i>{insumo ? 'Guardar Cambios' : 'Guardar Producto'}
                             </button>
                         </div>
                     </form>

@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
+import AuthContext from '../context/AuthContext';
 
 const Dashboard = () => {
+    const { auth } = useContext(AuthContext);
     const [stats, setStats] = useState({
         ot_pendientes: 0,
         stock_critico: 0,
@@ -47,6 +49,21 @@ const Dashboard = () => {
         }
     };
 
+    const handleExportMaster = () => {
+        setLoading(true);
+        api.get('/index.php/exportar?modulo=todo', { responseType: 'blob' })
+            .then((response) => {
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Master_Insuban_${new Date().toISOString().slice(0,10)}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+            })
+            .catch(() => alert("Error al exportar. Verifica tus permisos."))
+            .finally(() => setLoading(false));
+    };
+
     // Helper para colores de área
     const getAreaBadge = (area) => {
         switch (area) {
@@ -62,9 +79,19 @@ const Dashboard = () => {
         <div className="container-fluid p-0">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2 className="mb-0 fw-bold text-dark">Panel de Control</h2>
-                <button className="btn btn-outline-primary btn-sm" onClick={() => { cargarDashboard(); cargarLogs(); }}>
-                    <i className="bi bi-arrow-clockwise me-2"></i>Actualizar
-                </button>
+                
+                <div className="d-flex gap-2">
+                    {/* BOTÓN EXPORTAR MAESTRO (SOLO ADMIN) */}
+                    {auth.rol === 'Admin' && (
+                        <button className="btn btn-success btn-sm shadow-sm" onClick={handleExportMaster}>
+                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar Todo (.xlsx)
+                        </button>
+                    )}
+
+                    <button className="btn btn-outline-primary btn-sm" onClick={() => { cargarDashboard(); cargarLogs(); }}>
+                        <i className="bi bi-arrow-clockwise me-2"></i>Actualizar
+                    </button>
+                </div>
             </div>
             
             {/* --- TARJETAS KPI (DATOS REALES) --- */}

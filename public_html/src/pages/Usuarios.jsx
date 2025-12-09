@@ -29,6 +29,19 @@ const Usuarios = () => {
     const handleEdit = (u) => { setUsuarioEditar(u); setShowModal(true); };
     const handleNew = () => { setUsuarioEditar(null); setShowModal(true); };
 
+    const handleExportar = () => {
+        api.get('/index.php/exportar?modulo=usuarios', { responseType: 'blob' })
+            .then((res) => {
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Usuarios_${new Date().toISOString().slice(0,10)}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+            })
+            .catch(() => alert("Error al exportar"));
+    };
+
     return (
         <div className="container-fluid p-0 h-100 d-flex flex-column">
             <UsuarioModal show={showModal} onClose={()=>setShowModal(false)} onSave={cargarUsuarios} usuarioEditar={usuarioEditar} />
@@ -36,7 +49,12 @@ const Usuarios = () => {
             <div className="card shadow-sm border-0 flex-grow-1">
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-people-gear me-2"></i>Gestión de Usuarios</h4>
-                    <button className="btn btn-primary" onClick={handleNew}>+ Nuevo Usuario</button>
+                    <div>
+                        <button className="btn btn-outline-success me-2" onClick={handleExportar}>
+                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
+                        </button>
+                        <button className="btn btn-primary" onClick={handleNew}>+ Nuevo Usuario</button>
+                    </div>
                 </div>
                 <div className="card-body p-0 overflow-auto">
                     <table className="table table-hover align-middle mb-0">

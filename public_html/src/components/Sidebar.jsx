@@ -124,6 +124,14 @@ const Sidebar = () => {
                         </li>
                     )}
 
+                    {puedeVer('proveedores') && (
+                        <li>
+                            <NavLink to="/proveedores" className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
+                                <i className="bi bi-people me-2"></i> Proveedores
+                            </NavLink>
+                        </li>
+                    )}
+
                     {puedeVer('mantencion') && (
                         <li>
                             <NavLink to="/mantencion" className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
@@ -136,14 +144,6 @@ const Sidebar = () => {
                         <li>
                             <NavLink to="/activos" className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
                                 <i className="bi bi-hdd-rack me-2"></i> Activos
-                            </NavLink>
-                        </li>
-                    )}
-
-                    {puedeVer('proveedores') && (
-                        <li>
-                            <NavLink to="/proveedores" className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
-                                <i className="bi bi-people me-2"></i> Proveedores
                             </NavLink>
                         </li>
                     )}

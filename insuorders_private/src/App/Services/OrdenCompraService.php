@@ -28,7 +28,6 @@ class OrdenCompraService {
 
         $itemsProcesados = [];
         $montoNeto = 0;
-
         $idsOrigenGlobales = [];
 
         foreach ($data['items'] as $item) {
@@ -44,7 +43,7 @@ class OrdenCompraService {
                     'nombre' => $item['nombre'],
                     'descripcion' => 'Ingresado desde Compras',
                     'categoria_id' => $item['categoria_id'],
-                    'ubicacion_id' => 1, 
+                    'ubicacion_id' => null, 
                     'stock_actual' => 0,
                     'stock_minimo' => 0,
                     'precio_costo' => $item['precio'],
@@ -78,7 +77,9 @@ class OrdenCompraService {
         $tipoCambio = $data['tipo_cambio'] ?? 1;
         $numeroCotizacion = $data['numero_cotizacion'] ?? null;
         
-        $iva = $montoNeto * 0.19;
+        // IVA Variable
+        $porcentajeIVA = isset($data['impuesto_porcentaje']) ? floatval($data['impuesto_porcentaje']) : 19.0;
+        $iva = $montoNeto * ($porcentajeIVA / 100);
         $total = $montoNeto + $iva;
 
         $ordenId = $this->repo->create([
@@ -89,7 +90,8 @@ class OrdenCompraService {
             'total' => $total,
             'moneda' => $moneda,
             'tipo_cambio' => $tipoCambio,
-            'numero_cotizacion' => $numeroCotizacion
+            'numero_cotizacion' => $numeroCotizacion,
+            'impuesto_porcentaje' => $porcentajeIVA
         ]);
 
         foreach ($itemsProcesados as $item) {
