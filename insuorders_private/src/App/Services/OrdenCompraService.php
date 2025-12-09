@@ -107,7 +107,9 @@ class OrdenCompraService {
 
     public function generarPDF($ordenId) {
         $data = $this->repo->getOrdenCompleta($ordenId);
-        if (!$data || !$data['cabecera']) throw new \Exception("Orden #$ordenId no encontrada.");
+        if (!$data || !$data['cabecera']) {
+            throw new \Exception("Orden #$ordenId no encontrada o sin datos.");
+        }
         
         $pdf = new PDFService();
         $pdf->setOrdenData($data['cabecera']);
