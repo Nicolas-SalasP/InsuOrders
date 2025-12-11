@@ -4,16 +4,20 @@ import NuevaOrdenModal from '../components/NuevaOrdenModal';
 import DetalleOrdenModal from '../components/DetalleOrdenModal';
 import SubirArchivoModal from '../components/SubirArchivoModal';
 import RecepcionCompraModal from '../components/RecepcionCompraModal';
+import MessageModal from '../components/MessageModal'; // <--- IMPORTADO
 
 const Compras = () => {
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Estados de Modales
-    const [showModal, setShowModal] = useState(false); // Nueva Orden
-    const [verModal, setVerModal] = useState({ show: false, id: null }); // Ver Detalle
-    const [uploadModal, setUploadModal] = useState({ show: false, id: null }); // Subir PDF
-    const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null }); // Recepción
+    const [showModal, setShowModal] = useState(false); 
+    const [verModal, setVerModal] = useState({ show: false, id: null }); 
+    const [uploadModal, setUploadModal] = useState({ show: false, id: null }); 
+    const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null }); 
+    
+    // Estado para Mensajes (Error/Exito)
+    const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' }); // <--- ESTADO AGREGADO
 
     // Estados de Filtros
     const [filtroProveedor, setFiltroProveedor] = useState('');
@@ -67,6 +71,44 @@ const Compras = () => {
         setShowModal(true);
     };
 
+    const descargarPdfOC = async (id) => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/index.php/compras/pdf?id=${id}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Orden_Compra_${id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            // USANDO EL MODAL EN VEZ DE ALERT
+            setMsg({ show: true, title: "Error", text: "No se pudo descargar el PDF. Intente nuevamente.", type: "error" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const descargarExcelOC = async (id) => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/index.php/exportar?modulo=detalle_oc&id=${id}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Detalle_OC_${id}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            // USANDO EL MODAL EN VEZ DE ALERT
+            setMsg({ show: true, title: "Error", text: "No se pudo descargar el Excel. Verifique que la orden tenga detalles.", type: "error" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleExportar = () => {
         setLoading(true);
         api.get('/index.php/exportar?modulo=compras', { responseType: 'blob' })
@@ -78,7 +120,9 @@ const Compras = () => {
                 document.body.appendChild(link);
                 link.click();
             })
-            .catch(() => alert("Error al exportar"))
+            .catch(() => {
+                setMsg({ show: true, title: "Error", text: "Error al exportar el listado general.", type: "error" });
+            })
             .finally(() => setLoading(false));
     };
 
@@ -92,8 +136,6 @@ const Compras = () => {
     const ordenesFiltradas = ordenes.filter(oc => {
         const matchProveedor = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
         const matchEstado = filtroEstado ? oc.estado === filtroEstado : true;
-
-        // Comparación de fechas (YYYY-MM-DD)
         const fechaOC = oc.fecha_creacion.split(' ')[0];
         const matchFecha = filtroFecha ? fechaOC === filtroFecha : true;
 
@@ -112,6 +154,15 @@ const Compras = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
+            {/* --- COMPONENTE DE MENSAJES --- */}
+            <MessageModal 
+                show={msg.show} 
+                onClose={() => setMsg({ ...msg, show: false })} 
+                title={msg.title} 
+                message={msg.text} 
+                type={msg.type} 
+            />
+
             {/* --- MODALES --- */}
             <NuevaOrdenModal
                 show={showModal}
@@ -259,16 +310,23 @@ const Compras = () => {
                                                     </button>
                                                 )}
 
-                                                {/* PDF */}
-                                                <a
-                                                    href={`http://localhost/insuorders/public_html/api/index.php/compras/pdf?id=${oc.id}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
+                                                {/* PDF Seguro */}
+                                                <button 
+                                                    onClick={() => descargarPdfOC(oc.id)} 
                                                     className="btn btn-sm btn-outline-danger me-2"
                                                     title="Descargar PDF"
                                                 >
                                                     <i className="bi bi-file-earmark-pdf"></i>
-                                                </a>
+                                                </button>
+
+                                                {/* Excel Seguro */}
+                                                <button
+                                                    onClick={() => descargarExcelOC(oc.id)}
+                                                    className="btn btn-sm btn-outline-success me-2"
+                                                    title="Descargar Excel Detallado"
+                                                >
+                                                    <i className="bi bi-file-earmark-excel"></i>
+                                                </button>
 
                                                 {/* Ver Detalle */}
                                                 <button

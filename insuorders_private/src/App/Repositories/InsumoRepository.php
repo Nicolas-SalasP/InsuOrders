@@ -60,10 +60,10 @@ class InsumoRepository
     {
         $sql = "INSERT INTO insumos (
                     codigo_sku, nombre, descripcion, categoria_id, ubicacion_id, 
-                    stock_actual, stock_minimo, precio_costo, moneda, unidad_medida
+                    stock_actual, stock_minimo, precio_costo, moneda, unidad_medida, imagen_url
                 ) VALUES (
                     :sku, :nom, :desc, :cat, NULL, 
-                    :stock, :min, :precio, :moneda, :unidad
+                    :stock, :min, :precio, :moneda, :unidad, :img
                 )";
 
         $stmt = $this->db->prepare($sql);
@@ -76,10 +76,54 @@ class InsumoRepository
             ':min' => $data['stock_minimo'],
             ':precio' => $data['precio_costo'],
             ':moneda' => $data['moneda'],
-            ':unidad' => $data['unidad_medida']
+            ':unidad' => $data['unidad_medida'],
+            ':img' => $data['imagen_url'] ?? null 
         ]);
         return $this->db->lastInsertId();
     }
+
+    public function update($id, $data)
+{
+    try {
+        $sql = "UPDATE insumos SET 
+                    codigo_sku = :codigo_sku, 
+                    nombre = :nombre, 
+                    descripcion = :descripcion, 
+                    categoria_id = :categoria_id, 
+                    ubicacion_id = :ubicacion_id, 
+                    stock_actual = :stock_actual,
+                    stock_minimo = :stock_minimo, 
+                    precio_costo = :precio_costo,
+                    moneda = :moneda,
+                    unidad_medida = :unidad_medida,
+                    imagen_url = IF(:imagen_url IS NOT NULL, :imagen_url, imagen_url)
+                WHERE id = :id";
+
+        $stmt = $this->db->prepare($sql);
+
+        $stmt->bindValue(':codigo_sku', $data['codigo_sku']);
+        $stmt->bindValue(':nombre', $data['nombre']);
+        $stmt->bindValue(':descripcion', $data['descripcion']);
+        $stmt->bindValue(':categoria_id', $data['categoria_id']);
+        $stmt->bindValue(':ubicacion_id', $data['ubicacion_id']);
+        $stmt->bindValue(':stock_actual', $data['stock_actual']);
+        $stmt->bindValue(':stock_minimo', $data['stock_minimo']);
+        $stmt->bindValue(':precio_costo', $data['precio_costo']);
+        $stmt->bindValue(':moneda', $data['moneda']);
+        $stmt->bindValue(':unidad_medida', $data['unidad_medida']);
+        
+        $img = !empty($data['imagen_url']) ? $data['imagen_url'] : null;
+        $stmt->bindValue(':imagen_url', $img);
+        
+        $stmt->bindValue(':id', $id);
+
+        return $stmt->execute();
+
+    } catch (PDOException $e) {
+        error_log("Error update repositorio: " . $e->getMessage());
+        return false;
+    }
+}
 
     public function delete($id)
     {
@@ -113,7 +157,6 @@ class InsumoRepository
         ]);
     }
 
-    // Método necesario para gestionar stock desde InsumoService
     public function ajustarStock($insumoId, $cantidad, $tipoMovimiento, $usuarioId, $observacion, $empleadoId = null)
     {
         try {

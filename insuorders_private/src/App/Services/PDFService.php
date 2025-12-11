@@ -53,8 +53,8 @@ class PDFService extends FPDF {
         $logoPath = __DIR__ . '/../../../../public_html/assets/img/LogoInsuban_SinFondo.png';
         $yStart = 15;
         if (file_exists($logoPath)) {
-            $this->Image($logoPath, 10, 8, 75); 
-            $yStart = 30;
+            $this->Image($logoPath, 10, 8, 55); 
+            $yStart = 25;
         }
 
         // 3. Datos Empresa

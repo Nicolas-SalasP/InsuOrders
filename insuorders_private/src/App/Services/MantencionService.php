@@ -56,7 +56,7 @@ class MantencionService
 
     public function anularOT($id)
     {
-        $this->repo->delete($id); // Llama al método delete del repo que marca como anulada
+        $this->repo->delete($id); 
     }
 
     private function procesarItems($otId, $items)

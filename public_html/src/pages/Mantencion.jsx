@@ -6,6 +6,7 @@ import ConfirmModal from '../components/ConfirmModal';
 
 const Mantencion = () => {
     const [solicitudes, setSolicitudes] = useState([]);
+    const [activos, setActivos] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Estados de Filtros
@@ -22,6 +23,7 @@ const Mantencion = () => {
 
     useEffect(() => {
         cargarData();
+        cargarActivos();
     }, []);
 
     const cargarData = async () => {
@@ -32,18 +34,46 @@ const Mantencion = () => {
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
-    // --- NUEVA FUNCIÓN PARA DESCARGAR PDF CON TOKEN ---
-    const handleDownloadPdf = async (id, type) => {
+    const cargarActivos = async () => {
         try {
-            const response = await api.get(`/index.php/mantencion/pdf?id=${id}&type=${type}`, {
-                responseType: 'blob' // Importante: Indica que esperamos un archivo
-            });
-            
-            // Crear una URL temporal para el archivo PDF
-            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-            window.open(url, '_blank');
+            const res = await api.get('/index.php/mantencion/activos');
+            if (res.data.success) setActivos(res.data.data);
+        } catch (e) { }
+    };
+
+    const descargarPdfOT = async (id) => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/index.php/mantencion/pdf?id=${id}&type=solicitud`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Solicitud_OT_${id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
         } catch (error) {
-            setMsg({ show: true, title: "Error PDF", text: "No se pudo generar el documento. Intenta nuevamente.", type: "error" });
+            setMsg({ show: true, title: "Error", text: "No se pudo descargar el PDF", type: "error" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const descargarExcelOT = async (id) => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/index.php/exportar?modulo=detalle_ot&id=${id}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Detalle_OT_${id}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: "No se pudo descargar el Excel", type: "error" });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -173,13 +203,22 @@ const Mantencion = () => {
                                         <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
                                         <td className="text-end pe-4">
 
-                                            {/* SOLUCIÓN AL PDF: Usar onClick en lugar de href */}
+                                            {/* PDF Seguro */}
                                             <button 
+                                                onClick={() => descargarPdfOT(s.id)} 
                                                 className="btn btn-sm btn-outline-dark me-1" 
-                                                onClick={() => handleDownloadPdf(s.id, 'solicitud')}
-                                                title="Ver PDF Solicitud"
+                                                title="Ver PDF"
                                             >
                                                 <i className="bi bi-file-earmark-text"></i>
+                                            </button>
+
+                                            {/* Excel Seguro */}
+                                            <button 
+                                                onClick={() => descargarExcelOT(s.id)} 
+                                                className="btn btn-sm btn-outline-success me-2" 
+                                                title="Descargar Excel"
+                                            >
+                                                <i className="bi bi-file-earmark-excel"></i>
                                             </button>
 
                                             <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(s)}><i className="bi bi-eye"></i></button>
