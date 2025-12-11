@@ -2,6 +2,8 @@
 namespace App\Controllers;
 
 use App\Database\Database;
+use App\Config\Config;
+use Firebase\JWT\JWT;
 use PDO;
 
 class AuthController {
@@ -16,40 +18,54 @@ class AuthController {
         $data = json_decode($json);
 
         if (!isset($data->username) || !isset($data->password)) {
-            echo json_encode(["success" => false, "message" => "Faltan datos"]);
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Faltan credenciales"]);
             return;
         }
-
-        $username = $data->username;
-        $password = $data->password;
 
         $stmt = $this->db->prepare("SELECT u.*, r.nombre as rol_nombre 
                                     FROM usuarios u 
                                     JOIN roles r ON u.rol_id = r.id 
-                                    WHERE u.username = :u LIMIT 1");
-        $stmt->bindParam(":u", $username);
+                                    WHERE u.username = :u AND u.activo = 1 LIMIT 1");
+        $stmt->bindParam(":u", $data->username);
         $stmt->execute();
-        $user = $stmt->fetch();
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user && password_verify($password, $user['password_hash'])) {
+        if ($user && password_verify($data->password, $user['password_hash'])) {
+
+            $issuedAt = time();
+            $expirationTime = $issuedAt + Config::JWT_EXP; 
             
-            // Opcional: Iniciar sesión PHP si no usas JWT aún
-            // session_start();
-            // $_SESSION['user_id'] = $user['id'];
+            $payload = [
+                'iss' => 'insuorders.system',
+                'aud' => 'insuorders_users',
+                'iat' => $issuedAt,
+                'exp' => $expirationTime,
+                'data' => [
+                    'id' => $user['id'],
+                    'username' => $user['username'],
+                    'rol' => $user['rol_nombre']
+                ]
+            ];
+
+            $jwt = JWT::encode($payload, Config::JWT_SECRET, Config::JWT_ALGO);
 
             echo json_encode([
                 "success" => true,
                 "message" => "Bienvenido " . $user['nombre'],
-                "token" => "token_falso_por_ahora_12345",
+                "token" => $jwt,
                 "user" => [
                     "id" => $user['id'],
                     "nombre" => $user['nombre'],
-                    "rol" => $user['rol_nombre']
+                    "apellido" => $user['apellido'],
+                    "rol" => $user['rol_nombre'],
+                    "email" => $user['email']
                 ]
             ]);
         } else {
+            usleep(200000);
             http_response_code(401);
-            echo json_encode(["success" => false, "message" => "Usuario o contraseña incorrectos"]);
+            echo json_encode(["success" => false, "message" => "Credenciales incorrectas o cuenta inactiva"]);
         }
     }
 }

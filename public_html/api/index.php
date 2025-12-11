@@ -7,15 +7,22 @@ use App\Controllers\ProveedorController;
 use App\Controllers\InsumoController;
 use App\Controllers\OrdenCompraController;
 use App\Controllers\PersonalController;
-use App\Controllers\MantencionController; // Asegurar que este import esté
+use App\Controllers\MantencionController;
+use App\Controllers\NotificationController;
+use App\Controllers\BodegaController;
+use App\Controllers\DashboardController;
+use App\Controllers\UsuariosController;
+use App\Controllers\ExportController;
+use App\Middleware\AuthMiddleware;
 
 // ============================================================================
-// 1. DETECCIÓN DE RUTA (Lógica Blindada)
+// 1. DETECCIÓN DE RUTA (ROUTER)
 // ============================================================================
 
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $scriptName = $_SERVER['SCRIPT_NAME'];
 $baseDir = dirname($scriptName);
+// Normalizar slashes para evitar problemas en Windows/Linux
 $baseDir = str_replace('\\', '/', $baseDir);
 
 if ($baseDir !== '/' && strpos($requestUri, $baseDir) === 0) {
@@ -30,7 +37,6 @@ $path = trim($path, '/');
 if ($path === '')
     $path = 'test';
 
-// Helper
 function jsonResponse($code, $data)
 {
     http_response_code($code);
@@ -40,13 +46,12 @@ function jsonResponse($code, $data)
 }
 
 // ============================================================================
-// 2. ENRUTAMIENTO
+// 2. ENRUTAMIENTO DE MÓDULOS
 // ============================================================================
 
 switch ($path) {
     // --- AUTENTICACIÓN ---
     case 'login':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/AuthController.php';
         $controller = new AuthController();
         if ($_SERVER['REQUEST_METHOD'] === 'POST')
             $controller->login();
@@ -55,12 +60,12 @@ switch ($path) {
         break;
 
     case 'test':
-        echo json_encode(["message" => "API Online 🚀", "ruta" => $path]);
+        echo json_encode(["message" => "API InsuOrders Online 🚀", "ruta" => $path]);
         break;
 
     // --- PROVEEDORES ---
     case 'proveedores':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/ProveedorController.php';
+        AuthMiddleware::verify(['Compras', 'Mantencion', 'Bodega', 'Admin']);
         $controller = new ProveedorController();
         $method = $_SERVER['REQUEST_METHOD'];
         if ($method === 'GET')
@@ -74,155 +79,228 @@ switch ($path) {
         break;
 
     case 'proveedores/auxiliares':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/ProveedorController.php';
-        $controller = new ProveedorController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
-            $controller->auxiliares();
+        AuthMiddleware::verify(['Compras', 'Mantencion', 'Bodega', 'Admin']);
+        (new ProveedorController())->auxiliares();
         break;
 
-    // --- INVENTARIO ---
+    // --- INVENTARIO (INSUMOS) ---
     case 'inventario':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/InsumoController.php';
+        // GET permitido para todos los logueados, Modificación solo Bodega/Compras
+        if ($_SERVER['REQUEST_METHOD'] === 'GET')
+            AuthMiddleware::verify();
+        else
+            AuthMiddleware::verify(['Bodega', 'Compras', 'Admin']);
+
         $controller = new InsumoController();
-        $method = $_SERVER['REQUEST_METHOD'];
-        if ($method === 'GET')
+        if ($_SERVER['REQUEST_METHOD'] === 'GET')
             $controller->index();
-        elseif ($method === 'POST')
-            $controller->store();
-        elseif ($method === 'DELETE')
+        elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
+            $controller->store(); // Crea o Edita
+        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
             $controller->delete();
         break;
 
     case 'inventario/auxiliares':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/InsumoController.php';
-        $controller = new InsumoController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
-            $controller->auxiliares();
+        AuthMiddleware::verify();
+        (new InsumoController())->auxiliares();
         break;
 
     case 'inventario/ajuste':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/InsumoController.php';
-        $controller = new InsumoController();
+        $userId = AuthMiddleware::verify(['Bodega', 'Admin']);
         if ($_SERVER['REQUEST_METHOD'] === 'POST')
-            $controller->ajustar();
+            (new InsumoController())->ajustar($userId);
         break;
 
     // --- MANTENCIÓN ---
     case 'mantencion':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantencionController.php';
-        $controller = new MantencionController();
-        $method = $_SERVER['REQUEST_METHOD'];
-        if ($method === 'GET') {
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            AuthMiddleware::verify(['Mantencion', 'Compras', 'Bodega', 'Admin']);
+            $controller = new MantencionController();
+            // Soporte para ver detalle específico o listado general
             if (isset($_GET['detalle']))
                 $controller->detalles();
             else
                 $controller->index();
-        } elseif ($method === 'POST')
-            $controller->store();
-        elseif ($method === 'PUT')
-            $controller->update();
-        elseif ($method === 'DELETE')
-            $controller->delete();
+        } else {
+            $userId = AuthMiddleware::verify(['Mantencion', 'Admin']);
+            $controller = new MantencionController();
+            if ($_SERVER['REQUEST_METHOD'] === 'POST')
+                $controller->store($userId);
+            elseif ($_SERVER['REQUEST_METHOD'] === 'PUT')
+                $controller->update();
+            elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+                $controller->delete(); // Anular
+        }
+        break;
+
+    case 'mantencion/finalizar':
+        AuthMiddleware::verify(['Mantencion', 'Admin']);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+            (new MantencionController())->finalizar();
         break;
 
     case 'mantencion/activos':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantencionController.php';
-        $controller = new MantencionController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
-            $controller->activos();
-        break;
-
-    case 'mantencion/kit':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantencionController.php';
-        $controller = new MantencionController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
-            $controller->getKit();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
-            $controller->saveKit();
-        break;
-
-    case 'mantencion/docs':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantencionController.php';
-        $controller = new MantencionController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
-            $controller->listDocs();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
-            $controller->uploadDoc();
+        AuthMiddleware::verify(['Mantencion', 'Compras', 'Bodega', 'Admin']);
+        (new MantencionController())->activos();
         break;
 
     case 'mantencion/crear-activo':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantencionController.php';
-        $controller = new MantencionController();
+        AuthMiddleware::verify(['Mantencion', 'Admin']);
         if ($_SERVER['REQUEST_METHOD'] === 'POST')
-            $controller->storeActivo();
+            (new MantencionController())->storeActivo();
         break;
 
-    // --- PERSONAL ---
+    case 'mantencion/centros-costo': // <--- NUEVA RUTA SOLICITADA
+        AuthMiddleware::verify(['Mantencion', 'Admin']);
+        (new MantencionController())->centrosCosto();
+        break;
+
+case 'mantencion/kit':
+        AuthMiddleware::verify(['Mantencion', 'Admin']);
+        $c = new MantencionController();
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') $c->getKit();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'POST') $c->saveKit();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') $c->updateKitQty();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') $c->removeKitItem();
+        break;
+
+    case 'mantencion/docs':
+        AuthMiddleware::verify(['Mantencion', 'Admin']);
+        $c = new MantencionController();
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') $c->listDocs();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'POST') $c->uploadDoc();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') $c->deleteDoc();
+        break;
+
+    case 'mantencion/pdf': // <--- RUTA PDF DE CONSUMO
+        AuthMiddleware::verify(['Mantencion', 'Bodega', 'Admin']);
+        (new MantencionController())->downloadPdf();
+        break;
+
+    // --- PERSONAL (Técnicos) ---
     case 'personal':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/PersonalController.php';
-        $controller = new PersonalController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
-            $controller->index();
+        AuthMiddleware::verify();
+        (new PersonalController())->index();
         break;
 
     // --- COMPRAS ---
     case 'compras':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/OrdenCompraController.php';
-        $controller = new OrdenCompraController();
-        $method = $_SERVER['REQUEST_METHOD'];
+        if ($_SERVER['REQUEST_METHOD'] === 'GET')
+            AuthMiddleware::verify(['Compras', 'Bodega', 'Admin']);
+        else
+            AuthMiddleware::verify(['Compras', 'Admin']);
 
-        if ($method === 'GET') {
+        $userId = AuthMiddleware::verify();
+        $controller = new OrdenCompraController();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             if (isset($_GET['id']))
                 $controller->show();
             else
                 $controller->index();
-        } elseif ($method === 'POST') {
-            $controller->store();
+        } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $controller->store($userId);
         }
         break;
 
+    case 'compras/recepcionar':
+        $userId = AuthMiddleware::verify(['Bodega', 'Compras', 'Admin']);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+            (new OrdenCompraController())->recepcionar($userId);
+        break;
+
     case 'compras/pdf':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/OrdenCompraController.php';
-        $controller = new OrdenCompraController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
-            $controller->downloadPdf();
+        (new OrdenCompraController())->downloadPdf();
         break;
 
     case 'compras/upload':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/OrdenCompraController.php';
-        $controller = new OrdenCompraController();
+        AuthMiddleware::verify(['Compras', 'Admin']);
         if ($_SERVER['REQUEST_METHOD'] === 'POST')
-            $controller->uploadFile();
+            (new OrdenCompraController())->uploadFile();
         break;
 
     case 'compras/pendientes':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/OrdenCompraController.php';
-        $controller = new OrdenCompraController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
-            $controller->pendientes();
+        AuthMiddleware::verify(['Compras', 'Admin']);
+        (new OrdenCompraController())->pendientes();
         break;
 
-    // --- NOTIFICACIONES  ---
+    // --- BODEGA ---
+    case 'bodega/entregar': // Salida de materiales (OT)
+        $userId = AuthMiddleware::verify(['Bodega', 'Admin']);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+            (new BodegaController())->entregar($userId);
+        break;
+
+    case 'bodega/pendientes': // Lista OTs para retiro
+        AuthMiddleware::verify(['Bodega', 'Admin']);
+        (new BodegaController())->pendientes();
+        break;
+
+    case 'bodega/por-organizar': // Stock flotante (Entrada Compras)
+        AuthMiddleware::verify(['Bodega', 'Admin']);
+        (new BodegaController())->porOrganizar();
+        break;
+
+    case 'bodega/organizar': // Asignar ubicación física
+        AuthMiddleware::verify(['Bodega', 'Admin']);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+            (new BodegaController())->organizar();
+        break;
+
+    // --- USUARIOS ---
+    case 'usuarios':
+    case 'usuarios/roles':
+    case 'usuarios/toggle':
+        AuthMiddleware::verify(['Admin']);
+        $c = new UsuariosController();
+        if ($path === 'usuarios') {
+            if ($_SERVER['REQUEST_METHOD'] === 'GET')
+                $c->index();
+            elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
+                $c->store();
+            elseif ($_SERVER['REQUEST_METHOD'] === 'PUT')
+                $c->update();
+        } elseif ($path === 'usuarios/roles') {
+            $c->roles();
+        } elseif ($path === 'usuarios/toggle') {
+            $c->toggle();
+        }
+        break;
+
+    // --- DASHBOARD ---
+    case 'dashboard':
+    case 'dashboard/logs':
+        AuthMiddleware::verify(['Admin', 'Compras', 'Mantencion', 'Bodega']);
+        $c = new DashboardController();
+        if ($path === 'dashboard')
+            $c->index();
+        else
+            $c->logs();
+        break;
+
+    // --- EXPORTAR EXCEL ---
+    case 'exportar':
+        $m = $_GET['modulo'] ?? '';
+
+        // Permisos granulares por módulo
+        if ($m === 'todo' || $m === 'usuarios')
+            AuthMiddleware::verify(['Admin']);
+        elseif ($m === 'mantencion' || $m === 'activos' || $m === 'detalle_ot')
+            AuthMiddleware::verify(['Admin', 'Mantencion']);
+        elseif ($m === 'compras' || $m === 'proveedores')
+            AuthMiddleware::verify(['Admin', 'Compras']);
+        else
+            AuthMiddleware::verify();
+
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/ExportController.php';
+        (new ExportController())->exportar($m);
+        break;
+
     case 'notifications':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/NotificationController.php';
-        $controller = new \App\Controllers\NotificationController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') $controller->index();
+        AuthMiddleware::verify();
+        (new NotificationController())->index();
         break;
 
-    // --- BODEGA  ---
-    case 'bodega/pendientes':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/BodegaController.php';
-        $controller = new \App\Controllers\BodegaController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') $controller->pendientes();
-        break;
-        
-    case 'bodega/entregar':
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/BodegaController.php';
-        $controller = new \App\Controllers\BodegaController();
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') $controller->entregar();
-        break;
-
-    // --- DEFAULT ---
     default:
         jsonResponse(404, ["error" => "Ruta no encontrada: $path"]);
         break;

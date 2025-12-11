@@ -35,22 +35,28 @@ const SubirArchivoModal = ({ show, onClose, ordenId, onSave }) => {
             <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header bg-dark text-white">
-                        <h5 className="modal-title">📎 Adjuntar PDF/Respaldo</h5>
+                        <h5 className="modal-title">📎 Adjuntar Cotización / Factura</h5>
                         <button className="btn-close btn-close-white" onClick={onClose}></button>
                     </div>
                     <form onSubmit={handleSubmit}>
                         <div className="modal-body">
+                            <div className="alert alert-info small">
+                                <i className="bi bi-info-circle me-2"></i>
+                                Mantén el orden de tus compras subiendo los documentos de respaldo.
+                            </div>
                             <div className="mb-3">
-                                <label className="form-label">Seleccionar Archivo</label>
-                                <input type="file" className="form-control" accept=".pdf,.jpg,.png"
+                                <label className="form-label fw-bold">Seleccionar Documento</label>
+                                <input type="file" className="form-control" accept=".pdf,.jpg,.png,.jpeg"
                                     onChange={e => setArchivo(e.target.files[0])} required />
-                                <div className="form-text">Sube la Orden de Compra original firmada o escaneada.</div>
+                                <div className="form-text text-muted">
+                                    Sube la <strong>Cotización</strong> aprobada o la <strong>Factura</strong> final del proveedor.
+                                </div>
                             </div>
                         </div>
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
                             <button type="submit" className="btn btn-primary" disabled={loading}>
-                                {loading ? 'Subiendo...' : 'Guardar Archivo'}
+                                {loading ? 'Subiendo...' : 'Guardar Documento'}
                             </button>
                         </div>
                     </form>

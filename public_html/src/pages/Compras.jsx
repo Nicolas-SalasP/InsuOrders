@@ -3,13 +3,23 @@ import api from '../api/axiosConfig';
 import NuevaOrdenModal from '../components/NuevaOrdenModal';
 import DetalleOrdenModal from '../components/DetalleOrdenModal';
 import SubirArchivoModal from '../components/SubirArchivoModal';
+import RecepcionCompraModal from '../components/RecepcionCompraModal';
 
 const Compras = () => {
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [verModal, setVerModal] = useState({ show: false, id: null });
-    const [uploadModal, setUploadModal] = useState({ show: false, id: null });
+
+    // Estados de Modales
+    const [showModal, setShowModal] = useState(false); // Nueva Orden
+    const [verModal, setVerModal] = useState({ show: false, id: null }); // Ver Detalle
+    const [uploadModal, setUploadModal] = useState({ show: false, id: null }); // Subir PDF
+    const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null }); // Recepción
+
+    // Estados de Filtros
+    const [filtroProveedor, setFiltroProveedor] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState('');
+    const [filtroFecha, setFiltroFecha] = useState('');
+
     const [itemsPrecargados, setItemsPrecargados] = useState([]);
     const [pendientes, setPendientes] = useState([]);
 
@@ -44,7 +54,8 @@ const Compras = () => {
             unidad: p.unidad_medida,
             cantidad: parseFloat(p.cantidad_total),
             precio: parseFloat(p.precio) || 0,
-            tipo: 'existente'
+            tipo: 'existente',
+            origen_ids: p.ids_detalle_solicitud
         }));
 
         setItemsPrecargados(items);
@@ -55,6 +66,39 @@ const Compras = () => {
         setItemsPrecargados([]);
         setShowModal(true);
     };
+
+    const handleExportar = () => {
+        setLoading(true);
+        api.get('/index.php/exportar?modulo=compras', { responseType: 'blob' })
+            .then((res) => {
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Compras_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+            })
+            .catch(() => alert("Error al exportar"))
+            .finally(() => setLoading(false));
+    };
+
+    const limpiarFiltros = () => {
+        setFiltroProveedor('');
+        setFiltroEstado('');
+        setFiltroFecha('');
+    };
+
+    // Lógica de Filtrado
+    const ordenesFiltradas = ordenes.filter(oc => {
+        const matchProveedor = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
+        const matchEstado = filtroEstado ? oc.estado === filtroEstado : true;
+
+        // Comparación de fechas (YYYY-MM-DD)
+        const fechaOC = oc.fecha_creacion.split(' ')[0];
+        const matchFecha = filtroFecha ? fechaOC === filtroFecha : true;
+
+        return matchProveedor && matchEstado && matchFecha;
+    });
 
     const getBadgeColor = (estado) => {
         switch (estado) {
@@ -68,22 +112,88 @@ const Compras = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
-            {/* Modales */}
+            {/* --- MODALES --- */}
             <NuevaOrdenModal
                 show={showModal}
                 onClose={() => setShowModal(false)}
                 onSave={() => { cargarOrdenes(); cargarPendientes(); }}
                 itemsIniciales={itemsPrecargados}
             />
-            <DetalleOrdenModal show={verModal.show} onClose={() => setVerModal({ show: false, id: null })} ordenId={verModal.id} />
-            <SubirArchivoModal show={uploadModal.show} onClose={() => setUploadModal({ show: false, id: null })} ordenId={uploadModal.id} onSave={cargarOrdenes} />
 
+            <DetalleOrdenModal
+                show={verModal.show}
+                onClose={() => setVerModal({ show: false, id: null })}
+                ordenId={verModal.id}
+            />
+
+            <SubirArchivoModal
+                show={uploadModal.show}
+                onClose={() => setUploadModal({ show: false, id: null })}
+                ordenId={uploadModal.id}
+                onSave={cargarOrdenes}
+            />
+
+            <RecepcionCompraModal
+                show={recepcionModal.show}
+                onClose={() => setRecepcionModal({ show: false, id: null })}
+                ordenId={recepcionModal.id}
+                onSave={() => { cargarOrdenes(); cargarPendientes(); }}
+            />
+
+            {/* --- CONTENIDO PRINCIPAL --- */}
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
                     <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-cart3 me-2"></i>Gestión de Compras</h4>
-                    <button className="btn btn-primary" onClick={handleNewOrder}>
-                        <i className="bi bi-plus-lg me-2"></i>Nueva Orden
-                    </button>
+                    <div>
+                        <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
+                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
+                        </button>
+                        <button className="btn btn-primary" onClick={handleNewOrder}>
+                            <i className="bi bi-plus-lg me-2"></i>Nueva Orden
+                        </button>
+                    </div>
+                </div>
+
+                {/* --- BARRA DE FILTROS --- */}
+                <div className="bg-light p-3 border-bottom">
+                    <div className="row g-2 align-items-center">
+                        <div className="col-md-3">
+                            <div className="input-group">
+                                <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
+                                <input
+                                    type="text"
+                                    className="form-control border-start-0"
+                                    placeholder="Buscar proveedor..."
+                                    value={filtroProveedor}
+                                    onChange={(e) => setFiltroProveedor(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <select className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+                                <option value="">Todos los Estados</option>
+                                <option value="Emitida">Emitida</option>
+                                <option value="Recepcion Parcial">Recepción Parcial</option>
+                                <option value="Recepcion Total">Recepción Total</option>
+                                <option value="Anulada">Anulada</option>
+                            </select>
+                        </div>
+                        <div className="col-md-3">
+                            <input
+                                type="date"
+                                className="form-control"
+                                value={filtroFecha}
+                                onChange={(e) => setFiltroFecha(e.target.value)}
+                            />
+                        </div>
+                        <div className="col-md-3 text-end">
+                            {(filtroProveedor || filtroEstado || filtroFecha) && (
+                                <button className="btn btn-outline-secondary btn-sm" onClick={limpiarFiltros}>
+                                    <i className="bi bi-x-lg me-1"></i>Limpiar Filtros
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="card-body p-0 flex-grow-1 overflow-auto">
@@ -121,59 +231,72 @@ const Compras = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {ordenes.map(oc => (
-                                    <tr key={oc.id}>
-                                        <td className="ps-4 fw-bold text-primary">#{oc.id}</td>
-                                        <td>
-                                            <div className="fw-medium">{oc.proveedor}</div>
-                                            <small className="text-muted">{oc.proveedor_rut}</small>
-                                        </td>
-                                        <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
-                                        <td className="fw-bold text-dark">
-                                            ${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}
-                                        </td>
-                                        <td>
-                                            <span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span>
-                                        </td>
-                                        <td className="text-end pe-4">
-                                            {/* PDF */}
-                                            <a
-                                                href={`http://localhost/insuorders/public_html/api/index.php/compras/pdf?id=${oc.id}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="btn btn-sm btn-outline-danger me-2"
-                                                title="Descargar PDF"
-                                            >
-                                                <i className="bi bi-file-earmark-pdf"></i>
-                                            </a>
+                                {ordenesFiltradas.length > 0 ? (
+                                    ordenesFiltradas.map(oc => (
+                                        <tr key={oc.id}>
+                                            <td className="ps-4 fw-bold text-primary">#{oc.id}</td>
+                                            <td>
+                                                <div className="fw-medium">{oc.proveedor}</div>
+                                                <small className="text-muted">{oc.proveedor_rut}</small>
+                                            </td>
+                                            <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
+                                            <td className="fw-bold text-dark">
+                                                ${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span>
+                                            </td>
+                                            <td className="text-end pe-4">
 
-                                            {/* Ver Detalle */}
-                                            <button
-                                                className="btn btn-sm btn-outline-primary me-2"
-                                                onClick={() => setVerModal({ show: true, id: oc.id })}
-                                                title="Ver Detalle"
-                                            >
-                                                <i className="bi bi-eye"></i>
-                                            </button>
+                                                {/* BOTÓN RECEPCIONAR */}
+                                                {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && (
+                                                    <button
+                                                        className="btn btn-sm btn-warning me-2 text-dark"
+                                                        title="Recepcionar Mercadería"
+                                                        onClick={() => setRecepcionModal({ show: true, id: oc.id })}
+                                                    >
+                                                        <i className="bi bi-truck"></i>
+                                                    </button>
+                                                )}
 
-                                            {/* Adjuntar Respaldo */}
-                                            {oc.url_archivo ? (
-                                                <a href={`http://localhost/insuorders/public_html${oc.url_archivo}`}
-                                                    target="_blank" className="btn btn-sm btn-success" title="Ver Respaldo Adjunto">
-                                                    <i className="bi bi-paperclip"></i>
+                                                {/* PDF */}
+                                                <a
+                                                    href={`http://localhost/insuorders/public_html/api/index.php/compras/pdf?id=${oc.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="btn btn-sm btn-outline-danger me-2"
+                                                    title="Descargar PDF"
+                                                >
+                                                    <i className="bi bi-file-earmark-pdf"></i>
                                                 </a>
-                                            ) : (
-                                                <button className="btn btn-sm btn-outline-secondary"
-                                                    onClick={() => setUploadModal({ show: true, id: oc.id })}
-                                                    title="Adjuntar PDF Proveedor">
-                                                    <i className="bi bi-upload"></i>
+
+                                                {/* Ver Detalle */}
+                                                <button
+                                                    className="btn btn-sm btn-outline-primary me-2"
+                                                    onClick={() => setVerModal({ show: true, id: oc.id })}
+                                                    title="Ver Detalle"
+                                                >
+                                                    <i className="bi bi-eye"></i>
                                                 </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {ordenes.length === 0 && (
-                                    <tr><td colSpan="6" className="text-center py-5 text-muted">No hay órdenes registradas</td></tr>
+
+                                                {/* Adjuntar Respaldo */}
+                                                {oc.url_archivo ? (
+                                                    <a href={`http://localhost/insuorders/public_html${oc.url_archivo}`}
+                                                        target="_blank" className="btn btn-sm btn-success" title="Ver Respaldo Adjunto">
+                                                        <i className="bi bi-paperclip"></i>
+                                                    </a>
+                                                ) : (
+                                                    <button className="btn btn-sm btn-outline-secondary"
+                                                        onClick={() => setUploadModal({ show: true, id: oc.id })}
+                                                        title="Adjuntar PDF Proveedor">
+                                                        <i className="bi bi-upload"></i>
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan="6" className="text-center py-5 text-muted">No se encontraron órdenes con esos filtros</td></tr>
                                 )}
                             </tbody>
                         </table>

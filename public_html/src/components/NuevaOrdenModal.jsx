@@ -11,7 +11,10 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     const [proveedorId, setProveedorId] = useState('');
     const [moneda, setMoneda] = useState('CLP');
     const [tipoCambio, setTipoCambio] = useState(1);
-    const [numeroCotizacion, setNumeroCotizacion] = useState(''); // Nuevo campo
+    const [numeroCotizacion, setNumeroCotizacion] = useState('');
+    
+    // MEJORA: Estado para Impuesto Variable (Por defecto 19)
+    const [impuestoPorcentaje, setImpuestoPorcentaje] = useState(19);
 
     // Ítems
     const [items, setItems] = useState([]);
@@ -27,16 +30,27 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     useEffect(() => {
         if (show) {
             // Cargar listas
-            api.get('/index.php/proveedores').then(res => setProveedores(res.data.data));
-            api.get('/index.php/inventario').then(res => setInsumos(res.data.data));
-            api.get('/index.php/inventario/auxiliares').then(res => setCategorias(res.data.data.categorias));
+            api.get('/index.php/proveedores').then(res => {
+                if (res.data.success) setProveedores(res.data.data);
+            });
+            api.get('/index.php/inventario').then(res => {
+                if (res.data.success) setInsumos(res.data.data);
+            });
+            api.get('/index.php/inventario/auxiliares').then(res => {
+                if (res.data.success) setCategorias(res.data.data.categorias);
+            });
 
             // Resetear formulario
-            setProveedorId(''); setMoneda('CLP'); setTipoCambio(1); setNumeroCotizacion('');
-            setModoNuevo(false); setBusqueda('');
+            setProveedorId(''); 
+            setMoneda('CLP'); 
+            setTipoCambio(1); 
+            setNumeroCotizacion('');
+            setImpuestoPorcentaje(19); // Reset a 19%
+            setModoNuevo(false); 
+            setBusqueda('');
             setNuevoProd({ nombre: '', categoria_id: '', unidad: 'UN', precio: '', cantidad: '' });
 
-            // Si vienen ítems precargados (desde Alerta Mantención), usarlos
+            // Cargar ítems iniciales (Alerta Mantención)
             if (itemsIniciales.length > 0) {
                 setItems(itemsIniciales);
             } else {
@@ -49,17 +63,11 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     const insumosFiltrados = busqueda
         ? insumos.filter(i =>
             i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-            i.codigo_sku.toLowerCase().includes(busqueda.toLowerCase())
+            (i.codigo_sku && i.codigo_sku.toLowerCase().includes(busqueda.toLowerCase()))
         )
         : [];
 
     const agregarItemExistente = (insumo) => {
-        // Verificar si ya existe para no duplicar (opcional, a veces se quiere duplicar)
-        if (items.find(i => i.id === insumo.id)) {
-            // alert("El producto ya está en la lista"); // Opcional
-            // return;
-        }
-
         setItems([...items, {
             id: insumo.id,
             nombre: insumo.nombre,
@@ -111,7 +119,9 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                 moneda,
                 tipo_cambio: tipoCambio,
                 numero_cotizacion: numeroCotizacion,
-                items
+                // Enviamos el impuesto variable
+                impuesto_porcentaje: impuestoPorcentaje,
+                items // Aquí viajan los items y los origen_ids
             });
             onSave();
             onClose();
@@ -122,9 +132,9 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
         }
     };
 
-    // Cálculos Totales
+    // Cálculos Totales con IVA Variable
     const totalNeto = items.reduce((acc, i) => acc + (i.cantidad * i.precio), 0);
-    const totalIVA = totalNeto * 0.19; // IVA Chile
+    const totalIVA = totalNeto * (impuestoPorcentaje / 100);
     const totalFinal = totalNeto + totalIVA;
 
     if (!show) return null;
@@ -155,21 +165,36 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                         <input type="text" className="form-control" placeholder="Ej: COT-100"
                                             value={numeroCotizacion} onChange={e => setNumeroCotizacion(e.target.value)} />
                                     </div>
-                                    <div className="col-md-3">
+                                    <div className="col-md-2">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Moneda</label>
                                         <select className="form-select" value={moneda} onChange={e => { setMoneda(e.target.value); if (e.target.value === 'CLP') setTipoCambio(1); }}>
-                                            <option value="CLP">Peso Chileno (CLP)</option>
+                                            <option value="CLP">CLP</option>
                                             <option value="UF">UF</option>
-                                            <option value="USD">Dólar (USD)</option>
-                                            <option value="EUR">Euro (EUR)</option>
+                                            <option value="USD">USD</option>
+                                            <option value="EUR">EUR</option>
                                         </select>
                                     </div>
-                                    <div className="col-md-3">
+                                    <div className="col-md-2">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Tipo Cambio</label>
                                         <input type="number" className="form-control"
                                             value={tipoCambio} onChange={e => setTipoCambio(e.target.value)}
                                             disabled={moneda === 'CLP'}
                                         />
+                                    </div>
+                                    
+                                    {/* MEJORA: Campo de Impuesto Variable */}
+                                    <div className="col-md-2">
+                                        <label className="form-label fw-bold small text-uppercase text-muted">Impuesto %</label>
+                                        <div className="input-group">
+                                            <input 
+                                                type="number" 
+                                                className="form-control" 
+                                                value={impuestoPorcentaje} 
+                                                onChange={e => setImpuestoPorcentaje(parseFloat(e.target.value) || 0)} 
+                                                min="0" max="100" step="0.1"
+                                            />
+                                            <span className="input-group-text">%</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -193,7 +218,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             <input type="text" className="form-control" placeholder="Escribe nombre o SKU..."
                                                 value={busqueda} onChange={e => setBusqueda(e.target.value)} />
                                         </div>
-                                        {insumosFiltrados.length > 0 && (
+                                        {insumosFiltrados.length > 0 && busqueda && (
                                             <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 100, maxHeight: '200px', overflowY: 'auto' }}>
                                                 {insumosFiltrados.map(ins => (
                                                     <li key={ins.id} className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center"
@@ -258,7 +283,10 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                     {items.map((item, idx) => (
                                         <tr key={idx}>
                                             <td>
-                                                <div className="fw-medium">{item.nombre}</div>
+                                                <div className="fw-medium">
+                                                    {item.nombre}
+                                                    {item.origen_ids && <span className="badge bg-warning text-dark ms-2" title="Viene de Mantención"><i className="bi bi-link-45deg"></i> OT</span>}
+                                                </div>
                                                 <small className="text-muted" style={{ fontSize: '0.75rem' }}>{item.sku !== 'NUEVO' ? `SKU: ${item.sku}` : ''}</small>
                                             </td>
                                             <td className="text-center">
@@ -298,7 +326,8 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                         <strong>{totalNeto.toLocaleString('es-CL', { maximumFractionDigits: 2 })}</strong>
                                     </li>
                                     <li className="list-group-item d-flex justify-content-between">
-                                        <span className="text-muted">IVA (19%):</span>
+                                        {/* Etiqueta dinámica con el % seleccionado */}
+                                        <span className="text-muted">IVA ({impuestoPorcentaje}%):</span>
                                         <span>{totalIVA.toLocaleString('es-CL', { maximumFractionDigits: 2 })}</span>
                                     </li>
                                     <li className="list-group-item d-flex justify-content-between bg-light">

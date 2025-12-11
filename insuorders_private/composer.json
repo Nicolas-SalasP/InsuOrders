@@ -1,5 +1,7 @@
 {
     "require": {
-        "setasign/fpdf": "^1.8"
+        "setasign/fpdf": "^1.8",
+        "firebase/php-jwt": "^6.11",
+        "phpoffice/phpspreadsheet": "^5.3"
     }
 }

@@ -24,37 +24,57 @@ class OrdenCompraController
         echo json_encode(["success" => true, "data" => $this->service->obtenerDetalleOrden($id)]);
     }
 
-    public function store()
+    public function store($usuarioId = null)
     {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $input = file_get_contents("php://input");
+        $data = json_decode($input, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "JSON Inválido"]);
+            return;
+        }
+
+        if (!$usuarioId) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "Usuario no identificado"]);
+            return;
+        }
+
         try {
-            $usuarioId = 1;
             $id = $this->service->crearOrden($data, $usuarioId);
             echo json_encode(["success" => true, "message" => "Orden #$id creada exitosamente", "id" => $id]);
         } catch (\Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode([
+                "success" => false,
+                "message" => "Error al procesar: " . $e->getMessage()
+            ]);
         }
     }
 
+
     public function downloadPdf()
     {
-        if (ob_get_length())
-            ob_clean();
+        if (ob_get_length()) ob_clean(); 
+
         $id = $_GET['id'] ?? null;
-        if (!$id)
-            die("ID requerido");
+        if (!$id) die("ID requerido");
 
         try {
+            $data = $this->service->obtenerDetalleOrden($id);
+            $provName = preg_replace('/[^A-Za-z0-9]/', '_', $data['cabecera']['proveedor'] ?? 'Proveedor');
+            $filename = "OC_{$id}_{$provName}.pdf";
+
             $pdfContent = $this->service->generarPDF($id);
+            
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="Orden_Compra_' . $id . '.pdf"');
+            header('Content-Disposition: inline; filename="' . $filename . '"');
             header('Cache-Control: private, max-age=0, must-revalidate');
             header('Pragma: public');
             echo $pdfContent;
             exit;
         } catch (\Exception $e) {
-            die("Error PDF: " . $e->getMessage());
+            die("Error generando PDF: " . $e->getMessage());
         }
     }
 
@@ -84,13 +104,34 @@ class OrdenCompraController
         }
     }
 
-    // Endpoint de alertas
     public function pendientes()
     {
         try {
             $repo = new OrdenCompraRepository();
             $data = $repo->getPendientesMantencion();
             echo json_encode(["success" => true, "data" => $data]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
+    public function recepcionar($usuarioId)
+    {
+        $data = json_decode(file_get_contents("php://input"), true);
+        if (!$usuarioId) {
+            http_response_code(401);
+            echo json_encode(["success" => false]);
+            return;
+        }
+        if (empty($data['orden_id']) || empty($data['items'])) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Datos incompletos"]);
+            return;
+        }
+        try {
+            $res = $this->service->recepcionarOrden($data['orden_id'], $data['items'], $usuarioId);
+            echo json_encode(["success" => true, "data" => $res]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
