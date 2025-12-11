@@ -1,56 +1,88 @@
 <?php
 namespace App\Controllers;
-use App\Services\MantencionService;
+
 use App\Repositories\MantencionRepository;
+use App\Services\PDFService;
 
 class MantencionController
 {
-    private $service;
+    private $repo;
 
     public function __construct()
     {
-        $this->service = new MantencionService();
+        $this->repo = new MantencionRepository();
     }
 
     public function index()
     {
-        echo json_encode(["success" => true, "data" => $this->service->listarSolicitudes()]);
+        echo json_encode(["success" => true, "data" => $this->repo->getSolicitudes()]);
     }
 
-    public function activos()
+    public function detalles()
     {
-        echo json_encode(["success" => true, "data" => $this->service->listarActivos()]);
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            echo json_encode(["success" => false, "message" => "Faltan datos"]);
+            return;
+        }
+        echo json_encode(["success" => true, "data" => $this->repo->getDetallesOT($id)]);
     }
 
-    // MODIFICADO: Acepta $usuarioId
-    public function store($usuarioId = null)
+    public function store($usuarioId)
     {
         $data = json_decode(file_get_contents("php://input"), true);
 
-        if (!$usuarioId) {
-            http_response_code(401);
-            echo json_encode(["success" => false, "message" => "Usuario no identificado"]);
-            return;
-        }
-
         try {
-            $id = $this->service->crearOT($data, $usuarioId);
-            echo json_encode(["success" => true, "message" => "OT #$id creada exitosamente"]);
+            if (!$usuarioId)
+                throw new \Exception("Usuario no identificado");
+
+            $id = $this->repo->createSolicitud([
+                'usuario_id' => $usuarioId,
+                'activo_id' => $data['activo_id'] ?? null,
+                'observacion' => $data['observacion'],
+                'origen_tipo' => $data['origen_tipo'] ?? 'Interna',
+                'origen_referencia' => $data['origen_referencia'] ?? null,
+                'solicitante_externo' => $data['solicitante_externo'] ?? null,
+                'fecha_solicitud_externa' => $data['fecha_solicitud_externa'] ?? null,
+                'area_negocio' => $data['area_negocio'] ?? null,
+                'centro_costo_ot' => $data['centro_costo_ot'] ?? null
+            ]);
+
+            if (!empty($data['items'])) {
+                foreach ($data['items'] as $item) {
+                    $this->repo->addDetalle([
+                        'solicitud_id' => $id,
+                        'insumo_id' => $item['id'],
+                        'cantidad' => $item['cantidad']
+                    ]);
+                }
+            }
+
+            echo json_encode(["success" => true, "message" => "Solicitud #$id creada correctamente"]);
         } catch (\Exception $e) {
-            http_response_code(400);
+            http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
     public function update()
     {
-        $id = $_GET['id'] ?? null;
         $data = json_decode(file_get_contents("php://input"), true);
         try {
-            if (!$id)
-                throw new \Exception("Falta ID");
-            $this->service->editarOT($id, $data);
-            echo json_encode(["success" => true, "message" => "OT actualizada correctamente"]);
+            $this->repo->updateSolicitud($data['id'], $data['activo_id'], $data['observacion']);
+
+            if (isset($data['items'])) {
+                $this->repo->clearDetalles($data['id']);
+                foreach ($data['items'] as $item) {
+                    $this->repo->addDetalle([
+                        'solicitud_id' => $data['id'],
+                        'insumo_id' => $item['id'],
+                        'cantidad' => $item['cantidad'],
+                        'estado_linea' => $item['estado_linea'] ?? 'PENDIENTE'
+                    ]);
+                }
+            }
+            echo json_encode(["success" => true, "message" => "Solicitud actualizada"]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
@@ -59,43 +91,65 @@ class MantencionController
 
     public function delete()
     {
-        $id = $_GET['id'] ?? null;
+        $this->repo->delete();
+    }
+
+    public function finalizar()
+    {
+        $this->repo->finalizar();
+    }
+
+    public function activos()
+    {
+        echo json_encode(["success" => true, "data" => $this->repo->getActivos()]);
+    }
+
+    public function storeActivo()
+    {
+        $data = json_decode(file_get_contents("php://input"), true);
         try {
-            if (!$id)
-                throw new \Exception("Falta ID");
-            $this->service->anularOT($id);
-            echo json_encode(["success" => true, "message" => "OT Anulada"]);
+            if (isset($data['id']) && !empty($data['id'])) {
+                $this->repo->updateActivo($data);
+                echo json_encode(["success" => true, "message" => "Activo actualizado correctamente"]);
+            } else {
+                $id = $this->repo->createActivo($data);
+                echo json_encode(["success" => true, "message" => "Activo creado", "id" => $id]);
+            }
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error BD: " . $e->getMessage()]);
         }
     }
 
-    public function detalles()
+    public function centrosCosto()
     {
-        $id = $_GET['id'];
-        echo json_encode(["success" => true, "data" => $this->service->obtenerDetalleOT($id)]);
+        echo json_encode(["success" => true, "data" => $this->repo->getCentrosCosto()]);
     }
 
+    // Kits y Docs
     public function getKit()
     {
-        $repo = new MantencionRepository();
-        echo json_encode(["success" => true, "data" => $repo->getKitActivo($_GET['id'])]);
+        $id = $_GET['id'] ?? 0;
+        echo json_encode(["success" => true, "data" => $this->repo->getKitActivo($id)]);
     }
     public function saveKit()
     {
         $data = json_decode(file_get_contents("php://input"), true);
-        $repo = new MantencionRepository();
-        if ($data['accion'] == 'add')
-            $repo->addInsumoToKit($data['activo_id'], $data['insumo_id'], $data['cantidad']);
-        else
-            $repo->removeInsumoFromKit($data['activo_id'], $data['insumo_id']);
+        $this->repo->addInsumoToKit($data['activo_id'], $data['insumo_id'], $data['cantidad']);
         echo json_encode(["success" => true]);
     }
+    public function removeKitItem()
+    {
+        $aid = $_GET['activo_id'];
+        $iid = $_GET['insumo_id'];
+        $this->repo->removeInsumoFromKit($aid, $iid);
+        echo json_encode(["success" => true]);
+    }
+
     public function listDocs()
     {
-        $repo = new MantencionRepository();
-        echo json_encode(["success" => true, "data" => $repo->getDocs($_GET['id'])]);
+        $id = $_GET['id'] ?? 0;
+        echo json_encode(["success" => true, "data" => $this->repo->getDocs($id)]);
     }
     public function uploadDoc()
     {
@@ -104,50 +158,67 @@ class MantencionController
             echo json_encode(["success" => false]);
             return;
         }
-        $id = $_POST['activo_id'];
-        $uploadDir = __DIR__ . '/../../../../public_html/uploads/activos/';
-        if (!is_dir($uploadDir))
-            mkdir($uploadDir, 0777, true);
+        try {
+            $dir = __DIR__ . '/../../../../public_html/uploads/activos/';
+            if (!is_dir($dir))
+                mkdir($dir, 0777, true);
+            $name = time() . '_' . $_FILES['archivo']['name'];
+            move_uploaded_file($_FILES['archivo']['tmp_name'], $dir . $name);
+            $this->repo->addDoc($_POST['activo_id'], $_FILES['archivo']['name'], "/uploads/activos/$name");
+            echo json_encode(["success" => true]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
 
-        $fileName = "act_{$id}_" . time() . "_" . basename($_FILES['archivo']['name']);
-        if (move_uploaded_file($_FILES['archivo']['tmp_name'], $uploadDir . $fileName)) {
-            $repo = new MantencionRepository();
-            $repo->addDoc($id, $_FILES['archivo']['name'], "/uploads/activos/" . $fileName);
+    public function downloadPdf()
+    {
+        if (ob_get_length())
+            ob_clean();
+        $id = $_GET['id'] ?? null;
+        $tipo = $_GET['type'] ?? 'solicitud';
+        if (!$id)
+            die("Falta ID");
+
+        $ot = $this->repo->getOTHeader($id);
+        if (!$ot)
+            die("OT no encontrada");
+
+        $pdf = new PDFService();
+        if ($tipo === 'entrega') {
+            $entregas = $this->repo->getEntregasOT($id);
+            $content = $pdf->generarPdfEntrega($ot, $entregas);
+            $filename = "Entrega_OT_{$id}.pdf";
+        } else {
+            $detalles = $this->repo->getDetallesOT($id);
+            $content = $pdf->generarPdfOT($ot, $detalles);
+            $filename = "Solicitud_OT_{$id}.pdf";
+        }
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $filename . '"');
+        echo $content;
+        exit;
+    }
+
+    public function updateKitQty() {
+        $data = json_decode(file_get_contents("php://input"), true);
+        if (isset($data['activo_id']) && isset($data['insumo_id']) && isset($data['cantidad'])) {
+            $this->repo->updateKitQuantity($data['activo_id'], $data['insumo_id'], $data['cantidad']);
             echo json_encode(["success" => true]);
         } else {
-            http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Error al mover archivo"]);
+            http_response_code(400); echo json_encode(["success" => false, "message" => "Faltan datos"]);
         }
     }
-    public function storeActivo()
-    {
-        $data = json_decode(file_get_contents("php://input"), true);
-        $repo = new MantencionRepository();
-        try {
-            $repo->createActivo($data);
+
+    public function deleteDoc() {
+        $id = $_GET['id'] ?? null;
+        if ($id) {
+            $this->repo->deleteDoc($id);
             echo json_encode(["success" => true]);
-        } catch (\Exception $e) {
-            http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
-        }
-    }
-
-    public function finalizar()
-    {
-        $data = json_decode(file_get_contents("php://input"), true);
-        $id = $data['id'] ?? null;
-        $usuarioId = 1;
-
-        try {
-            if (!$id) throw new \Exception("Falta ID");
-            
-            $repo = new MantencionRepository();
-            $repo->finalizarOT($id, $usuarioId);
-            
-            echo json_encode(["success" => true, "message" => "OT Finalizada. Pendientes cancelados/devueltos."]);
-        } catch (\Exception $e) {
-            http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        } else {
+            http_response_code(400); echo json_encode(["success" => false]);
         }
     }
 }

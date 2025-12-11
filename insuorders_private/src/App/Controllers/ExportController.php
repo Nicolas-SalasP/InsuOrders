@@ -50,6 +50,11 @@ class ExportController
                     $this->sheetActivos($spreadsheet, $sheetIndex);
                     $filename = "Activos_" . date('Ymd_Hi') . ".xlsx";
                     break;
+                case 'detalle_ot':
+                    $id = $_GET['id'] ?? 0;
+                    $this->sheetDetalleOT($spreadsheet, $id);
+                    $filename = "Detalle_OT_{$id}.xlsx";
+                    break;
                 case 'bodega':
                     $this->sheetBodega($spreadsheet, $sheetIndex);
                     $filename = "Bodega_Pendientes_" . date('Ymd_Hi') . ".xlsx";
@@ -255,5 +260,56 @@ class ExportController
         if ($row > 2) {
             $sheet->getStyle("A1:{$lastCol}" . ($row - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         }
+    }
+
+    private function sheetDetalleOT(Spreadsheet $s, $id)
+    {
+        $repo = new MantencionRepository();
+        $header = $repo->getOTHeader($id);
+        $detalles = $repo->getDetallesOT($id);
+
+        $sheet = $s->getSheet(0);
+        $sheet->setTitle("OT #$id");
+
+        // Cabecera estilo Ficha
+        $sheet->setCellValue('A1', 'REPORTE DE ORDEN DE TRABAJO #' . $id);
+        $sheet->mergeCells('A1:E1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+        $sheet->setCellValue('A3', 'Solicitante:');
+        $sheet->setCellValue('B3', $header['solicitante_nombre'] . ' ' . $header['solicitante_apellido']);
+        $sheet->setCellValue('A4', 'Máquina:');
+        $sheet->setCellValue('B4', $header['activo'] ?? 'General');
+        $sheet->setCellValue('A5', 'Fecha:');
+        $sheet->setCellValue('B5', $header['fecha_solicitud']);
+        $sheet->setCellValue('A6', 'Estado:');
+        $sheet->setCellValue('B6', $header['estado']);
+        $sheet->setCellValue('A7', 'Descripción:');
+        $sheet->setCellValue('B7', $header['descripcion_trabajo']);
+
+        // Tabla Items
+        $row = 9;
+        $headers = ['SKU', 'Insumo', 'Solicitado', 'Entregado', 'Estado'];
+        $col = 'A';
+        foreach ($headers as $h) {
+            $sheet->setCellValue($col . $row, $h);
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+            $col++;
+        }
+        // Estilo Header Tabla
+        $sheet->getStyle('A9:E9')->getFont()->setBold(true)->setColor(new Color(Color::COLOR_WHITE));
+        $sheet->getStyle('A9:E9')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+
+        $row++;
+        foreach ($detalles as $d) {
+            $sheet->setCellValue('A' . $row, $d['codigo_sku']);
+            $sheet->setCellValue('B' . $row, $d['nombre']);
+            $sheet->setCellValue('C' . $row, $d['cantidad']);
+            $sheet->setCellValue('D' . $row, $d['cantidad_entregada']);
+            $sheet->setCellValue('E' . $row, $d['estado_linea']);
+            $row++;
+        }
+
+        $sheet->getStyle('A9:E' . ($row - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
     }
 }

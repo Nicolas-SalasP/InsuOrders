@@ -46,6 +46,7 @@ class OrdenCompraRepository
                         p.direccion as proveedor_direccion, p.telefono as proveedor_telefono,
                         p.contacto_vendedor, p.email as proveedor_email,
                         u.nombre as creador_nombre, u.apellido as creador_apellido,
+                        u.email as creador_email,
                         e.nombre as estado_nombre 
                     FROM ordenes_compra oc
                     JOIN proveedores p ON oc.proveedor_id = p.id

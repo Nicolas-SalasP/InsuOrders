@@ -1,265 +1,399 @@
 <?php
 namespace App\Services;
 
-// Asegúrate de que FPDF esté disponible. Si usas composer:
 use FPDF;
 
-class PDFService extends FPDF
-{
-    private $orden = []; // Inicializar vacío para evitar errores
+class PDFService extends FPDF {
+    private $orden = [];
+    
+    // Configuración de Colores Corporativos
     private $colores = [
-        'primary' => [51, 102, 153],
-        'header_bg' => [240, 240, 240]
+        'primary'   => [51, 102, 153],
+        'secondary' => [100, 100, 100],
+        'table_header' => [230, 230, 230],
+        'total_bg'  => [240, 240, 240] 
     ];
 
-    public function setOrdenData($orden)
-    {
+    // Datos de la Empresa
+    private $empresa = [
+        'nombre' => 'Procesadora Insuban Spa.',
+        'rut'    => '78.730.890-2',
+        'giro'   => 'ELABORACION Y CONSERVACION DE CARNE Y PRODUCTOS CARNICOS',
+        'dir'    => 'Antillanca Norte 391, Pudahuel',
+        'web'    => 'www.insuban.cl',
+        'mail'   => 'contacto@insuban.cl'
+    ];
+
+    public function setOrdenData($orden) {
         $this->orden = $orden;
+        $this->SetTitle('OC #' . $orden['id'] . ' - ' . $this->txt($orden['proveedor']), true);
     }
 
-    private function txt($str)
-    {
+    private function txt($str) {
         return iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $str ?? '');
     }
 
-    private function fmt($valor)
-    {
+    private function fmt($valor) {
         $moneda = $this->orden['moneda'] ?? 'CLP';
         if ($moneda === 'CLP') {
-            return '$' . number_format((float) $valor, 0, '', '.');
+            return '$' . number_format((float)$valor, 0, '', '.');
         }
-        return number_format((float) $valor, 2, '.', ',');
+        return number_format((float)$valor, 2, '.', ',');
     }
 
-    // Cabecera Automática (Se ejecuta al hacer AddPage)
-    function Header()
-    {
-        // Evitar renderizar si no hay datos cargados aún
-        if (empty($this->orden))
-            return;
+    // --- CABECERA DE PÁGINA ---
+    function Header() {
+        if (empty($this->orden)) return;
 
-        // 1. Franja Azul
+        // 1. Franja Decorativa Superior
         $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
-        $this->Rect(0, 0, 210, 20, 'F');
+        $this->Rect(0, 0, 210, 5, 'F');
 
-        // 2. Logo / Título Empresa
-        $this->SetY(5);
-        $this->SetX(10);
-        $this->SetFont('Arial', 'B', 20);
-        $this->SetTextColor(255);
-        $this->Cell(50, 10, 'INSUBAN', 0, 0);
+        // 2. Logo
+        $logoPath = __DIR__ . '/../../../../public_html/assets/img/LogoInsuban_SinFondo.png';
+        $yStart = 15;
+        if (file_exists($logoPath)) {
+            $this->Image($logoPath, 10, 8, 75); 
+            $yStart = 30;
+        }
 
-        // 3. Título Documento
-        $this->SetXY(110, 5);
-        $this->SetFont('Arial', 'B', 22);
-        $this->Cell(90, 10, 'ORDEN DE COMPRA', 0, 0, 'R');
-
-        // 4. Datos Cabecera (Derecha)
+        // 3. Datos Empresa
+        $this->SetXY(10, $yStart);
+        $this->SetFont('Arial', 'B', 12);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(90, 5, $this->txt($this->empresa['nombre']), 0, 1);
+        
+        $this->SetFont('Arial', 'B', 8);
         $this->SetTextColor(50);
-        $this->SetY(30);
+        $this->Cell(90, 4, 'RUT: ' . $this->empresa['rut'], 0, 1);
+        
+        $this->SetFont('Arial', '', 8);
+        $this->Cell(90, 4, $this->txt($this->empresa['giro']), 0, 1);
+        $this->Cell(90, 4, $this->txt($this->empresa['dir']), 0, 1);
+        
+        $emailContacto = !empty($this->orden['creador_email']) ? $this->orden['creador_email'] : $this->empresa['mail'];
+        $this->Cell(90, 4, $emailContacto, 0, 1);
 
-        $this->SetX(120);
-        $this->SetFont('Arial', 'B', 10);
-        $this->Cell(35, 6, $this->txt('N° Orden:'), 0, 0, 'R');
-        $this->SetFont('Arial', '', 10);
-        $this->Cell(45, 6, '#' . ($this->orden['id'] ?? '---'), 0, 1, 'R');
+        // 4. Datos Orden
+        $this->SetY(10);
+        $this->SetX(110);
+        
+        $this->SetFont('Arial', 'B', 20);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(90, 10, 'ORDEN DE COMPRA', 0, 1, 'R');
+        
+        $this->SetTextColor(0);
+        $this->SetFont('Arial', 'B', 9);
+        
+        $xLabel = 140;
+        $yDat = 25;
 
-        $this->SetX(120);
-        $this->SetFont('Arial', 'B', 10);
-        $this->Cell(35, 6, 'Fecha:', 0, 0, 'R');
-        $this->SetFont('Arial', '', 10);
-        $fecha = isset($this->orden['fecha_creacion']) ? date('d/m/Y', strtotime($this->orden['fecha_creacion'])) : date('d/m/Y');
-        $this->Cell(45, 6, $fecha, 0, 1, 'R');
+        // N° Orden
+        $this->SetXY($xLabel, $yDat);
+        $this->Cell(30, 5, $this->txt('N° ORDEN:'), 0, 0, 'R');
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(30, 5, '#' . ($this->orden['id'] ?? '--'), 0, 1, 'R');
+
+        // Fecha
+        $yDat += 5;
+        $this->SetXY($xLabel, $yDat);
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 5, 'FECHA:', 0, 0, 'R');
+        $this->SetFont('Arial', '', 9);
+        $fecha = isset($this->orden['fecha_creacion']) ? date('d/m/Y', strtotime($this->orden['fecha_creacion'])) : '-';
+        $this->Cell(30, 5, $fecha, 0, 1, 'R');
+
+        // Emitido Por
+        $yDat += 5;
+        $this->SetXY($xLabel, $yDat);
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 5, 'EMITIDO POR:', 0, 0, 'R');
+        $this->SetFont('Arial', '', 9);
+        $creador = ($this->orden['creador_nombre'] ?? '') . ' ' . substr(($this->orden['creador_apellido'] ?? ''), 0, 1) . '.'; 
+        $this->Cell(30, 5, $this->txt($creador), 0, 1, 'R');
 
         if (!empty($this->orden['numero_cotizacion'])) {
-            $this->SetX(120);
-            $this->SetFont('Arial', 'B', 10);
-            $this->Cell(35, 6, $this->txt('Ref. Cotización:'), 0, 0, 'R');
-            $this->SetFont('Arial', '', 10);
-            $this->Cell(45, 6, $this->txt($this->orden['numero_cotizacion']), 0, 1, 'R');
+            $yDat += 5;
+            $this->SetXY($xLabel, $yDat);
+            $this->SetFont('Arial', 'B', 9);
+            $this->Cell(30, 5, 'REF. COTIZ:', 0, 0, 'R');
+            $this->SetFont('Arial', '', 9);
+            $this->Cell(30, 5, $this->txt($this->orden['numero_cotizacion']), 0, 1, 'R');
         }
 
-        // 5. Datos Proveedor (Izquierda)
-        $this->SetY(40);
-        $this->SetFont('Arial', 'B', 11);
-        $this->SetFillColor($this->colores['header_bg'][0], $this->colores['header_bg'][1], $this->colores['header_bg'][2]);
-        $this->Cell(95, 8, '  DATOS DEL PROVEEDOR', 0, 1, 'L', true);
-
+        // 5. Datos Proveedor
+        $this->SetY(60); 
         $this->SetFont('Arial', 'B', 10);
-        $this->Cell(95, 6, $this->txt($this->orden['proveedor'] ?? ''), 0, 1);
-
+        $this->SetFillColor($this->colores['table_header'][0], $this->colores['table_header'][1], $this->colores['table_header'][2]);
+        $this->Cell(0, 6, '  DATOS DEL PROVEEDOR', 0, 1, 'L', true);
+        
+        $this->Ln(2);
+        
+        // Fila 1: Razón Social y RUT
+        $yProv = $this->GetY();
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(28, 5, 'RAZON SOCIAL:', 0, 0);
+        
         $this->SetFont('Arial', '', 9);
-        $this->Cell(20, 5, 'RUT:', 0, 0);
-        $this->Cell(75, 5, $this->txt($this->orden['proveedor_rut'] ?? ''), 0, 1);
+        $provNombre = mb_convert_case($this->orden['proveedor'] ?? '', MB_CASE_UPPER, "UTF-8");
+        
+        $xCurrent = $this->GetX();
+        $this->MultiCell(110, 5, $this->txt($provNombre), 0, 'L');
+        $yAfterName = $this->GetY();
 
-        $this->Cell(20, 5, $this->txt('Dirección:'), 0, 0);
-        $this->Cell(75, 5, $this->txt($this->orden['proveedor_direccion'] ?? 'N/A'), 0, 1);
+        // RUT
+        $this->SetXY(150, $yProv);
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(10, 5, 'RUT:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(30, 5, $this->txt($this->orden['proveedor_rut'] ?? ''), 0, 1);
 
-        $this->Cell(20, 5, $this->txt('Teléfono:'), 0, 0);
-        $this->Cell(75, 5, $this->txt($this->orden['proveedor_telefono'] ?? 'N/A'), 0, 1);
+        $this->SetY($yAfterName + 1);
 
-        $this->Cell(20, 5, 'Contacto:', 0, 0);
-        $this->Cell(75, 5, $this->txt($this->orden['contacto_vendedor'] ?? 'N/A'), 0, 1);
+        // Fila 2: Dirección y Teléfono
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(28, 5, 'DIRECCION:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $provDir = mb_convert_case($this->orden['proveedor_direccion'] ?? '', MB_CASE_TITLE, "UTF-8");
+        if (strlen($provDir) > 90) $provDir = substr($provDir, 0, 87) . '...';
+        $this->Cell(110, 5, $this->txt($provDir), 0, 1);
 
-        $this->Ln(10);
+        // Fila 3: Contacto y Teléfono
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(28, 5, 'ATENCION:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $provCont = mb_convert_case($this->orden['contacto_vendedor'] ?? '', MB_CASE_TITLE, "UTF-8");
+        $this->Cell(60, 5, $this->txt($provCont), 0, 0);
+
+        $this->SetX(150);
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(15, 5, 'FONO:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(40, 5, $this->txt($this->orden['proveedor_telefono'] ?? '-'), 0, 1);
+
+        $this->Ln(5);
     }
 
-    function Footer()
-    {
+    // --- PIE DE PÁGINA ---
+    function Footer() {
         $this->SetY(-15);
         $this->SetFont('Arial', 'I', 8);
         $this->SetTextColor(128);
-        $this->Cell(0, 10, $this->txt('Página ') . $this->PageNo() . ' / {nb}', 0, 0, 'C');
+        $this->Cell(0, 10, $this->txt('Página ') . $this->PageNo() . ' / {nb} - Generado por Sistema InsuOrders', 0, 0, 'C');
     }
 
-    // MÉTODO PRINCIPAL
-    public function generarPDF($detalles)
-    {
+    // --- CUERPO DEL PDF ---
+    public function generarPDF($detalles) {
         $this->AliasNbPages();
-        $this->AddPage(); // Esto invoca Header() automáticamente
-
-        // --- TABLA ITEMS ---
-        $this->SetFont('Arial', 'B', 9);
+        $this->AddPage();
+        
+        // 1. Cabecera Tabla
+        $this->SetFont('Arial', 'B', 8);
         $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->SetTextColor(255);
-
-        // Anchos: SKU(25), Desc(85), Cant(15), Unid(15), Precio(25), Total(25)
-        $w = [25, 85, 15, 15, 25, 25];
-        $header = ['SKU', 'DESCRIPCION', 'CANT', 'UNID', 'PRECIO', 'TOTAL'];
-
+        
+        $w = [110, 15, 15, 25, 25]; 
+        $header = ['DESCRIPCION DETALLADA', 'CANT', 'UNID', 'PRECIO UNIT.', 'TOTAL'];
+        
         foreach ($header as $i => $h) {
-            $this->Cell($w[$i], 8, $this->txt($h), 0, 0, 'C', true);
+            $align = ($i >= 3) ? 'R' : 'C'; if($i==0) $align='L';
+            $this->Cell($w[$i], 8, $this->txt($h), 0, 0, $align, true);
         }
         $this->Ln();
 
-        // Filas
-        $this->SetFont('Arial', '', 9);
+        // 2. Filas
+        $this->SetFont('Arial', '', 8);
         $this->SetTextColor(0);
         $fill = false;
 
         foreach ($detalles as $row) {
             $this->SetFillColor(245, 245, 245);
+            
+            $desc = $this->txt($row['insumo']);
+            if (strlen($desc) > 85) $desc = substr($desc, 0, 82) . '...';
 
-            // Altura dinámica
-            $nb = $this->NbLines($w[1], $this->txt($row['insumo']));
-            $h = 7 * max($nb, 1);
-
-            // Salto página inteligente
-            if ($this->GetY() + $h > 250)
+            // Salto de Página
+            if ($this->GetY() > 230) {
                 $this->AddPage();
+                $this->SetFont('Arial', 'B', 8);
+                $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+                $this->SetTextColor(255);
+                foreach ($header as $i => $h) {
+                    $align = ($i >= 3) ? 'R' : 'C'; if($i==0) $align='L';
+                    $this->Cell($w[$i], 8, $this->txt($h), 0, 0, $align, true);
+                }
+                $this->Ln();
+                $this->SetFont('Arial', '', 8);
+                $this->SetTextColor(0);
+            }
 
-            $this->Cell($w[0], $h, $this->txt($row['codigo_sku']), 0, 0, 'C', $fill);
-
-            // Descripción MultiCell
-            $x = $this->GetX();
-            $y = $this->GetY();
-            $this->MultiCell($w[1], 7, $this->txt($row['insumo']), 0, 'L', $fill);
-            $this->SetXY($x + $w[1], $y);
-
-            $this->Cell($w[2], $h, floatval($row['cantidad_solicitada']), 0, 0, 'C', $fill);
-            $this->Cell($w[3], $h, $this->txt($row['unidad_medida']), 0, 0, 'C', $fill);
-            $this->Cell($w[4], $h, $this->fmt($row['precio_unitario']), 0, 0, 'R', $fill);
-            $this->Cell($w[5], $h, $this->fmt($row['total_linea']), 0, 1, 'R', $fill);
-
+            $this->Cell($w[0], 7, $desc, 0, 0, 'L', $fill);
+            $this->Cell($w[1], 7, floatval($row['cantidad_solicitada']), 0, 0, 'C', $fill);
+            $this->Cell($w[2], 7, $this->txt($row['unidad_medida']), 0, 0, 'C', $fill);
+            $this->Cell($w[3], 7, $this->fmt($row['precio_unitario']), 0, 0, 'R', $fill);
+            $this->Cell($w[4], 7, $this->fmt($row['total_linea']), 0, 1, 'R', $fill);
+            
             $fill = !$fill;
+            $this->Ln();
         }
-        $this->Ln(5);
-
-        // --- TOTALES (Footer de Cálculos) ---
-        // Verificar espacio
-        if ($this->GetY() + 40 > 270)
-            $this->AddPage();
-
+        
         $this->SetDrawColor(200);
         $this->Line(10, $this->GetY(), 200, $this->GetY());
-        $this->Ln(5);
 
-        $xStart = 130;
+        // --- FOOTER DE TOTALES ---
+        if ($this->GetY() > 210) {
+            $this->AddPage();
+        }
+        
+        // Posición Fija desde el fondo
+        $this->SetY(-55);
+
+        $xStart = 135; 
         $wLabel = 30;
-        $wVal = 40;
+        $wVal = 35;
 
-        // Neto
+        // Subtotal
         $this->SetX($xStart);
-        $this->SetFont('Arial', 'B', 10);
-        $this->Cell($wLabel, 6, 'Subtotal:', 0, 0, 'R');
-        $this->SetFont('Arial', '', 10);
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell($wLabel, 6, 'Subtotal Neto:', 0, 0, 'R');
+        $this->SetFont('Arial', '', 9);
         $this->Cell($wVal, 6, $this->fmt($this->orden['monto_neto'] ?? 0), 0, 1, 'R');
 
-        // IVA Dinámico
+        // IVA
         $pct = isset($this->orden['impuesto_porcentaje']) ? floatval($this->orden['impuesto_porcentaje']) : 19;
         $this->SetX($xStart);
-        $this->SetFont('Arial', 'B', 10);
+        $this->SetFont('Arial', 'B', 9);
         $this->Cell($wLabel, 6, "I.V.A ($pct%):", 0, 0, 'R');
-        $this->SetFont('Arial', '', 10);
+        $this->SetFont('Arial', '', 9);
         $this->Cell($wVal, 6, $this->fmt($this->orden['impuesto'] ?? 0), 0, 1, 'R');
 
         // Total
         $this->SetX($xStart);
-        $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
-        $this->SetTextColor(255);
+        $this->SetFillColor($this->colores['total_bg'][0], $this->colores['total_bg'][1], $this->colores['total_bg'][2]);
         $this->SetFont('Arial', 'B', 11);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell($wLabel, 10, 'TOTAL:', 0, 0, 'R', true);
         $this->Cell($wVal, 10, $this->fmt($this->orden['monto_total'] ?? 0), 0, 1, 'R', true);
         $this->SetTextColor(0);
 
         // --- FIRMAS ---
-        $this->SetY(-50);
-        $this->SetFont('Arial', '', 8);
-        $this->Cell(100, 5, 'CONDICIONES:', 0, 1);
-        $this->MultiCell(100, 4, "1. Indicar Nro de OC en Factura.\n2. Recepcion Lun-Vie 08:30-17:00.\n3. Insuban Ltda.", 0, 'L');
+        $this->SetY(-45);
+        $yFirma = $this->GetY();
 
-        $this->SetXY(130, -45);
-        $this->Cell(60, 5, 'AUTORIZADO POR', 0, 1, 'C');
-        $this->Line(135, $this->GetY() + 15, 185, $this->GetY() + 15);
-        $this->SetXY(130, -25);
-        $nombreCreador = ($this->orden['creador_nombre'] ?? '') . ' ' . ($this->orden['creador_apellido'] ?? '');
-        $this->Cell(60, 5, $this->txt($nombreCreador), 0, 1, 'C');
+        // Condiciones
+        $this->SetXY(10, $yFirma);
+        $this->SetFont('Arial', '', 7);
+        $this->SetTextColor(100);
+        $this->Cell(100, 4, 'CONDICIONES GENERALES:', 0, 1);
+        $this->MultiCell(90, 3, 
+            "1. Sirvase citar el Nro de Orden en Facturas y Guias.\n".
+            "2. Horario Recepcion: Lun a Vie 07:00 a 17:00 hrs.\n".
+            "3. La facturacion debe ser a nombre de Procesadora Insuban Spa.", 
+            0, 'L');
 
         return $this->Output('S');
     }
 
-    // Helper MultiCell Height
-    function NbLines($w, $txt)
-    {
-        $cw = &$this->CurrentFont['cw'];
-        if ($w == 0)
-            $w = $this->w - $this->rMargin - $this->x;
-        $wmax = ($w - 2 * $this->cMargin) * 1000 / $this->FontSize;
-        $s = str_replace("\r", '', $txt);
-        $nb = strlen($s);
-        if ($nb > 0 && $s[$nb - 1] == "\n")
-            $nb--;
-        $sep = -1;
-        $i = 0;
-        $j = 0;
-        $l = 0;
-        $nl = 1;
-        while ($i < $nb) {
-            $c = $s[$i];
-            if ($c == "\n") {
-                $i++;
-                $sep = -1;
-                $j = $i;
-                $l = 0;
-                $nl++;
-                continue;
-            }
-            if ($c == ' ')
-                $sep = $i;
-            $l += $cw[ord($c)];
-            if ($l > $wmax) {
-                if ($sep == -1) {
-                    if ($i == $j)
-                        $i++;
-                } else
-                    $i = $sep + 1;
-                $sep = -1;
-                $j = $i;
-                $l = 0;
-                $nl++;
-            } else
-                $i++;
+    public function generarPdfEntrega($ot, $entregas) {
+        $this->AliasNbPages();
+        $this->AddPage();
+        
+        // 1. Cabecera (Simplificada pero corporativa)
+        $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Rect(0, 0, 210, 5, 'F');
+        
+        $this->SetY(15);
+        $this->SetFont('Arial', 'B', 16);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(0, 10, 'ACTA DE ENTREGA DE MATERIALES', 0, 1, 'C');
+        
+        $this->SetFont('Arial', 'B', 12);
+        $this->SetTextColor(50);
+        $this->Cell(0, 8, 'ORDEN DE TRABAJO #' . $ot['id'], 0, 1, 'C');
+        $this->Ln(5);
+
+        // 2. Datos OT
+        $this->SetFont('Arial', 'B', 10);
+        $this->SetFillColor($this->colores['table_header'][0], $this->colores['table_header'][1], $this->colores['table_header'][2]);
+        $this->Cell(0, 6, '  INFORMACION DEL TRABAJO', 0, 1, 'L', true);
+        $this->Ln(2);
+
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(25, 5, 'SOLICITANTE:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $solicitante = $ot['solicitante_nombre'] . ' ' . $ot['solicitante_apellido'];
+        $this->Cell(80, 5, $this->txt($solicitante), 0, 0);
+
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(20, 5, 'FECHA:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(40, 5, date('d/m/Y', strtotime($ot['fecha_solicitud'])), 0, 1);
+
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(25, 5, 'MAQUINA:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $maquina = $ot['activo'] ? $ot['activo'] . " (" . $ot['activo_codigo'] . ")" : "TRABAJO GENERAL";
+        $this->Cell(80, 5, $this->txt($maquina), 0, 0);
+
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(20, 5, 'C. COSTO:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        // Prioridad: CC de la OT (General) > CC del Activo > N/A
+        $cc = $ot['centro_costo_ot'] ? $ot['centro_costo_ot'] : ($ot['activo_centro_costo'] ?? 'N/A');
+        $this->Cell(40, 5, $cc, 0, 1);
+
+        $this->Ln(5);
+
+        // 3. Tabla Entregas
+        $this->SetFont('Arial', 'B', 9);
+        $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->SetTextColor(255);
+
+        $w = [35, 80, 20, 55]; // Fecha, Material, Cant, Receptor
+        $h = ['FECHA/HORA', 'MATERIAL ENTREGADO', 'CANT', 'RECIBIDO POR'];
+
+        foreach ($h as $i => $val) {
+            $this->Cell($w[$i], 7, $val, 0, 0, 'C', true);
         }
-        return $nl;
+        $this->Ln();
+
+        $this->SetFont('Arial', '', 8);
+        $this->SetTextColor(0);
+        $fill = false;
+
+        if (empty($entregas)) {
+            $this->Cell(190, 10, 'No se han registrado entregas para esta OT.', 1, 1, 'C');
+        } else {
+            foreach ($entregas as $row) {
+                $this->SetFillColor(245, 245, 245);
+                
+                $desc = $this->txt($row['nombre']);
+                if (strlen($desc) > 45) $desc = substr($desc, 0, 42) . '...';
+
+                $this->Cell($w[0], 7, date('d/m/Y H:i', strtotime($row['fecha'])), 0, 0, 'C', $fill);
+                $this->Cell($w[1], 7, $desc, 0, 0, 'L', $fill);
+                $this->Cell($w[2], 7, floatval($row['cantidad']), 0, 0, 'C', $fill);
+                
+                $receptor = $this->txt($row['receptor'] ?? 'Sin Firma');
+                $this->Cell($w[3], 7, substr($receptor, 0, 30), 0, 1, 'L', $fill);
+                
+                $fill = !$fill;
+            }
+        }
+
+        $this->Ln(20);
+
+        // 4. Firmas
+        $this->SetY(-50);
+        $this->SetFont('Arial', 'B', 8);
+        
+        $this->Cell(60, 5, 'ENTREGADO POR (BODEGA)', 0, 0, 'C');
+        $this->Cell(70, 5, '', 0, 0);
+        $this->Cell(60, 5, 'RECIBIDO CONFORME (MANT.)', 0, 1, 'C');
+
+        $this->Line(15, $this->GetY() + 15, 75, $this->GetY() + 15);
+        $this->Line(145, $this->GetY() + 15, 205, $this->GetY() + 15);
+
+        return $this->Output('S');
     }
 }

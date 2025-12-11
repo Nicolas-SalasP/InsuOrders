@@ -6,91 +6,96 @@ import ConfirmModal from '../components/ConfirmModal';
 
 const Mantencion = () => {
     const [solicitudes, setSolicitudes] = useState([]);
+    const [activos, setActivos] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Estados UI
+    // Estados de Filtros
+    const [filtroOT, setFiltroOT] = useState('');
+    const [filtroMaquina, setFiltroMaquina] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState('');
+    const [filtroFecha, setFiltroFecha] = useState('');
+
+    // Estados UI Modales
     const [showModal, setShowModal] = useState(false);
     const [otEditar, setOtEditar] = useState(null);
-
-    // Modales Auxiliares
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, id: null });
 
-    useEffect(() => { cargarData(); }, []);
+    useEffect(() => {
+        cargarData();
+        cargarActivos();
+    }, []);
 
     const cargarData = async () => {
+        setLoading(true);
         try {
             const res = await api.get('/index.php/mantencion');
             if (res.data.success) setSolicitudes(res.data.data);
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
+    const cargarActivos = async () => {
+        try {
+            const res = await api.get('/index.php/mantencion/activos');
+            if (res.data.success) setActivos(res.data.data);
+        } catch (e) { }
+    };
+
+    // --- FILTRADO ---
+    const solicitudesFiltradas = solicitudes.filter(s => {
+        const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
+        const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
+        const matchMaquina = !filtroMaquina || maquinaStr.toLowerCase().includes(filtroMaquina.toLowerCase());
+        const matchEstado = !filtroEstado || s.estado === filtroEstado;
+        const fechaOT = s.fecha_solicitud ? s.fecha_solicitud.split(' ')[0] : '';
+        const matchFecha = !filtroFecha || fechaOT === filtroFecha;
+
+        return matchOT && matchMaquina && matchEstado && matchFecha;
+    });
+
     const handleNew = () => { setOtEditar(null); setShowModal(true); };
+    const handleEdit = (ot) => { setOtEditar(ot); setShowModal(true); };
 
-    const handleEdit = (ot) => {
-        setOtEditar(ot); 
-        setShowModal(true);
-    };
-
-    const solicitarAnulacion = (id) => {
-        setConfirm({ show: true, id: id });
-    };
+    const solicitarAnulacion = (id) => setConfirm({ show: true, id: id });
 
     const confirmarAnulacion = async () => {
         setConfirm({ ...confirm, show: false });
         try {
             await api.delete(`/index.php/mantencion?id=${confirm.id}`);
             cargarData();
-            setMsg({ show: true, title: "Anulada", text: "La Orden de Trabajo ha sido anulada.", type: "success" });
+            setMsg({ show: true, title: "Anulada", text: "OT Anulada correctamente.", type: "success" });
         } catch (error) {
-            setMsg({ show: true, title: "Error", text: "No se pudo anular la solicitud.", type: "error" });
+            setMsg({ show: true, title: "Error", text: "No se pudo anular.", type: "error" });
         }
     };
 
-    // Nueva función para cerrar OT y liberar remanentes
     const handleFinalizar = async (id) => {
-        if (!window.confirm("¿Deseas FINALIZAR esta OT?\n\n- Se cancelarán los ítems pendientes de compra.\n- Se devolverán al inventario los ítems reservados no retirados.\n- La OT quedará como 'Completada'.")) {
-            return;
-        }
-
+        if (!window.confirm("¿Finalizar OT? Si no hubo consumo, quedará como CANCELADA.")) return;
         try {
-            await api.post('/index.php/mantencion/finalizar', { id });
-            setMsg({ show: true, title: "Finalizada", text: "La OT ha sido cerrada correctamente.", type: "success" });
+            const res = await api.post('/index.php/mantencion/finalizar', { id });
+            setMsg({ show: true, title: "Finalizada", text: res.data.message, type: "success" });
             cargarData();
         } catch (error) {
-            setMsg({ show: true, title: "Error", text: "No se pudo finalizar.", type: "error" });
+            setMsg({ show: true, title: "Error", text: "Error al finalizar.", type: "error" });
         }
     };
 
     const handleExportar = () => {
-        setLoading(true);
-        api.get('/index.php/exportar?modulo=mantencion', { responseType: 'blob' })
-            .then((res) => {
-                const url = window.URL.createObjectURL(new Blob([res.data]));
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', `Mantencion_${new Date().toISOString().slice(0,10)}.xlsx`);
-                document.body.appendChild(link);
-                link.click();
-            })
-            .catch(() => alert("Error al exportar"))
-            .finally(() => setLoading(false));
+        window.open('http://localhost/insuorders/public_html/api/index.php/exportar?modulo=mantencion', '_blank');
+    };
+
+    const getBadge = (estado) => {
+        if (estado === 'Pendiente') return 'bg-warning text-dark';
+        if (estado === 'En Proceso') return 'bg-primary';
+        if (estado === 'Completada') return 'bg-success';
+        if (estado === 'Anulada' || estado === 'Cancelada') return 'bg-danger';
+        return 'bg-secondary';
     };
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
-            {/* Modales Auxiliares */}
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
-
-            <ConfirmModal
-                show={confirm.show}
-                onClose={() => setConfirm({ ...confirm, show: false })}
-                onConfirm={confirmarAnulacion}
-                title="Anular Solicitud"
-                message="¿Estás seguro de anular esta OT? Esta acción liberará los recursos y no se puede deshacer."
-                confirmText="Sí, Anular"
-                type="danger"
-            />
+            <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={confirmarAnulacion} title="Anular OT" message="¿Estás seguro?" confirmText="Sí, Anular" type="danger" />
 
             <NuevaSolicitudModal show={showModal} onClose={() => setShowModal(false)} onSave={cargarData} otEditar={otEditar} />
 
@@ -98,12 +103,39 @@ const Mantencion = () => {
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-wrench-adjustable me-2"></i>Mantención</h4>
                     <div>
-                        <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
-                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
-                        </button>
-                        <button className="btn btn-warning fw-bold shadow-sm" onClick={handleNew}>
-                            <i className="bi bi-plus-lg me-2"></i>Crear OT
-                        </button>
+                        <button className="btn btn-outline-success me-2" onClick={handleExportar}><i className="bi bi-file-excel"></i> Exportar</button>
+                        <button className="btn btn-warning fw-bold shadow-sm" onClick={handleNew}><i className="bi bi-plus-lg"></i> Crear OT</button>
+                    </div>
+                </div>
+
+                {/* FILTROS */}
+                <div className="bg-light p-3 border-bottom">
+                    <div className="row g-2">
+                        <div className="col-md-2">
+                            <input type="text" className="form-control" placeholder="# OT" value={filtroOT} onChange={e => setFiltroOT(e.target.value)} />
+                        </div>
+                        <div className="col-md-3">
+                            <input type="text" className="form-control" placeholder="Buscar Máquina..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
+                        </div>
+                        <div className="col-md-2">
+                            <select className="form-select" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+                                <option value="">Estado: Todos</option>
+                                <option value="Pendiente">Pendiente</option>
+                                <option value="En Proceso">En Proceso</option>
+                                <option value="Completada">Completada</option>
+                                <option value="Anulada">Anulada</option>
+                            </select>
+                        </div>
+                        <div className="col-md-3">
+                            <input type="date" className="form-control" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} />
+                        </div>
+                        <div className="col-md-2 text-end">
+                            {(filtroOT || filtroMaquina || filtroEstado || filtroFecha) && (
+                                <button className="btn btn-outline-secondary w-100" onClick={() => { setFiltroOT(''); setFiltroMaquina(''); setFiltroEstado(''); setFiltroFecha(''); }}>
+                                    <i className="bi bi-x-lg"></i> Limpiar
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -113,7 +145,7 @@ const Mantencion = () => {
                             <thead className="bg-light sticky-top">
                                 <tr>
                                     <th className="ps-4">OT #</th>
-                                    <th>Máquina</th>
+                                    <th>Máquina / Activo</th>
                                     <th>Descripción</th>
                                     <th>Solicitante</th>
                                     <th>Fecha</th>
@@ -122,49 +154,35 @@ const Mantencion = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {solicitudes.map(s => (
+                                {solicitudesFiltradas.map(s => (
                                     <tr key={s.id} className={s.estado === 'Anulada' ? 'bg-light text-muted' : ''}>
                                         <td className="ps-4 fw-bold">#{s.id}</td>
                                         <td>
                                             <div className="fw-bold text-dark">{s.activo || 'General'}</div>
-                                            <small className="text-muted">{s.activo_codigo}</small>
+                                            {s.activo_codigo && <small className="text-muted">{s.activo_codigo}</small>}
                                         </td>
                                         <td><small className="text-truncate d-block" style={{ maxWidth: '200px' }}>{s.descripcion_trabajo || '-'}</small></td>
                                         <td>{s.solicitante_nombre} {s.solicitante_apellido}</td>
                                         <td>{new Date(s.fecha_solicitud).toLocaleDateString()}</td>
-                                        <td>
-                                            <span className={`badge ${
-                                                s.estado === 'Pendiente' ? 'bg-warning text-dark' : 
-                                                s.estado === 'Anulada' ? 'bg-secondary' : 
-                                                s.estado === 'Completada' ? 'bg-success' : 'bg-primary'
-                                            }`}>
-                                                {s.estado}
-                                            </span>
-                                        </td>
+                                        <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
                                         <td className="text-end pe-4">
-                                            
-                                            {/* Ver Detalle / Editar (Disponible siempre, el modal gestiona permisos) */}
-                                            <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(s)} title="Ver Detalle / Trazabilidad">
-                                                <i className="bi bi-eye"></i>
-                                            </button>
 
-                                            {/* Finalizar (Nuevo) - Solo si no está terminada */}
+                                            {/* PDF */}
+                                            <a href={`http://localhost/insuorders/public_html/api/index.php/mantencion/pdf?id=${s.id}&type=solicitud`} target="_blank" className="btn btn-sm btn-outline-dark me-1"><i className="bi bi-file-earmark-text"></i></a>
+
+                                            <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(s)}><i className="bi bi-eye"></i></button>
+
+                                            {/* Solo mostrar acciones si no está terminada */}
                                             {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
-                                                <button className="btn btn-sm btn-success me-2" onClick={() => handleFinalizar(s.id)} title="Finalizar / Cerrar OT">
-                                                    <i className="bi bi-check2-circle"></i>
-                                                </button>
-                                            )}
-
-                                            {/* Anular (Solo si está pendiente pura) */}
-                                            {s.estado === 'Pendiente' && (
-                                                <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarAnulacion(s.id)} title="Anular">
-                                                    <i className="bi bi-x-circle"></i>
-                                                </button>
+                                                <>
+                                                    <button className="btn btn-sm btn-success me-2" onClick={() => handleFinalizar(s.id)} title="Finalizar/Cerrar"><i className="bi bi-check2-circle"></i></button>
+                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarAnulacion(s.id)} title="Anular"><i className="bi bi-x-circle"></i></button>
+                                                </>
                                             )}
                                         </td>
                                     </tr>
                                 ))}
-                                {solicitudes.length === 0 && <tr><td colSpan="7" className="text-center py-5 text-muted">No hay solicitudes</td></tr>}
+                                {solicitudesFiltradas.length === 0 && <tr><td colSpan="7" className="text-center py-5 text-muted">Sin resultados.</td></tr>}
                             </tbody>
                         </table>
                     )}

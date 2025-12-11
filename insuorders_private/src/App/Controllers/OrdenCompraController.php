@@ -53,16 +53,22 @@ class OrdenCompraController
     }
 
 
-    public function downloadPdf() {
+    public function downloadPdf()
+    {
         if (ob_get_length()) ob_clean(); 
 
         $id = $_GET['id'] ?? null;
         if (!$id) die("ID requerido");
 
         try {
+            $data = $this->service->obtenerDetalleOrden($id);
+            $provName = preg_replace('/[^A-Za-z0-9]/', '_', $data['cabecera']['proveedor'] ?? 'Proveedor');
+            $filename = "OC_{$id}_{$provName}.pdf";
+
             $pdfContent = $this->service->generarPDF($id);
+            
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="Orden_Compra_' . $id . '.pdf"');
+            header('Content-Disposition: inline; filename="' . $filename . '"');
             header('Cache-Control: private, max-age=0, must-revalidate');
             header('Pragma: public');
             echo $pdfContent;
