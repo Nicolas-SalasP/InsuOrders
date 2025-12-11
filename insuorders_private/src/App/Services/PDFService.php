@@ -294,32 +294,33 @@ class PDFService extends FPDF {
         return $this->Output('S');
     }
 
-    public function generarPdfEntrega($ot, $entregas) {
+    // --- NUEVO MÉTODO PARA GENERAR EL PDF DE LA OT ---
+    public function generarPdfOT($ot, $detalles) {
         $this->AliasNbPages();
         $this->AddPage();
-        
-        // 1. Cabecera (Simplificada pero corporativa)
+
+        // 1. Cabecera
         $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Rect(0, 0, 210, 5, 'F');
-        
+
         $this->SetY(15);
         $this->SetFont('Arial', 'B', 16);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
-        $this->Cell(0, 10, 'ACTA DE ENTREGA DE MATERIALES', 0, 1, 'C');
-        
+        $this->Cell(0, 10, 'SOLICITUD DE MATERIALES (OT)', 0, 1, 'C');
+
         $this->SetFont('Arial', 'B', 12);
         $this->SetTextColor(50);
-        $this->Cell(0, 8, 'ORDEN DE TRABAJO #' . $ot['id'], 0, 1, 'C');
+        $this->Cell(0, 8, 'FOLIO #' . $ot['id'], 0, 1, 'C');
         $this->Ln(5);
 
-        // 2. Datos OT
+        // 2. Información General
         $this->SetFont('Arial', 'B', 10);
         $this->SetFillColor($this->colores['table_header'][0], $this->colores['table_header'][1], $this->colores['table_header'][2]);
-        $this->Cell(0, 6, '  INFORMACION DEL TRABAJO', 0, 1, 'L', true);
+        $this->Cell(0, 6, '  DATOS DE LA SOLICITUD', 0, 1, 'L', true);
         $this->Ln(2);
 
         $this->SetFont('Arial', 'B', 9);
-        $this->Cell(25, 5, 'SOLICITANTE:', 0, 0);
+        $this->Cell(30, 5, 'SOLICITANTE:', 0, 0);
         $this->SetFont('Arial', '', 9);
         $solicitante = $ot['solicitante_nombre'] . ' ' . $ot['solicitante_apellido'];
         $this->Cell(80, 5, $this->txt($solicitante), 0, 0);
@@ -327,30 +328,34 @@ class PDFService extends FPDF {
         $this->SetFont('Arial', 'B', 9);
         $this->Cell(20, 5, 'FECHA:', 0, 0);
         $this->SetFont('Arial', '', 9);
-        $this->Cell(40, 5, date('d/m/Y', strtotime($ot['fecha_solicitud'])), 0, 1);
+        $this->Cell(40, 5, date('d/m/Y H:i', strtotime($ot['fecha_solicitud'])), 0, 1);
 
         $this->SetFont('Arial', 'B', 9);
-        $this->Cell(25, 5, 'MAQUINA:', 0, 0);
+        $this->Cell(30, 5, 'MAQUINA:', 0, 0);
         $this->SetFont('Arial', '', 9);
         $maquina = $ot['activo'] ? $ot['activo'] . " (" . $ot['activo_codigo'] . ")" : "TRABAJO GENERAL";
         $this->Cell(80, 5, $this->txt($maquina), 0, 0);
 
         $this->SetFont('Arial', 'B', 9);
-        $this->Cell(20, 5, 'C. COSTO:', 0, 0);
+        $this->Cell(20, 5, 'ESTADO:', 0, 0);
         $this->SetFont('Arial', '', 9);
-        // Prioridad: CC de la OT (General) > CC del Activo > N/A
-        $cc = $ot['centro_costo_ot'] ? $ot['centro_costo_ot'] : ($ot['activo_centro_costo'] ?? 'N/A');
-        $this->Cell(40, 5, $cc, 0, 1);
+        $this->Cell(40, 5, $this->txt($ot['estado']), 0, 1);
 
+        $this->Ln(6);
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 5, 'DESCRIPCION:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->MultiCell(0, 5, $this->txt($ot['descripcion_trabajo'] ?? 'Sin observaciones'), 0, 'L');
         $this->Ln(5);
 
-        // 3. Tabla Entregas
+        // 3. Detalle de Insumos
         $this->SetFont('Arial', 'B', 9);
         $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->SetTextColor(255);
 
-        $w = [35, 80, 20, 55]; // Fecha, Material, Cant, Receptor
-        $h = ['FECHA/HORA', 'MATERIAL ENTREGADO', 'CANT', 'RECIBIDO POR'];
+        // Anchos de columnas
+        $w = [25, 80, 25, 25, 35]; 
+        $h = ['SKU', 'DESCRIPCION', 'SOLIC.', 'ENTREG.', 'ESTADO'];
 
         foreach ($h as $i => $val) {
             $this->Cell($w[$i], 7, $val, 0, 0, 'C', true);
@@ -361,22 +366,25 @@ class PDFService extends FPDF {
         $this->SetTextColor(0);
         $fill = false;
 
-        if (empty($entregas)) {
-            $this->Cell(190, 10, 'No se han registrado entregas para esta OT.', 1, 1, 'C');
+        if (empty($detalles)) {
+            $this->Cell(190, 10, 'No hay insumos asociados.', 1, 1, 'C');
         } else {
-            foreach ($entregas as $row) {
+            foreach ($detalles as $row) {
                 $this->SetFillColor(245, 245, 245);
-                
+
                 $desc = $this->txt($row['nombre']);
                 if (strlen($desc) > 45) $desc = substr($desc, 0, 42) . '...';
 
-                $this->Cell($w[0], 7, date('d/m/Y H:i', strtotime($row['fecha'])), 0, 0, 'C', $fill);
+                // Usamos floatval para limpiar ceros innecesarios (10.00 -> 10)
+                $cantSolicitada = floatval($row['cantidad']);
+                $cantEntregada = isset($row['cantidad_entregada']) ? floatval($row['cantidad_entregada']) : 0;
+
+                $this->Cell($w[0], 7, $row['codigo_sku'], 0, 0, 'C', $fill);
                 $this->Cell($w[1], 7, $desc, 0, 0, 'L', $fill);
-                $this->Cell($w[2], 7, floatval($row['cantidad']), 0, 0, 'C', $fill);
-                
-                $receptor = $this->txt($row['receptor'] ?? 'Sin Firma');
-                $this->Cell($w[3], 7, substr($receptor, 0, 30), 0, 1, 'L', $fill);
-                
+                $this->Cell($w[2], 7, $cantSolicitada . ' ' . $this->txt($row['unidad_medida']), 0, 0, 'C', $fill);
+                $this->Cell($w[3], 7, $cantEntregada, 0, 0, 'C', $fill);
+                $this->Cell($w[4], 7, $row['estado_linea'], 0, 1, 'C', $fill);
+
                 $fill = !$fill;
             }
         }
@@ -387,9 +395,9 @@ class PDFService extends FPDF {
         $this->SetY(-50);
         $this->SetFont('Arial', 'B', 8);
         
-        $this->Cell(60, 5, 'ENTREGADO POR (BODEGA)', 0, 0, 'C');
+        $this->Cell(60, 5, 'SOLICITADO POR', 0, 0, 'C');
         $this->Cell(70, 5, '', 0, 0);
-        $this->Cell(60, 5, 'RECIBIDO CONFORME (MANT.)', 0, 1, 'C');
+        $this->Cell(60, 5, 'AUTORIZADO POR', 0, 1, 'C');
 
         $this->Line(15, $this->GetY() + 15, 75, $this->GetY() + 15);
         $this->Line(145, $this->GetY() + 15, 205, $this->GetY() + 15);

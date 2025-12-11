@@ -36,7 +36,8 @@ class MantencionService
         $otId = $this->repo->createSolicitud([
             'usuario_id' => $usuarioId,
             'activo_id' => $data['activo_id'],
-            'observacion' => $data['observacion'] ?? ''
+            'observacion' => $data['observacion'] ?? '',
+            'origen_tipo' => $data['origen_tipo'] ?? 'Interna'
         ]);
 
         $this->procesarItems($otId, $data['items']);
@@ -49,15 +50,13 @@ class MantencionService
             throw new \Exception("La OT debe tener insumos.");
 
         $this->repo->updateSolicitud($id, $data['activo_id'], $data['observacion']);
-
         $this->repo->clearDetalles($id);
-
         $this->procesarItems($id, $data['items']);
     }
 
     public function anularOT($id)
     {
-        $this->repo->updateEstado($id, 3);
+        $this->repo->delete($id); // Llama al método delete del repo que marca como anulada
     }
 
     private function procesarItems($otId, $items)
@@ -69,39 +68,47 @@ class MantencionService
         }
 
         foreach ($items as $item) {
-            $stockActual = 0;
-            if (isset($insumos[$item['id']])) {
-                $stockActual = (float) $insumos[$item['id']]['stock_actual'];
-            }
+            $insumoId = $item['id'];
             $cantidadSolicitada = (float) $item['cantidad'];
 
-            // === LÓGICA DE SPLIT INTELIGENTE ===
+            $stockActual = 0;
+            if (isset($insumos[$insumoId])) {
+                $stockActual = (float) $insumos[$insumoId]['stock_actual'];
+            }
+
+            // Lógica de Split Inteligente
             if ($stockActual >= $cantidadSolicitada) {
+                // Hay stock completo -> Para Bodega
                 $this->repo->addDetalle([
                     'solicitud_id' => $otId,
-                    'insumo_id' => $item['id'],
+                    'insumo_id' => $insumoId,
                     'cantidad' => $cantidadSolicitada,
                     'estado_linea' => 'EN_BODEGA'
                 ]);
             } elseif ($stockActual > 0 && $stockActual < $cantidadSolicitada) {
+                // Hay stock parcial -> Split
+                $faltante = $cantidadSolicitada - $stockActual;
+
+                // Parte 1: Lo que hay en bodega
                 $this->repo->addDetalle([
                     'solicitud_id' => $otId,
-                    'insumo_id' => $item['id'],
+                    'insumo_id' => $insumoId,
                     'cantidad' => $stockActual,
                     'estado_linea' => 'EN_BODEGA'
                 ]);
 
-                $faltante = $cantidadSolicitada - $stockActual;
+                // Parte 2: Lo que falta (Para Compras)
                 $this->repo->addDetalle([
                     'solicitud_id' => $otId,
-                    'insumo_id' => $item['id'],
+                    'insumo_id' => $insumoId,
                     'cantidad' => $faltante,
                     'estado_linea' => 'REQUIERE_COMPRA'
                 ]);
             } else {
+                // No hay stock -> Todo para Compras
                 $this->repo->addDetalle([
                     'solicitud_id' => $otId,
-                    'insumo_id' => $item['id'],
+                    'insumo_id' => $insumoId,
                     'cantidad' => $cantidadSolicitada,
                     'estado_linea' => 'REQUIERE_COMPRA'
                 ]);

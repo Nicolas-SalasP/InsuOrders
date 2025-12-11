@@ -6,7 +6,6 @@ import ConfirmModal from '../components/ConfirmModal';
 
 const Mantencion = () => {
     const [solicitudes, setSolicitudes] = useState([]);
-    const [activos, setActivos] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Estados de Filtros
@@ -23,7 +22,6 @@ const Mantencion = () => {
 
     useEffect(() => {
         cargarData();
-        cargarActivos();
     }, []);
 
     const cargarData = async () => {
@@ -34,11 +32,19 @@ const Mantencion = () => {
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
-    const cargarActivos = async () => {
+    // --- NUEVA FUNCIÓN PARA DESCARGAR PDF CON TOKEN ---
+    const handleDownloadPdf = async (id, type) => {
         try {
-            const res = await api.get('/index.php/mantencion/activos');
-            if (res.data.success) setActivos(res.data.data);
-        } catch (e) { }
+            const response = await api.get(`/index.php/mantencion/pdf?id=${id}&type=${type}`, {
+                responseType: 'blob' // Importante: Indica que esperamos un archivo
+            });
+            
+            // Crear una URL temporal para el archivo PDF
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            window.open(url, '_blank');
+        } catch (error) {
+            setMsg({ show: true, title: "Error PDF", text: "No se pudo generar el documento. Intenta nuevamente.", type: "error" });
+        }
     };
 
     // --- FILTRADO ---
@@ -167,8 +173,14 @@ const Mantencion = () => {
                                         <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
                                         <td className="text-end pe-4">
 
-                                            {/* PDF */}
-                                            <a href={`http://localhost/insuorders/public_html/api/index.php/mantencion/pdf?id=${s.id}&type=solicitud`} target="_blank" className="btn btn-sm btn-outline-dark me-1"><i className="bi bi-file-earmark-text"></i></a>
+                                            {/* SOLUCIÓN AL PDF: Usar onClick en lugar de href */}
+                                            <button 
+                                                className="btn btn-sm btn-outline-dark me-1" 
+                                                onClick={() => handleDownloadPdf(s.id, 'solicitud')}
+                                                title="Ver PDF Solicitud"
+                                            >
+                                                <i className="bi bi-file-earmark-text"></i>
+                                            </button>
 
                                             <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(s)}><i className="bi bi-eye"></i></button>
 

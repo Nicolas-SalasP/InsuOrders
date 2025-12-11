@@ -78,21 +78,17 @@ class MantencionRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // [NUEVO] Eliminar documento físico y registro
     public function deleteDoc($docId)
     {
-        // 1. Obtener ruta
         $stmt = $this->db->prepare("SELECT url_archivo FROM activos_docs WHERE id = :id");
         $stmt->execute([':id' => $docId]);
         $doc = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($doc) {
-            // 2. Borrar archivo físico
             $filePath = __DIR__ . '/../../../../public_html' . $doc['url_archivo'];
             if (file_exists($filePath)) {
                 unlink($filePath);
             }
-            // 3. Borrar registro
             $this->db->prepare("DELETE FROM activos_docs WHERE id = :id")->execute([':id' => $docId]);
         }
     }
@@ -131,7 +127,6 @@ class MantencionRepository
         $this->db->prepare($sql)->execute([':a' => $activoId, ':i' => $insumoId]);
     }
 
-    // [NUEVO] Actualizar cantidad específica
     public function updateKitQuantity($activoId, $insumoId, $cantidad)
     {
         $sql = "UPDATE activos_insumos SET cantidad_default = :cant WHERE activo_id = :aid AND insumo_id = :iid";
@@ -159,6 +154,7 @@ class MantencionRepository
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // === AQUÍ ESTABA EL ERROR DE DUPLICIDAD ===
     public function getDetallesOT($id)
     {
         $sql = "SELECT 
@@ -174,15 +170,21 @@ class MantencionRepository
                     i.precio_costo as precio,
                     oc.id as oc_id,
                     prov.nombre as oc_proveedor,
-                    emp.nombre_completo as retirado_por,
-                    DATE_FORMAT(mov.fecha, '%d/%m/%Y %H:%i') as fecha_retiro
+                    
+                    -- CORRECCIÓN: Agrupar nombres para evitar filas duplicadas
+                    GROUP_CONCAT(DISTINCT emp.nombre_completo SEPARATOR ', ') as retirado_por,
+                    MAX(mov.fecha) as fecha_retiro
+
                 FROM detalle_solicitud d
                 JOIN insumos i ON d.insumo_id = i.id
                 LEFT JOIN ordenes_compra oc ON d.orden_compra_id = oc.id
                 LEFT JOIN proveedores prov ON oc.proveedor_id = prov.id
+                -- Solo unimos movimientos de SALIDA (tipo 2)
                 LEFT JOIN movimientos_inventario mov ON mov.referencia_id = d.id AND mov.tipo_movimiento_id = 2
                 LEFT JOIN empleados emp ON mov.empleado_id = emp.id
-                WHERE d.solicitud_id = :id";
+                
+                WHERE d.solicitud_id = :id
+                GROUP BY d.id"; // <--- ESTO EVITA QUE SE DUPLIQUEN LOS INSUMOS
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
@@ -258,7 +260,6 @@ class MantencionRepository
             $stmtCheck->execute([':id' => $id]);
             $totalEntregado = floatval($stmtCheck->fetchColumn());
 
-            // Si no se entregó nada, la OT se anula (5), si no se completa (3)
             $nuevoEstado = ($totalEntregado > 0.001) ? 3 : 5;
 
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = :st, fecha_cierre = NOW() WHERE id = :id")
@@ -266,7 +267,6 @@ class MantencionRepository
 
             $estadoLinea = ($nuevoEstado == 5) ? 'ANULADO' : 'FINALIZADO';
 
-            // Liberar reservas
             $this->db->prepare("UPDATE insumos i 
                                 JOIN detalle_solicitud ds ON i.id = ds.insumo_id
                                 SET i.stock_actual = i.stock_actual + (ds.cantidad - ds.cantidad_entregada)
@@ -296,7 +296,7 @@ class MantencionRepository
 
         try {
             $this->db->beginTransaction();
-            $this->updateEstado($id, 5);
+            $this->updateEstado($id, 6); // Estado 6 = Anulada
             $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'ANULADO' WHERE solicitud_id = :id")->execute([':id' => $id]);
             $this->db->commit();
             echo json_encode(["success" => true]);
@@ -313,7 +313,7 @@ class MantencionRepository
         $sql = "SELECT 
                     ds.id as detalle_id, ds.cantidad, ds.cantidad_entregada,
                     (ds.cantidad - ds.cantidad_entregada) as cantidad_pendiente,
-                    ds.fecha_ingreso as fecha_solicitud,
+                    s.fecha_solicitud as fecha_solicitud,
                     i.id as insumo_id, i.nombre as insumo, i.codigo_sku, i.unidad_medida,
                     s.id as ot_id, u.nombre as solicitante, u.apellido as solicitante_apellido,
                     a.nombre as maquina
@@ -322,7 +322,7 @@ class MantencionRepository
                 JOIN insumos i ON ds.insumo_id = i.id
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id
                 LEFT JOIN activos a ON s.activo_id = a.id
-                WHERE ds.estado_linea IN ('EN_BODEGA', 'PARCIAL', 'RESERVADO', 'PENDIENTE') 
+                WHERE ds.estado_linea IN ('EN_BODEGA', 'PARCIAL', 'RESERVADO') 
                 AND (ds.cantidad - ds.cantidad_entregada) > 0.01
                 AND s.estado_id IN (1, 2, 4)
                 ORDER BY s.id ASC";
@@ -367,6 +367,7 @@ class MantencionRepository
             $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")
                 ->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
 
+            // Si es la primera entrega, pasamos OT a "En Proceso" (2)
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $linea['solicitud_id']]);
 
             $this->db->commit();
