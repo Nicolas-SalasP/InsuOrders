@@ -10,40 +10,52 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
     };
 
     const [formData, setFormData] = useState(initialState);
+    const [imagenFile, setImagenFile] = useState(null); 
+    const [imagenPreview, setImagenPreview] = useState(null); 
     const [listas, setListas] = useState({ categorias: [], sectores: [], ubicaciones: [] });
     const [sectorSeleccionado, setSectorSeleccionado] = useState('');
     const [ubicacionesFiltradas, setUbicacionesFiltradas] = useState([]);
 
+    // 1. Cargar Listas
     useEffect(() => {
         if (show) {
-            api.get('/index.php/inventario/auxiliares').then(res => {
-                if (res.data.success) {
-                    const dataAux = res.data.data;
-                    setListas(dataAux);
-                    if (insumo) {
-                        setFormData({
-                            ...insumo,
-                            stock_actual: parseFloat(insumo.stock_actual),
-                            stock_minimo: parseFloat(insumo.stock_minimo),
-                            precio_costo: parseFloat(insumo.precio_costo),
-                            categoria_id: insumo.categoria_id || '',
-                            ubicacion_id: insumo.ubicacion_id || ''
-                        });
-                        if (insumo.ubicacion_id && dataAux.ubicaciones) {
-                            const ubiEncontrada = dataAux.ubicaciones.find(u => u.id == insumo.ubicacion_id);
-                            if (ubiEncontrada) {
-                                setSectorSeleccionado(ubiEncontrada.sector_id);
+            api.get('/index.php/inventario/auxiliares')
+                .then(res => {
+                    if (res.data.success) {
+                        const dataAux = res.data.data;
+                        setListas(dataAux);
+                        
+                        if (insumo) {
+                            // MODO EDICIÓN
+                            setFormData({
+                                ...insumo,
+                                stock_actual: parseFloat(insumo.stock_actual),
+                                stock_minimo: parseFloat(insumo.stock_minimo),
+                                precio_costo: parseFloat(insumo.precio_costo),
+                                categoria_id: insumo.categoria_id || '',
+                                ubicacion_id: insumo.ubicacion_id || ''
+                            });
+
+                            if (insumo.imagen_url) setImagenPreview(insumo.imagen_url);
+                            
+                            if (insumo.ubicacion_id && dataAux.ubicaciones) {
+                                const ubi = dataAux.ubicaciones.find(u => u.id == insumo.ubicacion_id);
+                                if (ubi) setSectorSeleccionado(ubi.sector_id);
                             }
+                        } else {
+                            // MODO CREACIÓN
+                            setFormData(initialState);
+                            setSectorSeleccionado('');
+                            setImagenFile(null);
+                            setImagenPreview(null);
                         }
-                    } else {
-                        setFormData(initialState);
-                        setSectorSeleccionado('');
                     }
-                }
-            });
+                })
+                .catch(err => console.error("Error listas:", err));
         }
     }, [show, insumo]);
 
+    // 2. Filtro de Ubicaciones
     useEffect(() => {
         if (sectorSeleccionado && listas.ubicaciones.length > 0) {
             const filtradas = listas.ubicaciones.filter(u => u.sector_id == sectorSeleccionado);
@@ -58,14 +70,51 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImagenFile(file);
+            setImagenPreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        // ESTO EVITA LA RECARGA NATIVA DEL FORMULARIO
+        e.preventDefault(); 
+        
         try {
-            await api.post('/index.php/inventario', formData);
-            onSave();
+            const dataToSend = new FormData();
+            
+            Object.keys(formData).forEach(key => {
+                const value = formData[key];
+                dataToSend.append(key, value === null || value === undefined ? '' : value);
+            });
+
+            if (imagenFile) {
+                dataToSend.append('imagen', imagenFile);
+            }
+
+            // Para Axios con FormData dejamos que el navegador gestione el Content-Type
+            const config = { headers: { 'Content-Type': undefined } };
+
+            if (insumo) {
+                // EDITAR: Enviamos ID y método PUT simulado
+                dataToSend.append('id', insumo.id);
+                dataToSend.append('_method', 'PUT'); 
+                await api.post('/index.php/inventario', dataToSend, config);
+            } else {
+                // CREAR
+                await api.post('/index.php/inventario', dataToSend, config);
+            }
+
+            // AQUÍ LLAMAMOS AL PADRE. SI EL PADRE TIENE RELOAD(), LA PAGINA PARPADEA.
+            onSave(); 
             onClose();
         } catch (error) {
-            alert("Error: " + (error.response?.data?.message || "Error desconocido"));
+            console.error("Error:", error);
+            const serverMsg = error.response?.data?.message || error.message;
+            const cleanMsg = typeof serverMsg === 'string' ? serverMsg.replace(/<[^>]*>?/gm, '') : JSON.stringify(serverMsg);
+            alert(`Error al guardar: ${cleanMsg}`);
         }
     };
 
@@ -83,7 +132,6 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                     </div>
                     <form onSubmit={handleSubmit}>
                         <div className="modal-body p-4">
-                            
                             {/* Sección 1: Identificación */}
                             <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold">Identificación</h6>
                             <div className="row g-3 mb-4">
@@ -100,19 +148,23 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                         placeholder="Ej: Cable THHN 12AWG Rojo"
                                         value={formData.nombre} onChange={handleChange} />
                                 </div>
-                                <div className="col-12">
+                                <div className="col-md-8">
                                     <label className="form-label small text-muted">Descripción (Opcional)</label>
-                                    <textarea 
-                                        name="descripcion" 
-                                        className="form-control form-control-sm" 
-                                        rows="2"
-                                        value={formData.descripcion || ''} 
-                                        onChange={handleChange}
-                                    ></textarea>
+                                    <textarea name="descripcion" className="form-control form-control-sm" rows="3"
+                                        value={formData.descripcion || ''} onChange={handleChange}></textarea>
+                                </div>
+                                <div className="col-md-4">
+                                    <label className="form-label small fw-bold">Imagen del Producto</label>
+                                    <input type="file" className="form-control form-control-sm" accept="image/*" onChange={handleImageChange} />
+                                    {imagenPreview && (
+                                        <div className="mt-2 text-center border p-1 rounded">
+                                            <img src={imagenPreview} alt="Preview" style={{ maxHeight: '60px', objectFit: 'contain' }} />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Sección 2: Clasificación y Ubicación */}
+                            {/* Sección 2: Clasificación */}
                             <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold">Clasificación y Ubicación</h6>
                             <div className="row g-3 mb-4">
                                 <div className="col-md-4">
@@ -123,12 +175,9 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                         {listas.categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                                     </select>
                                 </div>
-
-                                {/* Selector de Sector (Padre) */}
                                 <div className="col-md-4">
                                     <label className="form-label small fw-bold">Sector / Área</label>
-                                    <select className="form-select" 
-                                        value={sectorSeleccionado} 
+                                    <select className="form-select" value={sectorSeleccionado} 
                                         onChange={(e) => {
                                             setSectorSeleccionado(e.target.value);
                                             setFormData(prev => ({ ...prev, ubicacion_id: '' }));
@@ -139,15 +188,10 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                         ))}
                                     </select>
                                 </div>
-
-                                {/* Selector de Ubicación (Hijo) */}
                                 <div className="col-md-4">
                                     <label className="form-label small fw-bold">Ubicación Específica</label>
                                     <select name="ubicacion_id" className="form-select" required
-                                        value={formData.ubicacion_id} 
-                                        onChange={handleChange}
-                                        disabled={!sectorSeleccionado} 
-                                    >
+                                        value={formData.ubicacion_id} onChange={handleChange} disabled={!sectorSeleccionado}>
                                         <option value="">Seleccione Ubicación...</option>
                                         {ubicacionesFiltradas.map(u => (
                                             <option key={u.id} value={u.id}>{u.nombre}</option>
@@ -156,7 +200,7 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                 </div>
                             </div>
 
-                            {/* Sección 3: Valores y Stock */}
+                            {/* Sección 3: Valores */}
                             <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold">Valores y Stock Inicial</h6>
                             <div className="row g-3">
                                 <div className="col-md-4">
@@ -187,8 +231,7 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                 <div className="col-md-3">
                                     <label className="form-label small fw-bold text-success">Stock Actual</label>
                                     <input type="number" name="stock_actual" className="form-control" min="0"
-                                        value={formData.stock_actual} onChange={handleChange} 
-                                    />
+                                        value={formData.stock_actual} onChange={handleChange} />
                                 </div>
                                 <div className="col-md-2">
                                     <label className="form-label small fw-bold text-danger">Mínimo</label>
@@ -196,7 +239,6 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                         value={formData.stock_minimo} onChange={handleChange} />
                                 </div>
                             </div>
-
                         </div>
                         <div className="modal-footer bg-light">
                             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>

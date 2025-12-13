@@ -41,6 +41,42 @@ const Mantencion = () => {
         } catch (e) { }
     };
 
+    const descargarPdfOT = async (id) => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/index.php/mantencion/pdf?id=${id}&type=solicitud`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Solicitud_OT_${id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: "No se pudo descargar el PDF", type: "error" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const descargarExcelOT = async (id) => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/index.php/exportar?modulo=detalle_ot&id=${id}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Detalle_OT_${id}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: "No se pudo descargar el Excel", type: "error" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // --- FILTRADO ---
     const solicitudesFiltradas = solicitudes.filter(s => {
         const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
@@ -167,8 +203,23 @@ const Mantencion = () => {
                                         <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
                                         <td className="text-end pe-4">
 
-                                            {/* PDF */}
-                                            <a href={`http://localhost/insuorders/public_html/api/index.php/mantencion/pdf?id=${s.id}&type=solicitud`} target="_blank" className="btn btn-sm btn-outline-dark me-1"><i className="bi bi-file-earmark-text"></i></a>
+                                            {/* PDF Seguro */}
+                                            <button 
+                                                onClick={() => descargarPdfOT(s.id)} 
+                                                className="btn btn-sm btn-outline-dark me-1" 
+                                                title="Ver PDF"
+                                            >
+                                                <i className="bi bi-file-earmark-text"></i>
+                                            </button>
+
+                                            {/* Excel Seguro */}
+                                            <button 
+                                                onClick={() => descargarExcelOT(s.id)} 
+                                                className="btn btn-sm btn-outline-success me-2" 
+                                                title="Descargar Excel"
+                                            >
+                                                <i className="bi bi-file-earmark-excel"></i>
+                                            </button>
 
                                             <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(s)}><i className="bi bi-eye"></i></button>
 

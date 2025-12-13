@@ -17,6 +17,21 @@ const DetalleOrdenModal = ({ show, onClose, ordenId }) => {
         }
     }, [show, ordenId]);
 
+    const handleDownloadPdf = async () => {
+        try {
+            const res = await api.get(`/index.php/compras/pdf?id=${ordenId}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Orden_Compra_${ordenId}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            alert("Error al descargar el archivo.");
+        }
+    };
+
     if (!show) return null;
 
     return (
@@ -91,10 +106,9 @@ const DetalleOrdenModal = ({ show, onClose, ordenId }) => {
                     </div>
                     <div className="modal-footer">
                         <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
-                        <a href={`http://localhost/insuorders/public_html/api/index.php/compras/pdf?id=${ordenId}`}
-                            target="_blank" className="btn btn-danger">
+                        <button onClick={handleDownloadPdf} className="btn btn-danger">
                             <i className="bi bi-file-pdf me-2"></i>Descargar PDF
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>

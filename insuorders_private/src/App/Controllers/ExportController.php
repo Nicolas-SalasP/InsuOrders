@@ -8,7 +8,6 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-// Repositorios
 use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
 use App\Repositories\MantencionRepository;
@@ -19,14 +18,11 @@ class ExportController
 {
     public function exportar($modulo)
     {
-        // Limpiar cualquier salida previa (espacios, warnings) para no corromper el Excel
         if (ob_get_length())
             ob_end_clean();
 
         $spreadsheet = new Spreadsheet();
-
-        // Eliminar hoja por defecto para empezar limpio
-        $spreadsheet->removeSheetByIndex(0);
+        // CORRECCIÓN: No borramos la hoja 0 aquí para evitar el error "Index out of bounds"
 
         $filename = "Reporte.xlsx";
         $sheetIndex = 0;
@@ -52,8 +48,13 @@ class ExportController
                     break;
                 case 'detalle_ot':
                     $id = $_GET['id'] ?? 0;
-                    $this->sheetDetalleOT($spreadsheet, $id);
+                    $this->sheetDetalleOT($spreadsheet, $id); // Usa la hoja 0 por defecto
                     $filename = "Detalle_OT_{$id}.xlsx";
+                    break;
+                case 'detalle_oc':
+                    $id = $_GET['id'] ?? 0;
+                    $this->sheetDetalleOC($spreadsheet, $id); // Usa la hoja 0 por defecto
+                    $filename = "Detalle_OC_{$id}.xlsx";
                     break;
                 case 'bodega':
                     $this->sheetBodega($spreadsheet, $sheetIndex);
@@ -68,7 +69,6 @@ class ExportController
                     $filename = "Usuarios_" . date('Ymd_Hi') . ".xlsx";
                     break;
                 case 'todo':
-                    // MASTER: Generar todas las pestañas
                     $this->sheetInventario($spreadsheet, $sheetIndex++);
                     $this->sheetOTs($spreadsheet, $sheetIndex++);
                     $this->sheetActivos($spreadsheet, $sheetIndex++);
@@ -82,10 +82,8 @@ class ExportController
                     throw new \Exception("Módulo inválido");
             }
 
-            // Activar la primera pestaña
             $spreadsheet->setActiveSheetIndex(0);
 
-            // Headers para la descarga
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             header('Content-Disposition: attachment;filename="' . $filename . '"');
             header('Cache-Control: max-age=0');
@@ -104,7 +102,6 @@ class ExportController
         }
     }
 
-    // --- HELPER HOJAS ---
     private function getSheet(Spreadsheet $s, $index)
     {
         if ($index < $s->getSheetCount()) {
@@ -113,32 +110,18 @@ class ExportController
         return $s->createSheet();
     }
 
-    // --- GENERADORES ---
+    // --- REPORTES ---
 
     private function sheetInventario(Spreadsheet $s, $idx)
     {
         $sheet = $this->getSheet($s, $idx);
         $sheet->setTitle('Inventario');
-
         $data = (new InsumoRepository())->getAll();
-
         $this->fillSheet(
             $sheet,
-            ['ID', 'SKU', 'Nombre', 'Categoría', 'Ubicación Completa', 'Stock Actual', 'Mínimo', 'Unidad', 'Costo Promedio'],
+            ['ID', 'SKU', 'Nombre', 'Categoría', 'Ubicación', 'Stock', 'Mínimo', 'Unidad', 'Costo'],
             $data,
-            fn($d) => [
-                $d['id'],
-                // Limpieza de SKU (Quitar NEW-)
-                str_replace('NEW-', '', $d['codigo_sku']),
-                $d['nombre'],
-                $d['categoria_nombre'],
-                    // AQUÍ ESTÁ EL CAMBIO: Concatenamos manualmente ya que tu repositorio devuelve los campos separados
-                ($d['sector_nombre'] ?? 'General') . ' - ' . ($d['ubicacion_nombre'] ?? 'Sin Ubicación'),
-                $d['stock_actual'],
-                $d['stock_minimo'],
-                $d['unidad_medida'],
-                $d['precio_costo']
-            ]
+            fn($d) => [$d['id'], str_replace('NEW-', '', $d['codigo_sku']), $d['nombre'], $d['categoria_nombre'], $d['ubicaciones_multiples'] ?? 'N/A', $d['stock_actual'], $d['stock_minimo'], $d['unidad_medida'], $d['precio_costo']]
         );
     }
 
@@ -149,7 +132,7 @@ class ExportController
         $data = (new ProveedorRepository())->getAll();
         $this->fillSheet(
             $sheet,
-            ['ID', 'RUT', 'Razón Social', 'Email', 'Teléfono', 'Contacto', 'Condición', 'Comuna'],
+            ['ID', 'RUT', 'Nombre', 'Email', 'Fono', 'Contacto', 'Pago', 'Comuna'],
             $data,
             fn($d) => [$d['id'], $d['rut'], $d['nombre'], $d['email'], $d['telefono'], $d['contacto_vendedor'], $d['tipo_venta_nombre'], $d['comuna_nombre']]
         );
@@ -162,7 +145,7 @@ class ExportController
         $data = (new OrdenCompraRepository())->getAll();
         $this->fillSheet(
             $sheet,
-            ['ID OC', 'Fecha', 'Proveedor', 'RUT', 'Estado', 'Total', 'Creador'],
+            ['ID', 'Fecha', 'Proveedor', 'RUT', 'Estado', 'Total', 'Creador'],
             $data,
             fn($d) => [$d['id'], $d['fecha_creacion'], $d['proveedor'], $d['proveedor_rut'], $d['estado'], $d['monto_total'], $d['creador']]
         );
@@ -175,9 +158,9 @@ class ExportController
         $data = (new MantencionRepository())->getSolicitudes();
         $this->fillSheet(
             $sheet,
-            ['ID OT', 'Fecha', 'Solicitante', 'Máquina', 'Descripción', 'Estado'],
+            ['ID', 'Fecha', 'Solicitante', 'Máquina', 'Descripción', 'Estado'],
             $data,
-            fn($d) => [$d['id'], $d['fecha_solicitud'], $d['solicitante_nombre'] . ' ' . $d['solicitante_apellido'], $d['activo'] ?? 'General', $d['descripcion_trabajo'], $d['estado']]
+            fn($d) => [$d['id'], $d['fecha_solicitud'], $d['solicitante_nombre'] . ' ' . $d['solicitante_apellido'], $d['activo'], $d['descripcion_trabajo'], $d['estado']]
         );
     }
 
@@ -201,9 +184,9 @@ class ExportController
         $data = (new MantencionRepository())->getPendientesEntrega();
         $this->fillSheet(
             $sheet,
-            ['OT Origen', 'Fecha Sol.', 'Insumo', 'SKU', 'Pendiente', 'Unidad', 'Solicitante', 'Máquina'],
+            ['OT', 'Fecha', 'Insumo', 'SKU', 'Pendiente', 'Unidad', 'Solicitante'],
             $data,
-            fn($d) => [$d['ot_id'], $d['fecha_solicitud'], $d['insumo'], str_replace('NEW-', '', $d['codigo_sku']), $d['cantidad'], $d['unidad_medida'], $d['solicitante'], $d['maquina']]
+            fn($d) => [$d['ot_id'], $d['fecha_solicitud'], $d['insumo'], $d['codigo_sku'], $d['cantidad_pendiente'], $d['unidad_medida'], $d['solicitante']]
         );
     }
 
@@ -214,13 +197,12 @@ class ExportController
         $data = (new UsuariosRepository())->getAll();
         $this->fillSheet(
             $sheet,
-            ['ID', 'Usuario', 'Nombre', 'Apellido', 'Email', 'Rol', 'Estado'],
+            ['ID', 'Usuario', 'Nombre', 'Email', 'Rol', 'Estado'],
             $data,
-            fn($d) => [$d['id'], $d['username'], $d['nombre'], $d['apellido'], $d['email'], $d['rol'], $d['activo'] ? 'Activo' : 'Bloqueado']
+            fn($d) => [$d['id'], $d['username'], $d['nombre'], $d['email'], $d['rol'], $d['activo'] ? 'Activo' : 'Inactivo']
         );
     }
 
-    // --- ESTILOS VISUALES ---
     private function fillSheet($sheet, $headers, $data, $mapFunc)
     {
         $col = 'A';
@@ -228,16 +210,8 @@ class ExportController
             $sheet->setCellValue($col . '1', $h);
             $col++;
         }
-
-        // Estilo Encabezado
         $lastCol = chr(ord('A') + count($headers) - 1);
-        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['argb' => Color::COLOR_WHITE], 'size' => 11],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E78']], // Azul oscuro
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
-        ]);
-        $sheet->getRowDimension('1')->setRowHeight(22);
-
+        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray(['font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E78']]]);
         $row = 2;
         foreach ($data as $item) {
             $vals = $mapFunc($item);
@@ -248,31 +222,25 @@ class ExportController
             }
             $row++;
         }
-
-        // Autoajuste Columnas
-        $col = 'A';
-        foreach ($headers as $h) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-            $col++;
-        }
-
-        // Bordes
-        if ($row > 2) {
-            $sheet->getStyle("A1:{$lastCol}" . ($row - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        }
+        foreach (range('A', $lastCol) as $columnID)
+            $sheet->getColumnDimension($columnID)->setAutoSize(true);
     }
 
+    // --- DETALLE OT INDIVIDUAL ---
     private function sheetDetalleOT(Spreadsheet $s, $id)
     {
+        // CORRECCIÓN: Usamos getSheet(0) directo porque acabamos de crear el Spreadsheet limpio
+        $sheet = $s->getSheet(0);
+        $sheet->setTitle("OT #$id");
+
         $repo = new MantencionRepository();
         $header = $repo->getOTHeader($id);
         $detalles = $repo->getDetallesOT($id);
 
-        $sheet = $s->getSheet(0);
-        $sheet->setTitle("OT #$id");
+        if (!$header)
+            throw new \Exception("OT no encontrada");
 
-        // Cabecera estilo Ficha
-        $sheet->setCellValue('A1', 'REPORTE DE ORDEN DE TRABAJO #' . $id);
+        $sheet->setCellValue('A1', 'ORDEN DE TRABAJO #' . $id);
         $sheet->mergeCells('A1:E1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
 
@@ -287,16 +255,13 @@ class ExportController
         $sheet->setCellValue('A7', 'Descripción:');
         $sheet->setCellValue('B7', $header['descripcion_trabajo']);
 
-        // Tabla Items
         $row = 9;
         $headers = ['SKU', 'Insumo', 'Solicitado', 'Entregado', 'Estado'];
         $col = 'A';
         foreach ($headers as $h) {
             $sheet->setCellValue($col . $row, $h);
-            $sheet->getColumnDimension($col)->setAutoSize(true);
             $col++;
         }
-        // Estilo Header Tabla
         $sheet->getStyle('A9:E9')->getFont()->setBold(true)->setColor(new Color(Color::COLOR_WHITE));
         $sheet->getStyle('A9:E9')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
 
@@ -309,7 +274,61 @@ class ExportController
             $sheet->setCellValue('E' . $row, $d['estado_linea']);
             $row++;
         }
+        foreach (range('A', 'E') as $col)
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+    }
 
-        $sheet->getStyle('A9:E' . ($row - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+    // --- DETALLE OC INDIVIDUAL ---
+    private function sheetDetalleOC(Spreadsheet $s, $id)
+    {
+        $sheet = $s->getSheet(0);
+        $sheet->setTitle("OC #$id");
+
+        $repo = new OrdenCompraRepository();
+        $data = $repo->getOrdenCompleta($id);
+
+        if (!$data || !$data['cabecera'])
+            throw new \Exception("OC no encontrada");
+        $c = $data['cabecera'];
+
+        $sheet->setCellValue('A1', 'ORDEN DE COMPRA #' . $id);
+        $sheet->mergeCells('A1:E1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+        $sheet->setCellValue('A3', 'Proveedor:');
+        $sheet->setCellValue('B3', $c['proveedor']);
+        $sheet->setCellValue('A4', 'RUT:');
+        $sheet->setCellValue('B4', $c['proveedor_rut']);
+        $sheet->setCellValue('D3', 'Fecha:');
+        $sheet->setCellValue('E3', $c['fecha_creacion']);
+        $sheet->setCellValue('D4', 'Estado:');
+        $sheet->setCellValue('E4', $c['estado_nombre']);
+
+        $row = 7;
+        $headers = ['SKU', 'Insumo', 'Cantidad', 'Precio', 'Total'];
+        $col = 'A';
+        foreach ($headers as $h) {
+            $sheet->setCellValue($col . $row, $h);
+            $col++;
+        }
+        $sheet->getStyle('A7:E7')->getFont()->setBold(true)->setColor(new Color(Color::COLOR_WHITE));
+        $sheet->getStyle('A7:E7')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+
+        $row++;
+        foreach ($data['detalles'] as $d) {
+            $sheet->setCellValue('A' . $row, $d['codigo_sku']);
+            $sheet->setCellValue('B' . $row, $d['insumo']);
+            $sheet->setCellValue('C' . $row, $d['cantidad_solicitada']);
+            $sheet->setCellValue('D' . $row, $d['precio_unitario']);
+            $sheet->setCellValue('E' . $row, $d['total_linea']);
+            $row++;
+        }
+
+        $sheet->setCellValue('D' . $row, 'TOTAL:');
+        $sheet->setCellValue('E' . $row, $c['monto_total']);
+        $sheet->getStyle('D' . $row . ':E' . $row)->getFont()->setBold(true);
+
+        foreach (range('A', 'E') as $col)
+            $sheet->getColumnDimension($col)->setAutoSize(true);
     }
 }

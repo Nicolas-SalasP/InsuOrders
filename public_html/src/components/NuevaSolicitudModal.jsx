@@ -6,18 +6,18 @@ import ConfirmModal from './ConfirmModal';
 const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [activos, setActivos] = useState([]);
     const [insumos, setInsumos] = useState([]);
-    
+
     // Formulario
     const [activoId, setActivoId] = useState('');
     const [observacion, setObservacion] = useState('');
     const [items, setItems] = useState([]);
-    
+
     // UI
     const [busqueda, setBusqueda] = useState('');
     const [mostrarLista, setMostrarLista] = useState(false);
     const wrapperRef = useRef(null);
     const [loading, setLoading] = useState(false);
-    
+
     // Modales Internos
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
     const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', action: null });
@@ -29,6 +29,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
     const cargarDatos = async () => {
         try {
+            // Limpiamos SIEMPRE los items primero para evitar "fantasmas"
+            setItems([]);
+
             const [resActivos, resInsumos] = await Promise.all([
                 api.get('/index.php/mantencion/activos'),
                 api.get('/index.php/inventario')
@@ -39,12 +42,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             if (otEditar) {
                 setActivoId(otEditar.activo_id);
                 setObservacion(otEditar.descripcion_trabajo || '');
-                
+
                 const resDetalles = await api.get(`/index.php/mantencion?detalle=true&id=${otEditar.id}`);
-                if(resDetalles.data.success) {
+                if (resDetalles.data.success) {
                     const itemsMapeados = resDetalles.data.data.map(d => ({
                         id: d.id, // ID Insumo
-                        detalle_id: d.detalle_id, // ID Línea tabla intermedia
+                        detalle_id: d.detalle_id,
                         nombre: d.nombre,
                         codigo_sku: d.codigo_sku,
                         stock_actual: parseFloat(d.stock_actual),
@@ -60,10 +63,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                     setItems(itemsMapeados);
                 }
             } else {
-                setActivoId(''); setObservacion(''); setItems([]); setBusqueda('');
+                setActivoId(''); setObservacion(''); setBusqueda('');
+                // setItems([]) ya se hizo arriba
             }
         } catch (e) {
             console.error(e);
+            setMsgModal({ show: true, title: "Error de Carga", message: "No se pudieron cargar los detalles de la OT.", type: "error" });
         }
     };
 
@@ -92,15 +97,15 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                         message: `Esta máquina tiene un kit con ${res.data.data.length} insumos. ¿Deseas cargarlos automáticamente?`,
                         action: () => {
                             setItems(res.data.data.map(k => ({
-                                ...k, 
-                                stock_actual: parseFloat(k.stock_actual), 
+                                ...k,
+                                stock_actual: parseFloat(k.stock_actual),
                                 cantidad: parseFloat(k.cantidad)
                             })));
                             setConfirmModal({ show: false });
                         }
                     });
                 }
-            } catch(e){}
+            } catch (e) { }
         }
     };
 
@@ -118,9 +123,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
     const preSubmit = () => {
         if (!activoId || items.length === 0) {
-            return setMsgModal({show:true, title:"Faltan Datos", message:"Debes seleccionar una máquina y al menos un insumo.", type:"warning"});
+            return setMsgModal({ show: true, title: "Faltan Datos", message: "Debes seleccionar una máquina y al menos un insumo.", type: "warning" });
         }
-        // Validar si es una OT nueva y hay stock (solo advertencia)
+        // Validar si es una OT nueva y hay stock
         if (!otEditar) {
             const itemsEnBodega = items.filter(i => parseFloat(i.stock_actual) >= parseFloat(i.cantidad));
             if (itemsEnBodega.length > 0) {
@@ -143,8 +148,14 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setConfirmModal({ show: false });
         setLoading(true);
         try {
-            const payload = { activo_id: activoId, observacion, items };
-            
+            // CORRECCIÓN: Nos aseguramos de enviar el ID en el payload si es edición
+            const payload = {
+                id: otEditar ? otEditar.id : null,
+                activo_id: activoId,
+                observacion,
+                items
+            };
+
             if (otEditar) {
                 await api.put(`/index.php/mantencion?id=${otEditar.id}`, payload);
                 setMsgModal({ show: true, title: "Actualizado", message: "La OT ha sido modificada correctamente.", type: "success" });
@@ -152,7 +163,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 await api.post('/index.php/mantencion', payload);
                 setMsgModal({ show: true, title: "Creado", message: "Solicitud de trabajo generada.", type: "success" });
             }
-            
+
             setTimeout(() => {
                 onSave();
                 onClose();
@@ -160,7 +171,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             }, 1500);
 
         } catch (error) {
-            setMsgModal({show:true, title:"Error", message:error.response?.data?.message || "Error al guardar", type:"error"});
+            setMsgModal({ show: true, title: "Error", message: error.response?.data?.message || "Error al guardar", type: "error" });
         } finally {
             setLoading(false);
         }
@@ -172,19 +183,19 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
     return (
         <>
-            <MessageModal show={msgModal.show} onClose={()=>setMsgModal({...msgModal, show:false})} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
-            <ConfirmModal 
-                show={confirmModal.show} 
-                onClose={()=>setConfirmModal({...confirmModal, show:false})} 
+            <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
+            <ConfirmModal
+                show={confirmModal.show}
+                onClose={() => setConfirmModal({ ...confirmModal, show: false })}
                 onConfirm={confirmModal.action}
-                title={confirmModal.title} 
+                title={confirmModal.title}
                 message={confirmModal.message}
                 type={confirmModal.type || 'primary'}
                 confirmText="Sí, Continuar"
             />
 
             <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }}>
-                <div className="modal-dialog modal-xl"> {/* modal-xl para ver mejor la tabla */}
+                <div className="modal-dialog modal-xl">
                     <div className="modal-content shadow-lg border-0">
                         <div className="modal-header bg-warning text-dark">
                             <h5 className="modal-title fw-bold">
@@ -192,9 +203,8 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                             </h5>
                             <button className="btn-close" onClick={onClose}></button>
                         </div>
-                        
+
                         <div className="modal-body bg-light p-4">
-                            {/* Sección Máquina */}
                             <div className="card border-0 shadow-sm mb-4">
                                 <div className="card-body">
                                     <div className="row">
@@ -215,13 +225,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                 </div>
                             </div>
 
-                            {/* Buscador Repuestos (Solo si no está editando una OT cerrada o para agregar más cosas) */}
                             {(!otEditar || otEditar.estado === 'Pendiente') && (
                                 <div className="mb-3 position-relative" ref={wrapperRef}>
-                                    <input type="text" className="form-control" placeholder="🔍 Buscar repuesto para agregar..." 
+                                    <input type="text" className="form-control" placeholder="🔍 Buscar repuesto para agregar..."
                                         value={busqueda} onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }} onFocus={() => setMostrarLista(true)} />
                                     {mostrarLista && busqueda && (
-                                        <ul className="list-group position-absolute w-100 shadow mt-1" style={{zIndex:10, maxHeight:'200px', overflowY:'auto'}}>
+                                        <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
                                             {insumosFiltrados.map(ins => (
                                                 <li key={ins.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => agregarItem(ins)}>
                                                     {ins.nombre} (Stock: {ins.stock_actual})
@@ -232,15 +241,14 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                 </div>
                             )}
 
-                            {/* Tabla Items con Trazabilidad */}
                             <div className="table-responsive bg-white border rounded">
                                 <table className="table table-hover align-middle mb-0">
                                     <thead className="table-light">
                                         <tr>
                                             <th>Insumo</th>
-                                            <th style={{width:'100px'}} className="text-center">Cant.</th>
+                                            <th style={{ width: '100px' }} className="text-center">Cant.</th>
                                             <th>Estado / Trazabilidad</th>
-                                            <th style={{width:'50px'}}></th>
+                                            <th style={{ width: '50px' }}></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -251,67 +259,49 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     <small className="text-muted font-monospace">{item.codigo_sku}</small>
                                                 </td>
                                                 <td>
-                                                    <input 
-                                                        type="number" 
-                                                        className="form-control form-control-sm text-center fw-bold" 
-                                                        value={item.cantidad} 
-                                                        onChange={e => actualizarCantidad(idx, e.target.value)} 
-                                                        disabled={item.estado_linea && item.estado_linea !== 'NUEVO'} // Bloquear si ya tiene gestión
+                                                    <input
+                                                        type="number"
+                                                        className="form-control form-control-sm text-center fw-bold"
+                                                        value={item.cantidad}
+                                                        onChange={e => actualizarCantidad(idx, e.target.value)}
+                                                        disabled={item.estado_linea && item.estado_linea !== 'NUEVO'}
                                                     />
                                                 </td>
                                                 <td>
-                                                    {/* --- LÓGICA DE ESTADOS Y TRAZABILIDAD --- */}
-                                                    
-                                                    {/* 1. ENTREGADO (Final del ciclo) */}
                                                     {item.estado_linea === 'ENTREGADO' ? (
                                                         <div className="alert alert-success py-1 px-2 mb-0 d-inline-block small border-success bg-opacity-10">
                                                             <i className="bi bi-check-circle-fill me-1"></i>
-                                                            <strong>Entregado a:</strong> {item.retirado_por || 'Sin registro'} <br/>
+                                                            <strong>Entregado a:</strong> {item.retirado_por || 'Sin registro'} <br />
                                                             <span className="text-muted ms-3">{item.fecha_retiro}</span>
                                                         </div>
-                                                    ) : 
-                                                    
-                                                    /* 2. EN BODEGA (Listo para retiro) */
-                                                    item.estado_linea === 'EN_BODEGA' ? (
+                                                    ) : item.estado_linea === 'EN_BODEGA' ? (
                                                         <div className="d-flex align-items-center">
                                                             <span className="badge bg-warning text-dark border border-warning me-2">
                                                                 <i className="bi bi-box-seam me-1"></i>En Bodega
                                                             </span>
-                                                            <small className="text-muted">Listo para retiro</small>
-                                                            {/* Si venía de una compra, mostramos origen */}
                                                             {item.oc_id && (
                                                                 <small className="text-primary ms-2" title={`Llegó de la OC #${item.oc_id}`}>
                                                                     (Viene de Compra)
                                                                 </small>
                                                             )}
                                                         </div>
-                                                    ) : 
-                                                    
-                                                    /* 3. COMPRADO (Esperando recepción) */
-                                                    item.estado_linea === 'COMPRADO' ? (
+                                                    ) : item.estado_linea === 'COMPRADO' ? (
                                                         <div className="alert alert-info py-1 px-2 mb-0 d-inline-block small border-info bg-opacity-10">
                                                             <i className="bi bi-cart-check-fill me-1"></i>
-                                                            <strong>Comprado:</strong> OC #{item.oc_id} <br/>
+                                                            <strong>Comprado:</strong> OC #{item.oc_id} <br />
                                                             <span className="text-muted ms-3">Prov: {item.oc_proveedor}</span>
                                                         </div>
-                                                    ) : 
-                                                    
-                                                    /* 4. REQUIERE COMPRA (Falta gestión) */
-                                                    item.estado_linea === 'REQUIERE_COMPRA' ? (
+                                                    ) : item.estado_linea === 'REQUIERE_COMPRA' ? (
                                                         <span className="badge bg-danger">
                                                             <i className="bi bi-exclamation-circle me-1"></i>Requiere Compra
                                                         </span>
-                                                    ) : 
-                                                    
-                                                    /* 5. NUEVO / PENDIENTE (Pre-cálculo de stock visual) */
-                                                    (
-                                                        parseFloat(item.stock_actual) >= parseFloat(item.cantidad) ? 
-                                                            <span className="badge bg-secondary bg-opacity-25 text-dark border">Stock Disponible</span> : 
+                                                    ) : (
+                                                        parseFloat(item.stock_actual) >= parseFloat(item.cantidad) ?
+                                                            <span className="badge bg-secondary bg-opacity-25 text-dark border">Stock Disponible</span> :
                                                             <span className="badge bg-danger bg-opacity-25 text-danger border border-danger">Falta Stock</span>
                                                     )}
                                                 </td>
                                                 <td>
-                                                    {/* Solo permitir borrar si es nuevo o no tiene gestión avanzada */}
                                                     {(!item.estado_linea || item.estado_linea === 'NUEVO') && (
                                                         <button className="btn btn-sm text-danger" onClick={() => eliminarItem(idx)}><i className="bi bi-trash"></i></button>
                                                     )}
@@ -326,7 +316,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
                         <div className="modal-footer bg-white">
                             <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
-                            {/* Solo mostrar Guardar si la OT no está anulada/cerrada o es nueva */}
                             {(!otEditar || otEditar.estado === 'Pendiente') && (
                                 <button className="btn btn-warning fw-bold px-4 shadow-sm" onClick={preSubmit} disabled={loading}>
                                     {loading ? '...' : (otEditar ? 'Actualizar OT' : 'Generar OT')}

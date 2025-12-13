@@ -22,7 +22,6 @@ use App\Middleware\AuthMiddleware;
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $scriptName = $_SERVER['SCRIPT_NAME'];
 $baseDir = dirname($scriptName);
-// Normalizar slashes para evitar problemas en Windows/Linux
 $baseDir = str_replace('\\', '/', $baseDir);
 
 if ($baseDir !== '/' && strpos($requestUri, $baseDir) === 0) {
@@ -50,7 +49,6 @@ function jsonResponse($code, $data)
 // ============================================================================
 
 switch ($path) {
-    // --- AUTENTICACIÓN ---
     case 'login':
         $controller = new AuthController();
         if ($_SERVER['REQUEST_METHOD'] === 'POST')
@@ -85,19 +83,25 @@ switch ($path) {
 
     // --- INVENTARIO (INSUMOS) ---
     case 'inventario':
-        // GET permitido para todos los logueados, Modificación solo Bodega/Compras
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             AuthMiddleware::verify();
-        else
+        } else {
             AuthMiddleware::verify(['Bodega', 'Compras', 'Admin']);
-
+        }
         $controller = new InsumoController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $controller->index();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
-            $controller->store(); // Crea o Edita
-        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+        } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (isset($_POST['_method']) && strtoupper($_POST['_method']) === 'PUT') {
+                $controller->update();
+            } else {
+                $controller->store();
+            }
+        } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+            $controller->update();
+        } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
             $controller->delete();
+        }
         break;
 
     case 'inventario/auxiliares':
@@ -116,7 +120,6 @@ switch ($path) {
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             AuthMiddleware::verify(['Mantencion', 'Compras', 'Bodega', 'Admin']);
             $controller = new MantencionController();
-            // Soporte para ver detalle específico o listado general
             if (isset($_GET['detalle']))
                 $controller->detalles();
             else
@@ -129,7 +132,7 @@ switch ($path) {
             elseif ($_SERVER['REQUEST_METHOD'] === 'PUT')
                 $controller->update();
             elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
-                $controller->delete(); // Anular
+                $controller->delete();
         }
         break;
 
@@ -150,29 +153,36 @@ switch ($path) {
             (new MantencionController())->storeActivo();
         break;
 
-    case 'mantencion/centros-costo': // <--- NUEVA RUTA SOLICITADA
+    case 'mantencion/centros-costo':
         AuthMiddleware::verify(['Mantencion', 'Admin']);
         (new MantencionController())->centrosCosto();
         break;
 
-case 'mantencion/kit':
+    case 'mantencion/kit':
         AuthMiddleware::verify(['Mantencion', 'Admin']);
         $c = new MantencionController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') $c->getKit();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'POST') $c->saveKit();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') $c->updateKitQty();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') $c->removeKitItem();
+        if ($_SERVER['REQUEST_METHOD'] === 'GET')
+            $c->getKit();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
+            $c->saveKit();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'PUT')
+            $c->updateKitQty();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+            $c->removeKitItem();
         break;
 
     case 'mantencion/docs':
         AuthMiddleware::verify(['Mantencion', 'Admin']);
         $c = new MantencionController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') $c->listDocs();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'POST') $c->uploadDoc();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') $c->deleteDoc();
+        if ($_SERVER['REQUEST_METHOD'] === 'GET')
+            $c->listDocs();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
+            $c->uploadDoc();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+            $c->deleteDoc();
         break;
 
-    case 'mantencion/pdf': // <--- RUTA PDF DE CONSUMO
+    case 'mantencion/pdf':
         AuthMiddleware::verify(['Mantencion', 'Bodega', 'Admin']);
         (new MantencionController())->downloadPdf();
         break;

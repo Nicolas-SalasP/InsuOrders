@@ -5,18 +5,21 @@ import ModalEntrada from '../components/ModalEntrada';
 import ModalSalida from '../components/ModalSalida';
 import MessageModal from '../components/MessageModal';
 
+// Ajusta esta URL si tu carpeta del proyecto se llama diferente en htdocs
+const BASE_URL_IMAGENES = 'http://localhost/INSUORDERS/public_html';
+
 const Inventario = () => {
     const [insumos, setInsumos] = useState([]);
     const [loading, setLoading] = useState(true);
-    
+
     // Listas para filtros
     const [listas, setListas] = useState({ categorias: [], ubicaciones: [] });
 
     // Estados de Filtros
     const [busqueda, setBusqueda] = useState('');
     const [filtroCategoria, setFiltroCategoria] = useState('');
-    const [filtroUbicacion, setFiltroUbicacion] = useState(''); // ID de ubicación
-    const [ordenStock, setOrdenStock] = useState(''); // '' | 'asc' | 'desc'
+    const [filtroUbicacion, setFiltroUbicacion] = useState('');
+    const [ordenStock, setOrdenStock] = useState('');
 
     // Modales
     const [showInsumoModal, setShowInsumoModal] = useState(false);
@@ -26,13 +29,14 @@ const Inventario = () => {
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
 
     useEffect(() => {
-        cargarDatos();
+        cargarDatos(); // Carga inicial (con spinner)
     }, []);
 
-    const cargarDatos = async () => {
-        setLoading(true);
+    // Modificamos para aceptar un parámetro "silent" (silencioso)
+    const cargarDatos = async (silent = false) => {
+        if (!silent) setLoading(true); // Solo muestra "Cargando..." si NO es silencioso
+
         try {
-            // Cargar Insumos y Auxiliares en paralelo para los filtros
             const [resInsumos, resAux] = await Promise.all([
                 api.get('/index.php/inventario'),
                 api.get('/index.php/inventario/auxiliares')
@@ -42,10 +46,16 @@ const Inventario = () => {
             if (resAux.data.success) setListas(resAux.data.data);
 
         } catch (error) {
+            console.error(error);
             setMsg({ show: true, title: "Error", text: "Error cargando datos.", type: "error" });
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
+    };
+
+    // Función wrapper para recargar sin parpadeo después de guardar
+    const handleSaveSilent = () => {
+        cargarDatos(true); // true = recarga silenciosa
     };
 
     const handleCreate = () => { setInsumoEditar(null); setShowInsumoModal(true); };
@@ -55,7 +65,7 @@ const Inventario = () => {
         if (window.confirm('¿Eliminar artículo?')) {
             try {
                 await api.delete(`/index.php/inventario?id=${id}`);
-                cargarDatos(); // Recargar para actualizar lista
+                handleSaveSilent(); // Recarga silenciosa al borrar
                 setMsg({ show: true, title: "Eliminado", text: "Artículo eliminado.", type: "success" });
             } catch (error) {
                 setMsg({ show: true, title: "Error", text: "No se pudo eliminar.", type: "error" });
@@ -64,13 +74,14 @@ const Inventario = () => {
     };
 
     const handleExportar = () => {
+        // Para exportar sí mostramos loading visual
         setLoading(true);
         api.get('/index.php/exportar?modulo=inventario', { responseType: 'blob' })
             .then((res) => {
                 const url = window.URL.createObjectURL(new Blob([res.data]));
                 const link = document.createElement('a');
                 link.href = url;
-                link.setAttribute('download', `Inventario_${new Date().toISOString().slice(0,10)}.xlsx`);
+                link.setAttribute('download', `Inventario_${new Date().toISOString().slice(0, 10)}.xlsx`);
                 document.body.appendChild(link);
                 link.click();
             })
@@ -86,20 +97,13 @@ const Inventario = () => {
 
     // --- LÓGICA DE FILTRADO Y ORDENAMIENTO ---
     const insumosFiltrados = insumos.filter(i => {
-        // 1. Texto (SKU o Nombre)
-        const matchTexto = 
-            i.nombre.toLowerCase().includes(busqueda.toLowerCase()) || 
+        const matchTexto =
+            i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
             i.codigo_sku.toLowerCase().includes(busqueda.toLowerCase());
-        
-        // 2. Categoría
         const matchCat = !filtroCategoria || (i.categoria_id && i.categoria_id.toString() === filtroCategoria);
 
-        // 3. Ubicación (Busca dentro del string "ubicaciones_multiples" o "ubicacion_nombre")
-        // Nota: Esto es una búsqueda aproximada de texto porque el backend devuelve un string concatenado.
-        // Para ser exactos por ID necesitaríamos una relación en el frontend, pero por texto funciona bien visualmente.
         let matchUbi = true;
         if (filtroUbicacion) {
-            // Buscamos el nombre de la ubicación seleccionada en la lista auxiliar
             const ubiObj = listas.ubicaciones.find(u => u.id.toString() === filtroUbicacion);
             if (ubiObj) {
                 const nombreUbi = ubiObj.nombre.toLowerCase();
@@ -107,24 +111,20 @@ const Inventario = () => {
                 matchUbi = stringUbicaciones.includes(nombreUbi);
             }
         }
-
         return matchTexto && matchCat && matchUbi;
     }).sort((a, b) => {
-        // Lógica de Ordenamiento
         if (ordenStock === 'asc') return parseFloat(a.stock_actual) - parseFloat(b.stock_actual);
         if (ordenStock === 'desc') return parseFloat(b.stock_actual) - parseFloat(a.stock_actual);
-        return 0; // Orden original (por nombre)
+        return 0;
     });
 
-    // Helper para renderizar ubicaciones múltiples
     const renderUbicaciones = (item) => {
         if (item.ubicaciones_multiples) {
-            // Viene como "Sector A - Estante 1 (50)||Sector B - Piso (20)"
             const locs = item.ubicaciones_multiples.split('||');
             return (
                 <div className="d-flex flex-column gap-1">
                     {locs.map((loc, idx) => (
-                        <span key={idx} className="badge bg-light text-dark border text-start fw-normal" style={{fontSize: '0.75rem'}}>
+                        <span key={idx} className="badge bg-light text-dark border text-start fw-normal" style={{ fontSize: '0.75rem' }}>
                             <i className="bi bi-geo-alt-fill text-danger me-1"></i>
                             {loc}
                         </span>
@@ -132,19 +132,23 @@ const Inventario = () => {
                 </div>
             );
         }
-        // Fallback para legacy (sin ubicación asignada en tabla nueva)
         return <span className="text-muted small fst-italic">Sin ubicación asignada</span>;
     };
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
-            
-            {/* Modal Editar recibe el insumo seleccionado */}
-            <InsumoModal show={showInsumoModal} onClose={() => setShowInsumoModal(false)} onSave={cargarDatos} insumo={insumoEditar} />
-            
-            <ModalEntrada show={entradaModal.show} insumo={entradaModal.insumo} onClose={() => setEntradaModal({ show: false, insumo: null })} onSave={cargarDatos} />
-            <ModalSalida show={salidaModal.show} insumo={salidaModal.insumo} onClose={() => setSalidaModal({ show: false, insumo: null })} onSave={cargarDatos} />
+
+            {/* AQUÍ ESTÁ EL CAMBIO CLAVE: onSave llama a handleSaveSilent */}
+            <InsumoModal
+                show={showInsumoModal}
+                onClose={() => setShowInsumoModal(false)}
+                onSave={handleSaveSilent}
+                insumo={insumoEditar}
+            />
+
+            <ModalEntrada show={entradaModal.show} insumo={entradaModal.insumo} onClose={() => setEntradaModal({ show: false, insumo: null })} onSave={handleSaveSilent} />
+            <ModalSalida show={salidaModal.show} insumo={salidaModal.insumo} onClose={() => setSalidaModal({ show: false, insumo: null })} onSave={handleSaveSilent} />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
@@ -165,25 +169,21 @@ const Inventario = () => {
                         <div className="col-md-3">
                             <div className="input-group">
                                 <span className="input-group-text bg-white border-end-0">🔎</span>
-                                <input 
-                                    type="text" 
-                                    className="form-control border-start-0 ps-0" 
-                                    placeholder="Buscar SKU o nombre..." 
-                                    value={busqueda} 
-                                    onChange={e => setBusqueda(e.target.value)} 
+                                <input
+                                    type="text"
+                                    className="form-control border-start-0 ps-0"
+                                    placeholder="Buscar SKU o nombre..."
+                                    value={busqueda}
+                                    onChange={e => setBusqueda(e.target.value)}
                                 />
                             </div>
                         </div>
-                        
-                        {/* Filtro Categoría */}
                         <div className="col-md-3">
                             <select className="form-select" value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
                                 <option value="">Todas las Categorías</option>
                                 {listas.categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                             </select>
                         </div>
-
-                        {/* Filtro Ubicación */}
                         <div className="col-md-3">
                             <select className="form-select" value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)}>
                                 <option value="">Todas las Ubicaciones</option>
@@ -194,11 +194,9 @@ const Inventario = () => {
                                 ))}
                             </select>
                         </div>
-
-                        {/* Botón Ordenar Stock */}
                         <div className="col-md-3 d-flex gap-2">
-                            <button 
-                                className={`btn w-100 ${ordenStock ? 'btn-primary' : 'btn-outline-secondary'}`} 
+                            <button
+                                className={`btn w-100 ${ordenStock ? 'btn-primary' : 'btn-outline-secondary'}`}
                                 onClick={toggleOrdenStock}
                             >
                                 <i className={`bi bi-sort-${ordenStock === 'asc' ? 'numeric-down' : 'numeric-up-alt'} me-2`}></i>
@@ -213,10 +211,12 @@ const Inventario = () => {
 
                 <div className="card-body d-flex flex-column p-0" style={{ overflow: 'hidden' }}>
                     <div className="flex-grow-1 overflow-auto">
+                        {/* Aquí mostramos Loading solo si es la carga inicial o explícita */}
                         {loading ? <div className="text-center p-5">Cargando...</div> : (
                             <table className="table table-hover align-middle mb-0" style={{ minWidth: '1000px' }}>
                                 <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
                                     <tr>
+                                        <th>Imagen</th>
                                         <th className="ps-4">SKU</th>
                                         <th>Descripción</th>
                                         <th>Categoría</th>
@@ -228,6 +228,32 @@ const Inventario = () => {
                                 <tbody>
                                     {insumosFiltrados.map(item => (
                                         <tr key={item.id}>
+                                            <td style={{ width: '80px', textAlign: 'center' }}>
+                                                {item.imagen_url ? (
+                                                    <img
+                                                        // Usamos la constante BASE_URL_IMAGENES
+                                                        src={`${BASE_URL_IMAGENES}${item.imagen_url}`}
+                                                        alt="Prod"
+                                                        style={{
+                                                            width: '50px',
+                                                            height: '50px',
+                                                            objectFit: 'cover',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid #ddd',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                        // Hacemos que si falla, se oculte o ponga placeholder
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = 'https://via.placeholder.com/50?text=Error';
+                                                        }}
+                                                        // Opcional: abrir imagen en pestaña nueva al hacer click
+                                                        onClick={() => window.open(`${BASE_URL_IMAGENES}${item.imagen_url}`, '_blank')}
+                                                    />
+                                                ) : (
+                                                    <span className="text-muted small">Sin img</span>
+                                                )}
+                                            </td>
                                             <td className="ps-4 fw-bold text-secondary font-monospace">{item.codigo_sku}</td>
                                             <td>
                                                 <div className="fw-medium text-dark">{item.nombre}</div>
@@ -238,12 +264,7 @@ const Inventario = () => {
                                                 )}
                                             </td>
                                             <td><span className="badge bg-light text-secondary border">{item.categoria_nombre}</span></td>
-                                            
-                                            {/* Columna Ubicaciones Múltiples */}
-                                            <td>
-                                                {renderUbicaciones(item)}
-                                            </td>
-
+                                            <td>{renderUbicaciones(item)}</td>
                                             <td className="text-center">
                                                 <span className={`fw-bold fs-5 ${parseFloat(item.stock_actual) <= 0 ? 'text-danger' : 'text-success'}`}>
                                                     {parseFloat(item.stock_actual)}
@@ -262,7 +283,7 @@ const Inventario = () => {
                                         </tr>
                                     ))}
                                     {insumosFiltrados.length === 0 && (
-                                        <tr><td colSpan="6" className="text-center py-5 text-muted">No se encontraron artículos con los filtros actuales.</td></tr>
+                                        <tr><td colSpan="7" className="text-center py-5 text-muted">No se encontraron artículos con los filtros actuales.</td></tr>
                                     )}
                                 </tbody>
                             </table>

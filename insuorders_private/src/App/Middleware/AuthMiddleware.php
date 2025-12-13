@@ -1,35 +1,46 @@
 <?php
 namespace App\Middleware;
 
-use App\Config\Config;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use App\Config\Config;
 use Exception;
 
 class AuthMiddleware {
     public static function verify($allowedRoles = []) {
+        $token = null;
         $headers = null;
-        
+
         if (isset($_SERVER['Authorization'])) {
             $headers = trim($_SERVER["Authorization"]);
-        } else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        }
+        else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
             $headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
-        } elseif (function_exists('apache_request_headers')) {
+        }
+        elseif (function_exists('apache_request_headers')) {
             $requestHeaders = apache_request_headers();
-            $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
-            if (isset($requestHeaders['Authorization'])) {
-                $headers = trim($requestHeaders['Authorization']);
+            $requestHeaders = array_change_key_case($requestHeaders, CASE_LOWER);
+            if (isset($requestHeaders['authorization'])) {
+                $headers = trim($requestHeaders['authorization']);
             }
         }
 
-        if (empty($headers) || !preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
+        if (!empty($headers)) {
+            if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
+                $token = $matches[1];
+            }
+        }
+
+        if (!$token && isset($_GET['token'])) {
+            $token = $_GET['token'];
+        }
+
+        if (!$token) {
             self::response(401, "Token de acceso no proporcionado o inválido.");
         }
 
-        $jwt = $matches[1];
-
         try {
-            $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
+            $decoded = JWT::decode($token, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
             if (!empty($allowedRoles)) {
                 if (!in_array('Admin', $allowedRoles)) {
                     $allowedRoles[] = 'Admin';
@@ -38,7 +49,7 @@ class AuthMiddleware {
                 $userRole = $decoded->data->rol;
 
                 if (!in_array($userRole, $allowedRoles)) {
-                    self::response(403, "Acceso Denegado: Tu rol de '$userRole' no tiene permisos para esta acción.");
+                    self::response(403, "Acceso Denegado: Rol insuficiente.");
                 }
             }
 
@@ -49,10 +60,9 @@ class AuthMiddleware {
         }
     }
 
-    private static function response($code, $msg) {
+    private static function response($code, $message) {
         http_response_code($code);
-        header('Content-Type: application/json');
-        echo json_encode(["success" => false, "message" => $msg]);
-        exit();
+        echo json_encode(["success" => false, "message" => $message]);
+        exit;
     }
 }
