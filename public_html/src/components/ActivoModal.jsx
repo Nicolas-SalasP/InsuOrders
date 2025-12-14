@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
-import ConfirmModal from './ConfirmModal'; // Importar ConfirmModal
+import ConfirmModal from './ConfirmModal';
 
 const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [tab, setTab] = useState('general');
@@ -16,19 +16,18 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
     const [cantidadKit, setCantidadKit] = useState(1); 
 
-    // Docs
+    // Docs (Inicializado siempre como array)
     const [docs, setDocs] = useState([]);
     const [file, setFile] = useState(null);
 
     // Mensajes y Confirmaciones
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
     
-    // Estado para confirmación (Acción pendiente)
     const [confirm, setConfirm] = useState({ 
         show: false, 
         title: '', 
         message: '', 
-        action: null // Función a ejecutar si confirma
+        action: null 
     });
 
     useEffect(() => {
@@ -48,7 +47,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 cargarDocs(activo.id);
             } else {
                 setFormData({ codigo_interno: '', nombre: '', tipo: '', ubicacion: '', descripcion: '', centro_costo: '' });
-                setKitItems([]); setDocs([]);
+                setKitItems([]); 
+                setDocs([]); // Aseguramos reset limpio
             }
             api.get('/index.php/inventario').then(res => setInsumos(res.data.data || []));
             setTab('general');
@@ -70,7 +70,12 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     };
 
     // --- KIT ---
-    const cargarKit = async (id) => { try { const res = await api.get(`/index.php/mantencion/kit?id=${id}`); setKitItems(res.data.data); } catch(e){} };
+    const cargarKit = async (id) => { 
+        try { 
+            const res = await api.get(`/index.php/mantencion/kit?id=${id}`); 
+            setKitItems(res.data.data || []); 
+        } catch(e){ setKitItems([]); } 
+    };
     
     const agregarAlKit = async (insumo) => {
         if (!activo) return alert("Guarda el activo primero.");
@@ -94,7 +99,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         } catch(e) { alert("Error al actualizar"); }
     };
 
-    // Solicitar confirmación para borrar del Kit
     const solicitarQuitarKit = (insumoId) => {
         setConfirm({
             show: true,
@@ -109,8 +113,16 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         });
     };
 
-    // --- DOCS ---
-    const cargarDocs = async (id) => { try { const res = await api.get(`/index.php/mantencion/docs?id=${id}`); setDocs(res.data.data); } catch(e){} };
+    // --- DOCS (CORREGIDO) ---
+    const cargarDocs = async (id) => { 
+        try { 
+            const res = await api.get(`/index.php/mantencion/docs?id=${id}`); 
+            // CORRECCIÓN AQUÍ: Asegurar que sea array
+            setDocs(Array.isArray(res.data.data) ? res.data.data : []); 
+        } catch(e){ 
+            setDocs([]); 
+        } 
+    };
     
     const subirDoc = async () => {
         if (!file || !activo) return;
@@ -125,7 +137,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         } catch (e) { alert("Error al subir"); }
     };
 
-    // Solicitar confirmación para borrar Documento
     const solicitarBorrarDoc = (docId) => {
         setConfirm({
             show: true,
@@ -140,7 +151,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         });
     };
 
-    // Ejecutar acción confirmada
     const handleConfirm = () => {
         if (confirm.action) confirm.action();
         setConfirm({ ...confirm, show: false, action: null });
@@ -150,7 +160,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     return (
         <>
-            {/* Modal Mensaje (Éxito/Error) */}
             <MessageModal 
                 show={msgModal.show} 
                 onClose={() => setMsgModal({ ...msgModal, show: false })} 
@@ -159,7 +168,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 type={msgModal.type} 
             />
 
-            {/* Modal Confirmación (Sí/No) */}
             <ConfirmModal 
                 show={confirm.show} 
                 onClose={() => setConfirm({ ...confirm, show: false })}
@@ -187,7 +195,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                             )}
                             <div className="p-4 bg-white">
                                 
-                                {/* 1. GENERAL */}
                                 {tab === 'general' && (
                                     <form onSubmit={handleSubmitGeneral}>
                                         <div className="row g-3">
@@ -231,7 +238,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                     </form>
                                 )}
 
-                                {/* 2. KIT DE REPUESTOS */}
                                 {tab === 'kit' && (
                                     <div>
                                         <div className="mb-3">
@@ -266,7 +272,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                             defaultValue={k.cantidad} 
                                                             onBlur={(e) => actualizarCantKit(k.id, e.target.value)}
                                                         />
-                                                        {/* BOTÓN CON CONFIRMACIÓN */}
                                                         <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarQuitarKit(k.id)}>
                                                             <i className="bi bi-trash"></i>
                                                         </button>
@@ -278,7 +283,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                     </div>
                                 )}
 
-                                {/* 3. DOCUMENTOS */}
                                 {tab === 'docs' && (
                                     <div>
                                         <div className="input-group mb-3">
@@ -286,18 +290,18 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             <button type="button" className="btn btn-primary" onClick={subirDoc}>Subir</button>
                                         </div>
                                         <div className="list-group">
-                                            {docs.map(d => (
+                                            {/* CORRECCIÓN AQUÍ: Safe map */}
+                                            {docs && Array.isArray(docs) && docs.map(d => (
                                                 <div key={d.id} className="list-group-item d-flex justify-content-between align-items-center">
                                                     <a href={`http://localhost/insuorders/public_html${d.url_archivo}`} target="_blank" className="text-decoration-none text-dark">
                                                         <i className="bi bi-file-earmark-pdf me-2 text-danger"></i>{d.nombre_archivo}
                                                     </a>
-                                                    {/* BOTÓN CON CONFIRMACIÓN */}
                                                     <button className="btn btn-sm text-danger" onClick={() => solicitarBorrarDoc(d.id)}>
                                                         <i className="bi bi-trash"></i>
                                                     </button>
                                                 </div>
                                             ))}
-                                            {docs.length === 0 && <div className="text-center text-muted">Sin documentos</div>}
+                                            {(!docs || docs.length === 0) && <div className="text-center text-muted">Sin documentos</div>}
                                         </div>
                                     </div>
                                 )}

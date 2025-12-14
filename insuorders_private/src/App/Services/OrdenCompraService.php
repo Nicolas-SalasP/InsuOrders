@@ -14,8 +14,18 @@ class OrdenCompraService {
         $this->insumoRepo = new InsumoRepository();
     }
 
-    public function listarOrdenes() {
-        return $this->repo->getAll();
+    /**
+     * List orders passing filters array
+     */
+    public function listarOrdenes($filtros = []) {
+        return $this->repo->getAll($filtros);
+    }
+
+    /**
+     * Get list of purchasable items for filters
+     */
+    public function obtenerFiltrosInsumos() {
+        return $this->repo->getInsumosHistorial();
     }
 
     public function obtenerDetalleOrden($id) {

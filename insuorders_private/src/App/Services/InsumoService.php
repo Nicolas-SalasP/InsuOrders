@@ -12,53 +12,54 @@ class InsumoService
         $this->repo = new InsumoRepository();
     }
 
-    public function listarTodo()
-    {
+    public function listarTodo() {
         return $this->repo->getAll();
     }
 
-    public function obtenerAuxiliares()
-    {
+    public function obtenerAuxiliares() {
         return $this->repo->getAuxiliares();
+    }
+
+    // --- NUEVO MÉTODO PARA CENTRALIZAR LIMPIEZA DE DATOS ---
+    private function sanearDatos($data)
+    {
+        // 1. Forzar Enteros (Cero decimales)
+        if (isset($data['stock_actual'])) $data['stock_actual'] = (int)$data['stock_actual'];
+        if (isset($data['stock_minimo'])) $data['stock_minimo'] = (int)$data['stock_minimo'];
+        if (isset($data['precio_costo'])) $data['precio_costo'] = (int)$data['precio_costo'];
+
+        // 2. Formateo de Textos
+        if (isset($data['nombre'])) {
+            $data['nombre'] = $this->formatearNombre($data['nombre']);
+        }
+        if (isset($data['codigo_sku'])) {
+            $data['codigo_sku'] = strtoupper(trim($data['codigo_sku']));
+        }
+
+        return $data;
     }
 
     public function crearInsumo($data)
     {
-        if (strlen($data['codigo_sku']) < 3) {
-            throw new \Exception("El SKU es muy corto (mínimo 3 caracteres).");
-        }
-        if (empty($data['nombre'])) {
-            throw new \Exception("El nombre del insumo es obligatorio.");
-        }
-        if (!isset($data['precio_costo']) || $data['precio_costo'] === '') {
-            $data['precio_costo'] = 0;
-        }
-        if (empty($data['moneda'])) {
-            $data['moneda'] = 'CLP';
-        }
-        if ($data['precio_costo'] < 0) {
-            throw new \Exception("El precio de costo no puede ser negativo.");
-        }
+        if (strlen($data['codigo_sku']) < 3) throw new \Exception("El SKU es muy corto.");
+        if (empty($data['nombre'])) throw new \Exception("El nombre es obligatorio.");
+        
+        $data = $this->sanearDatos($data); // Limpiamos
 
-        $data['nombre'] = $this->formatearNombre($data['nombre']);
-        $data['codigo_sku'] = strtoupper(trim($data['codigo_sku']));
+        if ($data['precio_costo'] < 0) throw new \Exception("El precio no puede ser negativo.");
+        if (empty($data['moneda'])) $data['moneda'] = 'CLP';
 
         return $this->repo->create($data);
     }
 
     public function actualizarInsumo($id, $data)
     {
-        if (!$id) {
-            throw new \Exception("ID de insumo no proporcionado.");
-        }
+        if (!$id) throw new \Exception("ID no proporcionado.");
+        
+        $data = $this->sanearDatos($data); // Limpiamos
+
         if (isset($data['codigo_sku']) && strlen($data['codigo_sku']) < 3) {
             throw new \Exception("El SKU es muy corto.");
-        }
-        if (isset($data['nombre'])) {
-            $data['nombre'] = $this->formatearNombre($data['nombre']);
-        }
-        if (isset($data['codigo_sku'])) {
-            $data['codigo_sku'] = strtoupper(trim($data['codigo_sku']));
         }
 
         return $this->repo->update($id, $data);
@@ -70,11 +71,13 @@ class InsumoService
             throw new \Exception("La cantidad debe ser mayor a 0.");
         }
         
-        $empleadoId = isset($data['empleado_id']) ? $data['empleado_id'] : null;
+        // Aseguramos entero también en movimientos
+        $cantidad = (int)$data['cantidad'];
+        $empleadoId = $data['empleado_id'] ?? null;
 
         return $this->repo->ajustarStock(
             $data['insumo_id'],
-            $data['cantidad'],
+            $cantidad,
             $data['tipo_movimiento_id'],
             $usuarioId,
             $data['observacion'] ?? '',

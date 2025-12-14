@@ -13,83 +13,98 @@ class DashboardRepository
         $this->db = Database::getConnection();
     }
 
+    // --- ESTADÍSTICAS GENERALES (ADMIN) ---
     public function getStats()
     {
-        $sqlOT = "SELECT COUNT(*) FROM solicitudes_ot WHERE estado_id IN (1, 4)";
-        $pendientesOT = $this->db->query($sqlOT)->fetchColumn();
-
-        $sqlStock = "SELECT COUNT(*) FROM insumos WHERE stock_actual <= stock_minimo";
-        $bajoStock = $this->db->query($sqlStock)->fetchColumn();
-
-        $sqlBodega = "SELECT COUNT(*) FROM detalle_solicitud ds 
-                    JOIN solicitudes_ot s ON ds.solicitud_id = s.id 
-                    WHERE ds.estado_linea = 'EN_BODEGA' AND s.estado_id IN (1, 2, 4)";
-        $pendientesBodega = $this->db->query($sqlBodega)->fetchColumn();
-
-        $sqlOC = "SELECT COUNT(*) FROM ordenes_compra WHERE estado_id NOT IN (4, 5)";
-        $pendientesOC = $this->db->query($sqlOC)->fetchColumn();
-
         return [
-            'ot_pendientes' => $pendientesOT,
-            'stock_critico' => $bajoStock,
-            'bodega_pendientes' => $pendientesBodega,
-            'compras_pendientes' => $pendientesOC
+            'total_gasto' => $this->db->query("SELECT SUM(monto_total) FROM ordenes_compra WHERE estado_id != 5")->fetchColumn() ?: 0,
+            'total_ots' => $this->db->query("SELECT COUNT(*) FROM solicitudes_ot")->fetchColumn(),
+            'stock_bajo' => $this->db->query("SELECT COUNT(*) FROM insumos WHERE stock_actual <= stock_minimo")->fetchColumn(),
+            'proveedores_activos' => $this->db->query("SELECT COUNT(*) FROM proveedores")->fetchColumn()
         ];
     }
 
-    public function getLogs($area = 'general')
+    // --- ANALÍTICAS DE COMPRAS ---
+    public function getComprasStats($start, $end)
     {
-        $logs = [];
-        if ($area == 'general' || $area == 'sistema') {
-            $sql = "SELECT l.fecha, u.nombre as usuario, l.accion, l.descripcion, 'Sistema' as area 
-                    FROM sistema_logs l 
-                    LEFT JOIN usuarios u ON l.usuario_id = u.id 
-                    ORDER BY l.fecha DESC LIMIT 20";
-            $res = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-            $logs = array_merge($logs, $res);
-        }
+        $data = [];
 
-        if ($area == 'general' || $area == 'bodega' || $area == 'inventario') {
-            $sql = "SELECT m.fecha, u.nombre as usuario, 
-                    CONCAT(tm.nombre, ': ', m.cantidad, ' de ', i.nombre) as descripcion, 
-                    'Bodega' as area, 'MOVIMIENTO' as accion
-                    FROM movimientos_inventario m
-                    JOIN usuarios u ON m.usuario_id = u.id
-                    JOIN tipos_movimiento tm ON m.tipo_movimiento_id = tm.id
-                    JOIN insumos i ON m.insumo_id = i.id
-                    ORDER BY m.fecha DESC LIMIT 20";
-            $res = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-            $logs = array_merge($logs, $res);
-        }
+        // 1. Gasto Mensual (Últimos 6 meses)
+        $sqlTrend = "SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') as mes, SUM(monto_total) as total 
+                     FROM ordenes_compra 
+                     WHERE estado_id != 5 AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+                     GROUP BY mes ORDER BY mes ASC";
+        $data['tendencia'] = $this->db->query($sqlTrend)->fetchAll(PDO::FETCH_ASSOC);
 
-        if ($area == 'general' || $area == 'mantencion') {
-            $sql = "SELECT s.fecha_solicitud as fecha, u.nombre as usuario, 
-                    CONCAT('Creó OT #', s.id, ' para ', COALESCE(a.nombre, 'General')) as descripcion,
-                    'Mantención' as area, 'CREACION_OT' as accion
-                    FROM solicitudes_ot s
-                    JOIN usuarios u ON s.usuario_solicitante_id = u.id
-                    LEFT JOIN activos a ON s.activo_id = a.id
-                    ORDER BY s.fecha_solicitud DESC LIMIT 20";
-            $res = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-            $logs = array_merge($logs, $res);
-        }
-
-        if ($area == 'general' || $area == 'compras') {
-            $sql = "SELECT oc.fecha_creacion as fecha, u.nombre as usuario, 
-                    CONCAT('Generó OC #', oc.id, ' a ', p.nombre) as descripcion,
-                    'Compras' as area, 'CREACION_OC' as accion
+        // 2. Top Proveedores ($)
+        $sqlProv = "SELECT p.nombre, SUM(oc.monto_total) as total
                     FROM ordenes_compra oc
-                    JOIN usuarios u ON oc.usuario_creador_id = u.id
                     JOIN proveedores p ON oc.proveedor_id = p.id
-                    ORDER BY oc.fecha_creacion DESC LIMIT 20";
-            $res = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-            $logs = array_merge($logs, $res);
-        }
+                    WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN :s AND :e
+                    GROUP BY p.id ORDER BY total DESC LIMIT 5";
+        $stmt = $this->db->prepare($sqlProv);
+        $stmt->execute([':s' => $start, ':e' => $end]);
+        $data['top_proveedores'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        usort($logs, function($a, $b) {
-            return strtotime($b['fecha']) - strtotime($a['fecha']);
-        });
+        // 3. Top Insumos Comprados ($)
+        $sqlItems = "SELECT i.nombre, SUM(doc.total_linea) as total
+                     FROM detalle_orden_compra doc
+                     JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
+                     JOIN insumos i ON doc.insumo_id = i.id
+                     WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN :s AND :e
+                     GROUP BY i.id ORDER BY total DESC LIMIT 5";
+        $stmt = $this->db->prepare($sqlItems);
+        $stmt->execute([':s' => $start, ':e' => $end]);
+        $data['top_insumos'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return array_slice($logs, 0, 50);
+        return $data;
+    }
+
+    // --- ANALÍTICAS DE MANTENCIÓN ---
+    public function getMantencionStats($start, $end)
+    {
+        $data = [];
+
+        // 1. Insumos más usados (Cantidad)
+        $sqlUsados = "SELECT i.nombre, SUM(m.cantidad) as cantidad
+                      FROM movimientos_inventario m
+                      JOIN insumos i ON m.insumo_id = i.id
+                      WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN :s AND :e
+                      GROUP BY i.id ORDER BY cantidad DESC LIMIT 8";
+        $stmt = $this->db->prepare($sqlUsados);
+        $stmt->execute([':s' => $start, ':e' => $end]);
+        $data['insumos_usados'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 2. Máquinas con más OTs
+        $sqlMaq = "SELECT a.nombre, COUNT(s.id) as total
+                   FROM solicitudes_ot s
+                   JOIN activos a ON s.activo_id = a.id
+                   WHERE s.fecha_solicitud BETWEEN :s AND :e
+                   GROUP BY a.id ORDER BY total DESC LIMIT 5";
+        $stmt = $this->db->prepare($sqlMaq);
+        $stmt->execute([':s' => $start, ':e' => $end]);
+        $data['top_maquinas'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Resumen OTs (Completadas vs Pendientes)
+        $sqlEstado = "SELECT e.nombre as estado, COUNT(s.id) as cantidad
+                      FROM solicitudes_ot s
+                      JOIN estados_solicitud e ON s.estado_id = e.id
+                      WHERE s.fecha_solicitud BETWEEN :s AND :e
+                      GROUP BY e.id";
+        $stmt = $this->db->prepare($sqlEstado);
+        $stmt->execute([':s' => $start, ':e' => $end]);
+        $data['estado_ots'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $data;
+    }
+
+    // --- LOGS DEL SISTEMA (Mantiene tu funcionalidad actual) ---
+    public function getLogs($area)
+    {
+        $sql = "SELECT l.*, u.username 
+                FROM sistema_logs l 
+                LEFT JOIN usuarios u ON l.usuario_id = u.id 
+                ORDER BY l.fecha DESC LIMIT 50";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 }

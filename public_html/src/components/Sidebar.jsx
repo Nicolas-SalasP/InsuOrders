@@ -15,8 +15,10 @@ const Sidebar = () => {
         inventario: ['Admin', 'Bodega', 'Compras'],
         compras: ['Admin', 'Compras'],
         mantencion: ['Admin', 'Mantencion'],
+        cronograma: ['Admin', 'Mantencion'],
         activos: ['Admin', 'Mantencion'],
         proveedores: ['Admin', 'Compras'],
+        mantenedores: ['Admin'],
         usuarios: ['Admin']
     };
 
@@ -140,6 +142,14 @@ const Sidebar = () => {
                         </li>
                     )}
 
+                    {puedeVer('cronograma') && (
+                        <li>
+                            <NavLink to="/cronograma" className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
+                                <i className="bi bi-calendar-check me-2"></i> Cronograma
+                            </NavLink>
+                        </li>
+                    )}
+
                     {puedeVer('activos') && (
                         <li>
                             <NavLink to="/activos" className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
@@ -148,10 +158,28 @@ const Sidebar = () => {
                         </li>
                     )}
 
-                    {puedeVer('usuarios') && (
+                    {/* SECCIÓN ADMINISTRACIÓN */}
+                    {(puedeVer('usuarios') || puedeVer('mantenedores')) && (
                         <li className="mt-3 pt-3 border-top border-secondary">
+                             <div className="ps-3 mb-2 text-uppercase text-white-50 fw-bold" style={{fontSize: '0.75rem'}}>
+                                Administración
+                             </div>
+                        </li>
+                    )}
+
+                    {puedeVer('mantenedores') && (
+                        <li>
+                            <NavLink to="/mantenedores" className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
+                                <i className="bi bi-sliders me-2"></i> Configuración
+                            </NavLink>
+                        </li>
+                    )}
+
+                    {puedeVer('usuarios') && (
+                        <li>
                             <NavLink to="/usuarios" className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
-                                <i className="bi bi-people-gear me-2"></i> Usuarios
+                                {/* CAMBIO DE ICONO AQUI */}
+                                <i className="bi bi-person-fill-gear me-2"></i> Usuarios
                             </NavLink>
                         </li>
                     )}

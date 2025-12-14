@@ -13,7 +13,10 @@ class MantencionRepository
         $this->db = Database::getConnection();
     }
 
-    // --- ACTIVOS (MÁQUINAS) ---
+    // =================================================================================
+    // 1. ACTIVOS (MÁQUINAS)
+    // =================================================================================
+
     public function getActivos()
     {
         return $this->db->query("SELECT * FROM activos ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -63,7 +66,10 @@ class MantencionRepository
         return $this->db->query("SELECT * FROM centros_costo ORDER BY codigo ASC")->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- GESTIÓN DOCUMENTAL ACTIVOS ---
+    // =================================================================================
+    // 2. GESTIÓN DOCUMENTAL ACTIVOS
+    // =================================================================================
+
     public function addDoc($activoId, $nombre, $url)
     {
         $sql = "INSERT INTO activos_docs (activo_id, nombre_archivo, url_archivo) VALUES (:id, :nom, :url)";
@@ -93,7 +99,21 @@ class MantencionRepository
         }
     }
 
-    // --- KITS DE REPUESTOS ---
+    // =================================================================================
+    // 3. KITS DE REPUESTOS (STOCK MÍNIMO DINÁMICO)
+    // =================================================================================
+
+    private function recalcularMinimoInsumo($insumoId)
+    {
+        $sql = "SELECT SUM(cantidad_default) FROM activos_insumos WHERE insumo_id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $insumoId]);
+        $totalRequerido = $stmt->fetchColumn() ?: 0;
+
+        $upd = "UPDATE insumos SET stock_minimo = :min WHERE id = :id";
+        $this->db->prepare($upd)->execute([':min' => $totalRequerido, ':id' => $insumoId]);
+    }
+
     public function getKitActivo($activoId)
     {
         $sql = "SELECT 
@@ -119,12 +139,16 @@ class MantencionRepository
             $sql = "INSERT INTO activos_insumos (activo_id, insumo_id, cantidad_default) VALUES (:a, :i, :c)";
         }
         $this->db->prepare($sql)->execute([':a' => $activoId, ':i' => $insumoId, ':c' => $cant]);
+
+        $this->recalcularMinimoInsumo($insumoId);
     }
 
     public function removeInsumoFromKit($activoId, $insumoId)
     {
         $sql = "DELETE FROM activos_insumos WHERE activo_id=:a AND insumo_id=:i";
         $this->db->prepare($sql)->execute([':a' => $activoId, ':i' => $insumoId]);
+
+        $this->recalcularMinimoInsumo($insumoId);
     }
 
     public function updateKitQuantity($activoId, $insumoId, $cantidad)
@@ -135,17 +159,23 @@ class MantencionRepository
             ':aid' => $activoId,
             ':iid' => $insumoId
         ]);
+
+        $this->recalcularMinimoInsumo($insumoId);
     }
 
-    // --- SOLICITUDES (OT) ---
+    // =================================================================================
+    // 4. SOLICITUDES OT (MANTENCIÓN)
+    // =================================================================================
 
     public function getSolicitudes()
     {
         $sql = "SELECT 
                     s.*, 
-                    a.nombre as activo, a.codigo_interno as activo_codigo,
+                    COALESCE(a.nombre, 'SERVICIO GENERAL') as activo, 
+                    COALESCE(a.codigo_interno, 'N/A') as activo_codigo,
                     u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
-                    e.nombre as estado, e.id as estado_id
+                    e.nombre as estado, e.id as estado_id,
+                    s.solicitante_externo, s.area_negocio, s.centro_costo_ot
                 FROM solicitudes_ot s
                 LEFT JOIN activos a ON s.activo_id = a.id
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id
@@ -154,7 +184,8 @@ class MantencionRepository
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getDetallesOT($id) {
+    public function getDetallesOT($id)
+    {
         $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.cantidad_entregada, d.estado_linea,
                        i.nombre, i.codigo_sku, i.stock_actual, i.unidad_medida, 
                        GROUP_CONCAT(DISTINCT emp.nombre_completo SEPARATOR ', ') as retirado_por,
@@ -169,8 +200,11 @@ class MantencionRepository
         $stmt->execute([':id' => $id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
     public function createSolicitud($cabecera)
     {
+        $activoId = !empty($cabecera['activo_id']) ? $cabecera['activo_id'] : null;
+
         $sql = "INSERT INTO solicitudes_ot (
                     usuario_solicitante_id, activo_id, estado_id, descripcion_trabajo,
                     origen_tipo, origen_referencia, solicitante_externo, fecha_solicitud_externa,
@@ -183,7 +217,7 @@ class MantencionRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':user' => $cabecera['usuario_id'],
-            ':activo' => !empty($cabecera['activo_id']) ? $cabecera['activo_id'] : null,
+            ':activo' => $activoId,
             ':desc' => $cabecera['observacion'],
             ':otipo' => $cabecera['origen_tipo'] ?? 'Interna',
             ':oref' => $cabecera['origen_referencia'] ?? null,
@@ -224,7 +258,9 @@ class MantencionRepository
         ]);
     }
 
-    // --- FINALIZACIÓN Y ANULACIÓN ---
+    // =================================================================================
+    // 5. FINALIZACIÓN Y ANULACIÓN DE OT
+    // =================================================================================
 
     public function finalizar()
     {
@@ -234,31 +270,27 @@ class MantencionRepository
         try {
             $this->db->beginTransaction();
 
-            $stmtCheck = $this->db->prepare("SELECT COALESCE(SUM(cantidad_entregada), 0) FROM detalle_solicitud WHERE solicitud_id = :id");
-            $stmtCheck->execute([':id' => $id]);
-            $totalEntregado = floatval($stmtCheck->fetchColumn());
+            // 1. FORZAR ESTADO A COMPLETADA (ID 5)
+            $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")
+                ->execute([':id' => $id]);
 
-            $nuevoEstado = ($totalEntregado > 0.001) ? 4 : 6; // 4=Completada, 6=Anulada/Cancelada (Ajustado a BD)
-
-            $this->db->prepare("UPDATE solicitudes_ot SET estado_id = :st WHERE id = :id")
-                ->execute([':st' => $nuevoEstado, ':id' => $id]);
-
-            $estadoLinea = ($nuevoEstado == 6) ? 'ANULADO' : 'FINALIZADO';
-
-            // Liberar reservas
+            // 2. LIMPIEZA DE PENDIENTES
+            // Devolver reservas si las hubiera
             $this->db->prepare("UPDATE insumos i 
                                 JOIN detalle_solicitud ds ON i.id = ds.insumo_id
                                 SET i.stock_actual = i.stock_actual + (ds.cantidad - ds.cantidad_entregada)
                                 WHERE ds.solicitud_id = :id AND ds.estado_linea = 'RESERVADO'")
                 ->execute([':id' => $id]);
 
-            $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = :st WHERE solicitud_id = :id")
-                ->execute([':st' => $estadoLinea, ':id' => $id]);
+            // Marcar las líneas no entregadas como CANCELADO para que no aparezcan en Bodega
+            $this->db->prepare("UPDATE detalle_solicitud 
+                                SET estado_linea = 'CANCELADO' 
+                                WHERE solicitud_id = :id 
+                                AND estado_linea NOT IN ('ENTREGADO', 'FINALIZADO')")
+                ->execute([':id' => $id]);
 
             $this->db->commit();
-
-            $msg = ($nuevoEstado == 6) ? "OT cerrada como CANCELADA (sin consumo)." : "OT Completada Exitosamente.";
-            echo json_encode(["success" => true, "message" => $msg]);
+            echo json_encode(["success" => true, "message" => "Orden de Trabajo cerrada exitosamente."]);
 
         } catch (\Exception $e) {
             $this->db->rollBack();
@@ -286,15 +318,18 @@ class MantencionRepository
         }
     }
 
-    // --- BODEGA ---
+    // =================================================================================
+    // 6. BODEGA (ENTREGAS Y MOVIMIENTOS)
+    // =================================================================================
+
     public function getPendientesEntrega()
     {
-        // Se cambió ds.fecha_ingreso por s.fecha_solicitud
+        // Filtro actualizado para decimales (> 0.001)
         $sql = "SELECT 
                     ds.id as detalle_id, ds.cantidad, ds.cantidad_entregada,
                     (ds.cantidad - ds.cantidad_entregada) as cantidad_pendiente,
                     s.fecha_solicitud as fecha_solicitud,
-                    i.id as insumo_id, i.nombre as insumo, i.codigo_sku, i.unidad_medida,
+                    i.id as insumo_id, i.nombre as insumo, i.codigo_sku, i.unidad_medida, i.stock_actual,
                     s.id as ot_id, u.nombre as solicitante, u.apellido as solicitante_apellido,
                     a.nombre as maquina
                 FROM detalle_solicitud ds
@@ -303,9 +338,9 @@ class MantencionRepository
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id
                 LEFT JOIN activos a ON s.activo_id = a.id
                 WHERE ds.estado_linea IN ('EN_BODEGA', 'PARCIAL', 'RESERVADO', 'PENDIENTE') 
-                AND (ds.cantidad - ds.cantidad_entregada) > 0.01
+                AND (ds.cantidad - ds.cantidad_entregada) > 0.001
                 AND s.estado_id IN (1, 2, 4)
-                ORDER BY s.id ASC";
+                ORDER BY s.fecha_requerida ASC, s.id ASC";
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -320,31 +355,72 @@ class MantencionRepository
             if (!$linea)
                 throw new \Exception("Línea no encontrada");
 
-            $pendiente = (float) $linea['cantidad'] - (float) $linea['cantidad_entregada'];
-            if ((float) $cantidadEntregar > $pendiente)
-                throw new \Exception("Exceso de entrega");
+            // --- CORRECCIÓN CRÍTICA: USO DE FLOATVAL PARA DECIMALES ---
+            $solicitado = floatval($linea['cantidad']);
+            $yaEntregado = floatval($linea['cantidad_entregada']);
+            $pendiente = $solicitado - $yaEntregado;
+            $aEntregar = floatval($cantidadEntregar);
 
+            // Validaciones con tolerancia pequeña
+            if ($aEntregar > ($pendiente + 0.001))
+                throw new \Exception("Exceso de entrega. Pendiente: " . $pendiente);
+
+            $stmtInsumo = $this->db->prepare("SELECT stock_actual FROM insumos WHERE id = :id");
+            $stmtInsumo->execute([':id' => $linea['insumo_id']]);
+            $stockActual = floatval($stmtInsumo->fetchColumn());
+
+            if ($stockActual < $aEntregar)
+                throw new \Exception("Stock insuficiente en bodega.");
+
+            // Registrar movimiento
             $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, empleado_id, fecha) 
                        VALUES (:iid, 2, :cant, :uid, 'Entrega OT', :ref, :emp, NOW())";
             $this->db->prepare($sqlMov)->execute([
                 ':iid' => $linea['insumo_id'],
-                ':cant' => $cantidadEntregar,
+                ':cant' => $aEntregar,
                 ':uid' => $usuarioId,
                 ':ref' => $detalleId,
                 ':emp' => $receptorId
             ]);
 
+            // Descontar Stock
             $this->db->prepare("UPDATE insumos SET stock_actual = stock_actual - :cant WHERE id = :id")
-                ->execute([':cant' => $cantidadEntregar, ':id' => $linea['insumo_id']]);
+                ->execute([':cant' => $aEntregar, ':id' => $linea['insumo_id']]);
 
-            $nuevaEntregada = $linea['cantidad_entregada'] + $cantidadEntregar;
-            $nuevoEstado = ($nuevaEntregada >= $linea['cantidad']) ? 'ENTREGADO' : 'PARCIAL';
+            // Actualizar Línea de Solicitud
+            $nuevaEntregada = $yaEntregado + $aEntregar;
+
+            // Si se completa (con margen error), estado ENTREGADO
+            if ($nuevaEntregada >= ($solicitado - 0.001)) {
+                $nuevoEstado = 'ENTREGADO';
+                $nuevaEntregada = $solicitado; // Forzar exactitud
+            } else {
+                $nuevoEstado = 'PARCIAL';
+            }
 
             $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")
                 ->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
 
-            // Pasar a En Proceso (2) si estaba pendiente
-            $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $linea['solicitud_id']]);
+            // =================================================================
+            // AUTO-CIERRE DE LA OT (Si ya no queda nada pendiente)
+            // =================================================================
+            $otId = $linea['solicitud_id'];
+
+            // Contamos cuántas líneas quedan pendientes (que no sean ENTREGADO, FINALIZADO, etc.)
+            $sqlCheck = "SELECT COUNT(*) FROM detalle_solicitud 
+                         WHERE solicitud_id = :id 
+                         AND estado_linea NOT IN ('ENTREGADO', 'FINALIZADO', 'ANULADO', 'CANCELADO')";
+            $stmtCheck = $this->db->prepare($sqlCheck);
+            $stmtCheck->execute([':id' => $otId]);
+            $itemsPendientes = $stmtCheck->fetchColumn();
+
+            if ($itemsPendientes == 0) {
+                // Si todo fue entregado, pasamos la OT a COMPLETADA (5)
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")->execute([':id' => $otId]);
+            } else {
+                // Si aún falta, aseguramos que esté EN PROCESO (2)
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id IN (1, 4)")->execute([':id' => $otId]);
+            }
 
             $this->db->commit();
             return true;
@@ -354,13 +430,27 @@ class MantencionRepository
         }
     }
 
-    // --- PDF / EXCEL DATA ---
-    public function getOTHeader($id) {
+    // =================================================================================
+    // 7. PDF Y EXCEL DATA
+    // =================================================================================
+
+    public function getOTHeader($id)
+    {
         $sql = "SELECT s.id, s.fecha_solicitud, s.descripcion_trabajo,
                     u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
-                    COALESCE(a.nombre, 'General') as activo,
-                    COALESCE(a.codigo_interno, '') as activo_codigo,
-                    e.nombre as estado
+                    
+                    -- Encabezado Híbrido: Nombre de Máquina o Área de Servicio
+                    CASE 
+                        WHEN s.activo_id IS NOT NULL THEN a.nombre 
+                        ELSE CONCAT('SERVICIO: ', COALESCE(s.area_negocio, 'General')) 
+                    END as activo,
+                    
+                    COALESCE(a.codigo_interno, 'SERV') as activo_codigo,
+                    e.nombre as estado,
+                    
+                    -- Datos extras de Servicio
+                    s.solicitante_externo, s.centro_costo_ot, s.area_negocio
+                    
                 FROM solicitudes_ot s
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id
                 LEFT JOIN activos a ON s.activo_id = a.id

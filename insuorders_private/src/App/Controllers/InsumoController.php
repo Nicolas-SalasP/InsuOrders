@@ -23,122 +23,111 @@ class InsumoController
         echo json_encode(["success" => true, "data" => $this->service->obtenerAuxiliares()]);
     }
 
+    // Procesamiento de imagen centralizado
     private function procesarImagen()
     {
-        if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
-            $fileTmpPath = $_FILES['imagen']['tmp_name'];
-            $fileName = $_FILES['imagen']['name'];
-            $fileNameCmps = explode(".", $fileName);
-            $fileExtension = strtolower(end($fileNameCmps));
-
-            $allowedfileExtensions = array('jpg', 'gif', 'png', 'jpeg', 'webp');
-
-            if (in_array($fileExtension, $allowedfileExtensions)) {
-                $uploadFileDir = __DIR__ . '/../../../../public_html/uploads/insumos/';
-
-                if (!is_dir($uploadFileDir)) {
-                    mkdir($uploadFileDir, 0777, true);
-                }
-
-                $newFileName = md5(time() . $fileName) . '.' . $fileExtension;
-                $dest_path = $uploadFileDir . $newFileName;
-
-                if (move_uploaded_file($fileTmpPath, $dest_path)) {
-                    return '/uploads/insumos/' . $newFileName;
-                }
-            }
+        if (!isset($_FILES['imagen']) || $_FILES['imagen']['error'] === UPLOAD_ERR_NO_FILE) {
+            return null;
         }
-        return null;
+
+        if ($_FILES['imagen']['error'] !== UPLOAD_ERR_OK) {
+            throw new \Exception("Error subida imagen: Código " . $_FILES['imagen']['error']);
+        }
+
+        $fileName = $_FILES['imagen']['name'];
+        $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'gif', 'png', 'jpeg', 'webp'];
+
+        if (!in_array($fileExtension, $allowed)) {
+            throw new \Exception("Formato no permitido: $fileExtension");
+        }
+
+        // Ruta absoluta ajustada
+        $uploadFileDir = __DIR__ . '/../../../../public_html/uploads/insumos/';
+        if (!is_dir($uploadFileDir))
+            mkdir($uploadFileDir, 0777, true);
+
+        $newFileName = md5(time() . $fileName) . '.' . $fileExtension;
+
+        if (move_uploaded_file($_FILES['imagen']['tmp_name'], $uploadFileDir . $newFileName)) {
+            return '/uploads/insumos/' . $newFileName;
+        }
+
+        throw new \Exception("No se pudo mover la imagen al directorio final.");
     }
 
     public function store()
     {
-        $data = $_POST;
-
         try {
-            $data['imagen_url'] = $this->procesarImagen();
+            if (empty($_POST))
+                throw new \Exception("No se recibieron datos (POST vacío).");
+
+            $data = $_POST;
+            // Procesar imagen
+            $img = $this->procesarImagen();
+            if ($img)
+                $data['imagen_url'] = $img;
 
             $id = $this->service->crearInsumo($data);
-            echo json_encode(["success" => true, "message" => "Insumo creado correctamente", "id" => $id]);
+            echo json_encode(["success" => true, "message" => "Insumo creado", "id" => $id]);
         } catch (\Exception $e) {
-            http_response_code(400);
+            http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
     public function update()
     {
-        // 1. Detectar el ID (puede venir en POST o GET)
-        $id = $_POST['id'] ?? $_GET['id'] ?? null;
-
-        if (!$id) {
-            jsonResponse(400, ["error" => "No se especificó el ID para editar."]);
-            return;
-        }
-
-        // 2. Recoger TODOS los datos del formulario (incluyendo el stock)
-        $data = [
-            'codigo_sku'    => $_POST['codigo_sku'] ?? null,
-            'nombre'        => $_POST['nombre'] ?? null,
-            'descripcion'   => $_POST['descripcion'] ?? '',
-            'categoria_id'  => $_POST['categoria_id'] ?? null,
-            'ubicacion_id'  => $_POST['ubicacion_id'] ?? null,
-            
-            // --- ¡ESTA ES LA LÍNEA CLAVE QUE SEGURAMENTE TE FALTA! ---
-            'stock_actual'  => $_POST['stock_actual'] ?? 0, 
-            // ---------------------------------------------------------
-            
-            'stock_minimo'  => $_POST['stock_minimo'] ?? 0,
-            'precio_costo'  => $_POST['precio_costo'] ?? 0,
-            'moneda'        => $_POST['moneda'] ?? 'CLP',
-            'unidad_medida' => $_POST['unidad_medida'] ?? 'UN'
-        ];
-
-        // 3. Procesar Imagen (si se subió una nueva)
-        if (!empty($_FILES['imagen']['name'])) {
-            $targetDir = __DIR__ . '/../../../../public_html/uploads/insumos/';
-            if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
-
-            $ext = pathinfo($_FILES['imagen']['name'], PATHINFO_EXTENSION);
-            $fileName = 'prod_' . $id . '_' . time() . '.' . $ext;
-            
-            if (move_uploaded_file($_FILES['imagen']['tmp_name'], $targetDir . $fileName)) {
-                $data['imagen_url'] = '/uploads/insumos/' . $fileName;
-            }
-        }
-
-        // 4. Llamar al Repositorio
         try {
-            // Asegúrate de que tu clase tenga: private $repository; en el constructor
-            $this->repository = new InsumoRepository();
-            $resultado = $this->repository->update($id, $data);
+            $id = $_POST['id'] ?? null;
+            if (!$id)
+                throw new \Exception("Falta el ID para actualizar.");
 
-            if ($resultado) {
-                jsonResponse(200, ["success" => true, "message" => "Actualizado correctamente"]);
-            } else {
-                jsonResponse(500, ["error" => "No se realizaron cambios en la base de datos"]);
+            // Recoger datos forzando enteros
+            $data = [
+                'codigo_sku' => $_POST['codigo_sku'] ?? '',
+                'nombre' => $_POST['nombre'] ?? '',
+                'descripcion' => $_POST['descripcion'] ?? '',
+                'categoria_id' => $_POST['categoria_id'] ?? null,
+                'ubicacion_id' => $_POST['ubicacion_id'] ?? null,
+                'stock_actual' => (int) ($_POST['stock_actual'] ?? 0),
+                'stock_minimo' => (int) ($_POST['stock_minimo'] ?? 0),
+                'precio_costo' => (int) ($_POST['precio_costo'] ?? 0),
+                'moneda' => $_POST['moneda'] ?? 'CLP',
+                'unidad_medida' => $_POST['unidad_medida'] ?? 'UN'
+            ];
+
+            // Procesar imagen nueva si existe
+            $nuevaImagen = $this->procesarImagen();
+            if ($nuevaImagen) {
+                $data['imagen_url'] = $nuevaImagen;
             }
+
+            // Llamar al servicio
+            $this->service->actualizarInsumo($id, $data);
+
+            echo json_encode(["success" => true, "message" => "Actualizado correctamente"]);
+
         } catch (\Exception $e) {
-            jsonResponse(500, ["error" => "Error interno: " . $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Error al actualizar: " . $e->getMessage()]);
         }
     }
 
     public function ajustar()
     {
         $data = json_decode(file_get_contents("php://input"), true);
-
-        if (!isset($data['insumo_id']) || !isset($data['cantidad'])) {
+        if (!isset($data['insumo_id'], $data['cantidad'])) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => "Faltan datos obligatorios"]);
+            echo json_encode(["success" => false, "message" => "Faltan datos"]);
             return;
         }
+        $data['cantidad'] = (int) $data['cantidad'];
 
         try {
-            $usuarioId = AuthMiddleware::verify();
-
-            $this->service->gestionarStock($data, $usuarioId);
-
-            echo json_encode(["success" => true, "message" => "Movimiento registrado correctamente"]);
+            $uid = AuthMiddleware::verify();
+            $this->service->gestionarStock($data, $uid);
+            echo json_encode(["success" => true, "message" => "Movimiento registrado"]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
@@ -150,9 +139,10 @@ class InsumoController
         $id = $_GET['id'] ?? null;
         try {
             if ($this->service->eliminarInsumo($id)) {
-                echo json_encode(["success" => true, "message" => "Insumo eliminado"]);
+                echo json_encode(["success" => true, "message" => "Eliminado"]);
             } else {
-                throw new \Exception("No se pudo eliminar el insumo");
+                http_response_code(400);
+                echo json_encode(["success" => false, "message" => "No se puede eliminar (tiene historial)"]);
             }
         } catch (\Exception $e) {
             http_response_code(500);

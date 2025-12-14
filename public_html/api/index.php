@@ -14,6 +14,8 @@ use App\Controllers\DashboardController;
 use App\Controllers\UsuariosController;
 use App\Controllers\ExportController;
 use App\Middleware\AuthMiddleware;
+use App\Controllers\CronogramaController;
+use App\Controllers\MantenedoresController; // Agregamos el uso del controlador
 
 // ============================================================================
 // 1. DETECCIÓN DE RUTA (ROUTER)
@@ -92,7 +94,9 @@ switch ($path) {
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $controller->index();
         } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (isset($_POST['_method']) && strtoupper($_POST['_method']) === 'PUT') {
+            $isPut = (isset($_POST['_method']) && strtoupper($_POST['_method']) === 'PUT');
+            $hasId = !empty($_POST['id']);
+            if ($isPut || $hasId) {
                 $controller->update();
             } else {
                 $controller->store();
@@ -187,6 +191,82 @@ switch ($path) {
         (new MantencionController())->downloadPdf();
         break;
 
+    case 'cronograma':
+        AuthMiddleware::verify(['Mantencion', 'Admin']);
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/CronogramaController.php';
+        $c = new CronogramaController();
+
+        $method = $_SERVER['REQUEST_METHOD'];
+
+        if ($method === 'GET') {
+            if (isset($_GET['id']))
+                $c->show();
+            else
+                $c->index();
+        } elseif ($method === 'POST')
+            $c->store();
+        elseif ($method === 'PUT')
+            $c->update();
+        elseif ($method === 'DELETE')
+            $c->delete();
+        break;
+
+    case 'cronograma/verificar':
+        AuthMiddleware::verify(['Mantencion', 'Admin']);
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/CronogramaController.php';
+        (new CronogramaController())->verificarAlertas();
+        break;
+
+    // --- MANTENEDORES (CONFIGURACIÓN) ---
+    // Agregamos estas rutas para que el controlador MantenedoresController funcione
+    case 'mantenedores/empleados':
+        AuthMiddleware::verify(['Admin']);
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantenedoresController.php';
+        (new MantenedoresController())->getEmpleados();
+        break;
+
+    case 'mantenedores/empleado':
+        AuthMiddleware::verify(['Admin']);
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantenedoresController.php';
+        $c = new MantenedoresController();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+            $c->saveEmpleado();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+            $c->deleteEmpleado();
+        break;
+
+    case 'mantenedores/centros':
+        AuthMiddleware::verify(['Admin']);
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantenedoresController.php';
+        (new MantenedoresController())->getCentros();
+        break;
+
+    case 'mantenedores/centro':
+        AuthMiddleware::verify(['Admin']);
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantenedoresController.php';
+        $c = new MantenedoresController();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+            $c->saveCentro();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+            $c->deleteCentro();
+        break;
+
+    case 'mantenedores/areas':
+        AuthMiddleware::verify(['Admin']);
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantenedoresController.php';
+        (new MantenedoresController())->getAreas();
+        break;
+
+    case 'mantenedores/area':
+        AuthMiddleware::verify(['Admin']);
+        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantenedoresController.php';
+        $c = new MantenedoresController();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+            $c->saveArea();
+        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+            $c->deleteArea();
+        break;
+
     // --- PERSONAL (Técnicos) ---
     case 'personal':
         AuthMiddleware::verify();
@@ -232,6 +312,11 @@ switch ($path) {
     case 'compras/pendientes':
         AuthMiddleware::verify(['Compras', 'Admin']);
         (new OrdenCompraController())->pendientes();
+        break;
+        
+    case 'compras/filtros':
+        AuthMiddleware::verify(['Compras', 'Admin']);
+        (new OrdenCompraController())->filtros();
         break;
 
     // --- BODEGA ---
@@ -286,6 +371,10 @@ switch ($path) {
             $c->index();
         else
             $c->logs();
+        break;
+    case 'dashboard/analytics':
+        AuthMiddleware::verify();
+        (new DashboardController())->analytics();
         break;
 
     // --- EXPORTAR EXCEL ---

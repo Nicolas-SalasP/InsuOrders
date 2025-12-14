@@ -13,9 +13,14 @@ class OrdenCompraRepository
         $this->db = Database::getConnection();
     }
 
-    public function getAll()
+    /**
+     * Get all Purchase Orders with optional filters.
+     * Updated to support filtering by Insumo ID.
+     */
+    public function getAll($filtros = [])
     {
-        $sql = "SELECT 
+        // Base query with DISTINCT to avoid duplicates when filtering by item
+        $sql = "SELECT DISTINCT 
                     oc.id, oc.fecha_creacion, oc.monto_total, oc.url_archivo,
                     p.nombre as proveedor, p.rut as proveedor_rut,
                     e.nombre as estado, e.id as estado_id,
@@ -24,9 +29,57 @@ class OrdenCompraRepository
                 JOIN proveedores p ON oc.proveedor_id = p.id
                 JOIN estados_orden_compra e ON oc.estado_id = e.id
                 JOIN usuarios u ON oc.usuario_creador_id = u.id
-                ORDER BY oc.id DESC";
+                -- LEFT JOIN with details is only necessary if we filter by item, 
+                -- but we include it conditionally or always if performance allows.
+                LEFT JOIN detalle_orden_compra doc ON oc.id = doc.orden_compra_id
+                WHERE 1=1";
+
+        $params = [];
+
+        // 1. FILTER BY INSUMO ID (New Requirement)
+        if (!empty($filtros['insumo_id'])) {
+            $sql .= " AND doc.insumo_id = :iid";
+            $params[':iid'] = $filtros['insumo_id'];
+        }
+
+        // 2. Search Filter (ID or Provider)
+        if (!empty($filtros['search'])) {
+            $sql .= " AND (oc.id LIKE :s OR p.nombre LIKE :s)";
+            $params[':s'] = "%" . $filtros['search'] . "%";
+        }
+
+        // 3. Date Filters
+        if (!empty($filtros['fecha_inicio'])) {
+            $sql .= " AND oc.fecha_creacion >= :fi";
+            $params[':fi'] = $filtros['fecha_inicio'];
+        }
+
+        if (!empty($filtros['fecha_fin'])) {
+            $sql .= " AND oc.fecha_creacion <= :ff";
+            $params[':ff'] = $filtros['fecha_fin'] . ' 23:59:59';
+        }
+
+        $sql .= " ORDER BY oc.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Get a list of all items that have been purchased historically.
+     * Used to populate the filter dropdown in the frontend.
+     */
+    public function getInsumosHistorial()
+    {
+        $sql = "SELECT DISTINCT i.id, i.nombre, i.codigo_sku 
+                FROM insumos i
+                JOIN detalle_orden_compra doc ON i.id = doc.insumo_id
+                ORDER BY i.nombre ASC";
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    // --- Existing Methods (Unchanged) ---
 
     public function getOrdenCompleta($id)
     {
@@ -65,6 +118,7 @@ class OrdenCompraRepository
     {
         return $this->getOrdenCompleta($id);
     }
+    
     public function getDetalle($id)
     {
         $res = $this->getOrdenCompleta($id);
@@ -89,15 +143,14 @@ class OrdenCompraRepository
 
     public function asociarSolicitudesAOrden($ordenId, $idsDetalleSolicitud)
     {
-        if (empty($idsDetalleSolicitud))
-            return;
+        if (empty($idsDetalleSolicitud)) return;
+        
         if (is_array($idsDetalleSolicitud))
             $idsStr = implode(',', array_map('intval', $idsDetalleSolicitud));
         else
             $idsStr = $idsDetalleSolicitud;
 
-        if (empty($idsStr))
-            return;
+        if (empty($idsStr)) return;
 
         $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'COMPRADO', orden_compra_id = :oc WHERE id IN ($idsStr)")
             ->execute([':oc' => $ordenId]);
@@ -162,8 +215,7 @@ class OrdenCompraRepository
             foreach ($itemsRecibidos as $item) {
                 $detalleId = $item['detalle_id'];
                 $cantidad = floatval($item['cantidad']);
-                if ($cantidad <= 0)
-                    continue;
+                if ($cantidad <= 0) continue;
 
                 $stmtDet = $this->db->prepare("SELECT insumo_id, cantidad_solicitada, cantidad_recibida FROM detalle_orden_compra WHERE id = :id");
                 $stmtDet->execute([':id' => $detalleId]);

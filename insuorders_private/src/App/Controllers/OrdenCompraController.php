@@ -13,9 +13,34 @@ class OrdenCompraController
         $this->service = new OrdenCompraService();
     }
 
+    /**
+     * List orders with filtering
+     */
     public function index()
     {
-        echo json_encode(["success" => true, "data" => $this->service->listarOrdenes()]);
+        // Parse filters from GET parameters
+        $filtros = [
+            'search'       => $_GET['search'] ?? null,
+            'insumo_id'    => $_GET['insumo_id'] ?? null,
+            'fecha_inicio' => $_GET['start'] ?? null,
+            'fecha_fin'    => $_GET['end'] ?? null
+        ];
+
+        echo json_encode(["success" => true, "data" => $this->service->listarOrdenes($filtros)]);
+    }
+
+    /**
+     * Endpoint to get the list of items for the filter dropdown
+     */
+    public function filtros()
+    {
+        try {
+            $insumos = $this->service->obtenerFiltrosInsumos();
+            echo json_encode(["success" => true, "data" => $insumos]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
     }
 
     public function show()

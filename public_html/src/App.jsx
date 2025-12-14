@@ -12,6 +12,8 @@ import Mantencion from './pages/Mantencion';
 import Activos from './pages/Activos';
 import Bodega from './pages/Bodega';
 import Usuarios from './pages/Usuarios';
+import Cronograma from './pages/Cronograma';
+import AdminMantenedores from './pages/AdminMantenedores'; // <--- IMPORTADO
 
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
@@ -19,12 +21,10 @@ const PrivateRoute = () => {
     return auth.token ? <Outlet /> : <Navigate to="/login" />;
 };
 
-// Componente para proteger rutas según Rol
 const RoleGuard = ({ children, deniedRoles = [] }) => {
     const { auth } = useContext(AuthContext);
 
     if (deniedRoles.includes(auth.rol)) {
-        // Redirigir a una página segura según el rol
         if (auth.rol === 'Compras') return <Navigate to="/compras" replace />;
         if (auth.rol === 'Bodega') return <Navigate to="/bodega" replace />;
         if (auth.rol === 'Mantencion') return <Navigate to="/mantencion" replace />;
@@ -43,33 +43,54 @@ function App() {
                     <Route element={<PrivateRoute />}>
                         <Route element={<Layout />}>
                             <Route path="/" element={<RoleGuard deniedRoles={['Compras', 'Mantencion']}><Navigate to="/dashboard" /></RoleGuard>} />
+                            
                             <Route path="/dashboard" element={
                                 <RoleGuard deniedRoles={['Compras', 'Mantencion']}>
                                     <Dashboard />
                                 </RoleGuard>
                             } />
+                            
                             <Route path="/compras" element={<Compras />} />
                             <Route path="/proveedores" element={<Proveedores />} />
+                            
                             <Route path="/inventario" element={
                                 <RoleGuard deniedRoles={['Mantencion']}>
                                     <Inventario />
                                 </RoleGuard>
                             } />
+                            
                             <Route path="/bodega" element={
                                 <RoleGuard deniedRoles={['Compras', 'Mantencion']}>
                                     <Bodega />
                                 </RoleGuard>
                             } />
+                            
                             <Route path="/mantencion" element={
                                 <RoleGuard deniedRoles={['Compras', 'Bodega']}>
                                     <Mantencion />
                                 </RoleGuard>
                             } />
+                            
+                            <Route path="/cronograma" element={
+                                <RoleGuard deniedRoles={['Compras', 'Bodega']}>
+                                    <Cronograma />
+                                </RoleGuard>
+                            } />
+
                             <Route path="/activos" element={
                                 <RoleGuard deniedRoles={['Compras', 'Bodega']}>
                                     <Activos />
                                 </RoleGuard>
                             } />
+                            
+                            {/* --- NUEVA RUTA DE MANTENEDORES --- */}
+                            {/* Denegamos acceso a todos menos Admin */}
+                            <Route path="/mantenedores" element={
+                                <RoleGuard deniedRoles={['Compras', 'Bodega', 'Mantencion']}>
+                                    <AdminMantenedores />
+                                </RoleGuard>
+                            } />
+                            
                             <Route path="/usuarios" element={
                                 <RoleGuard deniedRoles={['Compras', 'Bodega', 'Mantencion']}>
                                     <Usuarios />
