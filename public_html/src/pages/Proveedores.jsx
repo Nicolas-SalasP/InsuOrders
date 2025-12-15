@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
+import AuthContext from '../context/AuthContext'; // <--- IMPORTADO
 import ProveedorModal from '../components/ProveedorModal';
+import ModalCargaMasiva from '../components/ModalCargaMasiva'; // <--- IMPORTADO
 
 const Proveedores = () => {
+    const { auth } = useContext(AuthContext); // <--- AUTH HOOK
     const [proveedores, setProveedores] = useState([]);
     const [loading, setLoading] = useState(true);
     
@@ -20,6 +23,7 @@ const Proveedores = () => {
 
     // Estados para el modal
     const [showModal, setShowModal] = useState(false);
+    const [showImport, setShowImport] = useState(false); // <--- NUEVO ESTADO
     const [proveedorEditar, setProveedorEditar] = useState(null);
 
     useEffect(() => {
@@ -116,11 +120,20 @@ const Proveedores = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
+            
             <ProveedorModal 
                 show={showModal} 
                 onClose={() => setShowModal(false)}
                 proveedorEditar={proveedorEditar}
                 onSave={cargarDatos}
+            />
+
+            {/* --- MODAL DE IMPORTACIÓN --- */}
+            <ModalCargaMasiva 
+                show={showImport} 
+                onClose={() => setShowImport(false)} 
+                tipo="proveedores" // IMPORTANTE: Tipo para el backend
+                onSave={cargarDatos} 
             />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
@@ -132,6 +145,14 @@ const Proveedores = () => {
                         <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
                             <i className="bi bi-file-earmark-excel me-2"></i>Exportar
                         </button>
+
+                        {/* --- BOTÓN IMPORTAR (SOLO ADMIN) --- */}
+                        {auth.rol === 'Admin' && (
+                            <button className="btn btn-outline-dark me-2" onClick={() => setShowImport(true)}>
+                                <i className="bi bi-file-earmark-arrow-up me-2"></i>Importar
+                            </button>
+                        )}
+
                         <button className="btn btn-primary d-flex align-items-center gap-2 d-inline-flex" onClick={handleNew}>
                             <i className="bi bi-plus-lg"></i>
                             <span className="d-none d-sm-inline">Nuevo</span>

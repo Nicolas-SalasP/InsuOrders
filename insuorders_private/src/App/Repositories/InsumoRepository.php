@@ -14,19 +14,38 @@ class InsumoRepository
         $this->db = Database::getConnection();
     }
 
-    // ... (getAll, getAuxiliares, create - Mantener igual) ...
+    private function generarSkuCorrelativo()
+    {
+        $prefix = '99000007199';
+        $sql = "SELECT MAX(CAST(codigo_sku AS UNSIGNED)) as max_sku 
+                FROM insumos 
+                WHERE codigo_sku LIKE :pattern";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':pattern' => $prefix . '%']);
+        $maxSku = $stmt->fetchColumn();
+
+        if ($maxSku) {
+            // Si existe (ej: 990000071992462), le sumamos 1
+            return (string) ($maxSku + 1);
+        } else {
+            // Si no existe ninguno, empezamos desde el inicio (ej: ...0000)
+            return $prefix . '0000';
+        }
+    }
+
     public function getAll()
-    { /* ... código existente ... */
+    {
         $sql = "SELECT i.*, c.nombre as categoria_nombre,
                 (SELECT GROUP_CONCAT(CONCAT(IFNULL(s.nombre, 'General'), ' - ', u.nombre, ' (', REPLACE(FORMAT(isu.cantidad, 2), '.00', ''), ')') SEPARATOR '||')
-                 FROM insumo_stock_ubicacion isu JOIN ubicaciones u ON isu.ubicacion_id = u.id LEFT JOIN sectores s ON u.sector_id = s.id
-                 WHERE isu.insumo_id = i.id AND isu.cantidad > 0) as ubicaciones_multiples
+                FROM insumo_stock_ubicacion isu JOIN ubicaciones u ON isu.ubicacion_id = u.id LEFT JOIN sectores s ON u.sector_id = s.id
+                WHERE isu.insumo_id = i.id AND isu.cantidad > 0) as ubicaciones_multiples
                 FROM insumos i LEFT JOIN categorias_insumo c ON i.categoria_id = c.id ORDER BY i.nombre ASC";
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getAuxiliares()
-    { /* ... código existente ... */
+    {
         $categorias = $this->db->query("SELECT * FROM categorias_insumo ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
         $sectores = $this->db->query("SELECT * FROM sectores ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
         $ubicaciones = $this->db->query("SELECT u.id, u.nombre, u.sector_id, s.nombre as sector_nombre FROM ubicaciones u LEFT JOIN sectores s ON u.sector_id = s.id ORDER BY s.nombre, u.nombre")->fetchAll(PDO::FETCH_ASSOC);
@@ -34,22 +53,26 @@ class InsumoRepository
     }
 
     public function create($data)
-    { /* ... código existente ... */
+    {
+        $skuAutomatico = $this->generarSkuCorrelativo();
+
         $sql = "INSERT INTO insumos (codigo_sku, nombre, descripcion, categoria_id, ubicacion_id, stock_actual, stock_minimo, precio_costo, moneda, unidad_medida, imagen_url) 
                 VALUES (:sku, :nom, :desc, :cat, NULL, :stock, :min, :precio, :moneda, :unidad, :img)";
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            ':sku' => $data['codigo_sku'],
+            ':sku' => $skuAutomatico,
             ':nom' => $data['nombre'],
             ':desc' => $data['descripcion'] ?? '',
             ':cat' => $data['categoria_id'],
             ':stock' => $data['stock_actual'],
             ':min' => $data['stock_minimo'],
             ':precio' => $data['precio_costo'],
-            ':moneda' => $data['moneda'],
+            ':moneda' => $data['moneda'] ?? 'CLP',
             ':unidad' => $data['unidad_medida'],
             ':img' => $data['imagen_url'] ?? null
         ]);
+
         return $this->db->lastInsertId();
     }
 

@@ -14,50 +14,115 @@ class MantencionRepository
     }
 
     // =================================================================================
+    // HELPER: SANITIZAR CENTRO DE COSTO (CORRIGE EL PROBLEMA DE ID vs CÓDIGO)
+    // =================================================================================
+    
+    private function resolveCentroCostoId($input)
+    {
+        if (empty($input)) return null;
+
+        // 1. Si ya es un ID válido que existe en la tabla, lo usamos
+        $stmt = $this->db->prepare("SELECT id FROM centros_costo WHERE id = :val");
+        $stmt->execute([':val' => $input]);
+        if ($stmt->fetch()) {
+            return $input;
+        }
+
+        // 2. Si no es un ID, buscamos si es un CÓDIGO (ej: 6021) y traemos su ID real
+        $stmt = $this->db->prepare("SELECT id FROM centros_costo WHERE codigo = :val");
+        $stmt->execute([':val' => $input]);
+        $id = $stmt->fetchColumn();
+
+        return $id ? $id : null; // Si encuentra el ID lo devuelve, si no, null
+    }
+
+    // =================================================================================
     // 1. ACTIVOS (MÁQUINAS)
     // =================================================================================
 
     public function getActivos()
     {
-        return $this->db->query("SELECT * FROM activos ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
+        // JOIN INTELIGENTE: Intenta unir por ID, y si falla, une por CÓDIGO para mostrar datos viejos
+        $sql = "SELECT 
+                    a.id, 
+                    a.codigo_interno, 
+                    a.nombre, 
+                    a.tipo, 
+                    a.ubicacion, 
+                    a.descripcion, 
+                    a.centro_costo_id, 
+                    
+                    COALESCE(cc.nombre, cc_legacy.nombre) as centro_costo_nombre,
+                    COALESCE(cc.codigo, cc_legacy.codigo) as centro_costo_codigo,
+                    COALESCE(cc.id, cc_legacy.id) as centro_costo_real_id
+
+                FROM activos a
+                LEFT JOIN centros_costo cc ON a.centro_costo_id = cc.id
+                LEFT JOIN centros_costo cc_legacy ON a.centro_costo_id = cc_legacy.codigo
+                ORDER BY a.nombre ASC";
+        
+        $data = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+        // Pequeño parche para que el frontend reciba siempre el ID correcto en 'centro_costo_id'
+        foreach ($data as &$row) {
+            if (empty($row['centro_costo_id']) && !empty($row['centro_costo_real_id'])) {
+                $row['centro_costo_id'] = $row['centro_costo_real_id'];
+            }
+        }
+        return $data;
     }
 
     public function createActivo($data)
     {
-        $sql = "INSERT INTO activos (codigo_interno, nombre, tipo, ubicacion, descripcion, centro_costo) 
+        // Verificar duplicados
+        $check = $this->db->prepare("SELECT id FROM activos WHERE codigo_interno = :cod");
+        $check->execute([':cod' => $data['codigo_interno']]);
+        if ($check->fetch()) {
+            throw new \Exception("El código '{$data['codigo_interno']}' ya existe.");
+        }
+
+        // Usamos el helper para asegurar que guardamos el ID
+        $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
+
+        $sql = "INSERT INTO activos (codigo_interno, nombre, tipo, ubicacion, descripcion, centro_costo_id) 
                 VALUES (:cod, :nom, :tipo, :ubi, :desc, :cc)";
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            ':cod' => $data['codigo_interno'],
-            ':nom' => $data['nombre'],
+            ':cod'  => $data['codigo_interno'],
+            ':nom'  => $data['nombre'],
             ':tipo' => $data['tipo'],
-            ':ubi' => $data['ubicacion'],
-            ':desc' => $data['descripcion'],
-            ':cc' => $data['centro_costo'] ?? null
+            ':ubi'  => $data['ubicacion'],
+            ':desc' => $data['descripcion'] ?? '',
+            ':cc'   => $ccId
         ]);
+        
         return $this->db->lastInsertId();
     }
 
     public function updateActivo($data)
     {
+        // Usamos el helper para asegurar que guardamos el ID, aunque venga un código viejo
+        $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
+
         $sql = "UPDATE activos SET 
                     codigo_interno = :cod, 
                     nombre = :nom, 
                     tipo = :tipo, 
                     ubicacion = :ubi, 
                     descripcion = :desc,
-                    centro_costo = :cc
+                    centro_costo_id = :cc
                 WHERE id = :id";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            ':cod' => $data['codigo_interno'],
-            ':nom' => $data['nombre'],
+            ':cod'  => $data['codigo_interno'],
+            ':nom'  => $data['nombre'],
             ':tipo' => $data['tipo'],
-            ':ubi' => $data['ubicacion'],
-            ':desc' => $data['descripcion'],
-            ':cc' => $data['centro_costo'] ?? null,
-            ':id' => $data['id']
+            ':ubi'  => $data['ubicacion'],
+            ':desc' => $data['descripcion'] ?? '',
+            ':cc'   => $ccId,
+            ':id'   => $data['id']
         ]);
     }
 
@@ -270,19 +335,15 @@ class MantencionRepository
         try {
             $this->db->beginTransaction();
 
-            // 1. FORZAR ESTADO A COMPLETADA (ID 5)
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")
                 ->execute([':id' => $id]);
 
-            // 2. LIMPIEZA DE PENDIENTES
-            // Devolver reservas si las hubiera
             $this->db->prepare("UPDATE insumos i 
                                 JOIN detalle_solicitud ds ON i.id = ds.insumo_id
                                 SET i.stock_actual = i.stock_actual + (ds.cantidad - ds.cantidad_entregada)
                                 WHERE ds.solicitud_id = :id AND ds.estado_linea = 'RESERVADO'")
                 ->execute([':id' => $id]);
 
-            // Marcar las líneas no entregadas como CANCELADO para que no aparezcan en Bodega
             $this->db->prepare("UPDATE detalle_solicitud 
                                 SET estado_linea = 'CANCELADO' 
                                 WHERE solicitud_id = :id 
@@ -302,8 +363,7 @@ class MantencionRepository
     public function delete()
     {
         $id = $_GET['id'] ?? null;
-        if (!$id)
-            return;
+        if (!$id) return;
 
         try {
             $this->db->beginTransaction();
@@ -324,7 +384,6 @@ class MantencionRepository
 
     public function getPendientesEntrega()
     {
-        // Filtro actualizado para decimales (> 0.001)
         $sql = "SELECT 
                     ds.id as detalle_id, ds.cantidad, ds.cantidad_entregada,
                     (ds.cantidad - ds.cantidad_entregada) as cantidad_pendiente,
@@ -348,31 +407,26 @@ class MantencionRepository
     {
         try {
             $this->db->beginTransaction();
+            
             $stmt = $this->db->prepare("SELECT * FROM detalle_solicitud WHERE id = :id FOR UPDATE");
             $stmt->execute([':id' => $detalleId]);
             $linea = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$linea)
-                throw new \Exception("Línea no encontrada");
+            if (!$linea) throw new \Exception("Línea no encontrada");
 
-            // --- CORRECCIÓN CRÍTICA: USO DE FLOATVAL PARA DECIMALES ---
             $solicitado = floatval($linea['cantidad']);
             $yaEntregado = floatval($linea['cantidad_entregada']);
             $pendiente = $solicitado - $yaEntregado;
             $aEntregar = floatval($cantidadEntregar);
 
-            // Validaciones con tolerancia pequeña
-            if ($aEntregar > ($pendiente + 0.001))
-                throw new \Exception("Exceso de entrega. Pendiente: " . $pendiente);
+            if ($aEntregar > ($pendiente + 0.001)) throw new \Exception("Exceso de entrega. Pendiente: " . $pendiente);
 
             $stmtInsumo = $this->db->prepare("SELECT stock_actual FROM insumos WHERE id = :id");
             $stmtInsumo->execute([':id' => $linea['insumo_id']]);
             $stockActual = floatval($stmtInsumo->fetchColumn());
 
-            if ($stockActual < $aEntregar)
-                throw new \Exception("Stock insuficiente en bodega.");
+            if ($stockActual < $aEntregar) throw new \Exception("Stock insuficiente en bodega.");
 
-            // Registrar movimiento
             $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, empleado_id, fecha) 
                        VALUES (:iid, 2, :cant, :uid, 'Entrega OT', :ref, :emp, NOW())";
             $this->db->prepare($sqlMov)->execute([
@@ -383,17 +437,14 @@ class MantencionRepository
                 ':emp' => $receptorId
             ]);
 
-            // Descontar Stock
             $this->db->prepare("UPDATE insumos SET stock_actual = stock_actual - :cant WHERE id = :id")
                 ->execute([':cant' => $aEntregar, ':id' => $linea['insumo_id']]);
 
-            // Actualizar Línea de Solicitud
             $nuevaEntregada = $yaEntregado + $aEntregar;
-
-            // Si se completa (con margen error), estado ENTREGADO
+            
             if ($nuevaEntregada >= ($solicitado - 0.001)) {
                 $nuevoEstado = 'ENTREGADO';
-                $nuevaEntregada = $solicitado; // Forzar exactitud
+                $nuevaEntregada = $solicitado; 
             } else {
                 $nuevoEstado = 'PARCIAL';
             }
@@ -401,12 +452,7 @@ class MantencionRepository
             $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")
                 ->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
 
-            // =================================================================
-            // AUTO-CIERRE DE LA OT (Si ya no queda nada pendiente)
-            // =================================================================
             $otId = $linea['solicitud_id'];
-
-            // Contamos cuántas líneas quedan pendientes (que no sean ENTREGADO, FINALIZADO, etc.)
             $sqlCheck = "SELECT COUNT(*) FROM detalle_solicitud 
                          WHERE solicitud_id = :id 
                          AND estado_linea NOT IN ('ENTREGADO', 'FINALIZADO', 'ANULADO', 'CANCELADO')";
@@ -415,10 +461,8 @@ class MantencionRepository
             $itemsPendientes = $stmtCheck->fetchColumn();
 
             if ($itemsPendientes == 0) {
-                // Si todo fue entregado, pasamos la OT a COMPLETADA (5)
                 $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")->execute([':id' => $otId]);
             } else {
-                // Si aún falta, aseguramos que esté EN PROCESO (2)
                 $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id IN (1, 4)")->execute([':id' => $otId]);
             }
 
@@ -438,19 +482,13 @@ class MantencionRepository
     {
         $sql = "SELECT s.id, s.fecha_solicitud, s.descripcion_trabajo,
                     u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
-                    
-                    -- Encabezado Híbrido: Nombre de Máquina o Área de Servicio
                     CASE 
                         WHEN s.activo_id IS NOT NULL THEN a.nombre 
                         ELSE CONCAT('SERVICIO: ', COALESCE(s.area_negocio, 'General')) 
                     END as activo,
-                    
                     COALESCE(a.codigo_interno, 'SERV') as activo_codigo,
                     e.nombre as estado,
-                    
-                    -- Datos extras de Servicio
                     s.solicitante_externo, s.centro_costo_ot, s.area_negocio
-                    
                 FROM solicitudes_ot s
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id
                 LEFT JOIN activos a ON s.activo_id = a.id
@@ -473,5 +511,10 @@ class MantencionRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $otId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    public function getAll($filtros = [])
+    {
+        return $this->getSolicitudes();
     }
 }

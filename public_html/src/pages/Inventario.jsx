@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
+import AuthContext from '../context/AuthContext'; // <--- IMPORTADO
 import InsumoModal from '../components/InsumoModal';
 import ModalEntrada from '../components/ModalEntrada';
 import ModalSalida from '../components/ModalSalida';
 import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
+import ModalCargaMasiva from '../components/ModalCargaMasiva'; // <--- IMPORTADO
 
 const BASE_URL_IMAGENES = 'http://localhost/INSUORDERS/public_html';
 
 const Inventario = () => {
+    const { auth } = useContext(AuthContext); // <--- CONTEXTO DE USUARIO
     const [insumos, setInsumos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [listas, setListas] = useState({ categorias: [], ubicaciones: [] });
@@ -21,6 +24,7 @@ const Inventario = () => {
 
     // Modales
     const [showInsumoModal, setShowInsumoModal] = useState(false);
+    const [showImport, setShowImport] = useState(false); // <--- NUEVO ESTADO
     const [insumoEditar, setInsumoEditar] = useState(null);
     const [entradaModal, setEntradaModal] = useState({ show: false, insumo: null });
     const [salidaModal, setSalidaModal] = useState({ show: false, insumo: null });
@@ -124,23 +128,44 @@ const Inventario = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
+            
+            {/* MODALES GLOBALES */}
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
+            
+            <ConfirmModal show={confirmDelete.show} onClose={() => setConfirmDelete({ show: false, id: null })} onConfirm={executeDelete} 
+                title="Eliminar Artículo" message="¿Estás seguro? Si tiene historial, no se podrá borrar." confirmText="Sí, Eliminar" type="danger" />
+
+            {/* MODALES ESPECÍFICOS */}
             <InsumoModal show={showInsumoModal} onClose={() => setShowInsumoModal(false)} onSave={handleSaveSilent} insumo={insumoEditar} />
             <ModalEntrada show={entradaModal.show} insumo={entradaModal.insumo} onClose={() => setEntradaModal({ show: false, insumo: null })} onSave={handleSaveSilent} />
             <ModalSalida show={salidaModal.show} insumo={salidaModal.insumo} onClose={() => setSalidaModal({ show: false, insumo: null })} onSave={handleSaveSilent} />
             
-            <ConfirmModal show={confirmDelete.show} onClose={() => setConfirmDelete({ show: false, id: null })} onConfirm={executeDelete} 
-                title="Eliminar Artículo" message="¿Estás seguro? Si tiene historial, no se podrá borrar." confirmText="Sí, Eliminar" type="danger" />
+            {/* --- NUEVO MODAL DE IMPORTACIÓN --- */}
+            <ModalCargaMasiva 
+                show={showImport} 
+                onClose={() => setShowImport(false)} 
+                tipo="insumos" 
+                onSave={handleSaveSilent} 
+            />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
                     <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-boxes me-2"></i>Inventario Maestro</h4>
                     <div>
                         <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}><i className="bi bi-file-earmark-excel me-2"></i>Exportar</button>
+                        
+                        {/* --- BOTÓN IMPORTAR (SOLO ADMIN) --- */}
+                        {auth.rol === 'Admin' && (
+                            <button className="btn btn-outline-dark me-2" onClick={() => setShowImport(true)}>
+                                <i className="bi bi-file-earmark-arrow-up me-2"></i>Importar
+                            </button>
+                        )}
+
                         <button className="btn btn-primary" onClick={handleCreate}><i className="bi bi-plus-lg me-2"></i>Nuevo Artículo</button>
                     </div>
                 </div>
 
+                {/* FILTROS (Igual que antes) */}
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2">
                         <div className="col-md-3">
@@ -201,7 +226,6 @@ const Inventario = () => {
                                             <td className="ps-4 fw-bold text-secondary font-monospace">{item.codigo_sku}</td>
                                             <td>
                                                 <div className="fw-medium text-dark">{item.nombre}</div>
-                                                {/* Alerta de Bajo Stock (Normal) */}
                                                 {parseFloat(item.stock_actual) <= parseFloat(item.stock_minimo) && (
                                                     <span className="badge bg-warning text-dark mt-1" title={`Mínimo Requerido: ${parseInt(item.stock_minimo)}`}>
                                                         <i className="bi bi-exclamation-triangle me-1"></i>Bajo Stock
@@ -211,7 +235,6 @@ const Inventario = () => {
                                             <td><span className="badge bg-light text-secondary border">{item.categoria_nombre}</span></td>
                                             <td>{renderUbicaciones(item)}</td>
                                             
-                                            {/* STOCK CON SUGERENCIA INTELIGENTE */}
                                             <td className="text-center">
                                                 <div className="d-flex flex-column align-items-center">
                                                     <span className={`fw-bold fs-5 ${parseFloat(item.stock_actual) <= parseFloat(item.stock_minimo) ? 'text-danger' : 'text-success'}`}>
@@ -219,7 +242,6 @@ const Inventario = () => {
                                                     </span>
                                                     <small className="text-muted">{item.unidad_medida}</small>
 
-                                                    {/* ALERTA DE COMPRA SUGERIDA (Regla x2) */}
                                                     {parseFloat(item.sugerencia_compra) > 0 && (
                                                         <div className="badge bg-danger bg-opacity-10 text-danger border border-danger mt-1 p-1" 
                                                              title={`Mínimo requerido: ${parseInt(item.stock_minimo)}. Ideal (x2): ${parseInt(item.stock_ideal)}`}>

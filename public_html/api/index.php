@@ -156,6 +156,12 @@ switch ($path) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST')
             (new MantencionController())->storeActivo();
         break;
+    
+    case 'mantencion/editar-activo':
+        AuthMiddleware::verify(['Mantencion', 'Admin']);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+            (new MantencionController())->editarActivo();
+        break;
 
     case 'mantencion/centros-costo':
         AuthMiddleware::verify(['Mantencion', 'Admin']);
@@ -218,7 +224,6 @@ switch ($path) {
         break;
 
     // --- MANTENEDORES (CONFIGURACIÓN) ---
-    // Agregamos estas rutas para que el controlador MantenedoresController funcione
     case 'mantenedores/empleados':
         AuthMiddleware::verify(['Admin']);
         require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantenedoresController.php';
@@ -313,7 +318,7 @@ switch ($path) {
         AuthMiddleware::verify(['Compras', 'Admin']);
         (new OrdenCompraController())->pendientes();
         break;
-        
+
     case 'compras/filtros':
         AuthMiddleware::verify(['Compras', 'Admin']);
         (new OrdenCompraController())->filtros();
@@ -398,6 +403,20 @@ switch ($path) {
     case 'notifications':
         AuthMiddleware::verify();
         (new NotificationController())->index();
+        break;
+
+    // --- IMPORTAR EXCEL ---
+    case 'importar':
+        $userId = AuthMiddleware::verify(['Admin']);
+        $c = new \App\Controllers\ImportController();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->importar($userId);
+        }
+        break;
+
+    case 'importar/plantilla':
+        AuthMiddleware::verify(['Admin']);
+        (new \App\Controllers\ImportController())->plantilla();
         break;
 
     default:

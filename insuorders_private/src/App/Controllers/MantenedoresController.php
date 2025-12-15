@@ -151,4 +151,23 @@ class MantenedoresController
             http_response_code(500); echo json_encode(["error" => "No se puede eliminar, posiblemente tiene centros asociados."]);
         }
     }
+
+    public function editarActivo()
+    {
+        $data = json_decode(file_get_contents("php://input"), true);
+        
+        if (empty($data['id'])) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Falta el ID del activo."]);
+            return;
+        }
+
+        try {
+            $this->repo->updateActivo($data);
+            echo json_encode(["success" => true, "message" => "Activo actualizado correctamente."]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Error al actualizar: " . $e->getMessage()]);
+        }
+    }
 }
