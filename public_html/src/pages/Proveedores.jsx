@@ -1,11 +1,13 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
-import AuthContext from '../context/AuthContext'; // <--- IMPORTADO
+import AuthContext from '../context/AuthContext';
 import ProveedorModal from '../components/ProveedorModal';
-import ModalCargaMasiva from '../components/ModalCargaMasiva'; // <--- IMPORTADO
+import ModalCargaMasiva from '../components/ModalCargaMasiva';
+import MessageModal from '../components/MessageModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Proveedores = () => {
-    const { auth } = useContext(AuthContext); // <--- AUTH HOOK
+    const { auth } = useContext(AuthContext);
     const [proveedores, setProveedores] = useState([]);
     const [loading, setLoading] = useState(true);
     
@@ -16,15 +18,19 @@ const Proveedores = () => {
     const [filtroComuna, setFiltroComuna] = useState('');
     const [filtroTipoVenta, setFiltroTipoVenta] = useState('');
 
-    // Listas para los selects de filtro
+    // Listas auxiliares
     const [listas, setListas] = useState({ 
         tipos_venta: [], paises: [], regiones: [], comunas: [] 
     });
 
-    // Estados para el modal
+    // Estados para modales
     const [showModal, setShowModal] = useState(false);
-    const [showImport, setShowImport] = useState(false); // <--- NUEVO ESTADO
+    const [showImport, setShowImport] = useState(false);
     const [proveedorEditar, setProveedorEditar] = useState(null);
+
+    // Estados para mensajes y confirmación
+    const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
+    const [confirm, setConfirm] = useState({ show: false, id: null, titulo: '', mensaje: '' });
 
     useEffect(() => {
         cargarDatos();
@@ -33,7 +39,6 @@ const Proveedores = () => {
     const cargarDatos = async () => {
         setLoading(true);
         try {
-            // Cargar Proveedores y Auxiliares en paralelo
             const [resProv, resAux] = await Promise.all([
                 api.get('/index.php/proveedores'),
                 api.get('/index.php/proveedores/auxiliares')
@@ -44,19 +49,35 @@ const Proveedores = () => {
 
         } catch (error) {
             console.error("Error cargando datos", error);
+            setMsg({ show: true, title: "Error", text: "No se pudieron cargar los proveedores.", type: "error" });
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('¿Estás seguro de eliminar este proveedor?')) {
-            try {
-                await api.delete('/index.php/proveedores?id=' + id);
-                cargarDatos(); // Recargar todo
-            } catch (error) {
-                alert("Error al eliminar");
-            }
+    // --- REEMPLAZO DE ALERT Y CONFIRM ---
+    
+    const handleDeleteClick = (id) => {
+        setConfirm({
+            show: true,
+            id: id,
+            titulo: 'Eliminar Proveedor',
+            mensaje: '¿Estás seguro de que deseas eliminar este proveedor? Esta acción no se puede deshacer.'
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!confirm.id) return;
+
+        try {
+            await api.delete(`/index.php/proveedores?id=${confirm.id}`);
+            cargarDatos();
+            setMsg({ show: true, title: "Eliminado", text: "Proveedor eliminado correctamente.", type: "success" });
+        } catch (error) {
+            const errorMsg = error.response?.data?.message || "No se pudo eliminar el proveedor.";
+            setMsg({ show: true, title: "Error", text: errorMsg, type: "error" });
+        } finally {
+            setConfirm({ ...confirm, show: false, id: null });
         }
     };
 
@@ -81,7 +102,7 @@ const Proveedores = () => {
                 document.body.appendChild(link);
                 link.click();
             })
-            .catch(() => alert("Error al exportar"))
+            .catch(() => setMsg({ show: true, title: "Error", text: "Error al exportar los datos.", type: "error" }))
             .finally(() => setLoading(false));
     };
 
@@ -93,14 +114,12 @@ const Proveedores = () => {
         setFiltroTipoVenta('');
     };
 
-    // --- LÓGICA DE FILTRADO AVANZADO ---
+    // --- FILTRADO ---
     const proveedoresFiltrados = proveedores.filter(p => {
-        // 1. Filtro de Texto (Busca en nombre o rut)
         const matchTexto = !busqueda || 
             (p.nombre && p.nombre.toLowerCase().includes(busqueda.toLowerCase())) ||
             (p.rut && p.rut.toLowerCase().includes(busqueda.toLowerCase()));
 
-        // 2. Filtros Select
         const matchPais = !filtroPais || (p.pais_id && p.pais_id.toString() === filtroPais);
         const matchRegion = !filtroRegion || (p.region_id && p.region_id.toString() === filtroRegion);
         const matchComuna = !filtroComuna || (p.comuna_id && p.comuna_id.toString() === filtroComuna);
@@ -109,7 +128,6 @@ const Proveedores = () => {
         return matchTexto && matchPais && matchRegion && matchComuna && matchTipo;
     });
 
-    // Filtros en Cascada para los Selects (Visual)
     const regionesDisponibles = filtroPais 
         ? listas.regiones.filter(r => r.pais_id.toString() === filtroPais) 
         : listas.regiones;
@@ -121,19 +139,39 @@ const Proveedores = () => {
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             
+            <MessageModal 
+                show={msg.show} 
+                onClose={() => setMsg({ ...msg, show: false })} 
+                title={msg.title} 
+                message={msg.text} 
+                type={msg.type} 
+            />
+            
+            <ConfirmModal 
+                show={confirm.show}
+                onClose={() => setConfirm({ ...confirm, show: false })}
+                onConfirm={handleConfirmDelete}
+                title={confirm.titulo}
+                message={confirm.mensaje}
+            />
+
             <ProveedorModal 
                 show={showModal} 
                 onClose={() => setShowModal(false)}
                 proveedorEditar={proveedorEditar}
-                onSave={cargarDatos}
+                onSave={() => {
+                    cargarDatos();
+                    setMsg({ show: true, title: "Éxito", text: "Datos guardados correctamente.", type: "success" });
+                }}
             />
-
-            {/* --- MODAL DE IMPORTACIÓN --- */}
+            
             <ModalCargaMasiva 
                 show={showImport} 
                 onClose={() => setShowImport(false)} 
-                tipo="proveedores" // IMPORTANTE: Tipo para el backend
-                onSave={cargarDatos} 
+                onSave={() => {
+                    cargarDatos();
+                }}
+                tipo="proveedores"
             />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
@@ -145,14 +183,11 @@ const Proveedores = () => {
                         <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
                             <i className="bi bi-file-earmark-excel me-2"></i>Exportar
                         </button>
-
-                        {/* --- BOTÓN IMPORTAR (SOLO ADMIN) --- */}
                         {auth.rol === 'Admin' && (
                             <button className="btn btn-outline-dark me-2" onClick={() => setShowImport(true)}>
                                 <i className="bi bi-file-earmark-arrow-up me-2"></i>Importar
                             </button>
                         )}
-
                         <button className="btn btn-primary d-flex align-items-center gap-2 d-inline-flex" onClick={handleNew}>
                             <i className="bi bi-plus-lg"></i>
                             <span className="d-none d-sm-inline">Nuevo</span>
@@ -160,10 +195,9 @@ const Proveedores = () => {
                     </div>
                 </div>
                 
-                {/* --- BARRA DE FILTROS --- */}
+                {/* --- FILTROS --- */}
                 <div className="p-3 border-bottom bg-light">
                     <div className="row g-2">
-                        {/* Buscador Texto */}
                         <div className="col-md-3">
                             <div className="input-group">
                                 <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
@@ -177,39 +211,34 @@ const Proveedores = () => {
                             </div>
                         </div>
 
-                        {/* Filtro País */}
                         <div className="col-md-2">
                             <select className="form-select" value={filtroPais} onChange={(e) => { setFiltroPais(e.target.value); setFiltroRegion(''); setFiltroComuna(''); }}>
-                                <option value="">Todos los Países</option>
+                                <option value="">País...</option>
                                 {listas.paises.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                             </select>
                         </div>
 
-                        {/* Filtro Región */}
                         <div className="col-md-2">
-                            <select className="form-select" value={filtroRegion} onChange={(e) => { setFiltroRegion(e.target.value); setFiltroComuna(''); }} disabled={!filtroPais && regionesDisponibles.length > 50}>
-                                <option value="">Todas las Regiones</option>
+                            <select className="form-select" value={filtroRegion} onChange={(e) => setFiltroRegion(e.target.value)}>
+                                <option value="">Región...</option>
                                 {regionesDisponibles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                             </select>
                         </div>
 
-                        {/* Filtro Comuna */}
                         <div className="col-md-2">
                             <select className="form-select" value={filtroComuna} onChange={(e) => setFiltroComuna(e.target.value)} disabled={!filtroRegion && comunasDisponibles.length > 100}>
-                                <option value="">Todas las Comunas</option>
+                                <option value="">Comuna...</option>
                                 {comunasDisponibles.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                             </select>
                         </div>
 
-                        {/* Filtro Tipo Venta */}
                         <div className="col-md-2">
                             <select className="form-select" value={filtroTipoVenta} onChange={(e) => setFiltroTipoVenta(e.target.value)}>
-                                <option value="">Condición Venta</option>
+                                <option value="">Condición...</option>
                                 {listas.tipos_venta.map(t => <option key={t.id} value={t.id}>{t.descripcion}</option>)}
                             </select>
                         </div>
 
-                        {/* Botón Limpiar */}
                         <div className="col-md-1 d-grid">
                             {(busqueda || filtroPais || filtroRegion || filtroComuna || filtroTipoVenta) && (
                                 <button className="btn btn-outline-secondary" onClick={limpiarFiltros} title="Limpiar Filtros">
@@ -244,16 +273,16 @@ const Proveedores = () => {
                             <tbody>
                                 {proveedoresFiltrados.map((p) => (
                                     <tr key={p.id}>
-                                        <td className="ps-4 fw-bold text-dark font-monospace">{p.rut}</td>
+                                        <td className="ps-4 font-monospace fw-bold">{p.rut}</td>
                                         <td>
-                                            <div className="fw-semibold text-primary">{p.nombre}</div>
-                                            <div className="small text-muted">{p.email || 'Sin email'}</div>
+                                            <div className="fw-bold text-primary">{p.nombre}</div>
+                                            <div className="small text-muted">{p.email}</div>
                                         </td>
                                         <td>
                                             <div className="text-truncate" style={{maxWidth: '150px'}} title={p.contacto_vendedor}>
                                                 {p.contacto_vendedor || <span className="text-muted fst-italic">--</span>}
                                             </div>
-                                            <div className="small text-secondary">{p.telefono}</div>
+                                            <div className="small text-muted">{p.telefono}</div>
                                         </td>
                                         <td>
                                             <div className="d-flex flex-column">
@@ -261,7 +290,7 @@ const Proveedores = () => {
                                                     {p.direccion}
                                                 </div>
                                                 <small className="text-muted">
-                                                    {p.comuna_nombre ? p.comuna_nombre : '---'}, {p.pais_nombre}
+                                                    {p.comuna_nombre ? `${p.comuna_nombre}, ${p.region_nombre}` : 'Sin dirección'}
                                                 </small>
                                             </div>
                                         </td>
@@ -275,12 +304,10 @@ const Proveedores = () => {
                                             </span>
                                         </td>
                                         <td className="text-end pe-4">
-                                            <button className="btn btn-sm btn-outline-secondary me-2" 
-                                                onClick={() => handleEdit(p)} title="Editar">
+                                            <button className="btn btn-sm btn-link text-secondary" onClick={() => handleEdit(p)} title="Editar">
                                                 <i className="bi bi-pencil"></i>
                                             </button>
-                                            <button className="btn btn-sm btn-outline-danger" 
-                                                onClick={() => handleDelete(p.id)} title="Eliminar">
+                                            <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteClick(p.id)} title="Eliminar">
                                                 <i className="bi bi-trash"></i>
                                             </button>
                                         </td>

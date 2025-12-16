@@ -15,7 +15,8 @@ use App\Controllers\UsuariosController;
 use App\Controllers\ExportController;
 use App\Middleware\AuthMiddleware;
 use App\Controllers\CronogramaController;
-use App\Controllers\MantenedoresController; // Agregamos el uso del controlador
+use App\Controllers\MantenedoresController;
+use App\Controllers\ImportController;
 
 // ============================================================================
 // 1. DETECCIÓN DE RUTA (ROUTER)
@@ -407,16 +408,15 @@ switch ($path) {
 
     // --- IMPORTAR EXCEL ---
     case 'importar':
-        $userId = AuthMiddleware::verify(['Admin']);
-        $c = new \App\Controllers\ImportController();
+        $userId = AuthMiddleware::verify(['Admin', 'Bodega', 'Compras', 'Mantencion']);
+        $c = new ImportController();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $c->importar($userId);
         }
         break;
 
     case 'importar/plantilla':
-        AuthMiddleware::verify(['Admin']);
-        (new \App\Controllers\ImportController())->plantilla();
+        (new ImportController())->plantilla();
         break;
 
     default:

@@ -5,6 +5,7 @@ use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
 use App\Repositories\MantencionRepository;
 use App\Database\Database;
+use PDO;
 
 class ImportController
 {
@@ -21,207 +22,284 @@ class ImportController
         $this->mantencionRepo = new MantencionRepository();
     }
 
-    private function detectarSeparador($rutaArchivo)
+    // ====================================================================================
+    // 1. HELPERS Y UTILIDADES
+    // ====================================================================================
+
+    private function logDebug($msg)
     {
-        $handle = fopen($rutaArchivo, "r");
-        $primeraLinea = fgets($handle);
-        fclose($handle);
-        return (strpos($primeraLinea, ';') !== false) ? ';' : ',';
+        error_log("[IMPORT] " . $msg);
     }
 
-    // --- HELPERS ---
-
-    private function getCategoriaId($nombre)
+    private function detectarSeparador($ruta)
     {
-        $nombre = trim($nombre);
-        if (empty($nombre)) return 1;
-        $id = $this->db->query("SELECT id FROM categorias_insumo WHERE nombre = '$nombre'")->fetchColumn();
-        if ($id) return $id;
-        $this->db->query("INSERT INTO categorias_insumo (nombre, descripcion) VALUES ('$nombre', 'Importado')");
+        $h = fopen($ruta, "r");
+        if (!$h)
+            return ';';
+        $linea = fgets($h);
+        fclose($h);
+        if (!$linea)
+            return ';';
+
+        $puntosComa = substr_count($linea, ';');
+        $comas = substr_count($linea, ',');
+        $tabs = substr_count($linea, "\t");
+
+        if ($tabs > $puntosComa && $tabs > $comas)
+            return "\t";
+        if ($comas > $puntosComa)
+            return ',';
+        return ';';
+    }
+
+    private function limpiarDato($d)
+    {
+        if ($d === null)
+            return '';
+        return trim(mb_convert_encoding($d, 'UTF-8', mb_detect_encoding($d, 'UTF-8, ISO-8859-1, Windows-1252', true)));
+    }
+
+    private function obtenerUltimoSkuSecuencial()
+    {
+        $sql = "SELECT MAX(CAST(codigo_sku AS UNSIGNED)) 
+                FROM insumos 
+                WHERE codigo_sku LIKE '99000007199%' 
+                AND codigo_sku REGEXP '^[0-9]+$'";
+
+        $stmt = $this->db->query($sql);
+        $ultimo = $stmt->fetchColumn();
+
+        if (!$ultimo) {
+            return 990000071990000 - 1;
+        }
+
+        return (int) $ultimo;
+    }
+
+    // ====================================================================================
+    // 2. BÚSQUEDAS EN BASE DE DATOS
+    // ====================================================================================
+
+    private function getIdPorNombre($tbl, $nom, $def = null)
+    {
+        $nom = $this->limpiarDato($nom);
+        if (empty($nom))
+            return $def;
+
+        $s = $this->db->prepare("SELECT id FROM $tbl WHERE nombre = :n LIMIT 1");
+        $s->execute([':n' => $nom]);
+        if ($id = $s->fetchColumn())
+            return $id;
+
+        $s = $this->db->prepare("SELECT id FROM $tbl WHERE nombre LIKE :n LIMIT 1");
+        $s->execute([':n' => "%$nom%"]);
+        return $s->fetchColumn() ?: $def;
+    }
+
+    private function getTipoVentaId($n)
+    {
+        $n = $this->limpiarDato($n);
+        if (empty($n))
+            return 1;
+        $s = $this->db->prepare("SELECT id FROM tipos_venta WHERE descripcion LIKE :n LIMIT 1");
+        $s->execute([':n' => "%$n%"]);
+        return $s->fetchColumn() ?: 1;
+    }
+
+    private function getCategoriaId($n)
+    {
+        $n = $this->limpiarDato($n);
+        if (empty($n))
+            return 1;
+
+        $id = $this->getIdPorNombre('categorias_insumo', $n);
+        if ($id)
+            return $id;
+
+        $this->db->prepare("INSERT INTO categorias_insumo (nombre, descripcion) VALUES (:n, 'Importado')")->execute([':n' => $n]);
         return $this->db->lastInsertId();
     }
 
-    private function getIdPorNombre($tabla, $nombre)
+    private function getCentroCostoId($c)
     {
-        $nombre = trim($nombre);
-        if (empty($nombre)) return null;
-        $stmt = $this->db->prepare("SELECT id FROM $tabla WHERE nombre LIKE :nom LIMIT 1");
-        $stmt->execute([':nom' => "%$nombre%"]);
-        return $stmt->fetchColumn() ?: null;
+        $c = trim($c);
+        if (empty($c))
+            return null;
+        $s = $this->db->prepare("SELECT id FROM centros_costo WHERE codigo = :c LIMIT 1");
+        $s->execute([':c' => $c]);
+        return $s->fetchColumn() ?: null;
     }
 
-    private function getTipoVentaId($nombre)
-    {
-        $nombre = trim($nombre);
-        if (empty($nombre)) return 1;
-        $stmt = $this->db->prepare("SELECT id FROM tipos_venta WHERE descripcion LIKE :nom LIMIT 1");
-        $stmt->execute([':nom' => "%$nombre%"]);
-        return $stmt->fetchColumn() ?: 1;
-    }
-
-    // HELPER NUEVO: Buscar ID por Código de Centro de Costo
-    private function getCentroCostoId($codigo)
-    {
-        $codigo = trim($codigo);
-        if (empty($codigo)) return null;
-        $stmt = $this->db->prepare("SELECT id FROM centros_costo WHERE codigo = :cod LIMIT 1");
-        $stmt->execute([':cod' => $codigo]);
-        return $stmt->fetchColumn() ?: null;
-    }
-
-    // --- LÓGICA PRINCIPAL ---
+    // ====================================================================================
+    // 3. PROCESO DE IMPORTACIÓN
+    // ====================================================================================
 
     public function importar($usuarioId)
     {
-        if (!isset($_FILES['archivo']) || !isset($_POST['tipo'])) {
-            http_response_code(400);
-            echo json_encode(["success" => false, "message" => "Faltan datos."]);
-            return;
-        }
+        ini_set('memory_limit', '256M');
+        set_time_limit(300);
+        ini_set('display_errors', 0);
+        ini_set('log_errors', 1);
 
-        $tipo = $_POST['tipo'];
-        $archivoTmp = $_FILES['archivo']['tmp_name'];
-        $separador = $this->detectarSeparador($archivoTmp);
+        $res = ["success" => false, "message" => "", "detalles" => []];
 
-        if (($handle = fopen($archivoTmp, "r")) !== FALSE) {
-            $fila = 0;
-            $exitos = 0;
-            $errores = 0;
+        try {
+            $tipo = $_POST['tipo'] ?? $_POST['modulo'] ?? null;
 
-            $bom = fread($handle, 3);
-            if ($bom != "\xEF\xBB\xBF") rewind($handle);
+            if (!isset($_FILES['archivo']) || !$tipo)
+                throw new \Exception("Faltan datos.");
+            if ($_FILES['archivo']['error'] !== 0)
+                throw new \Exception("Error archivo: " . $_FILES['archivo']['error']);
 
-            while (($datos = fgetcsv($handle, 1000, $separador)) !== FALSE) {
-                $fila++;
-                if ($fila === 1 || empty($datos[0])) continue;
+            $tmp = $_FILES['archivo']['tmp_name'];
+            $sep = $this->detectarSeparador($tmp);
+
+            if (($h = fopen($tmp, "r")) === FALSE)
+                throw new \Exception("No se lee archivo.");
+            if (fread($h, 3) != "\xEF\xBB\xBF")
+                rewind($h);
+            $secuenciaSkuActual = 0;
+            if ($tipo === 'insumos') {
+                $secuenciaSkuActual = $this->obtenerUltimoSkuSecuencial();
+            }
+
+            $f = 0;
+            $ok = 0;
+            $err = 0;
+            $errList = [];
+
+            while (($row = fgetcsv($h, 0, $sep)) !== FALSE) {
+                $f++;
+                if ($f === 1)
+                    continue;
+                $d = array_map([$this, 'limpiarDato'], $row);
+                if (empty($d[0]) && count($d) < 2)
+                    continue;
 
                 try {
                     $this->db->beginTransaction();
 
                     switch ($tipo) {
                         case 'insumos':
-                            $catId = $this->getCategoriaId($datos[3]);
+                            if (!isset($d[1]))
+                                throw new \Exception("Falta Nombre.");
+
+                            $skuInput = isset($d[0]) ? strtoupper(trim($d[0])) : '';
+
+                            if ($skuInput === '' || $skuInput === 'AUTO') {
+                                $secuenciaSkuActual++;
+                                $skuFinal = (string) $secuenciaSkuActual;
+                            } else {
+                                $skuFinal = $skuInput;
+                            }
+
                             $this->insumoRepo->create([
-                                'codigo_sku' => null,
-                                'nombre' => $datos[1],
-                                'descripcion' => $datos[2] ?? '',
-                                'categoria_id' => $catId,
-                                'stock_actual' => floatval(str_replace(',', '.', $datos[4])),
-                                'stock_minimo' => floatval(str_replace(',', '.', $datos[5])),
-                                'unidad_medida' => strtoupper($datos[6]),
-                                'precio_costo' => floatval(str_replace(',', '.', $datos[7])),
-                                'moneda' => !empty($datos[8]) ? strtoupper($datos[8]) : 'CLP',
+                                'codigo_sku' => $skuFinal,
+                                'nombre' => $d[1],
+                                'descripcion' => $d[2] ?? '',
+                                'categoria_id' => $this->getCategoriaId($d[3] ?? 'General'),
+                                'stock_actual' => floatval(str_replace(',', '.', $d[4] ?? 0)),
+                                'stock_minimo' => floatval(str_replace(',', '.', $d[5] ?? 0)),
+                                'unidad_medida' => strtoupper($d[6] ?? 'UN'),
+                                'precio_costo' => floatval(str_replace(',', '.', $d[7] ?? 0)),
+                                'moneda' => !empty($d[8]) ? strtoupper($d[8]) : 'CLP',
                                 'ubicacion_id' => null
                             ]);
                             break;
 
                         case 'proveedores':
-                            $tipoVentaId = $this->getTipoVentaId($datos[6] ?? 'Contado');
-                            $paisId = $this->getIdPorNombre('paises', $datos[7] ?? 'Chile');
-                            $regionId = $this->getIdPorNombre('regiones', $datos[8] ?? '');
-                            $comunaId = $this->getIdPorNombre('comunas', $datos[9] ?? '');
+                            if (count($d) < 2)
+                                throw new \Exception("Fila incompleta.");
+                            if ($this->proveedorRepo->existeRut($d[1]))
+                                throw new \Exception("RUT {$d[1]} existe.");
+
+                            $cid = $this->getIdPorNombre('comunas', $d[9] ?? '');
+                            if (!empty($d[9]) && !$cid)
+                                throw new \Exception("Comuna '{$d[9]}' no existe.");
 
                             $this->proveedorRepo->create([
-                                'nombre' => $datos[0],
-                                'rut' => $datos[1],
-                                'contacto_vendedor' => $datos[2],
-                                'telefono' => $datos[3],
-                                'email' => $datos[4],
-                                'direccion' => $datos[5] ?? '',
-                                'tipo_venta_id' => $tipoVentaId,
-                                'pais_id' => $paisId,
-                                'region_id' => $regionId,
-                                'comuna_id' => $comunaId
+                                'nombre' => $d[0],
+                                'rut' => $d[1],
+                                'contacto_vendedor' => $d[2] ?? '',
+                                'telefono' => $d[3] ?? '',
+                                'email' => $d[4] ?? '',
+                                'direccion' => $d[5] ?? '',
+                                'tipo_venta_id' => $this->getTipoVentaId($d[6] ?? ''),
+                                'pais_id' => $this->getIdPorNombre('paises', $d[7] ?? 'Chile', 1),
+                                'region_id' => $this->getIdPorNombre('regiones', $d[8] ?? ''),
+                                'comuna_id' => $cid
                             ]);
                             break;
 
                         case 'activos':
-                            // COLUMNAS ESPERADAS: 0:Cod, 1:Nom, 2:Tipo, 3:Ubi, 4:Desc, 5:CodCentroCosto
-                            
-                            $ccId = null;
-                            if (!empty($datos[5])) {
-                                $ccId = $this->getCentroCostoId($datos[5]); // Traducimos 6021 -> ID
-                            }
-
+                            if (!isset($d[1]))
+                                throw new \Exception("Falta Nombre.");
                             $this->mantencionRepo->createActivo([
-                                'codigo_interno' => $datos[0],
-                                'nombre'         => $datos[1],
-                                'tipo'           => $datos[2],
-                                'ubicacion'      => $datos[3],
-                                'descripcion'    => $datos[4] ?? '',
-                                'centro_costo'   => $ccId // Enviamos el ID al repo
+                                'codigo_interno' => $d[0] ?? null,
+                                'nombre' => $d[1],
+                                'tipo' => $d[2] ?? 'General',
+                                'ubicacion' => $d[3] ?? '',
+                                'descripcion' => $d[4] ?? '',
+                                'centro_costo' => (!empty($d[5]) ? $this->getCentroCostoId($d[5]) : null)
                             ]);
                             break;
                     }
-
                     $this->db->commit();
-                    $exitos++;
-
+                    $ok++;
                 } catch (\Exception $e) {
-                    $this->db->rollBack();
-                    $errores++;
+                    if ($this->db->inTransaction())
+                        $this->db->rollBack();
+                    $err++;
+                    $errList[] = "Fila $f: " . $e->getMessage();
                 }
             }
-            fclose($handle);
+            fclose($h);
 
-            $mensajeFinal = "Proceso finalizado. Importados: $exitos. Errores/Duplicados: $errores. (Separador: '$separador')";
-            $this->registrarLog($usuarioId, $tipo, $mensajeFinal);
+            $res["success"] = true;
+            $res["message"] = "Proceso: $ok OK, $err Errores.";
+            $res["detalles"] = ["importados" => $ok, "errores_count" => $err, "lista_errores" => array_slice($errList, 0, 50)];
 
-            echo json_encode(["success" => true, "message" => $mensajeFinal]);
-        } else {
+            try {
+                $sql = "INSERT INTO sistema_logs (usuario_id, accion, tabla_afectada, descripcion, fecha) VALUES (:u, :a, 'Import', :d, NOW())";
+                $this->db->prepare($sql)->execute([':u' => $usuarioId, ':a' => "Carga $tipo", ':d' => "OK:$ok, ERR:$err"]);
+            } catch (\Exception $e) {
+            }
+
+        } catch (\Throwable $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Error al abrir archivo."]);
+            $res["message"] = "Error Crítico: " . $e->getMessage();
+            $this->logDebug("CRASH: " . $e->getMessage());
         }
+
+        header('Content-Type: application/json');
+        echo json_encode($res);
+        exit;
     }
 
     public function plantilla()
     {
-        $tipo = $_GET['tipo'] ?? '';
+        $t = $_GET['tipo'] ?? '';
         header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="plantilla_' . $tipo . '.csv"');
-        $output = fopen('php://output', 'w');
-        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+        header('Content-Disposition: attachment; filename="plantilla_' . $t . '.csv"');
+
+        $o = fopen('php://output', 'w');
+        fprintf($o, chr(0xEF) . chr(0xBB) . chr(0xBF));
         $sep = ';';
 
-        switch ($tipo) {
-            case 'insumos':
-                fputcsv($output, ['SKU (Auto)', 'Nombre', 'Descripcion', 'Categoria', 'Stock', 'Minimo', 'Unidad', 'Precio', 'Moneda'], $sep);
-                fputcsv($output, ['AUTO', 'Tornillo', 'Desc', 'Ferreteria', '100', '10', 'UN', '500', 'CLP'], $sep);
-                break;
-
-            case 'proveedores':
-                fputcsv($output, ['Nombre Empresa', 'RUT', 'Contacto', 'Telefono', 'Email', 'Direccion', 'Condicion Venta (Credito/Contado)', 'Pais', 'Region', 'Comuna'], $sep);
-                fputcsv($output, ['Ferreteria X', '76.111.111-1', 'Juan Perez', '999999', 'x@x.cl', 'Calle 123', 'Credito', 'Chile', 'Metropolitana', 'Santiago'], $sep);
-                break;
-
-            case 'activos':
-                // PLANTILLA MEJORADA
-                fputcsv($output, [
-                    'Codigo Interno (Ej: MAQ-01)', 
-                    'Nombre Activo', 
-                    'Tipo (Maquinaria, Vehiculo...)', 
-                    'Ubicacion Fisica', 
-                    'Descripcion / Detalles', 
-                    'Codigo Centro Costo (Ej: 6021)'
-                ], $sep);
-                
-                fputcsv($output, [
-                    'GEN-X500', 
-                    'Generador de Respaldo', 
-                    'Infraestructura', 
-                    'Patio Trasero', 
-                    'Generador diesel 500kva', 
-                    '6021'
-                ], $sep);
-                break;
+        if ($t === 'insumos') {
+            fputcsv($o, ['SKU (Opcional: AUTO o dejelo vacio)', 'Nombre', 'Descripcion', 'Categoria', 'Stock', 'Minimo', 'Unidad', 'Costo', 'Moneda'], $sep);
+            fputcsv($o, ['AUTO', 'Tornillo 2"', 'Para madera', 'Ferreteria', '1000', '100', 'UN', '50', 'CLP'], $sep);
+            // Ejemplo con tu secuencia real
+            fputcsv($o, ['990000071990005', 'Tuerca Hex', 'Acero', 'Ferreteria', '500', '20', 'UN', '10', 'CLP'], $sep);
+        } elseif ($t === 'proveedores') {
+            fputcsv($o, ['Nombre Empresa', 'RUT', 'Contacto', 'Telefono', 'Email', 'Direccion', 'Condicion Venta', 'Pais', 'Region', 'Comuna'], $sep);
+            fputcsv($o, ['Ferreteria Ej', '76.111.222-3', 'Juan P.', '999888777', 'contacto@ej.cl', 'Calle 123', 'Credito', 'Chile', 'Metropolitana', 'Santiago'], $sep);
+        } elseif ($t === 'activos') {
+            fputcsv($o, ['Codigo Interno', 'Nombre Activo', 'Tipo', 'Ubicacion', 'Descripcion', 'Centro Costo'], $sep);
+            fputcsv($o, ['MAQ-01', 'Torno CNC', 'Maquinaria', 'Taller 1', 'Operativo', '6021'], $sep);
         }
-        fclose($output);
-        exit;
-    }
 
-    private function registrarLog($uid, $tipo, $msg)
-    {
-        $this->db->prepare("INSERT INTO sistema_logs (usuario_id, modulo, accion, detalle, ip_address, fecha) VALUES (:u, 'Importacion', :a, :d, :ip, NOW())")
-            ->execute([':u' => $uid, ':a' => "Carga Masiva: " . ucfirst($tipo), ':d' => $msg, ':ip' => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
+        fclose($o);
+        exit;
     }
 }
