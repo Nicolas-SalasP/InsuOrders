@@ -13,7 +13,7 @@ import Activos from './pages/Activos';
 import Bodega from './pages/Bodega';
 import Usuarios from './pages/Usuarios';
 import Cronograma from './pages/Cronograma';
-import AdminMantenedores from './pages/AdminMantenedores'; // <--- IMPORTADO
+import AdminMantenedores from './pages/AdminMantenedores';
 
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
@@ -39,38 +39,46 @@ function App() {
         <BrowserRouter>
             <AuthProvider>
                 <Routes>
+                    {/* Ruta pública */}
                     <Route path="/login" element={<Login />} />
+
+                    {/* Rutas Privadas */}
                     <Route element={<PrivateRoute />}>
                         <Route element={<Layout />}>
                             <Route path="/" element={<RoleGuard deniedRoles={['Compras', 'Mantencion']}><Navigate to="/dashboard" /></RoleGuard>} />
-                            
+
+                            {/* Dashboard Principal */}
                             <Route path="/dashboard" element={
                                 <RoleGuard deniedRoles={['Compras', 'Mantencion']}>
                                     <Dashboard />
                                 </RoleGuard>
                             } />
-                            
+
+                            {/* Módulos Comunes */}
                             <Route path="/compras" element={<Compras />} />
                             <Route path="/proveedores" element={<Proveedores />} />
-                            
+
+                            {/* Inventario (Bodega y Admin) */}
                             <Route path="/inventario" element={
                                 <RoleGuard deniedRoles={['Mantencion']}>
                                     <Inventario />
                                 </RoleGuard>
                             } />
-                            
+
+                            {/* Bodega (Exclusivo Bodega y Admin) */}
                             <Route path="/bodega" element={
                                 <RoleGuard deniedRoles={['Compras', 'Mantencion']}>
                                     <Bodega />
                                 </RoleGuard>
                             } />
-                            
+
+                            {/* Mantención (Exclusivo Mantención y Admin) */}
                             <Route path="/mantencion" element={
                                 <RoleGuard deniedRoles={['Compras', 'Bodega']}>
                                     <Mantencion />
                                 </RoleGuard>
                             } />
-                            
+
                             <Route path="/cronograma" element={
                                 <RoleGuard deniedRoles={['Compras', 'Bodega']}>
                                     <Cronograma />
@@ -82,15 +90,15 @@ function App() {
                                     <Activos />
                                 </RoleGuard>
                             } />
-                            
-                            {/* --- NUEVA RUTA DE MANTENEDORES --- */}
-                            {/* Denegamos acceso a todos menos Admin */}
+
+                            {/* Admin Mantenedores (Solo Admin) */}
                             <Route path="/mantenedores" element={
                                 <RoleGuard deniedRoles={['Compras', 'Bodega', 'Mantencion']}>
                                     <AdminMantenedores />
                                 </RoleGuard>
                             } />
-                            
+
+                            {/* Usuarios (Solo Admin) */}
                             <Route path="/usuarios" element={
                                 <RoleGuard deniedRoles={['Compras', 'Bodega', 'Mantencion']}>
                                     <Usuarios />

@@ -34,7 +34,10 @@ export const AuthProvider = ({ children }) => {
                 return { success: true, role: userData.rol };
             }
         } catch (error) {
-            console.error(error);
+            if (!error.response || error.response.status !== 401) {
+                console.error("Error de conexión:", error);
+            }
+
             return {
                 success: false,
                 message: error.response?.data?.message || "Error al conectar con el servidor"

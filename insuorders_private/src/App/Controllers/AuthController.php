@@ -31,7 +31,12 @@ class AuthController {
         $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user && password_verify($data->password, $user['password_hash'])) {
+        if (!$user) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "Usuario no registrado"]);
+            return;
+        }
+        if (password_verify($data->password, $user['password_hash'])) {
 
             $issuedAt = time();
             $expirationTime = $issuedAt + Config::JWT_EXP; 
@@ -65,7 +70,7 @@ class AuthController {
         } else {
             usleep(200000);
             http_response_code(401);
-            echo json_encode(["success" => false, "message" => "Credenciales incorrectas o cuenta inactiva"]);
+            echo json_encode(["success" => false, "message" => "Contraseña incorrecta"]);
         }
     }
 }

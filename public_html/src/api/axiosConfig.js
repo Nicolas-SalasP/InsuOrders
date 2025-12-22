@@ -1,13 +1,15 @@
 import axios from 'axios';
+const baseURL = '/api'; 
 
 const api = axios.create({
-    baseURL: '/api', 
+    baseURL: baseURL, 
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     }
 });
 
+// Interceptor de Request (Token)
 api.interceptors.request.use(
     (config) => {
         const storedUser = localStorage.getItem("insuorders_user");
@@ -26,15 +28,18 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// Interceptor de Response (Manejo de errores 401)
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            console.warn("Sesión expirada o no autorizada. Redirigiendo al login...");
-            
-            localStorage.removeItem("insuorders_user");
-            
-            window.location.href = "/login";
+            const isLoginRequest = error.config.url && error.config.url.includes('login');
+
+            if (!isLoginRequest) {
+                console.warn("Sesión expirada. Redirigiendo al login...");
+                localStorage.removeItem("insuorders_user");
+                window.location.href = "/login";
+            }
         }
         return Promise.reject(error);
     }
