@@ -6,54 +6,72 @@ import ConfirmModal from './ConfirmModal';
 const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [activos, setActivos] = useState([]);
     const [insumos, setInsumos] = useState([]);
+    const [centrosCosto, setCentrosCosto] = useState([]);
+    const [personal, setPersonal] = useState([]); 
 
-    // Formulario
-    const [activoId, setActivoId] = useState('');
+    const [modo, setModo] = useState('maquina'); 
+
+    // Formulario Común
     const [observacion, setObservacion] = useState('');
     const [items, setItems] = useState([]);
 
-    // UI
+    // Campos Específicos
+    const [activoId, setActivoId] = useState('');
+    const [solicitanteExterno, setSolicitanteExterno] = useState('');
+    const [centroCostoOT, setCentroCostoOT] = useState('');
+
+    // UI Search Insumos
     const [busqueda, setBusqueda] = useState('');
     const [mostrarLista, setMostrarLista] = useState(false);
     const wrapperRef = useRef(null);
     const [loading, setLoading] = useState(false);
 
-    // Modales Internos
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
     const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', action: null });
 
-    // Cargar datos al abrir
     useEffect(() => {
         if (show) cargarDatos();
     }, [show, otEditar]);
 
     const cargarDatos = async () => {
         try {
-            // Limpiamos SIEMPRE los items primero para evitar "fantasmas"
             setItems([]);
 
-            const [resActivos, resInsumos] = await Promise.all([
+            const [resActivos, resInsumos, resCC, resPersonal] = await Promise.all([
                 api.get('/index.php/mantencion/activos'),
-                api.get('/index.php/inventario')
+                api.get('/index.php/inventario'),
+                api.get('/index.php/mantencion/centros-costo'),
+                api.get('/index.php/personal')
             ]);
+            
             setActivos(resActivos.data.data);
             setInsumos(resInsumos.data.data);
+            if (resCC.data.success) setCentrosCosto(resCC.data.data);
+            if (resPersonal.data.success) setPersonal(resPersonal.data.data);
 
             if (otEditar) {
-                setActivoId(otEditar.activo_id);
+                if (otEditar.activo_id) {
+                    setModo('maquina');
+                    setActivoId(otEditar.activo_id);
+                } else {
+                    setModo('servicio');
+                    setActivoId('');
+                    setSolicitanteExterno(otEditar.solicitante_externo || '');
+                    setCentroCostoOT(otEditar.centro_costo_ot || '');
+                }
+
                 setObservacion(otEditar.descripcion_trabajo || '');
 
                 const resDetalles = await api.get(`/index.php/mantencion?detalle=true&id=${otEditar.id}`);
                 if (resDetalles.data.success) {
                     const itemsMapeados = resDetalles.data.data.map(d => ({
-                        id: d.id, // ID Insumo
+                        id: d.id,
                         detalle_id: d.detalle_id,
                         nombre: d.nombre,
                         codigo_sku: d.codigo_sku,
                         stock_actual: parseFloat(d.stock_actual),
                         unidad_medida: d.unidad_medida,
                         cantidad: parseFloat(d.cantidad),
-                        // Trazabilidad
                         oc_id: d.oc_id,
                         oc_proveedor: d.oc_proveedor,
                         estado_linea: d.estado_linea,
@@ -63,15 +81,21 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                     setItems(itemsMapeados);
                 }
             } else {
-                setActivoId(''); setObservacion(''); setBusqueda('');
-                // setItems([]) ya se hizo arriba
+                // Resetear
+                setModo('maquina');
+                setActivoId(''); 
+                setObservacion(''); 
+                setBusqueda('');
+                setSolicitanteExterno('');
+                setCentroCostoOT('');
             }
         } catch (e) {
             console.error(e);
-            setMsgModal({ show: true, title: "Error de Carga", message: "No se pudieron cargar los detalles de la OT.", type: "error" });
+            setMsgModal({ show: true, title: "Error de Carga", message: "No se pudieron cargar los datos.", type: "error" });
         }
     };
 
+    // Click outside para cerrar lista de insumos
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -87,7 +111,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         const id = e.target.value;
         setActivoId(id);
 
-        if (id && !otEditar) {
+        if (id && !otEditar && modo === 'maquina') {
             try {
                 const res = await api.get(`/index.php/mantencion/kit?id=${id}`);
                 if (res.data.success && res.data.data.length > 0) {
@@ -99,7 +123,8 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                             setItems(res.data.data.map(k => ({
                                 ...k,
                                 stock_actual: parseFloat(k.stock_actual),
-                                cantidad: parseFloat(k.cantidad)
+                                cantidad: parseFloat(k.cantidad),
+                                estado_linea: 'NUEVO'
                             })));
                             setConfirmModal({ show: false });
                         }
@@ -122,10 +147,13 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const eliminarItem = (idx) => setItems(items.filter((_, i) => i !== idx));
 
     const preSubmit = () => {
-        if (!activoId || items.length === 0) {
-            return setMsgModal({ show: true, title: "Faltan Datos", message: "Debes seleccionar una máquina y al menos un insumo.", type: "warning" });
+        if (modo === 'maquina' && !activoId) {
+             return setMsgModal({ show: true, title: "Faltan Datos", message: "Seleccione una máquina.", type: "warning" });
         }
-        // Validar si es una OT nueva y hay stock
+        if (modo === 'servicio' && (!centroCostoOT || !solicitanteExterno)) {
+             return setMsgModal({ show: true, title: "Faltan Datos", message: "Complete el Solicitante y el Centro de Costo.", type: "warning" });
+        }
+        
         if (!otEditar) {
             const itemsEnBodega = items.filter(i => parseFloat(i.stock_actual) >= parseFloat(i.cantidad));
             if (itemsEnBodega.length > 0) {
@@ -148,12 +176,16 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setConfirmModal({ show: false });
         setLoading(true);
         try {
-            // CORRECCIÓN: Nos aseguramos de enviar el ID en el payload si es edición
             const payload = {
                 id: otEditar ? otEditar.id : null,
-                activo_id: activoId,
+                activo_id: modo === 'maquina' ? activoId : null,
                 observacion,
-                items
+                items,
+                // Datos Servicio
+                solicitante_externo: modo === 'servicio' ? solicitanteExterno : null,
+                area_negocio: null, // Ya no usamos área de negocio explícita
+                centro_costo_ot: modo === 'servicio' ? centroCostoOT : null,
+                origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio' 
             };
 
             if (otEditar) {
@@ -207,33 +239,95 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                         <div className="modal-body bg-light p-4">
                             <div className="card border-0 shadow-sm mb-4">
                                 <div className="card-body">
-                                    <div className="row">
-                                        <div className="col-md-6">
-                                            <label className="form-label fw-bold small text-muted">MÁQUINA / ACTIVO</label>
-                                            <select className="form-select" value={activoId} onChange={handleActivoChange} disabled={!!otEditar}>
-                                                <option value="">Seleccione Máquina...</option>
-                                                {activos.map(a => (
-                                                    <option key={a.id} value={a.id}>{a.nombre} - {a.codigo_interno}</option>
-                                                ))}
-                                            </select>
+                                    
+                                    {!otEditar && (
+                                        <div className="d-flex justify-content-center mb-4">
+                                            <div className="btn-group" role="group">
+                                                <button type="button" 
+                                                    className={`btn fw-bold px-4 ${modo === 'maquina' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                                    onClick={() => { setModo('maquina'); setActivoId(''); setItems([]); }}>
+                                                    <i className="bi bi-gear-fill me-2"></i>Maquinaria
+                                                </button>
+                                                <button type="button" 
+                                                    className={`btn fw-bold px-4 ${modo === 'servicio' ? 'btn-success' : 'btn-outline-success'}`}
+                                                    onClick={() => { setModo('servicio'); setActivoId(''); setItems([]); }}>
+                                                    <i className="bi bi-people-fill me-2"></i>Servicio / Área
+                                                </button>
+                                            </div>
                                         </div>
+                                    )}
+
+                                    <div className="row g-3">
+                                        {/* COLUMNA IZQUIERDA */}
                                         <div className="col-md-6">
-                                            <label className="form-label fw-bold small text-muted">DESCRIPCIÓN TRABAJO</label>
-                                            <textarea className="form-control" rows="1" value={observacion} onChange={e => setObservacion(e.target.value)}></textarea>
+                                            {modo === 'maquina' ? (
+                                                <div className="mb-3">
+                                                    <label className="form-label fw-bold small text-muted">MÁQUINA / ACTIVO</label>
+                                                    <select className="form-select border-primary" value={activoId} onChange={handleActivoChange} disabled={!!otEditar}>
+                                                        <option value="">Seleccione Máquina...</option>
+                                                        {activos.map(a => (
+                                                            <option key={a.id} value={a.id}>{a.nombre} - {a.codigo_interno}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-white p-3 rounded border border-success mb-3">
+                                                    <h6 className="text-success fw-bold border-bottom pb-2 mb-3"><i className="bi bi-person-badge me-2"></i>Datos del Servicio</h6>
+                                                    
+                                                    <div className="mb-3">
+                                                        <label className="form-label small text-muted">Solicitante</label>
+                                                        <select className="form-select" value={solicitanteExterno} onChange={e => setSolicitanteExterno(e.target.value)} disabled={!!otEditar}>
+                                                            <option value="">Seleccione Solicitante...</option>
+                                                            {personal.map(p => (
+                                                                <option key={p.id} value={`${p.nombre} ${p.apellido}`}>
+                                                                    {p.nombre} {p.apellido} {p.cargo ? `(${p.cargo})` : ''}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="mb-2">
+                                                        <label className="form-label small text-muted">Centro de Costo</label>
+                                                        <select className="form-select fw-bold" value={centroCostoOT} onChange={e => setCentroCostoOT(e.target.value)} disabled={!!otEditar}>
+                                                            <option value="">Seleccione Centro...</option>
+                                                            {centrosCosto.map(cc => (
+                                                                <option key={cc.id} value={cc.codigo}>
+                                                                    {cc.codigo} - {cc.nombre}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* COLUMNA DERECHA: DESCRIPCIÓN */}
+                                        <div className="col-md-6">
+                                            <div className="h-100 d-flex flex-column">
+                                                <label className="form-label fw-bold small text-muted">DESCRIPCIÓN TRABAJO</label>
+                                                <textarea className="form-control flex-grow-1" style={{minHeight: '120px'}}
+                                                    value={observacion} onChange={e => setObservacion(e.target.value)}
+                                                    placeholder="Describa el problema o requerimiento detalladamente..."></textarea>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
+                            {/* BUSCADOR DE INSUMOS */}
                             {(!otEditar || otEditar.estado === 'Pendiente') && (
                                 <div className="mb-3 position-relative" ref={wrapperRef}>
-                                    <input type="text" className="form-control" placeholder="🔍 Buscar repuesto para agregar..."
-                                        value={busqueda} onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }} onFocus={() => setMostrarLista(true)} />
+                                    <div className="input-group">
+                                        <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
+                                        <input type="text" className="form-control" placeholder="Buscar repuesto para agregar..."
+                                            value={busqueda} onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }} onFocus={() => setMostrarLista(true)} />
+                                    </div>
                                     {mostrarLista && busqueda && (
                                         <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
                                             {insumosFiltrados.map(ins => (
-                                                <li key={ins.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => agregarItem(ins)}>
-                                                    {ins.nombre} (Stock: {ins.stock_actual})
+                                                <li key={ins.id} className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between" onClick={() => agregarItem(ins)}>
+                                                    <span>{ins.nombre} <small className="text-muted">({ins.codigo_sku})</small></span>
+                                                    <span className="badge bg-secondary">Stock: {ins.stock_actual}</span>
                                                 </li>
                                             ))}
                                         </ul>
@@ -241,11 +335,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                 </div>
                             )}
 
-                            <div className="table-responsive bg-white border rounded">
+                            {/* TABLA DE INSUMOS */}
+                            <div className="table-responsive bg-white border rounded shadow-sm">
                                 <table className="table table-hover align-middle mb-0">
                                     <thead className="table-light">
                                         <tr>
-                                            <th>Insumo</th>
+                                            <th>Insumo Requerido</th>
                                             <th style={{ width: '100px' }} className="text-center">Cant.</th>
                                             <th>Estado / Trazabilidad</th>
                                             <th style={{ width: '50px' }}></th>

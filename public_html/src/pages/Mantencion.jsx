@@ -19,7 +19,10 @@ const Mantencion = () => {
     const [showModal, setShowModal] = useState(false);
     const [otEditar, setOtEditar] = useState(null);
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
-    const [confirm, setConfirm] = useState({ show: false, id: null });
+    
+    // Modales de Confirmación
+    const [confirmAnular, setConfirmAnular] = useState({ show: false, id: null });
+    const [confirmFinish, setConfirmFinish] = useState({ show: false, id: null }); // Nuevo estado para finalizar
 
     useEffect(() => {
         cargarData();
@@ -41,6 +44,7 @@ const Mantencion = () => {
         } catch (e) { }
     };
 
+    // --- DESCARGAS SEGURAS ---
     const descargarPdfOT = async (id) => {
         try {
             setLoading(true);
@@ -92,12 +96,13 @@ const Mantencion = () => {
     const handleNew = () => { setOtEditar(null); setShowModal(true); };
     const handleEdit = (ot) => { setOtEditar(ot); setShowModal(true); };
 
-    const solicitarAnulacion = (id) => setConfirm({ show: true, id: id });
+    // --- LÓGICA ANULACIÓN ---
+    const solicitarAnulacion = (id) => setConfirmAnular({ show: true, id: id });
 
     const confirmarAnulacion = async () => {
-        setConfirm({ ...confirm, show: false });
+        setConfirmAnular({ ...confirmAnular, show: false });
         try {
-            await api.delete(`/index.php/mantencion?id=${confirm.id}`);
+            await api.delete(`/index.php/mantencion?id=${confirmAnular.id}`);
             cargarData();
             setMsg({ show: true, title: "Anulada", text: "OT Anulada correctamente.", type: "success" });
         } catch (error) {
@@ -105,14 +110,22 @@ const Mantencion = () => {
         }
     };
 
-    const handleFinalizar = async (id) => {
-        if (!window.confirm("¿Finalizar OT? Si no hubo consumo, quedará como CANCELADA.")) return;
+    // --- LÓGICA FINALIZACIÓN (NUEVA) ---
+    const solicitarFinalizar = (id) => {
+        setConfirmFinish({ show: true, id: id });
+    };
+
+    const ejecutarFinalizar = async () => {
+        setConfirmFinish({ show: false, id: null });
+        setLoading(true);
         try {
-            const res = await api.post('/index.php/mantencion/finalizar', { id });
-            setMsg({ show: true, title: "Finalizada", text: res.data.message, type: "success" });
+            const res = await api.post('/index.php/mantencion/finalizar', { id: confirmFinish.id });
+            setMsg({ show: true, title: "Finalizada", text: "OT Completada. Insumos pendientes cancelados.", type: "success" });
             cargarData();
         } catch (error) {
-            setMsg({ show: true, title: "Error", text: "Error al finalizar.", type: "error" });
+            setMsg({ show: true, title: "Error", text: error.response?.data?.message || "Error al finalizar.", type: "error" });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -130,8 +143,31 @@ const Mantencion = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
+            
+            {/* MODALES GLOBALES */}
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
-            <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={confirmarAnulacion} title="Anular OT" message="¿Estás seguro?" confirmText="Sí, Anular" type="danger" />
+            
+            {/* Modal Confirmar Anulación (Rojo) */}
+            <ConfirmModal 
+                show={confirmAnular.show} 
+                onClose={() => setConfirmAnular({ show: false, id: null })} 
+                onConfirm={confirmarAnulacion} 
+                title="Anular OT" 
+                message="¿Estás seguro de anular esta solicitud? Esta acción es irreversible." 
+                confirmText="Sí, Anular" 
+                type="danger" 
+            />
+
+            {/* Modal Confirmar Finalización (Verde) */}
+            <ConfirmModal 
+                show={confirmFinish.show} 
+                onClose={() => setConfirmFinish({ show: false, id: null })} 
+                onConfirm={ejecutarFinalizar} 
+                title="Finalizar Trabajo" 
+                message={`¿Confirmas que el trabajo está terminado?\n\nCualquier insumo que no haya sido entregado se marcará como CANCELADO en Bodega.`} 
+                confirmText="Sí, Finalizar OT" 
+                type="success" 
+            />
 
             <NuevaSolicitudModal show={showModal} onClose={() => setShowModal(false)} onSave={cargarData} otEditar={otEditar} />
 
@@ -203,7 +239,7 @@ const Mantencion = () => {
                                         <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
                                         <td className="text-end pe-4">
 
-                                            {/* PDF Seguro */}
+                                            {/* PDF */}
                                             <button 
                                                 onClick={() => descargarPdfOT(s.id)} 
                                                 className="btn btn-sm btn-outline-dark me-1" 
@@ -212,7 +248,7 @@ const Mantencion = () => {
                                                 <i className="bi bi-file-earmark-text"></i>
                                             </button>
 
-                                            {/* Excel Seguro */}
+                                            {/* Excel */}
                                             <button 
                                                 onClick={() => descargarExcelOT(s.id)} 
                                                 className="btn btn-sm btn-outline-success me-2" 
@@ -223,11 +259,15 @@ const Mantencion = () => {
 
                                             <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(s)}><i className="bi bi-eye"></i></button>
 
-                                            {/* Solo mostrar acciones si no está terminada */}
+                                            {/* Acciones de Gestión */}
                                             {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
                                                 <>
-                                                    <button className="btn btn-sm btn-success me-2" onClick={() => handleFinalizar(s.id)} title="Finalizar/Cerrar"><i className="bi bi-check2-circle"></i></button>
-                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarAnulacion(s.id)} title="Anular"><i className="bi bi-x-circle"></i></button>
+                                                    <button className="btn btn-sm btn-success me-2" onClick={() => solicitarFinalizar(s.id)} title="Finalizar/Cerrar">
+                                                        <i className="bi bi-check2-circle"></i>
+                                                    </button>
+                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarAnulacion(s.id)} title="Anular">
+                                                        <i className="bi bi-x-circle"></i>
+                                                    </button>
                                                 </>
                                             )}
                                         </td>

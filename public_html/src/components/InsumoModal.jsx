@@ -1,65 +1,72 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
 
+const BASE_URL_IMAGENES = 'http://localhost/INSUORDERS/public_html';
+
 const InsumoModal = ({ show, onClose, onSave, insumo }) => {
     const initialState = {
-        codigo_sku: '', nombre: '', descripcion: '', 
-        categoria_id: '', ubicacion_id: '', 
-        stock_actual: 0, stock_minimo: 5, 
+        codigo_sku: '', nombre: '', descripcion: '',
+        categoria_id: '', ubicacion_id: '',
+        stock_actual: 0, stock_minimo: 5,
         precio_costo: 0, moneda: 'CLP', unidad_medida: 'UN'
     };
 
     const [formData, setFormData] = useState(initialState);
-    const [imagenFile, setImagenFile] = useState(null); 
-    const [imagenPreview, setImagenPreview] = useState(null); 
+    const [imagenFile, setImagenFile] = useState(null);
+    const [imagenPreview, setImagenPreview] = useState(null);
     const [listas, setListas] = useState({ categorias: [], sectores: [], ubicaciones: [] });
     const [sectorSeleccionado, setSectorSeleccionado] = useState('');
     const [ubicacionesFiltradas, setUbicacionesFiltradas] = useState([]);
+    const [saving, setSaving] = useState(false);
 
-    // 1. Cargar Listas
     useEffect(() => {
         if (show) {
+            setSaving(false);
             api.get('/index.php/inventario/auxiliares')
                 .then(res => {
                     if (res.data.success) {
-                        const dataAux = res.data.data;
-                        setListas(dataAux);
-                        
+                        setListas(res.data.data);
                         if (insumo) {
-                            // MODO EDICIÓN
+                            // EDICIÓN: Cargar datos asegurando enteros
                             setFormData({
                                 ...insumo,
-                                stock_actual: parseFloat(insumo.stock_actual),
-                                stock_minimo: parseFloat(insumo.stock_minimo),
-                                precio_costo: parseFloat(insumo.precio_costo),
+                                stock_actual: parseInt(insumo.stock_actual) || 0,
+                                stock_minimo: parseInt(insumo.stock_minimo) || 0,
+                                precio_costo: parseInt(insumo.precio_costo) || 0,
                                 categoria_id: insumo.categoria_id || '',
                                 ubicacion_id: insumo.ubicacion_id || ''
                             });
 
-                            if (insumo.imagen_url) setImagenPreview(insumo.imagen_url);
-                            
-                            if (insumo.ubicacion_id && dataAux.ubicaciones) {
-                                const ubi = dataAux.ubicaciones.find(u => u.id == insumo.ubicacion_id);
+                            // Imagen
+                            if (insumo.imagen_url) {
+                                const url = insumo.imagen_url.startsWith('http')
+                                    ? insumo.imagen_url
+                                    : `${BASE_URL_IMAGENES}${insumo.imagen_url}`;
+                                setImagenPreview(url);
+                            } else {
+                                setImagenPreview(null);
+                            }
+
+                            // Sector
+                            if (insumo.ubicacion_id && res.data.data.ubicaciones) {
+                                const ubi = res.data.data.ubicaciones.find(u => u.id == insumo.ubicacion_id);
                                 if (ubi) setSectorSeleccionado(ubi.sector_id);
                             }
                         } else {
-                            // MODO CREACIÓN
+                            // CREACIÓN
                             setFormData(initialState);
                             setSectorSeleccionado('');
                             setImagenFile(null);
                             setImagenPreview(null);
                         }
                     }
-                })
-                .catch(err => console.error("Error listas:", err));
+                });
         }
     }, [show, insumo]);
 
-    // 2. Filtro de Ubicaciones
     useEffect(() => {
         if (sectorSeleccionado && listas.ubicaciones.length > 0) {
-            const filtradas = listas.ubicaciones.filter(u => u.sector_id == sectorSeleccionado);
-            setUbicacionesFiltradas(filtradas);
+            setUbicacionesFiltradas(listas.ubicaciones.filter(u => u.sector_id == sectorSeleccionado));
         } else {
             setUbicacionesFiltradas([]);
         }
@@ -79,42 +86,43 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
     };
 
     const handleSubmit = async (e) => {
-        // ESTO EVITA LA RECARGA NATIVA DEL FORMULARIO
-        e.preventDefault(); 
-        
+        e.preventDefault();
+        setSaving(true);
+
         try {
             const dataToSend = new FormData();
-            
+
+            // Adjuntar datos (EXCLUYENDO ID del loop para evitar duplicados si existe en formData)
             Object.keys(formData).forEach(key => {
-                const value = formData[key];
-                dataToSend.append(key, value === null || value === undefined ? '' : value);
+                if (key !== 'id') {
+                    dataToSend.append(key, formData[key] ?? '');
+                }
             });
 
             if (imagenFile) {
                 dataToSend.append('imagen', imagenFile);
             }
 
-            // Para Axios con FormData dejamos que el navegador gestione el Content-Type
             const config = { headers: { 'Content-Type': undefined } };
 
             if (insumo) {
-                // EDITAR: Enviamos ID y método PUT simulado
-                dataToSend.append('id', insumo.id);
-                dataToSend.append('_method', 'PUT'); 
+                // MODO EDICIÓN
+                dataToSend.append('id', insumo.id); // ID explícito
+                dataToSend.append('_method', 'PUT'); // Señal para el router
                 await api.post('/index.php/inventario', dataToSend, config);
             } else {
-                // CREAR
+                // MODO CREACIÓN
                 await api.post('/index.php/inventario', dataToSend, config);
             }
 
-            // AQUÍ LLAMAMOS AL PADRE. SI EL PADRE TIENE RELOAD(), LA PAGINA PARPADEA.
-            onSave(); 
+            onSave();
             onClose();
         } catch (error) {
             console.error("Error:", error);
-            const serverMsg = error.response?.data?.message || error.message;
-            const cleanMsg = typeof serverMsg === 'string' ? serverMsg.replace(/<[^>]*>?/gm, '') : JSON.stringify(serverMsg);
-            alert(`Error al guardar: ${cleanMsg}`);
+            const msg = error.response?.data?.message || error.message;
+            alert(`Error: ${msg}`);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -125,125 +133,81 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
             <div className="modal-dialog modal-lg">
                 <div className="modal-content border-0 shadow-lg">
                     <div className="modal-header bg-dark text-white">
-                        <h5 className="modal-title fw-bold">
-                            {insumo ? '✏️ Editar Producto' : '✨ Nuevo Producto / Insumo'}
-                        </h5>
-                        <button className="btn-close btn-close-white" onClick={onClose}></button>
+                        <h5 className="modal-title fw-bold">{insumo ? '✏️ Editar' : '✨ Nuevo'} Insumo</h5>
+                        <button className="btn-close btn-close-white" onClick={onClose} disabled={saving}></button>
                     </div>
                     <form onSubmit={handleSubmit}>
                         <div className="modal-body p-4">
-                            {/* Sección 1: Identificación */}
-                            <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold">Identificación</h6>
                             <div className="row g-3 mb-4">
                                 <div className="col-md-4">
-                                    <label className="form-label small fw-bold text-uppercase">Código SKU</label>
-                                    <input type="text" name="codigo_sku" className="form-control font-monospace" 
-                                        placeholder="Ej: ELEC-001" required
-                                        value={formData.codigo_sku} onChange={handleChange}  
-                                    />
+                                    <label className="form-label small fw-bold">SKU</label>
+                                    <input type="text" name="codigo_sku" className="form-control font-monospace" required value={formData.codigo_sku} onChange={handleChange} />
                                 </div>
                                 <div className="col-md-8">
-                                    <label className="form-label small fw-bold text-uppercase">Nombre del Artículo</label>
-                                    <input type="text" name="nombre" className="form-control" required
-                                        placeholder="Ej: Cable THHN 12AWG Rojo"
-                                        value={formData.nombre} onChange={handleChange} />
+                                    <label className="form-label small fw-bold">Nombre</label>
+                                    <input type="text" name="nombre" className="form-control" required value={formData.nombre} onChange={handleChange} />
                                 </div>
                                 <div className="col-md-8">
-                                    <label className="form-label small text-muted">Descripción (Opcional)</label>
-                                    <textarea name="descripcion" className="form-control form-control-sm" rows="3"
-                                        value={formData.descripcion || ''} onChange={handleChange}></textarea>
+                                    <label className="form-label small text-muted">Descripción</label>
+                                    <textarea name="descripcion" className="form-control" rows="3" value={formData.descripcion} onChange={handleChange}></textarea>
                                 </div>
                                 <div className="col-md-4">
-                                    <label className="form-label small fw-bold">Imagen del Producto</label>
-                                    <input type="file" className="form-control form-control-sm" accept="image/*" onChange={handleImageChange} />
-                                    {imagenPreview && (
-                                        <div className="mt-2 text-center border p-1 rounded">
-                                            <img src={imagenPreview} alt="Preview" style={{ maxHeight: '60px', objectFit: 'contain' }} />
-                                        </div>
-                                    )}
+                                    <label className="form-label small fw-bold">Imagen</label>
+                                    <input type="file" className="form-control" accept="image/*" onChange={handleImageChange} />
+                                    {imagenPreview && <div className="mt-2 text-center"><img src={imagenPreview} style={{ maxHeight: '80px' }} alt="Preview" /></div>}
                                 </div>
                             </div>
 
-                            {/* Sección 2: Clasificación */}
-                            <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold">Clasificación y Ubicación</h6>
                             <div className="row g-3 mb-4">
                                 <div className="col-md-4">
                                     <label className="form-label small fw-bold">Categoría</label>
-                                    <select name="categoria_id" className="form-select" required
-                                        value={formData.categoria_id} onChange={handleChange}>
+                                    <select name="categoria_id" className="form-select" required value={formData.categoria_id} onChange={handleChange}>
                                         <option value="">Seleccione...</option>
                                         {listas.categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                                     </select>
                                 </div>
                                 <div className="col-md-4">
-                                    <label className="form-label small fw-bold">Sector / Área</label>
-                                    <select className="form-select" value={sectorSeleccionado} 
-                                        onChange={(e) => {
-                                            setSectorSeleccionado(e.target.value);
-                                            setFormData(prev => ({ ...prev, ubicacion_id: '' }));
-                                        }}>
-                                        <option value="">Seleccione Sector...</option>
-                                        {listas.sectores && listas.sectores.map(s => (
-                                            <option key={s.id} value={s.id}>{s.nombre}</option>
-                                        ))}
+                                    <label className="form-label small fw-bold">Sector</label>
+                                    <select className="form-select" value={sectorSeleccionado} onChange={(e) => { setSectorSeleccionado(e.target.value); setFormData({ ...formData, ubicacion_id: '' }); }}>
+                                        <option value="">Seleccione...</option>
+                                        {listas.sectores && listas.sectores.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
                                     </select>
                                 </div>
                                 <div className="col-md-4">
-                                    <label className="form-label small fw-bold">Ubicación Específica</label>
-                                    <select name="ubicacion_id" className="form-select" required
-                                        value={formData.ubicacion_id} onChange={handleChange} disabled={!sectorSeleccionado}>
-                                        <option value="">Seleccione Ubicación...</option>
-                                        {ubicacionesFiltradas.map(u => (
-                                            <option key={u.id} value={u.id}>{u.nombre}</option>
-                                        ))}
+                                    <label className="form-label small fw-bold">Ubicación</label>
+                                    <select name="ubicacion_id" className="form-select" required value={formData.ubicacion_id} onChange={handleChange} disabled={!sectorSeleccionado}>
+                                        <option value="">Seleccione...</option>
+                                        {ubicacionesFiltradas.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
                                     </select>
                                 </div>
                             </div>
 
-                            {/* Sección 3: Valores */}
-                            <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold">Valores y Stock Inicial</h6>
+                            <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold">Valores (Enteros)</h6>
                             <div className="row g-3">
                                 <div className="col-md-4">
-                                    <label className="form-label small fw-bold">Costo Unitario (Neto)</label>
-                                    <div className="input-group">
-                                        <select className="form-select bg-light" style={{maxWidth: '90px'}} 
-                                            name="moneda" value={formData.moneda} onChange={handleChange}>
-                                            <option value="CLP">CLP</option>
-                                            <option value="USD">USD</option>
-                                            <option value="EUR">EUR</option>
-                                            <option value="UF">UF</option>
-                                        </select>
-                                        <input type="number" name="precio_costo" className="form-control text-end" step="0.01" min="0"
-                                            value={formData.precio_costo} onChange={handleChange} placeholder="0" />
-                                    </div>
+                                    <label className="form-label small fw-bold">Costo</label>
+                                    <input type="number" name="precio_costo" className="form-control" step="1" min="0" value={parseInt(formData.precio_costo) || 0} onChange={handleChange} />
                                 </div>
                                 <div className="col-md-3">
-                                    <label className="form-label small fw-bold">Unidad Medida</label>
-                                    <select name="unidad_medida" className="form-select"
-                                        value={formData.unidad_medida} onChange={handleChange}>
-                                        <option value="UN">Unidad (UN)</option>
-                                        <option value="KG">Kilos (KG)</option>
-                                        <option value="MTS">Metros (MTS)</option>
-                                        <option value="LTS">Litros (LTS)</option>
-                                        <option value="CJ">Caja (CJ)</option>
+                                    <label className="form-label small fw-bold">Unidad</label>
+                                    <select name="unidad_medida" className="form-select" value={formData.unidad_medida} onChange={handleChange}>
+                                        <option value="UN">UN</option><option value="KG">KG</option><option value="MTS">MTS</option><option value="LTS">LTS</option>
                                     </select>
                                 </div>
                                 <div className="col-md-3">
                                     <label className="form-label small fw-bold text-success">Stock Actual</label>
-                                    <input type="number" name="stock_actual" className="form-control" min="0"
-                                        value={formData.stock_actual} onChange={handleChange} />
+                                    <input type="number" name="stock_actual" className="form-control" step="1" min="0" value={parseInt(formData.stock_actual) || 0} onChange={handleChange} />
                                 </div>
                                 <div className="col-md-2">
                                     <label className="form-label small fw-bold text-danger">Mínimo</label>
-                                    <input type="number" name="stock_minimo" className="form-control" min="0"
-                                        value={formData.stock_minimo} onChange={handleChange} />
+                                    <input type="number" name="stock_minimo" className="form-control" step="1" min="0" value={parseInt(formData.stock_minimo) || 0} onChange={handleChange} />
                                 </div>
                             </div>
                         </div>
                         <div className="modal-footer bg-light">
-                            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-                            <button type="submit" className="btn btn-primary px-4">
-                                <i className="bi bi-save me-2"></i>{insumo ? 'Guardar Cambios' : 'Guardar Producto'}
+                            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
+                            <button type="submit" className="btn btn-primary px-4" disabled={saving}>
+                                {saving ? 'Guardando...' : 'Guardar'}
                             </button>
                         </div>
                     </form>

@@ -1,28 +1,39 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/axiosConfig';
 
-const ModalSalida = ({ show, onClose, insumo, onSave }) => {
+const ModalSalida = ({ show, onClose, onSave, insumo }) => {
     const [cantidad, setCantidad] = useState('');
+    const [personal, setPersonal] = useState([]);
+    const [personalId, setPersonalId] = useState('');
     const [observacion, setObservacion] = useState('');
-    const [loading, setLoading] = useState(false);
-
-    // Buscador Personal
-    const [empleados, setEmpleados] = useState([]);
-    const [busquedaEmp, setBusquedaEmp] = useState('');
-    const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(null);
+    
+    // Estados para el buscador de personal
+    const [busqueda, setBusqueda] = useState('');
     const [mostrarLista, setMostrarLista] = useState(false);
     const wrapperRef = useRef(null);
+    const [nombreSeleccionado, setNombreSeleccionado] = useState('');
+
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (show) {
-            api.get('/index.php/personal').then(res => {
-                if (res.data.success) setEmpleados(res.data.data);
-            });
-            setCantidad(''); setObservacion(''); 
-            setEmpleadoSeleccionado(null); setBusquedaEmp('');
+            setCantidad('');
+            setPersonalId('');
+            setNombreSeleccionado('');
+            setObservacion('');
+            setBusqueda('');
+            setSaving(false);
+            
+            // Cargar empleados
+            api.get('/index.php/personal')
+                .then(res => {
+                    if(res.data.success) setPersonal(res.data.data);
+                })
+                .catch(e => console.error(e));
         }
     }, [show]);
 
+    // Cerrar lista al hacer click fuera
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -33,101 +44,127 @@ const ModalSalida = ({ show, onClose, insumo, onSave }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [wrapperRef]);
 
-    const empleadosFiltrados = empleados.filter(e => 
-        e.nombre_completo.toLowerCase().includes(busquedaEmp.toLowerCase()) ||
-        e.rut.toLowerCase().includes(busquedaEmp.toLowerCase())
-    );
+    // --- FILTRO BLINDADO ---
+    // Si busqueda está vacío, .includes('') devuelve true para todos, así que muestra la lista completa.
+    const personalFiltrado = personal.filter(p => {
+        const term = busqueda.toLowerCase();
+        const nombre = (p.nombre || '').toLowerCase();
+        const rut = (p.rut || '').toLowerCase();
+        return nombre.includes(term) || rut.includes(term);
+    });
 
-    const seleccionarEmpleado = (emp) => {
-        setEmpleadoSeleccionado(emp);
-        setBusquedaEmp(emp.nombre_completo);
+    const handleSeleccionarPersonal = (p) => {
+        setPersonalId(p.id);
+        setNombreSeleccionado(p.nombre);
         setMostrarLista(false);
+        setBusqueda('');
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!empleadoSeleccionado) return alert("⚠️ Debes indicar quién retira.");
+        
+        if (!cantidad || cantidad <= 0) return alert("Ingrese una cantidad válida");
+        if (parseFloat(cantidad) > parseFloat(insumo.stock_actual)) return alert("No hay suficiente stock");
+        if (!personalId) return alert("Debe seleccionar quién retira");
 
-        setLoading(true);
+        setSaving(true);
         try {
             await api.post('/index.php/inventario/ajuste', {
                 insumo_id: insumo.id,
                 cantidad: cantidad,
-                tipo_movimiento_id: 4, // 4 = Salida
-                observacion: observacion,
-                empleado_id: empleadoSeleccionado.id
+                tipo_movimiento_id: 2, // 2 = Salida / Consumo
+                empleado_id: personalId,
+                observacion: observacion || 'Salida Manual'
             });
-            onSave(); onClose();
+            onSave();
+            onClose();
         } catch (error) {
-            alert("Error: " + error.response?.data?.message);
+            alert(error.response?.data?.message || "Error al registrar salida");
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
     if (!show || !insumo) return null;
 
     return (
-        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-            <div className="modal-dialog modal-dialog-centered">
-                <div className="modal-content shadow border-0">
+        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog">
+                <div className="modal-content">
                     <div className="modal-header bg-danger text-white">
-                        <h5 className="modal-title fw-bold">
-                            <i className="bi bi-box-arrow-up me-2"></i>Salida / Ajuste (-)
-                        </h5>
-                        <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+                        <h5 className="modal-title">📉 Registrar Salida / Consumo</h5>
+                        <button className="btn-close btn-close-white" onClick={onClose}></button>
                     </div>
                     <form onSubmit={handleSubmit}>
-                        <div className="modal-body p-4">
-                            <div className="text-center mb-4">
-                                <h5 className="fw-bold text-dark">{insumo.nombre}</h5>
-                                <span className="badge bg-light text-dark border">Actual: {insumo.stock_actual}</span>
+                        <div className="modal-body">
+                            <div className="alert alert-light border d-flex align-items-center mb-3">
+                                <i className="bi bi-box-seam fs-3 me-3 text-secondary"></i>
+                                <div>
+                                    <div className="fw-bold">{insumo.nombre}</div>
+                                    <div className="small text-muted">SKU: {insumo.codigo_sku} | Stock Actual: {insumo.stock_actual}</div>
+                                </div>
                             </div>
 
-                            {/* Buscador Personal */}
-                            <div className="mb-3" ref={wrapperRef}>
-                                <label className="form-label fw-bold text-danger small">RESPONSABLE (QUIÉN RETIRA)</label>
-                                <div className="input-group">
-                                    <span className="input-group-text bg-white"><i className="bi bi-person"></i></span>
-                                    <input type="text" className="form-control" placeholder="Buscar por nombre o RUT..."
-                                        value={busquedaEmp}
-                                        onChange={e => { setBusquedaEmp(e.target.value); setMostrarLista(true); setEmpleadoSeleccionado(null); }}
-                                        onFocus={() => setMostrarLista(true)}
-                                    />
-                                </div>
-                                {mostrarLista && !empleadoSeleccionado && busquedaEmp && (
-                                    <ul className="list-group position-absolute w-100 shadow mt-1" style={{zIndex:10, maxHeight:'150px', overflowY:'auto'}}>
-                                        {empleadosFiltrados.map(emp => (
-                                            <li key={emp.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => seleccionarEmpleado(emp)}>
-                                                <div className="fw-bold">{emp.nombre_completo}</div>
-                                                <small className="text-muted">{emp.rut}</small>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                                {empleadoSeleccionado && (
-                                    <div className="mt-2 small text-muted ps-2 border-start border-3 border-danger">
-                                        CC: {empleadoSeleccionado.cc_codigo} | Área: {empleadoSeleccionado.area_negocio}
+                            <div className="mb-3">
+                                <label className="form-label fw-bold">Cantidad a Retirar</label>
+                                <input type="number" className="form-control form-control-lg text-center fw-bold" 
+                                    min="1" step="1" 
+                                    value={cantidad} onChange={e => setCantidad(e.target.value)} required />
+                            </div>
+
+                            <div className="mb-3 position-relative" ref={wrapperRef}>
+                                <label className="form-label fw-bold">
+                                    <i className="bi bi-person-vcard me-2 fs-5 align-middle"></i>Retirado Por
+                                </label>
+                                
+                                {nombreSeleccionado ? (
+                                    <div className="input-group">
+                                        <span className="input-group-text bg-white text-success"><i className="bi bi-check-circle-fill"></i></span>
+                                        <input type="text" className="form-control bg-white text-dark fw-bold" value={nombreSeleccionado} readOnly />
+                                        <button className="btn btn-outline-secondary" type="button" onClick={() => { setPersonalId(''); setNombreSeleccionado(''); setMostrarLista(true); }}>
+                                            <i className="bi bi-x-lg"></i>
+                                        </button>
                                     </div>
+                                ) : (
+                                    <>
+                                        <div className="input-group">
+                                            <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
+                                            <input type="text" className="form-control" placeholder="Buscar empleado (Nombre o RUT)..."
+                                                value={busqueda} 
+                                                onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }}
+                                                onFocus={() => setMostrarLista(true)} // Al hacer click, muestra todo
+                                                onClick={() => setMostrarLista(true)} // Refuerzo para click
+                                            />
+                                        </div>
+                                        
+                                        {/* MODIFICADO: Eliminé el check "&& busqueda" para que muestre la lista siempre que esté en foco */}
+                                        {mostrarLista && (
+                                            <ul className="list-group position-absolute w-100 shadow mt-1 bg-white" style={{ zIndex: 1050, maxHeight: '200px', overflowY: 'auto' }}>
+                                                {personalFiltrado.map(p => (
+                                                    <li key={p.id} className="list-group-item list-group-item-action cursor-pointer" 
+                                                        onClick={() => handleSeleccionarPersonal(p)}>
+                                                        <div className="fw-bold">{p.nombre}</div>
+                                                        <small className="text-muted">{p.rut}</small>
+                                                    </li>
+                                                ))}
+                                                {personalFiltrado.length === 0 && (
+                                                    <li className="list-group-item text-muted small">No se encontraron resultados</li>
+                                                )}
+                                            </ul>
+                                        )}
+                                    </>
                                 )}
                             </div>
 
-                            <div className="row g-2">
-                                <div className="col-6">
-                                    <label className="form-label fw-bold small">CANTIDAD</label>
-                                    <input type="number" className="form-control fw-bold text-center fs-5" placeholder="0" required min="0.01" step="0.01"
-                                        value={cantidad} onChange={e => setCantidad(e.target.value)} />
-                                </div>
-                                <div className="col-6">
-                                    <label className="form-label small">NOTA</label>
-                                    <input type="text" className="form-control" placeholder="Opcional"
-                                        value={observacion} onChange={e => setObservacion(e.target.value)} />
-                                </div>
+                            <div className="mb-3">
+                                <label className="form-label fw-bold">Observación (Opcional)</label>
+                                <textarea className="form-control" rows="2" value={observacion} onChange={e => setObservacion(e.target.value)}></textarea>
                             </div>
                         </div>
-                        <div className="modal-footer border-0 justify-content-center pb-4">
-                            <button type="submit" className="btn btn-danger w-100 py-2 fw-bold" disabled={loading}>
-                                {loading ? '...' : 'CONFIRMAR SALIDA'}
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+                            <button type="submit" className="btn btn-danger px-4" disabled={saving}>
+                                {saving ? 'Registrando...' : 'Confirmar Salida'}
                             </button>
                         </div>
                     </form>

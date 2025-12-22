@@ -1,28 +1,28 @@
 <?php
 namespace App\Controllers;
-use App\Repositories\ProveedorRepository;
+
+use App\Services\ProveedorService;
 
 class ProveedorController {
-    private $repo;
+    private $service;
 
     public function __construct() {
-        $this->repo = new ProveedorRepository();
+        $this->service = new ProveedorService();
     }
 
     public function index() {
-        echo json_encode(["success" => true, "data" => $this->repo->getAll()]);
+        echo json_encode(["success" => true, "data" => $this->service->listarTodos()]);
     }
 
     public function auxiliares() {
-        echo json_encode(["success" => true, "data" => $this->repo->getAuxiliares()]);
+        echo json_encode(["success" => true, "data" => $this->service->obtenerAuxiliares()]);
     }
 
     public function store() {
         try {
-            $id = $this->repo->create($_POST);
-            $this->procesarArchivo($id);
-
-            echo json_encode(["success" => true, "message" => "Proveedor creado"]);
+            // Pasamos $_POST y $_FILES al servicio
+            $id = $this->service->crear($_POST, $_FILES['documento'] ?? null);
+            echo json_encode(["success" => true, "message" => "Proveedor creado correctamente", "id" => $id]);
         } catch (\Exception $e) {
             http_response_code(400); 
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
@@ -31,29 +31,31 @@ class ProveedorController {
 
     public function update() {
         try {
-            $id = $_GET['id'];
-            $this->repo->update($id, $_POST);
-            
-            $this->procesarArchivo($id);
+            $id = $_GET['id'] ?? $_POST['id'] ?? null;
+            if (!$id) throw new \Exception("ID no especificado");
 
-            echo json_encode(["success" => true, "message" => "Proveedor actualizado"]);
+            // Pasamos ID, datos y posible archivo nuevo
+            $this->service->actualizar($id, $_POST, $_FILES['documento'] ?? null);
+            echo json_encode(["success" => true, "message" => "Proveedor actualizado correctamente"]);
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
-    private function procesarArchivo($id) {
-        if (isset($_FILES['documento']) && $_FILES['documento']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = __DIR__ . '/../../../../public_html/uploads/proveedores/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+    public function delete() {
+        try {
+            $id = $_GET['id'] ?? null;
+            if (!$id) throw new \Exception("ID no especificado");
 
-            $fileName = "prov_{$id}_" . time() . "_" . basename($_FILES['documento']['name']);
-            $targetPath = $uploadDir . $fileName;
-
-            if (move_uploaded_file($_FILES['documento']['tmp_name'], $targetPath)) {
-                $this->repo->guardarDocumento($id, $_FILES['documento']['name'], $fileName);
+            if ($this->service->eliminar($id)) {
+                echo json_encode(["success" => true, "message" => "Proveedor eliminado"]);
+            } else {
+                throw new \Exception("No se pudo eliminar el proveedor");
             }
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 }

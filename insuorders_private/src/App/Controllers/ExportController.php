@@ -7,6 +7,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
@@ -18,12 +19,11 @@ class ExportController
 {
     public function exportar($modulo)
     {
-        if (ob_get_length())
+        while (ob_get_level()) {
             ob_end_clean();
+        }
 
         $spreadsheet = new Spreadsheet();
-        // CORRECCIÓN: No borramos la hoja 0 aquí para evitar el error "Index out of bounds"
-
         $filename = "Reporte.xlsx";
         $sheetIndex = 0;
 
@@ -48,12 +48,12 @@ class ExportController
                     break;
                 case 'detalle_ot':
                     $id = $_GET['id'] ?? 0;
-                    $this->sheetDetalleOT($spreadsheet, $id); // Usa la hoja 0 por defecto
+                    $this->sheetDetalleOT($spreadsheet, $id);
                     $filename = "Detalle_OT_{$id}.xlsx";
                     break;
                 case 'detalle_oc':
                     $id = $_GET['id'] ?? 0;
-                    $this->sheetDetalleOC($spreadsheet, $id); // Usa la hoja 0 por defecto
+                    $this->sheetDetalleOC($spreadsheet, $id);
                     $filename = "Detalle_OC_{$id}.xlsx";
                     break;
                 case 'bodega':
@@ -87,6 +87,7 @@ class ExportController
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             header('Content-Disposition: attachment;filename="' . $filename . '"');
             header('Cache-Control: max-age=0');
+            header('Expires: 0');
 
             $writer = new Xlsx($spreadsheet);
             $writer->save('php://output');
@@ -97,11 +98,12 @@ class ExportController
                 header('Content-Type: application/json');
                 http_response_code(500);
             }
-            echo json_encode(["error" => "Error generando Excel: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error generando Excel: " . $e->getMessage()]);
             exit;
         }
     }
 
+    // --- HELPER: Obtener o Crear Hoja ---
     private function getSheet(Spreadsheet $s, $index)
     {
         if ($index < $s->getSheetCount()) {
@@ -110,108 +112,25 @@ class ExportController
         return $s->createSheet();
     }
 
-    // --- REPORTES ---
-
-    private function sheetInventario(Spreadsheet $s, $idx)
-    {
-        $sheet = $this->getSheet($s, $idx);
-        $sheet->setTitle('Inventario');
-        $data = (new InsumoRepository())->getAll();
-        $this->fillSheet(
-            $sheet,
-            ['ID', 'SKU', 'Nombre', 'Categoría', 'Ubicación', 'Stock', 'Mínimo', 'Unidad', 'Costo'],
-            $data,
-            fn($d) => [$d['id'], str_replace('NEW-', '', $d['codigo_sku']), $d['nombre'], $d['categoria_nombre'], $d['ubicaciones_multiples'] ?? 'N/A', $d['stock_actual'], $d['stock_minimo'], $d['unidad_medida'], $d['precio_costo']]
-        );
-    }
-
-    private function sheetProveedores(Spreadsheet $s, $idx)
-    {
-        $sheet = $this->getSheet($s, $idx);
-        $sheet->setTitle('Proveedores');
-        $data = (new ProveedorRepository())->getAll();
-        $this->fillSheet(
-            $sheet,
-            ['ID', 'RUT', 'Nombre', 'Email', 'Fono', 'Contacto', 'Pago', 'Comuna'],
-            $data,
-            fn($d) => [$d['id'], $d['rut'], $d['nombre'], $d['email'], $d['telefono'], $d['contacto_vendedor'], $d['tipo_venta_nombre'], $d['comuna_nombre']]
-        );
-    }
-
-    private function sheetCompras(Spreadsheet $s, $idx)
-    {
-        $sheet = $this->getSheet($s, $idx);
-        $sheet->setTitle('Compras');
-        $data = (new OrdenCompraRepository())->getAll();
-        $this->fillSheet(
-            $sheet,
-            ['ID', 'Fecha', 'Proveedor', 'RUT', 'Estado', 'Total', 'Creador'],
-            $data,
-            fn($d) => [$d['id'], $d['fecha_creacion'], $d['proveedor'], $d['proveedor_rut'], $d['estado'], $d['monto_total'], $d['creador']]
-        );
-    }
-
-    private function sheetOTs(Spreadsheet $s, $idx)
-    {
-        $sheet = $this->getSheet($s, $idx);
-        $sheet->setTitle('Solicitudes OT');
-        $data = (new MantencionRepository())->getSolicitudes();
-        $this->fillSheet(
-            $sheet,
-            ['ID', 'Fecha', 'Solicitante', 'Máquina', 'Descripción', 'Estado'],
-            $data,
-            fn($d) => [$d['id'], $d['fecha_solicitud'], $d['solicitante_nombre'] . ' ' . $d['solicitante_apellido'], $d['activo'], $d['descripcion_trabajo'], $d['estado']]
-        );
-    }
-
-    private function sheetActivos(Spreadsheet $s, $idx)
-    {
-        $sheet = $this->getSheet($s, $idx);
-        $sheet->setTitle('Activos');
-        $data = (new MantencionRepository())->getActivos();
-        $this->fillSheet(
-            $sheet,
-            ['ID', 'Código', 'Nombre', 'Tipo', 'Ubicación'],
-            $data,
-            fn($d) => [$d['id'], $d['codigo_interno'], $d['nombre'], $d['tipo'], $d['ubicacion']]
-        );
-    }
-
-    private function sheetBodega(Spreadsheet $s, $idx)
-    {
-        $sheet = $this->getSheet($s, $idx);
-        $sheet->setTitle('Bodega Pendientes');
-        $data = (new MantencionRepository())->getPendientesEntrega();
-        $this->fillSheet(
-            $sheet,
-            ['OT', 'Fecha', 'Insumo', 'SKU', 'Pendiente', 'Unidad', 'Solicitante'],
-            $data,
-            fn($d) => [$d['ot_id'], $d['fecha_solicitud'], $d['insumo'], $d['codigo_sku'], $d['cantidad_pendiente'], $d['unidad_medida'], $d['solicitante']]
-        );
-    }
-
-    private function sheetUsuarios(Spreadsheet $s, $idx)
-    {
-        $sheet = $this->getSheet($s, $idx);
-        $sheet->setTitle('Usuarios');
-        $data = (new UsuariosRepository())->getAll();
-        $this->fillSheet(
-            $sheet,
-            ['ID', 'Usuario', 'Nombre', 'Email', 'Rol', 'Estado'],
-            $data,
-            fn($d) => [$d['id'], $d['username'], $d['nombre'], $d['email'], $d['rol'], $d['activo'] ? 'Activo' : 'Inactivo']
-        );
-    }
-
-    private function fillSheet($sheet, $headers, $data, $mapFunc)
+    // --- HELPER: Rellenar Hoja con Estilos ---
+    private function fillSheet(Worksheet $sheet, $headers, $data, $mapFunc)
     {
         $col = 'A';
         foreach ($headers as $h) {
             $sheet->setCellValue($col . '1', $h);
             $col++;
         }
+
         $lastCol = chr(ord('A') + count($headers) - 1);
-        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray(['font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E78']]]);
+        $headerRange = "A1:{$lastCol}1";
+
+        $sheet->getStyle($headerRange)->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['argb' => Color::COLOR_WHITE], 'size' => 11],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E78']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+        ]);
+
         $row = 2;
         foreach ($data as $item) {
             $vals = $mapFunc($item);
@@ -222,19 +141,195 @@ class ExportController
             }
             $row++;
         }
-        foreach (range('A', $lastCol) as $columnID)
+
+        $dataRange = "A2:{$lastCol}" . ($row - 1);
+        if ($row > 2) {
+            $sheet->getStyle($dataRange)->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFD3D3D3']]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
+            ]);
+        }
+
+        $sheet->setAutoFilter($headerRange);
+        foreach (range('A', $lastCol) as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
+        }
     }
 
-    // --- DETALLE OT INDIVIDUAL ---
+    // --- MÉTODOS DE HOJAS ESPECÍFICAS ---
+
+    private function sheetInventario(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Inventario');
+        $data = (new InsumoRepository())->getAll();
+
+        $this->fillSheet(
+            $sheet,
+            ['ID', 'SKU', 'Nombre', 'Categoría', 'Ubicación', 'Stock', 'Mínimo', 'Unidad', 'Costo', 'Moneda'],
+            $data,
+            fn($d) => [
+                $d['id'],
+                str_replace('NEW-', '', $d['codigo_sku']),
+                $d['nombre'],
+                $d['categoria_nombre'] ?? 'General',
+                $d['ubicaciones_multiples'] ?? 'N/A',
+                $d['stock_actual'],
+                $d['stock_minimo'],
+                $d['unidad_medida'],
+                $d['precio_costo'],
+                $d['moneda'] ?? 'CLP'
+            ]
+        );
+    }
+
+    private function sheetActivos(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Activos');
+        $data = (new MantencionRepository())->getActivos();
+
+        $this->fillSheet(
+            $sheet,
+            ['ID', 'Código Interno', 'Nombre Activo', 'Tipo', 'Ubicación', 'Descripción', 'Centro de Costo'],
+            $data,
+            fn($d) => [
+                $d['id'],
+                $d['codigo_interno'],
+                $d['nombre'],
+                $d['tipo'],
+                $d['ubicacion'],
+                $d['descripcion'] ?? '',
+                (!empty($d['centro_costo_nombre']))
+                ? ($d['centro_costo_codigo'] . ' - ' . $d['centro_costo_nombre'])
+                : 'Sin asignar'
+            ]
+        );
+    }
+
+    private function sheetProveedores(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Proveedores');
+        $data = (new ProveedorRepository())->getAll();
+
+        $this->fillSheet(
+            $sheet,
+            ['ID', 'RUT', 'Razón Social', 'Email', 'Teléfono', 'Contacto', 'Condición Venta', 'Dirección', 'Comuna', 'Región'],
+            $data,
+            fn($d) => [
+                $d['id'],
+                $d['rut'],
+                $d['nombre'],
+                $d['email'],
+                $d['telefono'],
+                $d['contacto_vendedor'],
+                $d['tipo_venta_nombre'] ?? 'Contado',
+                $d['direccion'] ?? '',
+                $d['comuna_nombre'] ?? '',
+                $d['region_nombre'] ?? ''
+            ]
+        );
+    }
+
+    private function sheetOTs(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Solicitudes OT');
+        $data = (new MantencionRepository())->getAll();
+
+        $this->fillSheet(
+            $sheet,
+            ['Nro OT', 'Fecha Solicitud', 'Solicitante', 'Máquina / Activo', 'Cód. Activo', 'Descripción Trabajo', 'Estado', 'Fecha Término'],
+            $data,
+            fn($d) => [
+                $d['id'],
+                $d['fecha_solicitud'],
+                $d['solicitante_nombre'] . ' ' . $d['solicitante_apellido'],
+                $d['activo'] ?? 'General',
+                $d['activo_codigo'] ?? '',
+                $d['descripcion_trabajo'],
+                $d['estado'],
+                $d['fecha_termino'] ?? '-'
+            ]
+        );
+    }
+
+    private function sheetCompras(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Compras');
+        $data = (new OrdenCompraRepository())->getAll();
+
+        $this->fillSheet(
+            $sheet,
+            ['ID OC', 'Fecha', 'Proveedor', 'RUT', 'Estado', 'Neto', 'IVA', 'Total', 'Creador'],
+            $data,
+            fn($d) => [
+                $d['id'],
+                $d['fecha_creacion'],
+                $d['proveedor'],
+                $d['proveedor_rut'],
+                $d['estado'],
+                $d['monto_neto'],
+                $d['monto_impuesto'],
+                $d['monto_total'],
+                $d['creador']
+            ]
+        );
+    }
+
+    private function sheetBodega(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Pendientes Bodega');
+        $data = (new MantencionRepository())->getPendientesEntrega();
+
+        $this->fillSheet(
+            $sheet,
+            ['OT Origen', 'Fecha', 'Insumo', 'SKU', 'Cant. Pendiente', 'Unidad', 'Solicitante'],
+            $data,
+            fn($d) => [
+                $d['ot_id'],
+                $d['fecha_solicitud'],
+                $d['insumo'],
+                $d['codigo_sku'],
+                $d['cantidad_pendiente'],
+                $d['unidad_medida'],
+                $d['solicitante']
+            ]
+        );
+    }
+
+    private function sheetUsuarios(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Usuarios');
+        $data = (new UsuariosRepository())->getAll();
+
+        $this->fillSheet(
+            $sheet,
+            ['ID', 'Usuario', 'Nombre Completo', 'Email', 'Rol', 'Estado'],
+            $data,
+            fn($d) => [
+                $d['id'],
+                $d['username'],
+                $d['nombre'] . ' ' . $d['apellido'],
+                $d['email'],
+                $d['rol'],
+                $d['activo'] ? 'Activo' : 'Inactivo'
+            ]
+        );
+    }
+
     private function sheetDetalleOT(Spreadsheet $s, $id)
     {
-        // CORRECCIÓN: Usamos getSheet(0) directo porque acabamos de crear el Spreadsheet limpio
         $sheet = $s->getSheet(0);
         $sheet->setTitle("OT #$id");
 
         $repo = new MantencionRepository();
-        $header = $repo->getOTHeader($id);
+        $data = $repo->getAll(['id' => $id]);
+        $header = $data[0] ?? null;
         $detalles = $repo->getDetallesOT($id);
 
         if (!$header)
@@ -242,43 +337,50 @@ class ExportController
 
         $sheet->setCellValue('A1', 'ORDEN DE TRABAJO #' . $id);
         $sheet->mergeCells('A1:E1');
-        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 16, 'color' => ['argb' => 'FF1F4E78']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
+        ]);
 
-        $sheet->setCellValue('A3', 'Solicitante:');
-        $sheet->setCellValue('B3', $header['solicitante_nombre'] . ' ' . $header['solicitante_apellido']);
-        $sheet->setCellValue('A4', 'Máquina:');
-        $sheet->setCellValue('B4', $header['activo'] ?? 'General');
-        $sheet->setCellValue('A5', 'Fecha:');
-        $sheet->setCellValue('B5', $header['fecha_solicitud']);
-        $sheet->setCellValue('A6', 'Estado:');
-        $sheet->setCellValue('B6', $header['estado']);
-        $sheet->setCellValue('A7', 'Descripción:');
-        $sheet->setCellValue('B7', $header['descripcion_trabajo']);
+        $info = [
+            3 => ['Solicitante:', $header['solicitante_nombre'] . ' ' . $header['solicitante_apellido']],
+            4 => ['Máquina:', ($header['activo'] ?? 'General') . ' (' . ($header['activo_codigo'] ?? '') . ')'],
+            5 => ['Fecha:', $header['fecha_solicitud']],
+            6 => ['Estado:', $header['estado']],
+            7 => ['Descripción:', $header['descripcion_trabajo']]
+        ];
+
+        foreach ($info as $r => $val) {
+            $sheet->setCellValue("A$r", $val[0]);
+            $sheet->setCellValue("B$r", $val[1]);
+            $sheet->getStyle("A$r")->getFont()->setBold(true);
+        }
 
         $row = 9;
         $headers = ['SKU', 'Insumo', 'Solicitado', 'Entregado', 'Estado'];
-        $col = 'A';
+        $c = 'A';
         foreach ($headers as $h) {
-            $sheet->setCellValue($col . $row, $h);
-            $col++;
+            $sheet->setCellValue($c . $row, $h);
+            $c++;
         }
-        $sheet->getStyle('A9:E9')->getFont()->setBold(true)->setColor(new Color(Color::COLOR_WHITE));
-        $sheet->getStyle('A9:E9')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+        $sheet->getStyle("A$row:E$row")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['argb' => Color::COLOR_WHITE]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E78']]
+        ]);
 
         $row++;
         foreach ($detalles as $d) {
-            $sheet->setCellValue('A' . $row, $d['codigo_sku']);
-            $sheet->setCellValue('B' . $row, $d['nombre']);
-            $sheet->setCellValue('C' . $row, $d['cantidad']);
-            $sheet->setCellValue('D' . $row, $d['cantidad_entregada']);
-            $sheet->setCellValue('E' . $row, $d['estado_linea']);
+            $sheet->setCellValue("A$row", $d['codigo_sku']);
+            $sheet->setCellValue("B$row", $d['nombre']);
+            $sheet->setCellValue("C$row", $d['cantidad']);
+            $sheet->setCellValue("D$row", $d['cantidad_entregada']);
+            $sheet->setCellValue("E$row", $d['estado_linea']);
             $row++;
         }
         foreach (range('A', 'E') as $col)
             $sheet->getColumnDimension($col)->setAutoSize(true);
     }
 
-    // --- DETALLE OC INDIVIDUAL ---
     private function sheetDetalleOC(Spreadsheet $s, $id)
     {
         $sheet = $s->getSheet(0);
@@ -293,7 +395,10 @@ class ExportController
 
         $sheet->setCellValue('A1', 'ORDEN DE COMPRA #' . $id);
         $sheet->mergeCells('A1:E1');
-        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 16, 'color' => ['argb' => 'FF1F4E78']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
+        ]);
 
         $sheet->setCellValue('A3', 'Proveedor:');
         $sheet->setCellValue('B3', $c['proveedor']);
@@ -305,28 +410,37 @@ class ExportController
         $sheet->setCellValue('E4', $c['estado_nombre']);
 
         $row = 7;
-        $headers = ['SKU', 'Insumo', 'Cantidad', 'Precio', 'Total'];
+        $headers = ['SKU', 'Insumo', 'Cantidad', 'Precio Unit.', 'Total'];
         $col = 'A';
         foreach ($headers as $h) {
             $sheet->setCellValue($col . $row, $h);
             $col++;
         }
-        $sheet->getStyle('A7:E7')->getFont()->setBold(true)->setColor(new Color(Color::COLOR_WHITE));
-        $sheet->getStyle('A7:E7')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+        $sheet->getStyle("A$row:E$row")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['argb' => Color::COLOR_WHITE]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E78']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
+        ]);
 
         $row++;
         foreach ($data['detalles'] as $d) {
-            $sheet->setCellValue('A' . $row, $d['codigo_sku']);
-            $sheet->setCellValue('B' . $row, $d['insumo']);
-            $sheet->setCellValue('C' . $row, $d['cantidad_solicitada']);
-            $sheet->setCellValue('D' . $row, $d['precio_unitario']);
-            $sheet->setCellValue('E' . $row, $d['total_linea']);
+            $sheet->setCellValue("A$row", $d['codigo_sku']);
+            $sheet->setCellValue("B$row", $d['insumo']);
+            $sheet->setCellValue("C$row", $d['cantidad_solicitada']);
+            $sheet->setCellValue("D$row", $d['precio_unitario']);
+            $sheet->setCellValue("E$row", $d['total_linea']);
             $row++;
         }
 
-        $sheet->setCellValue('D' . $row, 'TOTAL:');
-        $sheet->setCellValue('E' . $row, $c['monto_total']);
-        $sheet->getStyle('D' . $row . ':E' . $row)->getFont()->setBold(true);
+        $sheet->setCellValue("D$row", 'TOTAL NETO:');
+        $sheet->setCellValue("E$row", $c['monto_neto']);
+        $row++;
+        $sheet->setCellValue("D$row", 'IVA:');
+        $sheet->setCellValue("E$row", $c['monto_impuesto']);
+        $row++;
+        $sheet->setCellValue("D$row", 'TOTAL:');
+        $sheet->setCellValue("E$row", $c['monto_total']);
+        $sheet->getStyle("D" . ($row - 2) . ":E$row")->getFont()->setBold(true);
 
         foreach (range('A', 'E') as $col)
             $sheet->getColumnDimension($col)->setAutoSize(true);

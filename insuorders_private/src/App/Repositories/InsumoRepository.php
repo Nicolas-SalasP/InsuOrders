@@ -15,9 +15,15 @@ class InsumoRepository
 
     public function getAll()
     {
+        // CAMBIO: Agregamos el LEFT JOIN para obtener el nombre de la ubicación principal (i.ubicacion_id)
         $sql = "SELECT 
                     i.*, 
                     c.nombre as categoria_nombre,
+                    
+                    -- Obtenemos el nombre de la ubicación principal guardada en la tabla insumos
+                    CONCAT(IFNULL(s_main.nombre, 'General'), ' - ', u_main.nombre) as ubicacion_defecto,
+
+                    -- Subconsulta para ubicaciones con stock (Logística avanzada)
                     (
                         SELECT GROUP_CONCAT(
                             CONCAT(
@@ -34,6 +40,11 @@ class InsumoRepository
 
                 FROM insumos i
                 LEFT JOIN categorias_insumo c ON i.categoria_id = c.id
+                
+                -- JOINS para la ubicación principal
+                LEFT JOIN ubicaciones u_main ON i.ubicacion_id = u_main.id
+                LEFT JOIN sectores s_main ON u_main.sector_id = s_main.id
+                
                 ORDER BY i.nombre ASC";
 
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
@@ -62,7 +73,7 @@ class InsumoRepository
                     codigo_sku, nombre, descripcion, categoria_id, ubicacion_id, 
                     stock_actual, stock_minimo, precio_costo, moneda, unidad_medida, imagen_url
                 ) VALUES (
-                    :sku, :nom, :desc, :cat, NULL, 
+                    :sku, :nom, :desc, :cat, :ubi, 
                     :stock, :min, :precio, :moneda, :unidad, :img
                 )";
 
@@ -72,6 +83,7 @@ class InsumoRepository
             ':nom' => $data['nombre'],
             ':desc' => $data['descripcion'] ?? '',
             ':cat' => $data['categoria_id'],
+            ':ubi' => $data['ubicacion_id'],
             ':stock' => $data['stock_actual'],
             ':min' => $data['stock_minimo'],
             ':precio' => $data['precio_costo'],
@@ -83,47 +95,54 @@ class InsumoRepository
     }
 
     public function update($id, $data)
-{
-    try {
-        $sql = "UPDATE insumos SET 
-                    codigo_sku = :codigo_sku, 
-                    nombre = :nombre, 
-                    descripcion = :descripcion, 
-                    categoria_id = :categoria_id, 
-                    ubicacion_id = :ubicacion_id, 
-                    stock_actual = :stock_actual,
-                    stock_minimo = :stock_minimo, 
-                    precio_costo = :precio_costo,
-                    moneda = :moneda,
-                    unidad_medida = :unidad_medida,
-                    imagen_url = IF(:imagen_url IS NOT NULL, :imagen_url, imagen_url)
-                WHERE id = :id";
+    {
+        try {
+            // Construcción dinámica de SQL para imagen (mantiene tu corrección anterior)
+            $imageSql = "";
+            if (!empty($data['imagen_url'])) {
+                $imageSql = ", imagen_url = :imagen_url";
+            }
 
-        $stmt = $this->db->prepare($sql);
+            $sql = "UPDATE insumos SET 
+                        codigo_sku = :codigo_sku, 
+                        nombre = :nombre, 
+                        descripcion = :descripcion, 
+                        categoria_id = :categoria_id, 
+                        ubicacion_id = :ubicacion_id, 
+                        stock_actual = :stock_actual,
+                        stock_minimo = :stock_minimo, 
+                        precio_costo = :precio_costo,
+                        moneda = :moneda,
+                        unidad_medida = :unidad_medida
+                        $imageSql
+                    WHERE id = :id";
 
-        $stmt->bindValue(':codigo_sku', $data['codigo_sku']);
-        $stmt->bindValue(':nombre', $data['nombre']);
-        $stmt->bindValue(':descripcion', $data['descripcion']);
-        $stmt->bindValue(':categoria_id', $data['categoria_id']);
-        $stmt->bindValue(':ubicacion_id', $data['ubicacion_id']);
-        $stmt->bindValue(':stock_actual', $data['stock_actual']);
-        $stmt->bindValue(':stock_minimo', $data['stock_minimo']);
-        $stmt->bindValue(':precio_costo', $data['precio_costo']);
-        $stmt->bindValue(':moneda', $data['moneda']);
-        $stmt->bindValue(':unidad_medida', $data['unidad_medida']);
-        
-        $img = !empty($data['imagen_url']) ? $data['imagen_url'] : null;
-        $stmt->bindValue(':imagen_url', $img);
-        
-        $stmt->bindValue(':id', $id);
+            $stmt = $this->db->prepare($sql);
 
-        return $stmt->execute();
+            $stmt->bindValue(':codigo_sku', $data['codigo_sku']);
+            $stmt->bindValue(':nombre', $data['nombre']);
+            $stmt->bindValue(':descripcion', $data['descripcion']);
+            $stmt->bindValue(':categoria_id', $data['categoria_id']);
+            $stmt->bindValue(':ubicacion_id', $data['ubicacion_id']);
+            $stmt->bindValue(':stock_actual', $data['stock_actual']);
+            $stmt->bindValue(':stock_minimo', $data['stock_minimo']);
+            $stmt->bindValue(':precio_costo', $data['precio_costo']);
+            $stmt->bindValue(':moneda', $data['moneda']);
+            $stmt->bindValue(':unidad_medida', $data['unidad_medida']);
+            
+            if (!empty($data['imagen_url'])) {
+                $stmt->bindValue(':imagen_url', $data['imagen_url']);
+            }
+            
+            $stmt->bindValue(':id', $id);
 
-    } catch (PDOException $e) {
-        error_log("Error update repositorio: " . $e->getMessage());
-        return false;
+            return $stmt->execute();
+
+        } catch (\PDOException $e) {
+            error_log("Error update repositorio: " . $e->getMessage());
+            throw $e;
+        }
     }
-}
 
     public function delete($id)
     {

@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
+import AuthContext from '../context/AuthContext'; // Importar AuthContext
 import InsumoModal from '../components/InsumoModal';
 import ModalEntrada from '../components/ModalEntrada';
 import ModalSalida from '../components/ModalSalida';
 import MessageModal from '../components/MessageModal';
+import ConfirmModal from '../components/ConfirmModal'; // Modal Confirmación
+import ModalCargaMasiva from '../components/ModalCargaMasiva'; // Modal Importación
 
 // Ajusta esta URL si tu carpeta del proyecto se llama diferente en htdocs
 const BASE_URL_IMAGENES = 'http://localhost/INSUORDERS/public_html';
 
 const Inventario = () => {
+    const { auth } = useContext(AuthContext); // Obtener usuario para permisos
     const [insumos, setInsumos] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -21,20 +25,23 @@ const Inventario = () => {
     const [filtroUbicacion, setFiltroUbicacion] = useState('');
     const [ordenStock, setOrdenStock] = useState('');
 
-    // Modales
+    // Modales de Gestión
     const [showInsumoModal, setShowInsumoModal] = useState(false);
     const [insumoEditar, setInsumoEditar] = useState(null);
     const [entradaModal, setEntradaModal] = useState({ show: false, insumo: null });
     const [salidaModal, setSalidaModal] = useState({ show: false, insumo: null });
+    const [showImport, setShowImport] = useState(false); // Estado para Importar
+
+    // Modales de Mensaje y Confirmación
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
+    const [confirm, setConfirm] = useState({ show: false, id: null, titulo: '', mensaje: '' });
 
     useEffect(() => {
-        cargarDatos(); // Carga inicial (con spinner)
+        cargarDatos(); 
     }, []);
 
-    // Modificamos para aceptar un parámetro "silent" (silencioso)
     const cargarDatos = async (silent = false) => {
-        if (!silent) setLoading(true); // Solo muestra "Cargando..." si NO es silencioso
+        if (!silent) setLoading(true);
 
         try {
             const [resInsumos, resAux] = await Promise.all([
@@ -53,28 +60,38 @@ const Inventario = () => {
         }
     };
 
-    // Función wrapper para recargar sin parpadeo después de guardar
     const handleSaveSilent = () => {
-        cargarDatos(true); // true = recarga silenciosa
+        cargarDatos(true); 
     };
 
     const handleCreate = () => { setInsumoEditar(null); setShowInsumoModal(true); };
     const handleEdit = (item) => { setInsumoEditar(item); setShowInsumoModal(true); };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('¿Eliminar artículo?')) {
-            try {
-                await api.delete(`/index.php/inventario?id=${id}`);
-                handleSaveSilent(); // Recarga silenciosa al borrar
-                setMsg({ show: true, title: "Eliminado", text: "Artículo eliminado.", type: "success" });
-            } catch (error) {
-                setMsg({ show: true, title: "Error", text: "No se pudo eliminar.", type: "error" });
-            }
+    // --- ELIMINACIÓN CON MODAL ---
+    const handleDeleteClick = (item) => {
+        setConfirm({
+            show: true,
+            id: item.id,
+            titulo: 'Eliminar Insumo',
+            mensaje: `¿Estás seguro de eliminar "${item.nombre}"? Esta acción no se puede deshacer.`
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!confirm.id) return;
+        
+        try {
+            await api.delete(`/index.php/inventario?id=${confirm.id}`);
+            handleSaveSilent();
+            setMsg({ show: true, title: "Eliminado", text: "Artículo eliminado.", type: "success" });
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: "No se pudo eliminar el artículo.", type: "error" });
+        } finally {
+            setConfirm({ ...confirm, show: false, id: null });
         }
     };
 
     const handleExportar = () => {
-        // Para exportar sí mostramos loading visual
         setLoading(true);
         api.get('/index.php/exportar?modulo=inventario', { responseType: 'blob' })
             .then((res) => {
@@ -95,7 +112,7 @@ const Inventario = () => {
         else setOrdenStock('');
     };
 
-    // --- LÓGICA DE FILTRADO Y ORDENAMIENTO ---
+    // --- FILTROS ---
     const insumosFiltrados = insumos.filter(i => {
         const matchTexto =
             i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -107,7 +124,7 @@ const Inventario = () => {
             const ubiObj = listas.ubicaciones.find(u => u.id.toString() === filtroUbicacion);
             if (ubiObj) {
                 const nombreUbi = ubiObj.nombre.toLowerCase();
-                const stringUbicaciones = (i.ubicaciones_multiples || i.ubicacion_nombre || '').toLowerCase();
+                const stringUbicaciones = (i.ubicaciones_multiples || i.ubicacion_defecto || '').toLowerCase();
                 matchUbi = stringUbicaciones.includes(nombreUbi);
             }
         }
@@ -132,14 +149,37 @@ const Inventario = () => {
                 </div>
             );
         }
+        if (item.ubicacion_defecto) {
+            return (
+                <span className="badge bg-light text-dark border text-start fw-normal" style={{ fontSize: '0.75rem' }}>
+                    <i className="bi bi-geo-alt me-1 text-primary"></i>
+                    {item.ubicacion_defecto}
+                </span>
+            );
+        }
         return <span className="text-muted small fst-italic">Sin ubicación asignada</span>;
     };
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
+            {/* Modales Globales */}
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
+            
+            <ConfirmModal 
+                show={confirm.show}
+                onClose={() => setConfirm({ ...confirm, show: false })}
+                onConfirm={handleConfirmDelete}
+                title={confirm.titulo}
+                message={confirm.mensaje}
+            />
 
-            {/* AQUÍ ESTÁ EL CAMBIO CLAVE: onSave llama a handleSaveSilent */}
+            <ModalCargaMasiva 
+                show={showImport} 
+                onClose={() => setShowImport(false)} 
+                tipo="insumos" 
+                onSave={handleSaveSilent} 
+            />
+
             <InsumoModal
                 show={showInsumoModal}
                 onClose={() => setShowInsumoModal(false)}
@@ -154,16 +194,25 @@ const Inventario = () => {
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
                     <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-boxes me-2"></i>Inventario Maestro</h4>
                     <div>
+                        {/* Botón Exportar */}
                         <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
                             <i className="bi bi-file-earmark-excel me-2"></i>Exportar
                         </button>
+
+                        {/* Botón Importar (Visible solo Admin) */}
+                        {auth.rol === 'Admin' && (
+                            <button className="btn btn-outline-dark me-2" onClick={() => setShowImport(true)}>
+                                <i className="bi bi-file-earmark-arrow-up me-2"></i>Importar
+                            </button>
+                        )}
+
                         <button className="btn btn-primary" onClick={handleCreate}>
                             <i className="bi bi-plus-lg me-2"></i>Nuevo Artículo
                         </button>
                     </div>
                 </div>
 
-                {/* --- BARRA DE FILTROS --- */}
+                {/* Filtros */}
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2">
                         <div className="col-md-3">
@@ -211,7 +260,6 @@ const Inventario = () => {
 
                 <div className="card-body d-flex flex-column p-0" style={{ overflow: 'hidden' }}>
                     <div className="flex-grow-1 overflow-auto">
-                        {/* Aquí mostramos Loading solo si es la carga inicial o explícita */}
                         {loading ? <div className="text-center p-5">Cargando...</div> : (
                             <table className="table table-hover align-middle mb-0" style={{ minWidth: '1000px' }}>
                                 <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
@@ -231,7 +279,6 @@ const Inventario = () => {
                                             <td style={{ width: '80px', textAlign: 'center' }}>
                                                 {item.imagen_url ? (
                                                     <img
-                                                        // Usamos la constante BASE_URL_IMAGENES
                                                         src={`${BASE_URL_IMAGENES}${item.imagen_url}`}
                                                         alt="Prod"
                                                         style={{
@@ -242,12 +289,10 @@ const Inventario = () => {
                                                             border: '1px solid #ddd',
                                                             cursor: 'pointer'
                                                         }}
-                                                        // Hacemos que si falla, se oculte o ponga placeholder
                                                         onError={(e) => {
                                                             e.target.onerror = null;
                                                             e.target.src = 'https://via.placeholder.com/50?text=Error';
                                                         }}
-                                                        // Opcional: abrir imagen en pestaña nueva al hacer click
                                                         onClick={() => window.open(`${BASE_URL_IMAGENES}${item.imagen_url}`, '_blank')}
                                                     />
                                                 ) : (
@@ -278,7 +323,7 @@ const Inventario = () => {
                                                 </div>
                                                 <span className="mx-2 text-muted">|</span>
                                                 <button className="btn btn-sm btn-link text-secondary" onClick={() => handleEdit(item)} title="Editar"><i className="bi bi-pencil"></i></button>
-                                                <button className="btn btn-sm btn-link text-danger" onClick={() => handleDelete(item.id)} title="Eliminar"><i className="bi bi-trash"></i></button>
+                                                <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteClick(item)} title="Eliminar"><i className="bi bi-trash"></i></button>
                                             </td>
                                         </tr>
                                     ))}
