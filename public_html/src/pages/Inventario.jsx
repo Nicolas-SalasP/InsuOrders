@@ -1,38 +1,29 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
-import AuthContext from '../context/AuthContext'; // Importar AuthContext
+import AuthContext from '../context/AuthContext';
 import InsumoModal from '../components/InsumoModal';
 import ModalEntrada from '../components/ModalEntrada';
 import ModalSalida from '../components/ModalSalida';
 import MessageModal from '../components/MessageModal';
-import ConfirmModal from '../components/ConfirmModal'; // Modal Confirmación
-import ModalCargaMasiva from '../components/ModalCargaMasiva'; // Modal Importación
+import ConfirmModal from '../components/ConfirmModal';
+import ModalCargaMasiva from '../components/ModalCargaMasiva';
 
-// Ajusta esta URL si tu carpeta del proyecto se llama diferente en htdocs
 const BASE_URL_IMAGENES = 'http://localhost/INSUORDERS/public_html';
 
 const Inventario = () => {
-    const { auth } = useContext(AuthContext); // Obtener usuario para permisos
+    const { auth } = useContext(AuthContext);
     const [insumos, setInsumos] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // Listas para filtros
     const [listas, setListas] = useState({ categorias: [], ubicaciones: [] });
-
-    // Estados de Filtros
     const [busqueda, setBusqueda] = useState('');
     const [filtroCategoria, setFiltroCategoria] = useState('');
     const [filtroUbicacion, setFiltroUbicacion] = useState('');
     const [ordenStock, setOrdenStock] = useState('');
-
-    // Modales de Gestión
     const [showInsumoModal, setShowInsumoModal] = useState(false);
     const [insumoEditar, setInsumoEditar] = useState(null);
     const [entradaModal, setEntradaModal] = useState({ show: false, insumo: null });
     const [salidaModal, setSalidaModal] = useState({ show: false, insumo: null });
-    const [showImport, setShowImport] = useState(false); // Estado para Importar
-
-    // Modales de Mensaje y Confirmación
+    const [showImport, setShowImport] = useState(false);
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, id: null, titulo: '', mensaje: '' });
 
@@ -67,7 +58,6 @@ const Inventario = () => {
     const handleCreate = () => { setInsumoEditar(null); setShowInsumoModal(true); };
     const handleEdit = (item) => { setInsumoEditar(item); setShowInsumoModal(true); };
 
-    // --- ELIMINACIÓN CON MODAL ---
     const handleDeleteClick = (item) => {
         setConfirm({
             show: true,
@@ -112,7 +102,6 @@ const Inventario = () => {
         else setOrdenStock('');
     };
 
-    // --- FILTROS ---
     const insumosFiltrados = insumos.filter(i => {
         const matchTexto =
             i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -162,7 +151,6 @@ const Inventario = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
-            {/* Modales Globales */}
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
             
             <ConfirmModal 
@@ -191,28 +179,31 @@ const Inventario = () => {
             <ModalSalida show={salidaModal.show} insumo={salidaModal.insumo} onClose={() => setSalidaModal({ show: false, insumo: null })} onSave={handleSaveSilent} />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                    
                     <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-boxes me-2"></i>Inventario Maestro</h4>
-                    <div>
-                        {/* Botón Exportar */}
-                        <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
+                    
+                    {/* --- BOTONES SEPARADOS (VERSIÓN ORIGINAL MEJORADA) --- */}
+                    <div className="d-flex gap-2">
+                        {/* Botón Exportar (VERDE) */}
+                        <button className="btn btn-outline-success shadow-sm" onClick={handleExportar} disabled={loading} title="Exportar a Excel">
                             <i className="bi bi-file-earmark-excel me-2"></i>Exportar
                         </button>
 
-                        {/* Botón Importar (Visible solo Admin) */}
+                        {/* Botón Importar (OSCURO - Solo Admin) */}
                         {auth.rol === 'Admin' && (
-                            <button className="btn btn-outline-dark me-2" onClick={() => setShowImport(true)}>
+                            <button className="btn btn-outline-dark shadow-sm" onClick={() => setShowImport(true)} title="Importar Masivamente">
                                 <i className="bi bi-file-earmark-arrow-up me-2"></i>Importar
                             </button>
                         )}
 
-                        <button className="btn btn-primary" onClick={handleCreate}>
+                        {/* Botón Nuevo Artículo (AZUL) */}
+                        <button className="btn btn-primary shadow-sm" onClick={handleCreate}>
                             <i className="bi bi-plus-lg me-2"></i>Nuevo Artículo
                         </button>
                     </div>
                 </div>
 
-                {/* Filtros */}
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2">
                         <div className="col-md-3">
