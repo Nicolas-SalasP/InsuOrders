@@ -8,27 +8,38 @@ import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
 import ModalCargaMasiva from '../components/ModalCargaMasiva';
 
-const BASE_URL_IMAGENES = 'http://localhost/INSUORDERS/public_html';
+const getBaseUrl = () => {
+    const { protocol, hostname } = window.location;
+    return `${protocol}//${hostname}/INSUORDERS/public_html`;
+};
+
+const BASE_URL_IMAGENES = getBaseUrl();
 
 const Inventario = () => {
     const { auth } = useContext(AuthContext);
     const [insumos, setInsumos] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Estados Filtros
     const [listas, setListas] = useState({ categorias: [], ubicaciones: [] });
     const [busqueda, setBusqueda] = useState('');
     const [filtroCategoria, setFiltroCategoria] = useState('');
     const [filtroUbicacion, setFiltroUbicacion] = useState('');
     const [ordenStock, setOrdenStock] = useState('');
+
+    // Estados Modales
     const [showInsumoModal, setShowInsumoModal] = useState(false);
     const [insumoEditar, setInsumoEditar] = useState(null);
     const [entradaModal, setEntradaModal] = useState({ show: false, insumo: null });
     const [salidaModal, setSalidaModal] = useState({ show: false, insumo: null });
     const [showImport, setShowImport] = useState(false);
+
+    // Estados Feedback
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, id: null, titulo: '', mensaje: '' });
 
     useEffect(() => {
-        cargarDatos(); 
+        cargarDatos();
     }, []);
 
     const cargarDatos = async (silent = false) => {
@@ -52,7 +63,7 @@ const Inventario = () => {
     };
 
     const handleSaveSilent = () => {
-        cargarDatos(true); 
+        cargarDatos(true);
     };
 
     const handleCreate = () => { setInsumoEditar(null); setShowInsumoModal(true); };
@@ -69,7 +80,7 @@ const Inventario = () => {
 
     const handleConfirmDelete = async () => {
         if (!confirm.id) return;
-        
+
         try {
             await api.delete(`/index.php/inventario?id=${confirm.id}`);
             handleSaveSilent();
@@ -151,9 +162,11 @@ const Inventario = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
+
+            {/* MODALES GLOBALES */}
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
-            
-            <ConfirmModal 
+
+            <ConfirmModal
                 show={confirm.show}
                 onClose={() => setConfirm({ ...confirm, show: false })}
                 onConfirm={handleConfirmDelete}
@@ -161,11 +174,11 @@ const Inventario = () => {
                 message={confirm.mensaje}
             />
 
-            <ModalCargaMasiva 
-                show={showImport} 
-                onClose={() => setShowImport(false)} 
-                tipo="insumos" 
-                onSave={handleSaveSilent} 
+            <ModalCargaMasiva
+                show={showImport}
+                onClose={() => setShowImport(false)}
+                tipo="insumos"
+                onSave={handleSaveSilent}
             />
 
             <InsumoModal
@@ -180,30 +193,45 @@ const Inventario = () => {
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
-                    
-                    <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-boxes me-2"></i>Inventario Maestro</h4>
-                    
-                    {/* --- BOTONES SEPARADOS (VERSIÓN ORIGINAL MEJORADA) --- */}
-                    <div className="d-flex gap-2">
-                        {/* Botón Exportar (VERDE) */}
-                        <button className="btn btn-outline-success shadow-sm" onClick={handleExportar} disabled={loading} title="Exportar a Excel">
-                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
-                        </button>
 
-                        {/* Botón Importar (OSCURO - Solo Admin) */}
+                    <div className="d-flex align-items-center">
+                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
+                            <i className="bi bi-boxes fs-3"></i>
+                        </div>
+                        <h4 className="mb-0 fw-bold text-dark">Inventario Maestro</h4>
+                    </div>
+
+                    <div className="d-flex gap-2 justify-content-center flex-wrap">
+                        <button
+                            className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            onClick={handleExportar}
+                            disabled={loading}
+                            title="Exportar a Excel"
+                        >
+                            <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Exportar</span>
+                        </button>
                         {auth.rol === 'Admin' && (
-                            <button className="btn btn-outline-dark shadow-sm" onClick={() => setShowImport(true)} title="Importar Masivamente">
-                                <i className="bi bi-file-earmark-arrow-up me-2"></i>Importar
+                            <button
+                                className="btn btn-outline-dark shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                                onClick={() => setShowImport(true)}
+                                title="Importar Masivamente"
+                            >
+                                <i className="bi bi-file-earmark-arrow-up fs-5 mb-1 mb-md-0 me-md-2"></i>
+                                <span className="small fw-bold">Importar</span>
                             </button>
                         )}
-
-                        {/* Botón Nuevo Artículo (AZUL) */}
-                        <button className="btn btn-primary shadow-sm" onClick={handleCreate}>
-                            <i className="bi bi-plus-lg me-2"></i>Nuevo Artículo
+                        <button
+                            className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            onClick={handleCreate}
+                        >
+                            <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Nuevo Artículo</span>
                         </button>
                     </div>
                 </div>
 
+                {/* FILTROS */}
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2">
                         <div className="col-md-3">
