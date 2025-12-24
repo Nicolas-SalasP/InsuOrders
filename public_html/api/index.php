@@ -52,6 +52,11 @@ function jsonResponse($code, $data)
 // ============================================================================
 
 switch ($path) {
+    case 'auth/me':
+        (new AuthController())->me();
+        break;
+        
+    // --- LOGIN ---
     case 'login':
         $controller = new AuthController();
         if ($_SERVER['REQUEST_METHOD'] === 'POST')
@@ -348,12 +353,16 @@ switch ($path) {
             (new BodegaController())->organizar();
         break;
 
-    // --- USUARIOS ---
+    // --- USUARIOS Y PERMISOS ---
     case 'usuarios':
     case 'usuarios/roles':
     case 'usuarios/toggle':
+    case 'permisos':               
+    case 'usuarios/permisos':
+    case 'usuarios/permisos/update':
         AuthMiddleware::verify(['Admin']);
         $c = new UsuariosController();
+        
         if ($path === 'usuarios') {
             if ($_SERVER['REQUEST_METHOD'] === 'GET')
                 $c->index();
@@ -365,6 +374,13 @@ switch ($path) {
             $c->roles();
         } elseif ($path === 'usuarios/toggle') {
             $c->toggle();
+        
+        } elseif ($path === 'permisos') {
+            $c->listarPermisos();
+        } elseif ($path === 'usuarios/permisos') {
+            $c->obtenerPermisosUsuario();
+        } elseif ($path === 'usuarios/permisos/update') {
+            $c->actualizarPermisos();
         }
         break;
 

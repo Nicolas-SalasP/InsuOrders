@@ -27,7 +27,8 @@ export const AuthProvider = ({ children }) => {
                     id: response.data.user.id,
                     nombre: response.data.user.nombre,
                     rol: response.data.user.rol,
-                    token: response.data.token
+                    token: response.data.token,
+                    permisos: response.data.user.permisos || [] 
                 };
                 setAuth(userData);
                 localStorage.setItem("insuorders_user", JSON.stringify(userData));

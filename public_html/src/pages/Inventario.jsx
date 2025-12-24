@@ -38,6 +38,13 @@ const Inventario = () => {
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, id: null, titulo: '', mensaje: '' });
 
+    // --- HELPER DE PERMISOS ---
+    // Verifica si el usuario puede realizar una acción específica
+    const can = (permiso) => {
+        if (auth.rol === 'Admin' || auth.rol === 1) return true;
+        return auth.permisos && auth.permisos.includes(permiso);
+    };
+
     useEffect(() => {
         cargarDatos();
     }, []);
@@ -202,16 +209,21 @@ const Inventario = () => {
                     </div>
 
                     <div className="d-flex gap-2 justify-content-center flex-wrap">
-                        <button
-                            className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
-                            onClick={handleExportar}
-                            disabled={loading}
-                            title="Exportar a Excel"
-                        >
-                            <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
-                            <span className="small fw-bold">Exportar</span>
-                        </button>
-                        {auth.rol === 'Admin' && (
+                        {/* BOTÓN EXPORTAR - Requiere permiso 'inv_exportar' */}
+                        {can('inv_exportar') && (
+                            <button
+                                className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                                onClick={handleExportar}
+                                disabled={loading}
+                                title="Exportar a Excel"
+                            >
+                                <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
+                                <span className="small fw-bold">Exportar</span>
+                            </button>
+                        )}
+                        
+                        {/* BOTÓN IMPORTAR - Requiere permiso 'inv_importar' (antes solo Admin) */}
+                        {can('inv_importar') && (
                             <button
                                 className="btn btn-outline-dark shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
                                 onClick={() => setShowImport(true)}
@@ -221,13 +233,17 @@ const Inventario = () => {
                                 <span className="small fw-bold">Importar</span>
                             </button>
                         )}
-                        <button
-                            className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
-                            onClick={handleCreate}
-                        >
-                            <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
-                            <span className="small fw-bold">Nuevo Artículo</span>
-                        </button>
+
+                        {/* BOTÓN CREAR - Requiere permiso 'inv_crear' */}
+                        {can('inv_crear') && (
+                            <button
+                                className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                                onClick={handleCreate}
+                            >
+                                <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
+                                <span className="small fw-bold">Nuevo Artículo</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -336,13 +352,32 @@ const Inventario = () => {
                                                 <small className="text-muted ms-1">{item.unidad_medida}</small>
                                             </td>
                                             <td className="text-end pe-4">
-                                                <div className="btn-group" role="group">
-                                                    <button className="btn btn-sm btn-outline-success" onClick={() => setEntradaModal({ show: true, insumo: item })} title="Entrada Manual"><i className="bi bi-plus-lg"></i></button>
-                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => setSalidaModal({ show: true, insumo: item })} title="Salida Manual"><i className="bi bi-dash-lg"></i></button>
-                                                </div>
-                                                <span className="mx-2 text-muted">|</span>
-                                                <button className="btn btn-sm btn-link text-secondary" onClick={() => handleEdit(item)} title="Editar"><i className="bi bi-pencil"></i></button>
-                                                <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteClick(item)} title="Eliminar"><i className="bi bi-trash"></i></button>
+                                                
+                                                {/* GRUPO DE ACCIONES */}
+                                                
+                                                {/* Ajuste de Stock (+/-) requiere 'ajustar_stock' */}
+                                                {can('ajustar_stock') && (
+                                                    <div className="btn-group me-2" role="group">
+                                                        <button className="btn btn-sm btn-outline-success" onClick={() => setEntradaModal({ show: true, insumo: item })} title="Entrada Manual"><i className="bi bi-plus-lg"></i></button>
+                                                        <button className="btn btn-sm btn-outline-danger" onClick={() => setSalidaModal({ show: true, insumo: item })} title="Salida Manual"><i className="bi bi-dash-lg"></i></button>
+                                                    </div>
+                                                )}
+
+                                                <span className="mx-1 text-muted">|</span>
+                                                
+                                                {/* Editar requiere 'inv_editar' */}
+                                                {can('inv_editar') && (
+                                                    <button className="btn btn-sm btn-link text-secondary" onClick={() => handleEdit(item)} title="Editar">
+                                                        <i className="bi bi-pencil"></i>
+                                                    </button>
+                                                )}
+
+                                                {/* Eliminar requiere 'inv_eliminar' */}
+                                                {can('inv_eliminar') && (
+                                                    <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteClick(item)} title="Eliminar">
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
