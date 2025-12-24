@@ -22,7 +22,7 @@ const Mantencion = () => {
     
     // Modales de Confirmación
     const [confirmAnular, setConfirmAnular] = useState({ show: false, id: null });
-    const [confirmFinish, setConfirmFinish] = useState({ show: false, id: null }); // Nuevo estado para finalizar
+    const [confirmFinish, setConfirmFinish] = useState({ show: false, id: null });
 
     useEffect(() => {
         cargarData();
@@ -44,7 +44,7 @@ const Mantencion = () => {
         } catch (e) { }
     };
 
-    // --- DESCARGAS SEGURAS ---
+    // --- DESCARGAS SEGURAS (PDF INDIVIDUAL) ---
     const descargarPdfOT = async (id) => {
         try {
             setLoading(true);
@@ -63,6 +63,7 @@ const Mantencion = () => {
         }
     };
 
+    // --- DESCARGAS SEGURAS (EXCEL INDIVIDUAL) ---
     const descargarExcelOT = async (id) => {
         try {
             setLoading(true);
@@ -110,7 +111,7 @@ const Mantencion = () => {
         }
     };
 
-    // --- LÓGICA FINALIZACIÓN (NUEVA) ---
+    // --- LÓGICA FINALIZACIÓN ---
     const solicitarFinalizar = (id) => {
         setConfirmFinish({ show: true, id: id });
     };
@@ -129,8 +130,24 @@ const Mantencion = () => {
         }
     };
 
+    // --- EXPORTAR LISTA COMPLETA (CORREGIDO CON TOKEN) ---
     const handleExportar = () => {
-        window.open('http://localhost/insuorders/public_html/api/index.php/exportar?modulo=mantencion', '_blank');
+        setLoading(true);
+        api.get('/index.php/exportar?modulo=mantencion', { responseType: 'blob' })
+            .then((res) => {
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Mantencion_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            })
+            .catch((error) => {
+                console.error(error);
+                setMsg({ show: true, title: "Error", text: "Error al exportar o sesión expirada.", type: "error" });
+            })
+            .finally(() => setLoading(false));
     };
 
     const getBadge = (estado) => {
@@ -147,7 +164,7 @@ const Mantencion = () => {
             {/* MODALES GLOBALES */}
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
             
-            {/* Modal Confirmar Anulación (Rojo) */}
+            {/* Modal Confirmar Anulación */}
             <ConfirmModal 
                 show={confirmAnular.show} 
                 onClose={() => setConfirmAnular({ show: false, id: null })} 
@@ -158,7 +175,7 @@ const Mantencion = () => {
                 type="danger" 
             />
 
-            {/* Modal Confirmar Finalización (Verde) */}
+            {/* Modal Confirmar Finalización */}
             <ConfirmModal 
                 show={confirmFinish.show} 
                 onClose={() => setConfirmFinish({ show: false, id: null })} 
@@ -172,11 +189,40 @@ const Mantencion = () => {
             <NuevaSolicitudModal show={showModal} onClose={() => setShowModal(false)} onSave={cargarData} otEditar={otEditar} />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-wrench-adjustable me-2"></i>Mantención</h4>
-                    <div>
-                        <button className="btn btn-outline-success me-2" onClick={handleExportar}><i className="bi bi-file-excel"></i> Exportar</button>
-                        <button className="btn btn-warning fw-bold shadow-sm" onClick={handleNew}><i className="bi bi-plus-lg"></i> Crear OT</button>
+                
+                {/* --- ENCABEZADO MEJORADO RESPONSIVO --- */}
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                    
+                    {/* Título con Icono Destacado */}
+                    <div className="d-flex align-items-center">
+                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
+                             <i className="bi bi-wrench-adjustable fs-3"></i>
+                        </div>
+                        <h4 className="mb-0 fw-bold text-dark">Mantención</h4>
+                    </div>
+                    
+                    {/* Botones Adaptables: Cuadrados en móvil, Normales en PC */}
+                    <div className="d-flex gap-2 justify-content-center flex-wrap">
+                        
+                        {/* Botón Exportar */}
+                        <button 
+                            className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            onClick={handleExportar} 
+                            disabled={loading}
+                            title="Exportar Listado"
+                        >
+                            <i className="bi bi-file-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Exportar</span>
+                        </button>
+                        
+                        {/* Botón Crear OT (Destacado Amarillo) */}
+                        <button 
+                            className="btn btn-warning shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3 fw-bold"
+                            onClick={handleNew}
+                        >
+                            <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small">Crear OT</span>
+                        </button>
                     </div>
                 </div>
 
@@ -213,7 +259,7 @@ const Mantencion = () => {
 
                 <div className="card-body p-0 flex-grow-1 overflow-auto">
                     {loading ? <div className="p-5 text-center">Cargando...</div> : (
-                        <table className="table table-hover align-middle mb-0">
+                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '900px' }}>
                             <thead className="bg-light sticky-top">
                                 <tr>
                                     <th className="ps-4">OT #</th>

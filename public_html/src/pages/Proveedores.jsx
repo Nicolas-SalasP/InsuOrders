@@ -55,8 +55,6 @@ const Proveedores = () => {
         }
     };
 
-    // --- REEMPLAZO DE ALERT Y CONFIRM ---
-    
     const handleDeleteClick = (id) => {
         setConfirm({
             show: true,
@@ -175,22 +173,55 @@ const Proveedores = () => {
             />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
-                    <h4 className="mb-0 text-primary fw-bold">
-                        <i className="bi bi-people-fill me-2"></i>Proveedores
-                    </h4>
-                    <div>
-                        <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
-                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
+                
+                {/* --- ENCABEZADO MEJORADO RESPONSIVO --- */}
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                    
+                    {/* Título con Icono de Personas (Proveedores) */}
+                    <div className="d-flex align-items-center">
+                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
+                             <i className="bi bi-people-fill fs-3"></i>
+                        </div>
+                        <h4 className="mb-0 fw-bold text-dark">Proveedores</h4>
+                    </div>
+                    
+                    {/* Botones Adaptables: Cuadrados en móvil, Normales en PC */}
+                    <div className="d-flex gap-2 justify-content-center flex-wrap">
+                        
+                        {/* Botón Exportar */}
+                        <button 
+                            className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            style={{ minWidth: '95px' }}
+                            onClick={handleExportar} 
+                            disabled={loading} 
+                            title="Exportar a Excel"
+                        >
+                            <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Exportar</span>
                         </button>
+                        
+                        {/* Botón Importar (Solo Admin) */}
                         {auth.rol === 'Admin' && (
-                            <button className="btn btn-outline-dark me-2" onClick={() => setShowImport(true)}>
-                                <i className="bi bi-file-earmark-arrow-up me-2"></i>Importar
+                            <button 
+                                className="btn btn-outline-dark shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                                style={{ minWidth: '95px' }}
+                                onClick={() => setShowImport(true)} 
+                                title="Importar Masivamente"
+                            >
+                                <i className="bi bi-file-earmark-arrow-up fs-5 mb-1 mb-md-0 me-md-2"></i>
+                                <span className="small fw-bold">Importar</span>
                             </button>
                         )}
-                        <button className="btn btn-primary d-flex align-items-center gap-2 d-inline-flex" onClick={handleNew}>
-                            <i className="bi bi-plus-lg"></i>
-                            <span className="d-none d-sm-inline">Nuevo</span>
+                        
+                        {/* Botón Nuevo (Destacado) */}
+                        <button 
+                            className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            style={{ minWidth: '95px' }}
+                            onClick={handleNew}
+                            title="Crear Nuevo Proveedor"
+                        >
+                            <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Nuevo</span>
                         </button>
                     </div>
                 </div>

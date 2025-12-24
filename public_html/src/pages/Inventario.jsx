@@ -1,43 +1,45 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
-import AuthContext from '../context/AuthContext'; // Importar AuthContext
+import AuthContext from '../context/AuthContext';
 import InsumoModal from '../components/InsumoModal';
 import ModalEntrada from '../components/ModalEntrada';
 import ModalSalida from '../components/ModalSalida';
 import MessageModal from '../components/MessageModal';
-import ConfirmModal from '../components/ConfirmModal'; // Modal Confirmación
-import ModalCargaMasiva from '../components/ModalCargaMasiva'; // Modal Importación
+import ConfirmModal from '../components/ConfirmModal';
+import ModalCargaMasiva from '../components/ModalCargaMasiva';
 
-// Ajusta esta URL si tu carpeta del proyecto se llama diferente en htdocs
-const BASE_URL_IMAGENES = 'http://localhost/INSUORDERS/public_html';
+const getBaseUrl = () => {
+    const { protocol, hostname } = window.location;
+    return `${protocol}//${hostname}/INSUORDERS/public_html`;
+};
+
+const BASE_URL_IMAGENES = getBaseUrl();
 
 const Inventario = () => {
-    const { auth } = useContext(AuthContext); // Obtener usuario para permisos
+    const { auth } = useContext(AuthContext);
     const [insumos, setInsumos] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Listas para filtros
+    // Estados Filtros
     const [listas, setListas] = useState({ categorias: [], ubicaciones: [] });
-
-    // Estados de Filtros
     const [busqueda, setBusqueda] = useState('');
     const [filtroCategoria, setFiltroCategoria] = useState('');
     const [filtroUbicacion, setFiltroUbicacion] = useState('');
     const [ordenStock, setOrdenStock] = useState('');
 
-    // Modales de Gestión
+    // Estados Modales
     const [showInsumoModal, setShowInsumoModal] = useState(false);
     const [insumoEditar, setInsumoEditar] = useState(null);
     const [entradaModal, setEntradaModal] = useState({ show: false, insumo: null });
     const [salidaModal, setSalidaModal] = useState({ show: false, insumo: null });
-    const [showImport, setShowImport] = useState(false); // Estado para Importar
+    const [showImport, setShowImport] = useState(false);
 
-    // Modales de Mensaje y Confirmación
+    // Estados Feedback
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, id: null, titulo: '', mensaje: '' });
 
     useEffect(() => {
-        cargarDatos(); 
+        cargarDatos();
     }, []);
 
     const cargarDatos = async (silent = false) => {
@@ -61,13 +63,12 @@ const Inventario = () => {
     };
 
     const handleSaveSilent = () => {
-        cargarDatos(true); 
+        cargarDatos(true);
     };
 
     const handleCreate = () => { setInsumoEditar(null); setShowInsumoModal(true); };
     const handleEdit = (item) => { setInsumoEditar(item); setShowInsumoModal(true); };
 
-    // --- ELIMINACIÓN CON MODAL ---
     const handleDeleteClick = (item) => {
         setConfirm({
             show: true,
@@ -79,7 +80,7 @@ const Inventario = () => {
 
     const handleConfirmDelete = async () => {
         if (!confirm.id) return;
-        
+
         try {
             await api.delete(`/index.php/inventario?id=${confirm.id}`);
             handleSaveSilent();
@@ -112,7 +113,6 @@ const Inventario = () => {
         else setOrdenStock('');
     };
 
-    // --- FILTROS ---
     const insumosFiltrados = insumos.filter(i => {
         const matchTexto =
             i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -162,10 +162,11 @@ const Inventario = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
-            {/* Modales Globales */}
+
+            {/* MODALES GLOBALES */}
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
-            
-            <ConfirmModal 
+
+            <ConfirmModal
                 show={confirm.show}
                 onClose={() => setConfirm({ ...confirm, show: false })}
                 onConfirm={handleConfirmDelete}
@@ -173,11 +174,11 @@ const Inventario = () => {
                 message={confirm.mensaje}
             />
 
-            <ModalCargaMasiva 
-                show={showImport} 
-                onClose={() => setShowImport(false)} 
-                tipo="insumos" 
-                onSave={handleSaveSilent} 
+            <ModalCargaMasiva
+                show={showImport}
+                onClose={() => setShowImport(false)}
+                tipo="insumos"
+                onSave={handleSaveSilent}
             />
 
             <InsumoModal
@@ -191,28 +192,46 @@ const Inventario = () => {
             <ModalSalida show={salidaModal.show} insumo={salidaModal.insumo} onClose={() => setSalidaModal({ show: false, insumo: null })} onSave={handleSaveSilent} />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
-                    <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-boxes me-2"></i>Inventario Maestro</h4>
-                    <div>
-                        {/* Botón Exportar */}
-                        <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}>
-                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
-                        </button>
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
 
-                        {/* Botón Importar (Visible solo Admin) */}
+                    <div className="d-flex align-items-center">
+                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
+                            <i className="bi bi-boxes fs-3"></i>
+                        </div>
+                        <h4 className="mb-0 fw-bold text-dark">Inventario Maestro</h4>
+                    </div>
+
+                    <div className="d-flex gap-2 justify-content-center flex-wrap">
+                        <button
+                            className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            onClick={handleExportar}
+                            disabled={loading}
+                            title="Exportar a Excel"
+                        >
+                            <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Exportar</span>
+                        </button>
                         {auth.rol === 'Admin' && (
-                            <button className="btn btn-outline-dark me-2" onClick={() => setShowImport(true)}>
-                                <i className="bi bi-file-earmark-arrow-up me-2"></i>Importar
+                            <button
+                                className="btn btn-outline-dark shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                                onClick={() => setShowImport(true)}
+                                title="Importar Masivamente"
+                            >
+                                <i className="bi bi-file-earmark-arrow-up fs-5 mb-1 mb-md-0 me-md-2"></i>
+                                <span className="small fw-bold">Importar</span>
                             </button>
                         )}
-
-                        <button className="btn btn-primary" onClick={handleCreate}>
-                            <i className="bi bi-plus-lg me-2"></i>Nuevo Artículo
+                        <button
+                            className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            onClick={handleCreate}
+                        >
+                            <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Nuevo Artículo</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Filtros */}
+                {/* FILTROS */}
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2">
                         <div className="col-md-3">

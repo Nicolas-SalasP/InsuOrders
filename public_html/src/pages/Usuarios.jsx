@@ -43,22 +43,50 @@ const Usuarios = () => {
     };
 
     return (
-        <div className="container-fluid p-0 h-100 d-flex flex-column">
+        <div className="container-fluid h-100 p-0 d-flex flex-column">
+            
             <UsuarioModal show={showModal} onClose={()=>setShowModal(false)} onSave={cargarUsuarios} usuarioEditar={usuarioEditar} />
 
-            <div className="card shadow-sm border-0 flex-grow-1">
-                <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-people-gear me-2"></i>Gestión de Usuarios</h4>
-                    <div>
-                        <button className="btn btn-outline-success me-2" onClick={handleExportar}>
-                            <i className="bi bi-file-earmark-excel me-2"></i>Exportar
+            <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
+                
+                {/* --- ENCABEZADO MEJORADO RESPONSIVO --- */}
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                    
+                    {/* Título con Icono Destacado */}
+                    <div className="d-flex align-items-center">
+                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
+                             <i className="bi bi-people-gear fs-3"></i>
+                        </div>
+                        <h4 className="mb-0 fw-bold text-dark">Gestión de Usuarios</h4>
+                    </div>
+                    
+                    {/* Botones Adaptables: Cuadrados en móvil, Normales en PC */}
+                    <div className="d-flex gap-2 justify-content-center flex-wrap">
+                        
+                        {/* Botón Exportar */}
+                        <button 
+                            className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            onClick={handleExportar} 
+                            title="Exportar a Excel"
+                        >
+                            <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Exportar</span>
                         </button>
-                        <button className="btn btn-primary" onClick={handleNew}>+ Nuevo Usuario</button>
+                        
+                        {/* Botón Nuevo Usuario (Destacado Azul) */}
+                        <button 
+                            className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            onClick={handleNew}
+                        >
+                            <i className="bi bi-person-plus-fill fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Nuevo Usuario</span>
+                        </button>
                     </div>
                 </div>
-                <div className="card-body p-0 overflow-auto">
-                    <table className="table table-hover align-middle mb-0">
-                        <thead className="bg-light">
+
+                <div className="card-body p-0 flex-grow-1 overflow-auto">
+                    <table className="table table-hover align-middle mb-0" style={{ minWidth: '800px' }}>
+                        <thead className="bg-light sticky-top">
                             <tr>
                                 <th className="ps-4">Usuario</th>
                                 <th>Nombre Completo</th>
@@ -71,10 +99,10 @@ const Usuarios = () => {
                         <tbody>
                             {usuarios.map(u => (
                                 <tr key={u.id} className={u.activo == 0 ? 'bg-light text-muted' : ''}>
-                                    <td className="ps-4 fw-bold">{u.username}</td>
+                                    <td className="ps-4 fw-bold text-primary">{u.username}</td>
                                     <td>{u.nombre} {u.apellido}</td>
                                     <td>{u.email}</td>
-                                    <td><span className="badge bg-secondary">{u.rol}</span></td>
+                                    <td><span className="badge bg-secondary fw-normal border">{u.rol}</span></td>
                                     <td>
                                         {u.activo == 1 
                                             ? <span className="badge bg-success">Activo</span> 

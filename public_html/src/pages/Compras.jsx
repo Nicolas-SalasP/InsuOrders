@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'; // Importamos useRef
+import { useEffect, useState, useRef } from 'react';
 import api from '../api/axiosConfig';
 import NuevaOrdenModal from '../components/NuevaOrdenModal';
 import DetalleOrdenModal from '../components/DetalleOrdenModal';
@@ -111,6 +111,7 @@ const Compras = () => {
         setItemsPrecargados(items);
         setShowModal(true);
     };
+    
     const handleNewOrder = () => { setItemsPrecargados([]); setShowModal(true); };
     const descargarPdfOC = async (id) => { /* ... tu código ... */ };
     const descargarExcelOC = async (id) => { /* ... tu código ... */ };
@@ -166,11 +167,42 @@ const Compras = () => {
             <RecepcionCompraModal show={recepcionModal.show} onClose={() => setRecepcionModal({ show: false, id: null })} ordenId={recepcionModal.id} onSave={() => { cargarOrdenes(); cargarPendientes(); }} />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
-                    <h4 className="mb-0 fw-bold text-dark"><i className="bi bi-cart3 me-2"></i>Gestión de Compras</h4>
-                    <div>
-                        <button className="btn btn-outline-success me-2" onClick={handleExportar} disabled={loading}><i className="bi bi-file-earmark-excel me-2"></i>Exportar</button>
-                        <button className="btn btn-primary" onClick={handleNewOrder}><i className="bi bi-plus-lg me-2"></i>Nueva Orden</button>
+                
+                {/* --- ENCABEZADO MEJORADO RESPONSIVO --- */}
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                    
+                    {/* Título con Icono Destacado */}
+                    <div className="d-flex align-items-center">
+                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
+                             <i className="bi bi-cart3 fs-3"></i>
+                        </div>
+                        <h4 className="mb-0 fw-bold text-dark">Gestión de Compras</h4>
+                    </div>
+                    
+                    {/* Botones Adaptables: Cuadrados en móvil, Normales en PC */}
+                    <div className="d-flex gap-2 justify-content-center flex-wrap">
+                        
+                        {/* Botón Exportar */}
+                        <button 
+                            // CLASES CLAVE: flex-column (móvil) flex-md-row (PC)
+                            className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            onClick={handleExportar} 
+                            disabled={loading} 
+                            title="Exportar Listado"
+                        >
+                            {/* MARGENES ICONO: mb-1 (móvil) me-md-2 (PC) */}
+                            <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Exportar</span>
+                        </button>
+                        
+                        {/* Botón Nueva Orden */}
+                        <button 
+                            className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
+                            onClick={handleNewOrder}
+                        >
+                            <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
+                            <span className="small fw-bold">Nueva Orden</span>
+                        </button>
                     </div>
                 </div>
 
@@ -182,7 +214,7 @@ const Compras = () => {
                         <div className="col-md-3">
                             <div className="input-group">
                                 <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
-                                <input type="text" className="form-control border-start-0" placeholder="Buscar proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} />
+                                <input type="text" className="form-control border-start-0 ps-0" placeholder="Buscar proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} />
                             </div>
                         </div>
 
@@ -194,8 +226,8 @@ const Compras = () => {
                                 </span>
                                 <input 
                                     type="text" 
-                                    className="form-control border-start-0" 
-                                    placeholder="Escribe para filtrar insumo..." 
+                                    className="form-control border-start-0 ps-0" 
+                                    placeholder="Filtrar por insumo..." 
                                     value={busquedaInsumo}
                                     onChange={(e) => {
                                         setBusquedaInsumo(e.target.value);
@@ -276,7 +308,7 @@ const Compras = () => {
                     {loading ? (
                         <div className="text-center p-5">Cargando órdenes...</div>
                     ) : (
-                        <table className="table table-hover align-middle mb-0">
+                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '900px' }}>
                             <thead className="bg-light sticky-top">
                                 <tr>
                                     <th className="ps-4">N° Orden</th>
