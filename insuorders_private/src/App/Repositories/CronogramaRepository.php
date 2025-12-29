@@ -15,8 +15,8 @@ class CronogramaRepository
     public function getAll($filtros = [])
     {
         $sql = "SELECT c.*, 
-                       a.nombre as activo_nombre, a.codigo_interno as activo_codigo,
-                       i.nombre as insumo_nombre, i.codigo_sku as insumo_sku
+                        a.nombre as activo_nombre, a.codigo_interno as activo_codigo,
+                        i.nombre as insumo_nombre, i.codigo_sku as insumo_sku
                 FROM cronograma_mantencion c
                 LEFT JOIN activos a ON c.activo_id = a.id
                 LEFT JOIN insumos i ON c.insumo_id = i.id
@@ -43,13 +43,14 @@ class CronogramaRepository
 
         if ($evento) {
             $stmtItems = $this->db->prepare("
-                SELECT ci.insumo_id as id, i.nombre, i.codigo_sku, ci.cantidad 
+                SELECT ci.insumo_id as id, ci.insumo_id as insumo_id, i.nombre, i.codigo_sku, ci.cantidad 
                 FROM cronograma_insumos ci 
                 JOIN insumos i ON ci.insumo_id = i.id 
                 WHERE ci.cronograma_id = ?
             ");
             $stmtItems->execute([$id]);
             $evento['items'] = $stmtItems->fetchAll(\PDO::FETCH_ASSOC);
+            $evento['insumos'] = $evento['items'];
         }
 
         return $evento;
@@ -58,8 +59,8 @@ class CronogramaRepository
     public function create($data)
     {
         $sql = "INSERT INTO cronograma_mantencion 
-            (tipo_evento, activo_id, insumo_id, titulo, descripcion, fecha_programada, cantidad, monto_estimado, estado, icono, color) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE', ?, ?)";
+            (tipo_evento, activo_id, insumo_id, titulo, descripcion, fecha_programada, hora_programada, cantidad, monto_estimado, estado, icono, color) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE', ?, ?)";
 
         $activoId = (!empty($data['activo_id']) && $data['activo_id'] !== "") ? $data['activo_id'] : null;
         $insumoId = (!empty($data['insumo_id']) && $data['insumo_id'] !== "") ? $data['insumo_id'] : null;
@@ -72,6 +73,7 @@ class CronogramaRepository
             $data['titulo'],
             $data['descripcion'] ?? null,
             $data['fecha_programada'],
+            $data['hora_programada'] ?? '09:00:00',
             $data['cantidad'] ?? null,
             $data['monto_estimado'] ?? null,
             $data['icono'] ?? ($data['tipo_evento'] === 'MANTENCION' ? 'bi-tools' : 'bi-cart-plus'),
@@ -84,8 +86,9 @@ class CronogramaRepository
     {
         $stmt = $this->db->prepare("INSERT INTO cronograma_insumos (cronograma_id, insumo_id, cantidad) VALUES (?, ?, ?)");
         foreach ($items as $it) {
-            if (!empty($it['id'])) {
-                $stmt->execute([$cronogramaId, $it['id'], $it['cantidad']]);
+            $iid = $it['insumo_id'] ?? $it['id'] ?? null;
+            if ($iid) {
+                $stmt->execute([$cronogramaId, $iid, $it['cantidad']]);
             }
         }
     }
@@ -94,7 +97,7 @@ class CronogramaRepository
     {
         $sql = "UPDATE cronograma_mantencion SET 
                 activo_id = ?, insumo_id = ?, titulo = ?, descripcion = ?, 
-                fecha_programada = ?, cantidad = ?, monto_estimado = ?, 
+                fecha_programada = ?, hora_programada = ?, cantidad = ?, monto_estimado = ?, 
                 estado = ?, icono = ?, color = ?
                 WHERE id = ?";
 
@@ -108,6 +111,7 @@ class CronogramaRepository
             $data['titulo'],
             $data['descripcion'] ?? null,
             $data['fecha_programada'],
+            $data['hora_programada'] ?? null,
             $data['cantidad'] ?? null,
             $data['monto_estimado'] ?? null,
             $data['estado'],
@@ -124,6 +128,7 @@ class CronogramaRepository
 
     public function delete($id)
     {
+        $this->deleteInsumos($id);
         return $this->db->prepare("DELETE FROM cronograma_mantencion WHERE id = ?")->execute([$id]);
     }
 

@@ -14,30 +14,32 @@ class CronogramaController
     }
 
     public function index()
-{
-    AuthMiddleware::hasPermission('cron_ver');
-    
-    $filtros = $_GET;
-    $allData = $this->service->listar($filtros);
+    {
+        AuthMiddleware::hasPermission('cron_ver');
+        
+        $filtros = $_GET;
+        $allData = $this->service->listar($filtros);
 
-    $dataFiltrada = array_filter($allData, function($evento) {
-        if ($evento['tipo_evento'] === 'MANTENCION') {
-            return AuthMiddleware::checkPermissionSilently('cron_mant_ver');
-        }
-        if ($evento['tipo_evento'] === 'COMPRA') {
-            return AuthMiddleware::checkPermissionSilently('cron_insumos_ver');
-        }
-        return true;
-    });
+        $dataFiltrada = array_filter($allData, function($evento) {
+            if (($evento['tipo_evento'] ?? '') === 'MANTENCION') {
+                return AuthMiddleware::checkPermissionSilently('cron_mant_ver');
+            }
+            if (($evento['tipo_evento'] ?? '') === 'COMPRA') {
+                return AuthMiddleware::checkPermissionSilently('cron_insumos_ver');
+            }
+            return true; 
+        });
 
-    echo json_encode(["success" => true, "data" => array_values($dataFiltrada)]);
-}
+        echo json_encode(["success" => true, "data" => array_values($dataFiltrada)]);
+    }
 
     public function store()
     {
         $data = json_decode(file_get_contents("php://input"), true);
+        
+        $tipo = $data['tipo_evento'] ?? 'MANTENCION';
 
-        if ($data['tipo_evento'] === 'MANTENCION') {
+        if ($tipo === 'MANTENCION') {
             AuthMiddleware::hasPermission('cron_mant_crear');
         } else {
             AuthMiddleware::hasPermission('cron_compra_crear');
@@ -48,7 +50,7 @@ class CronogramaController
             $data['insumo_id'] = !empty($data['insumo_id']) ? $data['insumo_id'] : null;
 
             $id = $this->service->crear($data);
-            echo json_encode(["success" => true, "id" => $id]);
+            echo json_encode(["success" => true, "id" => $id, "message" => "Evento agendado con éxito"]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "error" => $e->getMessage()]);
@@ -59,8 +61,9 @@ class CronogramaController
     {
         $data = json_decode(file_get_contents("php://input"), true);
         $id = $data['id'] ?? null;
+        $tipo = $data['tipo_evento'] ?? 'MANTENCION';
 
-        if ($data['tipo_evento'] === 'MANTENCION') {
+        if ($tipo === 'MANTENCION') {
             AuthMiddleware::hasPermission('cron_mant_editar');
         } else {
             AuthMiddleware::hasPermission('cron_compra_editar');
@@ -71,7 +74,7 @@ class CronogramaController
             $data['insumo_id'] = !empty($data['insumo_id']) ? $data['insumo_id'] : null;
 
             $this->service->actualizar($id, $data);
-            echo json_encode(["success" => true]);
+            echo json_encode(["success" => true, "message" => "Evento actualizado"]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "error" => $e->getMessage()]);
@@ -103,6 +106,12 @@ class CronogramaController
         AuthMiddleware::hasPermission('cron_ver');
         $id = $_GET['id'] ?? null;
         $data = $this->service->obtener($id);
+        
+        if ($data) {
+            if ($data['tipo_evento'] === 'MANTENCION') AuthMiddleware::hasPermission('cron_mant_ver');
+            else AuthMiddleware::hasPermission('cron_insumos_ver');
+        }
+
         echo json_encode(["success" => !!$data, "data" => $data]);
     }
 }

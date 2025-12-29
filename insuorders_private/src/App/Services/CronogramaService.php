@@ -26,10 +26,15 @@ class CronogramaService
     {
         try {
             $this->db->beginTransaction();
+            
             $id = $this->repo->create($data);
-            if ($data['tipo_evento'] === 'MANTENCION' && !empty($data['items'])) {
-                $this->repo->addInsumos($id, $data['items']);
+
+            $items = !empty($data['items']) ? $data['items'] : ($data['insumos'] ?? []);
+            
+            if (!empty($items)) {
+                $this->repo->addInsumos($id, $items);
             }
+            
             $this->db->commit();
             return $id;
         } catch (\Exception $e) {
@@ -42,13 +47,16 @@ class CronogramaService
     {
         try {
             $this->db->beginTransaction();
+            
             $this->repo->update($id, $data);
-            if ($data['tipo_evento'] === 'MANTENCION') {
-                $this->repo->deleteInsumos($id);
-                if (!empty($data['items'])) {
-                    $this->repo->addInsumos($id, $data['items']);
-                }
+            
+            $this->repo->deleteInsumos($id);
+            
+            $items = !empty($data['items']) ? $data['items'] : ($data['insumos'] ?? []);
+            if (!empty($items)) {
+                $this->repo->addInsumos($id, $items);
             }
+            
             $this->db->commit();
             return true;
         } catch (\Exception $e) {
@@ -66,22 +74,30 @@ class CronogramaService
 
         foreach ($pendientes as $p) {
             try {
+                if ($p['tipo_evento'] !== 'MANTENCION') continue;
+
                 $detalle = $this->repo->findById($p['id']);
                 $items = $detalle['items'] ?? [];
 
-                if (empty($items)) {
+                if (empty($items) && !empty($p['activo_id'])) {
                     $stmtKit = $this->db->prepare("SELECT insumo_id as id, cantidad_default as cantidad FROM activos_insumos WHERE activo_id = ?");
                     $stmtKit->execute([$p['activo_id']]);
                     $items = $stmtKit->fetchAll(\PDO::FETCH_ASSOC);
                 }
 
                 if (!empty($items)) {
-                    $otId = $this->mantencionService->crearOT([
+                    $otData = [
                         'activo_id' => $p['activo_id'],
                         'observacion' => "Preventiva Auto: " . $p['titulo'],
                         'origen_tipo' => 'Preventiva',
-                        'items' => $items
-                    ], 1);
+                        'items' => $items,
+                        'usuario_id' => 1, 
+                        'area_negocio' => 'MANTENCION',
+                        'centro_costo_ot' => '6400',
+                        'solicitante_externo' => 'SISTEMA'
+                    ];
+
+                    $otId = $this->mantencionService->crearOT($otData, 1);
 
                     $this->repo->updateEstado($p['id'], 'PROCESADO', $otId);
                     $generados++;

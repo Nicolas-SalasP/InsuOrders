@@ -17,6 +17,7 @@ use App\Controllers\MantenedoresController;
 use App\Controllers\ImportController;
 use App\Controllers\PersonalController;
 
+// Configuración de CORS
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
@@ -26,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+// Router Básico
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $scriptName = $_SERVER['SCRIPT_NAME'];
 $baseDir = dirname($scriptName);
@@ -40,9 +42,8 @@ $path = str_replace('/index.php', '', $path);
 $path = trim($path, '/');
 
 // ============================================================
-// ÁREA: SERVICIO DE ARCHIVOS ESTÁTICOS (REGLA DE ORO)
+// SERVICIO DE ARCHIVOS ESTÁTICOS
 // ============================================================
-// Corregido: Buscamos "uploads/" en cualquier parte del path
 if (preg_match('/uploads\/(.+)$/', $path, $matches)) {
     $relativePath = 'uploads/' . $matches[1];
     $fullPathOnDisk = __DIR__ . '/' . $relativePath;
@@ -69,7 +70,11 @@ function jsonResponse($code, $data)
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+// ============================================================
+// RUTAS DE LA API
+// ============================================================
 switch ($path) {
+
     // --- AUTH ---
     case 'login':
         $c = new AuthController();
@@ -85,6 +90,30 @@ switch ($path) {
 
     case 'test':
         echo json_encode(["message" => "API Online", "ruta" => $path]);
+        break;
+
+    // --- CRONOGRAMA (NUEVO) ---
+    case 'cronograma':
+        // Validación de permisos
+        AuthMiddleware::hasPermission('cron_ver');
+
+        $c = new CronogramaController();
+        if ($method === 'GET') {
+            if (isset($_GET['id']))
+                $c->show();
+            else
+                $c->index();
+        } elseif ($method === 'POST') {
+            $c->store();
+        } elseif ($method === 'PUT') {
+            $c->update();
+        } elseif ($method === 'DELETE') {
+            // Soporte para ID en query params (?id=1)
+            global $id;
+            if (empty($id) && isset($_GET['id']))
+                $id = $_GET['id'];
+            $c->delete($id);
+        }
         break;
 
     // --- MANTENCIÓN ---
@@ -120,6 +149,7 @@ switch ($path) {
         break;
 
     case 'mantencion/activos':
+        // Corregido: Permiso ver_activos
         AuthMiddleware::hasPermission('ver_activos');
         (new MantencionController())->activos();
         break;
@@ -165,33 +195,8 @@ switch ($path) {
             $c->deleteDoc();
         break;
 
-    // --- CRONOGRAMA ---
-    case 'cronograma':
-        AuthMiddleware::hasPermission('ver_cronograma');
-        $c = new CronogramaController();
-        if ($method === 'GET') {
-            if (isset($_GET['id']))
-                $c->show();
-            else
-                $c->index();
-        } else {
-            AuthMiddleware::hasPermission('mant_editar');
-            if ($method === 'POST')
-                $c->store();
-            elseif ($method === 'PUT')
-                $c->update();
-            elseif ($method === 'DELETE')
-                $c->delete();
-        }
-        break;
-
-    // --- PERSONAL ---
-    case 'personal':
-        AuthMiddleware::verify();
-        (new PersonalController())->index();
-        break;
-
-    // --- INVENTARIO ---
+    // --- INVENTARIO (ALIAS PARA COMPATIBILIDAD) ---
+    case 'insumos': // Alias por si el front llama a 'insumos'
     case 'inventario':
         $c = new InsumoController();
         if ($method === 'GET') {
@@ -212,6 +217,7 @@ switch ($path) {
         }
         break;
 
+    case 'insumos/auxiliares': // Alias
     case 'inventario/auxiliares':
         AuthMiddleware::hasPermission('inv_ver');
         (new InsumoController())->auxiliares();
@@ -223,155 +229,146 @@ switch ($path) {
             (new InsumoController())->ajustar($uid);
         break;
 
-    // --- USUARIOS ---
-    case 'usuarios':
-    case 'usuarios/roles':
-    case 'usuarios/toggle':
-    case 'permisos':
-    case 'usuarios/permisos':
-    case 'usuarios/permisos/update':
-        AuthMiddleware::hasPermission('ver_usuarios');
-        $c = new UsuariosController();
-        if ($path === 'usuarios') {
-            if ($method === 'GET')
-                $c->index();
-            elseif ($method === 'POST')
-                $c->store();
-            elseif ($method === 'PUT')
-                $c->update();
-        } elseif ($path === 'usuarios/roles')
-            $c->roles();
-        elseif ($path === 'usuarios/toggle')
-            $c->toggle();
-        elseif ($path === 'permisos')
-            $c->listarPermisos();
-        elseif ($path === 'usuarios/permisos')
-            $c->obtenerPermisosUsuario();
-        elseif ($path === 'usuarios/permisos/update')
-            $c->actualizarPermisos();
-        break;
-
-    // --- EXPORTAR ---
-    case 'exportar':
-        AuthMiddleware::verify();
-        (new ExportController())->exportar($_GET['modulo'] ?? '');
-        break;
-
     // --- COMPRAS ---
     case 'compras':
-    case 'compras/filtros':
-    case 'compras/pendientes':
-    case 'compras/detalle':
-    case 'compras/pdf':
-    case 'compras/upload':
-    case 'compras/recepcionar':
         $uid = AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
         $c = new OrdenCompraController();
-        if ($path === 'compras') {
-            if ($method === 'GET')
-                $c->index();
-            elseif ($method === 'POST')
-                $c->store($uid);
-        } elseif ($path === 'compras/filtros')
-            $c->filtros();
-        elseif ($path === 'compras/pendientes')
-            $c->pendientes();
-        elseif ($path === 'compras/detalle')
-            $c->show();
-        elseif ($path === 'compras/pdf')
-            $c->downloadPdf();
-        elseif ($path === 'compras/upload')
-            $c->uploadFile();
-        elseif ($path === 'compras/recepcionar')
-            $c->recepcionar($uid);
+        if ($method === 'GET')
+            $c->index();
+        elseif ($method === 'POST')
+            $c->store($uid);
+        break;
+
+    case 'compras/filtros':
+        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        (new OrdenCompraController())->filtros();
+        break;
+
+    case 'compras/pendientes':
+        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        (new OrdenCompraController())->pendientes();
+        break;
+
+    case 'compras/detalle':
+        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        (new OrdenCompraController())->show();
+        break;
+
+    case 'compras/pdf':
+        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        (new OrdenCompraController())->downloadPdf();
+        break;
+
+    case 'compras/upload':
+        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        (new OrdenCompraController())->uploadFile();
+        break;
+
+    case 'compras/recepcionar':
+        $uid = AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        (new OrdenCompraController())->recepcionar($uid);
         break;
 
     // --- PROVEEDORES ---
     case 'proveedores':
-    case 'proveedores/auxiliares':
-        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
         $c = new ProveedorController();
-        if ($path === 'proveedores') {
-            if ($method === 'GET')
-                $c->index();
-            elseif ($method === 'POST')
-                $c->store();
-            elseif ($method === 'PUT')
-                $c->update();
-            elseif ($method === 'DELETE')
-                $c->delete();
-        } elseif ($path === 'proveedores/auxiliares')
-            $c->auxiliares();
+        if ($method === 'GET')
+            $c->index();
+        elseif ($method === 'POST')
+            $c->store();
+        elseif ($method === 'PUT')
+            $c->update();
+        elseif ($method === 'DELETE')
+            $c->delete();
+        break;
+
+    case 'proveedores/auxiliares':
+        (new ProveedorController())->auxiliares();
+        break;
+
+    // --- USUARIOS ---
+    case 'usuarios':
+        AuthMiddleware::hasPermission('ver_usuarios');
+        $c = new UsuariosController();
+        if ($method === 'GET')
+            $c->index();
+        elseif ($method === 'POST')
+            $c->store();
+        elseif ($method === 'PUT')
+            $c->update();
+        break;
+
+    case 'usuarios/roles':
+        AuthMiddleware::hasPermission('ver_usuarios');
+        (new UsuariosController())->roles();
+        break;
+
+    case 'usuarios/toggle':
+        AuthMiddleware::hasPermission('ver_usuarios');
+        (new UsuariosController())->toggle();
+        break;
+
+    case 'permisos':
+        AuthMiddleware::hasPermission('ver_usuarios');
+        (new UsuariosController())->listarPermisos();
+        break;
+
+    case 'usuarios/permisos':
+        AuthMiddleware::hasPermission('ver_usuarios');
+        (new UsuariosController())->obtenerPermisosUsuario();
+        break;
+
+    case 'usuarios/permisos/update':
+        AuthMiddleware::hasPermission('ver_usuarios');
+        (new UsuariosController())->actualizarPermisos();
         break;
 
     // --- BODEGA ---
     case 'bodega/entregar':
+        $uid = AuthMiddleware::hasPermission('ver_bodega');
+        (new BodegaController())->entregar($uid);
+        break;
+
     case 'bodega/pendientes':
+        AuthMiddleware::hasPermission('ver_bodega');
+        (new BodegaController())->pendientes();
+        break;
+
     case 'bodega/por-organizar':
+        AuthMiddleware::hasPermission('ver_bodega');
+        (new BodegaController())->porOrganizar();
+        break;
+
     case 'bodega/organizar':
         AuthMiddleware::hasPermission('ver_bodega');
-        $c = new BodegaController();
-        $uid = AuthMiddleware::verify();
-        if ($path === 'bodega/entregar')
-            $c->entregar($uid);
-        elseif ($path === 'bodega/pendientes')
-            $c->pendientes();
-        elseif ($path === 'bodega/por-organizar')
-            $c->porOrganizar();
-        elseif ($path === 'bodega/organizar')
-            $c->organizar();
+        (new BodegaController())->organizar();
         break;
 
     // --- DASHBOARD ---
     case 'dashboard':
-    case 'dashboard/logs':
-    case 'dashboard/analytics':
         AuthMiddleware::verify();
-        $c = new DashboardController();
-        if ($path === 'dashboard')
-            $c->index();
-        elseif ($path === 'dashboard/logs')
-            $c->logs();
-        elseif ($path === 'dashboard/analytics')
-            $c->analytics();
+        (new DashboardController())->index();
         break;
 
+    case 'dashboard/logs':
+        AuthMiddleware::verify();
+        (new DashboardController())->logs();
+        break;
+
+    case 'dashboard/analytics':
+        AuthMiddleware::verify();
+        (new DashboardController())->analytics();
+        break;
+
+    // --- OTROS ---
     case 'notifications':
         AuthMiddleware::verify();
         (new NotificationController())->index();
         break;
 
-    // --- MANTENEDORES ---
-    case 'mantenedores/empleados':
-    case 'mantenedores/empleado':
-    case 'mantenedores/centros':
-    case 'mantenedores/centro':
-    case 'mantenedores/areas':
-    case 'mantenedores/area':
-        AuthMiddleware::hasPermission('ver_config');
-        $c = new MantenedoresController();
-        if (strpos($path, 'empleados') !== false)
-            $c->getEmpleados();
-        elseif (strpos($path, 'empleado') !== false) {
-            if ($method === 'POST')
-                $c->saveEmpleado();
-            else
-                $c->deleteEmpleado();
-        } elseif (strpos($path, 'centros') !== false)
-            $c->getCentros();
-        elseif (strpos($path, 'centro') !== false) {
-            if ($method === 'POST')
-                $c->saveCentro();
-            else
-                $c->deleteCentro();
-        } elseif (strpos($path, 'areas') !== false)
-            $c->getAreas();
-        elseif (strpos($path, 'area') !== false) {
-            if ($method === 'POST')
-                $c->saveArea();
-            else
-                $c->deleteArea();
-        }
+    case 'exportar':
+        AuthMiddleware::verify();
+        (new ExportController())->exportar($_GET['modulo'] ?? '');
         break;
 
     case 'importar':
@@ -379,6 +376,55 @@ switch ($path) {
         $uid = AuthMiddleware::hasPermission('inv_importar');
         if ($method === 'POST')
             (new ImportController())->importar($uid);
+        break;
+
+    // --- MANTENEDORES (CONFIG) ---
+    case 'mantenedores/empleados':
+        AuthMiddleware::hasPermission('ver_config');
+        (new MantenedoresController())->getEmpleados();
+        break;
+
+    case 'mantenedores/empleado':
+        AuthMiddleware::hasPermission('ver_config');
+        $c = new MantenedoresController();
+        if ($method === 'POST')
+            $c->saveEmpleado();
+        else
+            $c->deleteEmpleado();
+        break;
+
+    case 'mantenedores/centros':
+        AuthMiddleware::hasPermission('ver_config');
+        (new MantenedoresController())->getCentros();
+        break;
+
+    case 'mantenedores/centro':
+        AuthMiddleware::hasPermission('ver_config');
+        $c = new MantenedoresController();
+        if ($method === 'POST')
+            $c->saveCentro();
+        else
+            $c->deleteCentro();
+        break;
+
+    case 'mantenedores/areas':
+        AuthMiddleware::hasPermission('ver_config');
+        (new MantenedoresController())->getAreas();
+        break;
+
+    case 'mantenedores/area':
+        AuthMiddleware::hasPermission('ver_config');
+        $c = new MantenedoresController();
+        if ($method === 'POST')
+            $c->saveArea();
+        else
+            $c->deleteArea();
+        break;
+
+    // --- PERSONAL ---
+    case 'personal':
+        AuthMiddleware::verify();
+        (new PersonalController())->index();
         break;
 
     default:

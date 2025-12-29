@@ -13,13 +13,8 @@ class OrdenCompraRepository
         $this->db = Database::getConnection();
     }
 
-    /**
-     * Get all Purchase Orders with optional filters.
-     * Updated to support filtering by Insumo ID.
-     */
     public function getAll($filtros = [])
     {
-        // Base query with DISTINCT to avoid duplicates when filtering by item
         $sql = "SELECT DISTINCT 
                     oc.id, oc.fecha_creacion, oc.monto_total, oc.url_archivo,
                     p.nombre as proveedor, p.rut as proveedor_rut,
@@ -29,26 +24,21 @@ class OrdenCompraRepository
                 JOIN proveedores p ON oc.proveedor_id = p.id
                 JOIN estados_orden_compra e ON oc.estado_id = e.id
                 JOIN usuarios u ON oc.usuario_creador_id = u.id
-                -- LEFT JOIN with details is only necessary if we filter by item, 
-                -- but we include it conditionally or always if performance allows.
                 LEFT JOIN detalle_orden_compra doc ON oc.id = doc.orden_compra_id
                 WHERE 1=1";
 
         $params = [];
 
-        // 1. FILTER BY INSUMO ID (New Requirement)
         if (!empty($filtros['insumo_id'])) {
             $sql .= " AND doc.insumo_id = :iid";
             $params[':iid'] = $filtros['insumo_id'];
         }
 
-        // 2. Search Filter (ID or Provider)
         if (!empty($filtros['search'])) {
             $sql .= " AND (oc.id LIKE :s OR p.nombre LIKE :s)";
             $params[':s'] = "%" . $filtros['search'] . "%";
         }
 
-        // 3. Date Filters
         if (!empty($filtros['fecha_inicio'])) {
             $sql .= " AND oc.fecha_creacion >= :fi";
             $params[':fi'] = $filtros['fecha_inicio'];
@@ -66,10 +56,6 @@ class OrdenCompraRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Get a list of all items that have been purchased historically.
-     * Used to populate the filter dropdown in the frontend.
-     */
     public function getInsumosHistorial()
     {
         $sql = "SELECT DISTINCT i.id, i.nombre, i.codigo_sku 
@@ -78,8 +64,6 @@ class OrdenCompraRepository
                 ORDER BY i.nombre ASC";
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    // --- Existing Methods (Unchanged) ---
 
     public function getOrdenCompleta($id)
     {
@@ -118,7 +102,7 @@ class OrdenCompraRepository
     {
         return $this->getOrdenCompleta($id);
     }
-    
+
     public function getDetalle($id)
     {
         $res = $this->getOrdenCompleta($id);
@@ -143,14 +127,16 @@ class OrdenCompraRepository
 
     public function asociarSolicitudesAOrden($ordenId, $idsDetalleSolicitud)
     {
-        if (empty($idsDetalleSolicitud)) return;
-        
+        if (empty($idsDetalleSolicitud))
+            return;
+
         if (is_array($idsDetalleSolicitud))
             $idsStr = implode(',', array_map('intval', $idsDetalleSolicitud));
         else
             $idsStr = $idsDetalleSolicitud;
 
-        if (empty($idsStr)) return;
+        if (empty($idsStr))
+            return;
 
         $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'COMPRADO', orden_compra_id = :oc WHERE id IN ($idsStr)")
             ->execute([':oc' => $ordenId]);
@@ -212,10 +198,13 @@ class OrdenCompraRepository
             if ($estadoActual == 4 || $estadoActual == 5)
                 throw new \Exception("Orden cerrada o anulada.");
 
+            $ubicacionRecepcionId = 1;
+
             foreach ($itemsRecibidos as $item) {
                 $detalleId = $item['detalle_id'];
                 $cantidad = floatval($item['cantidad']);
-                if ($cantidad <= 0) continue;
+                if ($cantidad <= 0)
+                    continue;
 
                 $stmtDet = $this->db->prepare("SELECT insumo_id, cantidad_solicitada, cantidad_recibida FROM detalle_orden_compra WHERE id = :id");
                 $stmtDet->execute([':id' => $detalleId]);
@@ -224,17 +213,35 @@ class OrdenCompraRepository
                 if ($cantidad + $linea['cantidad_recibida'] > $linea['cantidad_solicitada'])
                     throw new \Exception("Exceso en insumo ID: " . $linea['insumo_id']);
 
-                $this->db->prepare("UPDATE detalle_orden_compra SET cantidad_recibida = cantidad_recibida + :c WHERE id = :id")->execute([':c' => $cantidad, ':id' => $detalleId]);
-                $this->db->prepare("UPDATE insumos SET stock_actual = stock_actual + :c WHERE id = :id")->execute([':c' => $cantidad, ':id' => $linea['insumo_id']]);
+                $this->db->prepare("UPDATE detalle_orden_compra SET cantidad_recibida = cantidad_recibida + :c WHERE id = :id")
+                    ->execute([':c' => $cantidad, ':id' => $detalleId]);
 
-                $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, referencia_id, observacion) VALUES (:iid, 1, :cant, :uid, :ref, 'Recepción OC')")
-                    ->execute([':iid' => $linea['insumo_id'], ':cant' => $cantidad, ':uid' => $usuarioId, ':ref' => $ordenId]);
+                $sqlStock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
+                             VALUES (:iid, :uid, :cant)
+                             ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant";
+                $this->db->prepare($sqlStock)->execute([
+                    ':iid' => $linea['insumo_id'],
+                    ':uid' => $ubicacionRecepcionId,
+                    ':cant' => $cantidad
+                ]);
 
-                $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'EN_BODEGA' WHERE orden_compra_id = :oc AND insumo_id = :iid")->execute([':oc' => $ordenId, ':iid' => $linea['insumo_id']]);
-                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 4 WHERE id IN (SELECT solicitud_id FROM detalle_solicitud WHERE orden_compra_id = :oc)")->execute([':oc' => $ordenId]);
+                $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, referencia_id, observacion, ubicacion_id, fecha) 
+                                    VALUES (:iid, 1, :cant, :uid, :ref, 'Recepción OC', :ubi, NOW())")
+                    ->execute([
+                        ':iid' => $linea['insumo_id'],
+                        ':cant' => $cantidad,
+                        ':uid' => $usuarioId,
+                        ':ref' => $ordenId,
+                        ':ubi' => $ubicacionRecepcionId
+                    ]);
+
+                $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'EN_BODEGA' WHERE orden_compra_id = :oc AND insumo_id = :iid")
+                    ->execute([':oc' => $ordenId, ':iid' => $linea['insumo_id']]);
+
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 4 WHERE id IN (SELECT solicitud_id FROM detalle_solicitud WHERE orden_compra_id = :oc)")
+                    ->execute([':oc' => $ordenId]);
             }
 
-            // Recalcular estado
             $totales = $this->db->query("SELECT SUM(cantidad_solicitada) as sol, SUM(cantidad_recibida) as rec FROM detalle_orden_compra WHERE orden_compra_id = $ordenId")->fetch(PDO::FETCH_ASSOC);
             $nuevoEstado = ($totales['rec'] >= $totales['sol']) ? 4 : ($totales['rec'] > 0 ? 3 : 2);
 

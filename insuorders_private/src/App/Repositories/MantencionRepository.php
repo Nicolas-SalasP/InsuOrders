@@ -13,30 +13,20 @@ class MantencionRepository
         $this->db = Database::getConnection();
     }
 
-    // =================================================================================
-    // HELPER: SANITIZAR CENTRO DE COSTO
-    // =================================================================================
-
     private function resolveCentroCostoId($input)
     {
         if (empty($input))
             return null;
 
-        // 1. Si es ID
         $stmt = $this->db->prepare("SELECT id FROM centros_costo WHERE id = :val");
         $stmt->execute([':val' => $input]);
         if ($stmt->fetch())
             return $input;
 
-        // 2. Si es CÓDIGO
         $stmt = $this->db->prepare("SELECT id FROM centros_costo WHERE codigo = :val");
         $stmt->execute([':val' => $input]);
         return $stmt->fetchColumn() ?: null;
     }
-
-    // =================================================================================
-    // 1. ACTIVOS (MÁQUINAS)
-    // =================================================================================
 
     public function getActivos()
     {
@@ -113,10 +103,6 @@ class MantencionRepository
         return $this->db->query("SELECT * FROM centros_costo ORDER BY codigo ASC")->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // =================================================================================
-    // 2. GESTIÓN DOCUMENTAL ACTIVOS
-    // =================================================================================
-
     public function addDoc($activoId, $nombre, $url)
     {
         $this->db->prepare("INSERT INTO activos_docs (activo_id, nombre_archivo, url_archivo) VALUES (:id, :nom, :url)")
@@ -143,10 +129,6 @@ class MantencionRepository
             $this->db->prepare("DELETE FROM activos_docs WHERE id = :id")->execute([':id' => $docId]);
         }
     }
-
-    // =================================================================================
-    // 3. KITS DE REPUESTOS
-    // =================================================================================
 
     private function recalcularMinimoInsumo($insumoId)
     {
@@ -194,10 +176,6 @@ class MantencionRepository
         $this->recalcularMinimoInsumo($insumoId);
     }
 
-    // =================================================================================
-    // 4. SOLICITUDES OT (CRUD TRANSACCIONAL ROBUSTO)
-    // =================================================================================
-
     public function getSolicitudes()
     {
         $sql = "SELECT s.*, 
@@ -233,7 +211,6 @@ class MantencionRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- CREAR OT (Transaccional) ---
     public function createOT($data)
     {
         try {
@@ -281,7 +258,6 @@ class MantencionRepository
         }
     }
 
-    // --- ACTUALIZAR OT (Sincronización Inteligente) ---
     public function updateOT($id, $data)
     {
         try {
@@ -349,10 +325,6 @@ class MantencionRepository
         }
     }
 
-    // =================================================================================
-    // 5. FINALIZACIÓN Y ANULACIÓN
-    // =================================================================================
-
     public function finalizar($id)
     {
         try {
@@ -389,10 +361,6 @@ class MantencionRepository
         }
     }
 
-    // =================================================================================
-    // 6. BODEGA (ENTREGAS)
-    // =================================================================================
-
     public function getPendientesEntrega()
     {
         $sql = "SELECT ds.id as detalle_id, ds.cantidad, ds.cantidad_entregada,
@@ -428,15 +396,42 @@ class MantencionRepository
             if ($cantidadEntregar > ($pendiente + 0.001))
                 throw new \Exception("Exceso de entrega.");
 
-            $stmtStock = $this->db->prepare("UPDATE insumos SET stock_actual = stock_actual - :cant WHERE id = :id AND stock_actual >= :cant");
-            $stmtStock->execute([':cant' => $cantidadEntregar, ':id' => $linea['insumo_id']]);
+            $stmtStock = $this->db->prepare("SELECT ubicacion_id, cantidad FROM insumo_stock_ubicacion WHERE insumo_id = :id AND cantidad > 0 ORDER BY cantidad DESC");
+            $stmtStock->execute([':id' => $linea['insumo_id']]);
+            $ubicaciones = $stmtStock->fetchAll(PDO::FETCH_ASSOC);
 
-            if ($stmtStock->rowCount() == 0)
-                throw new \Exception("Stock insuficiente.");
+            $cantidadRestantePorDescontar = $cantidadEntregar;
 
-            $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, empleado_id, fecha) 
-                                VALUES (:iid, 2, :cant, :uid, 'Entrega OT', :ref, :emp, NOW())")
-                ->execute([':iid' => $linea['insumo_id'], ':cant' => $cantidadEntregar, ':uid' => $usuarioId, ':ref' => $detalleId, ':emp' => $receptorId]);
+            if (empty($ubicaciones)) {
+                throw new \Exception("No hay stock físico disponible en ninguna ubicación.");
+            }
+
+            foreach ($ubicaciones as $ubi) {
+                if ($cantidadRestantePorDescontar <= 0)
+                    break;
+
+                $descuento = min($cantidadRestantePorDescontar, $ubi['cantidad']);
+
+                $this->db->prepare("UPDATE insumo_stock_ubicacion SET cantidad = cantidad - :c WHERE insumo_id = :i AND ubicacion_id = :u")
+                    ->execute([':c' => $descuento, ':i' => $linea['insumo_id'], ':u' => $ubi['ubicacion_id']]);
+
+                $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, empleado_id, ubicacion_id, fecha) 
+                                    VALUES (:iid, 2, :cant, :uid, 'Entrega OT', :ref, :emp, :ubi, NOW())")
+                    ->execute([
+                        ':iid' => $linea['insumo_id'],
+                        ':cant' => $descuento,
+                        ':uid' => $usuarioId,
+                        ':ref' => $detalleId,
+                        ':emp' => $receptorId,
+                        ':ubi' => $ubi['ubicacion_id']
+                    ]);
+
+                $cantidadRestantePorDescontar -= $descuento;
+            }
+
+            if ($cantidadRestantePorDescontar > 0) {
+                throw new \Exception("Stock insuficiente para cubrir la entrega total.");
+            }
 
             $nuevaEntregada = floatval($linea['cantidad_entregada']) + $cantidadEntregar;
             $nuevoEstado = ($nuevaEntregada >= floatval($linea['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
@@ -460,10 +455,6 @@ class MantencionRepository
             throw $e;
         }
     }
-
-    // =================================================================================
-    // 7. PDF HEADER
-    // =================================================================================
 
     public function getOTHeader($id)
     {
