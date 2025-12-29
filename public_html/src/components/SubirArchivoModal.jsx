@@ -1,68 +1,79 @@
 import { useState } from 'react';
+import { Modal, Button, Form, Spinner } from 'react-bootstrap';
 import api from '../api/axiosConfig';
 
-const SubirArchivoModal = ({ show, onClose, ordenId, onSave }) => {
-    const [archivo, setArchivo] = useState(null);
+const SubirArchivoModal = ({ show, onClose, ordenId, currentUrl, onSave }) => {
+    const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!archivo) return alert("Selecciona un archivo");
-
+    const handleUpload = async () => {
+        if (!file || !ordenId) return;
         setLoading(true);
         const formData = new FormData();
         formData.append('orden_id', ordenId);
-        formData.append('archivo', archivo);
+        formData.append('archivo', file);
 
         try {
-            await api.post('/index.php/compras/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            alert("Archivo subido con éxito");
-            onSave(); // Recargar lista
-            onClose();
-        } catch (error) {
-            alert("Error: " + error.response?.data?.message);
+            const res = await api.post('/index.php/compras/upload', formData);
+            if (res.data.success) {
+                onSave();
+                onClose();
+                setFile(null);
+            }
+        } catch (e) {
+            alert("Error: " + (e.response?.data?.message || "Servidor no responde"));
         } finally {
             setLoading(false);
         }
     };
 
-    if (!show) return null;
+    // FUNCIÓN DE CONSTRUCCIÓN DE URL MEJORADA
+    const getFullUrl = (path) => {
+        if (!path) return null;
+        // Obtenemos la base de la API (ej: http://localhost/insuorders/public_html/api)
+        const base = api.defaults.baseURL.split('/index.php')[0];
+        // Limpiamos barras duplicadas y devolvemos
+        return `${base}/${path}`.replace(/([^:]\/)\/+/g, "$1");
+    };
+
+    const fullUrl = getFullUrl(currentUrl);
 
     return (
-        <div className="modal d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
-            <div className="modal-dialog modal-dialog-centered">
-                <div className="modal-content">
-                    <div className="modal-header bg-dark text-white">
-                        <h5 className="modal-title">📎 Adjuntar Cotización / Factura</h5>
-                        <button className="btn-close btn-close-white" onClick={onClose}></button>
+        <Modal show={show} onHide={onClose} centered size={currentUrl ? "lg" : "md"}>
+            <Modal.Header closeButton className="bg-light">
+                <Modal.Title className="fw-bold">Gestión de Documentos OC #{ordenId}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                {currentUrl && (
+                    <div className="mb-4">
+                        <h6 className="fw-bold mb-3 small text-uppercase text-muted">Vista Previa:</h6>
+                        <div className="border rounded bg-white shadow-sm" style={{ height: '450px' }}>
+                            <iframe 
+                                src={fullUrl} 
+                                width="100%" 
+                                height="100%" 
+                                style={{ border: 'none' }}
+                                title="Visualizador de PDF"
+                            />
+                        </div>
                     </div>
-                    <form onSubmit={handleSubmit}>
-                        <div className="modal-body">
-                            <div className="alert alert-info small">
-                                <i className="bi bi-info-circle me-2"></i>
-                                Mantén el orden de tus compras subiendo los documentos de respaldo.
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label fw-bold">Seleccionar Documento</label>
-                                <input type="file" className="form-control" accept=".pdf,.jpg,.png,.jpeg"
-                                    onChange={e => setArchivo(e.target.files[0])} required />
-                                <div className="form-text text-muted">
-                                    Sube la <strong>Cotización</strong> aprobada o la <strong>Factura</strong> final del proveedor.
-                                </div>
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-                            <button type="submit" className="btn btn-primary" disabled={loading}>
-                                {loading ? 'Subiendo...' : 'Guardar Documento'}
-                            </button>
-                        </div>
-                    </form>
+                )}
+
+                <div className="p-3 border rounded bg-light">
+                    <h6 className="fw-bold mb-3 small text-uppercase text-muted">Subir nuevo archivo</h6>
+                    <Form.Control 
+                        type="file" 
+                        onChange={(e) => setFile(e.target.files[0])} 
+                        accept=".pdf,.jpg,.png" 
+                        className="mb-3"
+                    />
+                    <Button variant="primary" className="w-100 fw-bold" onClick={handleUpload} disabled={!file || loading}>
+                        {loading ? <Spinner animation="border" size="sm" className="me-2" /> : <i className="bi bi-upload me-2"></i>}
+                        {currentUrl ? 'Reemplazar Archivo' : 'Subir Archivo'}
+                    </Button>
                 </div>
-            </div>
-        </div>
+            </Modal.Body>
+        </Modal>
     );
 };
 

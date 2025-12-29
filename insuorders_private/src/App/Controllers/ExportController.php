@@ -103,7 +103,6 @@ class ExportController
         }
     }
 
-    // --- HELPER: Obtener o Crear Hoja ---
     private function getSheet(Spreadsheet $s, $index)
     {
         if ($index < $s->getSheetCount()) {
@@ -112,7 +111,6 @@ class ExportController
         return $s->createSheet();
     }
 
-    // --- HELPER: Rellenar Hoja con Estilos ---
     private function fillSheet(Worksheet $sheet, $headers, $data, $mapFunc)
     {
         $col = 'A';
@@ -155,8 +153,6 @@ class ExportController
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
     }
-
-    // --- MÉTODOS DE HOJAS ESPECÍFICAS ---
 
     private function sheetInventario(Spreadsheet $s, $idx)
     {
@@ -268,13 +264,13 @@ class ExportController
             fn($d) => [
                 $d['id'],
                 $d['fecha_creacion'],
-                $d['proveedor'],
-                $d['proveedor_rut'],
-                $d['estado'],
-                $d['monto_neto'],
-                $d['monto_impuesto'],
-                $d['monto_total'],
-                $d['creador']
+                $d['proveedor'] ?? 'N/A',
+                $d['proveedor_rut'] ?? 'N/A',
+                $d['estado'] ?? 'N/A',
+                $d['monto_neto'] ?? 0,
+                $d['impuesto'] ?? $d['monto_impuesto'] ?? 0,
+                $d['monto_total'] ?? 0,
+                $d['creador'] ?? 'Sistema'
             ]
         );
     }
@@ -401,13 +397,13 @@ class ExportController
         ]);
 
         $sheet->setCellValue('A3', 'Proveedor:');
-        $sheet->setCellValue('B3', $c['proveedor']);
+        $sheet->setCellValue('B3', $c['proveedor'] ?? 'N/A');
         $sheet->setCellValue('A4', 'RUT:');
-        $sheet->setCellValue('B4', $c['proveedor_rut']);
+        $sheet->setCellValue('B4', $c['proveedor_rut'] ?? 'N/A');
         $sheet->setCellValue('D3', 'Fecha:');
         $sheet->setCellValue('E3', $c['fecha_creacion']);
         $sheet->setCellValue('D4', 'Estado:');
-        $sheet->setCellValue('E4', $c['estado_nombre']);
+        $sheet->setCellValue('E4', $c['estado_nombre'] ?? 'N/A');
 
         $row = 7;
         $headers = ['SKU', 'Insumo', 'Cantidad', 'Precio Unit.', 'Total'];
@@ -436,7 +432,7 @@ class ExportController
         $sheet->setCellValue("E$row", $c['monto_neto']);
         $row++;
         $sheet->setCellValue("D$row", 'IVA:');
-        $sheet->setCellValue("E$row", $c['monto_impuesto']);
+        $sheet->setCellValue("E$row", $c['impuesto'] ?? $c['monto_impuesto'] ?? 0);
         $row++;
         $sheet->setCellValue("D$row", 'TOTAL:');
         $sheet->setCellValue("E$row", $c['monto_total']);

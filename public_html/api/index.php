@@ -38,6 +38,24 @@ if ($baseDir !== '/' && strpos($requestUri, $baseDir) === 0) {
 }
 $path = str_replace('/index.php', '', $path);
 $path = trim($path, '/');
+
+// ============================================================
+// ÁREA: SERVICIO DE ARCHIVOS ESTÁTICOS (REGLA DE ORO)
+// ============================================================
+// Corregido: Buscamos "uploads/" en cualquier parte del path
+if (preg_match('/uploads\/(.+)$/', $path, $matches)) {
+    $relativePath = 'uploads/' . $matches[1];
+    $fullPathOnDisk = __DIR__ . '/' . $relativePath;
+
+    if (file_exists($fullPathOnDisk) && is_file($fullPathOnDisk)) {
+        $mime = mime_content_type($fullPathOnDisk);
+        header("Content-Type: $mime");
+        header("Content-Disposition: inline; filename=\"" . basename($fullPathOnDisk) . "\"");
+        readfile($fullPathOnDisk);
+        exit;
+    }
+}
+
 if ($path === '')
     $path = 'test';
 
@@ -49,10 +67,13 @@ function jsonResponse($code, $data)
     exit;
 }
 
+$method = $_SERVER['REQUEST_METHOD'];
+
 switch ($path) {
+    // --- AUTH ---
     case 'login':
         $c = new AuthController();
-        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+        if ($method === 'POST')
             $c->login();
         else
             jsonResponse(405, ["error" => "Método no permitido"]);
@@ -69,7 +90,6 @@ switch ($path) {
     // --- MANTENCIÓN ---
     case 'mantencion':
         $c = new MantencionController();
-        $method = $_SERVER['REQUEST_METHOD'];
         if ($method === 'GET') {
             AuthMiddleware::hasPermission('mant_ver');
             if (isset($_GET['detalle']))
@@ -90,7 +110,7 @@ switch ($path) {
 
     case 'mantencion/finalizar':
         AuthMiddleware::hasPermission('mant_finalizar');
-        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+        if ($method === 'POST')
             (new MantencionController())->finalizar();
         break;
 
@@ -106,13 +126,13 @@ switch ($path) {
 
     case 'mantencion/crear-activo':
         AuthMiddleware::hasPermission('mant_crear');
-        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+        if ($method === 'POST')
             (new MantencionController())->storeActivo();
         break;
 
     case 'mantencion/editar-activo':
         AuthMiddleware::hasPermission('mant_crear');
-        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+        if ($method === 'POST')
             (new MantencionController())->editarActivo();
         break;
 
@@ -124,24 +144,24 @@ switch ($path) {
     case 'mantencion/kit':
         AuthMiddleware::hasPermission('mant_crear');
         $c = new MantencionController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
+        if ($method === 'GET')
             $c->getKit();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
+        elseif ($method === 'POST')
             $c->saveKit();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'PUT')
+        elseif ($method === 'PUT')
             $c->updateKitQty();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+        elseif ($method === 'DELETE')
             $c->removeKitItem();
         break;
 
     case 'mantencion/docs':
         AuthMiddleware::hasPermission('mant_editar');
         $c = new MantencionController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')
+        if ($method === 'GET')
             $c->listDocs();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
+        elseif ($method === 'POST')
             $c->uploadDoc();
-        elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+        elseif ($method === 'DELETE')
             $c->deleteDoc();
         break;
 
@@ -149,18 +169,18 @@ switch ($path) {
     case 'cronograma':
         AuthMiddleware::hasPermission('ver_cronograma');
         $c = new CronogramaController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        if ($method === 'GET') {
             if (isset($_GET['id']))
                 $c->show();
             else
                 $c->index();
         } else {
             AuthMiddleware::hasPermission('mant_editar');
-            if ($_SERVER['REQUEST_METHOD'] === 'POST')
+            if ($method === 'POST')
                 $c->store();
-            elseif ($_SERVER['REQUEST_METHOD'] === 'PUT')
+            elseif ($method === 'PUT')
                 $c->update();
-            elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE')
+            elseif ($method === 'DELETE')
                 $c->delete();
         }
         break;
@@ -174,10 +194,10 @@ switch ($path) {
     // --- INVENTARIO ---
     case 'inventario':
         $c = new InsumoController();
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        if ($method === 'GET') {
             AuthMiddleware::hasPermission('inv_ver');
             $c->index();
-        } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        } elseif ($method === 'POST') {
             $isPut = (isset($_POST['_method']) && strtoupper($_POST['_method']) === 'PUT');
             if ($isPut || !empty($_POST['id'])) {
                 AuthMiddleware::hasPermission('inv_editar');
@@ -186,7 +206,7 @@ switch ($path) {
                 AuthMiddleware::hasPermission('inv_crear');
                 $c->store();
             }
-        } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+        } elseif ($method === 'DELETE') {
             AuthMiddleware::hasPermission('inv_eliminar');
             $c->delete();
         }
@@ -199,7 +219,7 @@ switch ($path) {
 
     case 'inventario/ajuste':
         $uid = AuthMiddleware::hasPermission('ajustar_stock');
-        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+        if ($method === 'POST')
             (new InsumoController())->ajustar($uid);
         break;
 
@@ -213,11 +233,11 @@ switch ($path) {
         AuthMiddleware::hasPermission('ver_usuarios');
         $c = new UsuariosController();
         if ($path === 'usuarios') {
-            if ($_SERVER['REQUEST_METHOD'] === 'GET')
+            if ($method === 'GET')
                 $c->index();
-            elseif ($_SERVER['REQUEST_METHOD'] === 'POST')
+            elseif ($method === 'POST')
                 $c->store();
-            elseif ($_SERVER['REQUEST_METHOD'] === 'PUT')
+            elseif ($method === 'PUT')
                 $c->update();
         } elseif ($path === 'usuarios/roles')
             $c->roles();
@@ -233,23 +253,11 @@ switch ($path) {
 
     // --- EXPORTAR ---
     case 'exportar':
-        $m = $_GET['modulo'] ?? '';
-        if ($m === 'mantencion' || $m === 'detalle_ot')
-            AuthMiddleware::hasPermission('mant_excel');
-        elseif ($m === 'inventario')
-            AuthMiddleware::hasPermission('inv_exportar');
-        elseif ($m === 'usuarios')
-            AuthMiddleware::hasPermission('ver_usuarios');
-        else
-            AuthMiddleware::verify();
-
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/ExportController.php';
-        (new ExportController())->exportar($m);
+        AuthMiddleware::verify();
+        (new ExportController())->exportar($_GET['modulo'] ?? '');
         break;
 
-    // ----------------------------------------------------
-    // --- BLOQUE CORREGIDO Y ORGANIZADO: COMPRAS ---
-    // ----------------------------------------------------
+    // --- COMPRAS ---
     case 'compras':
     case 'compras/filtros':
     case 'compras/pendientes':
@@ -257,35 +265,25 @@ switch ($path) {
     case 'compras/pdf':
     case 'compras/upload':
     case 'compras/recepcionar':
-        // Verificamos permisos generales para módulo Compras
-        // Ajusta los roles según tu lógica ('Admin', 'Compras', 'Bodega', etc.)
-        $uid = AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']); 
-        
+        $uid = AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
         $c = new OrdenCompraController();
-        $method = $_SERVER['REQUEST_METHOD'];
-
         if ($path === 'compras') {
-            if ($method === 'GET') $c->index();
-            elseif ($method === 'POST') $c->store($uid);
-        }
-        elseif ($path === 'compras/filtros') {
-            if ($method === 'GET') $c->filtros();
-        }
-        elseif ($path === 'compras/pendientes') {
-            if ($method === 'GET') $c->pendientes();
-        }
-        elseif ($path === 'compras/detalle') {
-            if ($method === 'GET') $c->show();
-        }
-        elseif ($path === 'compras/pdf') {
-            if ($method === 'GET') $c->downloadPdf();
-        }
-        elseif ($path === 'compras/upload') {
-            if ($method === 'POST') $c->uploadFile();
-        }
-        elseif ($path === 'compras/recepcionar') {
-            if ($method === 'POST') $c->recepcionar($uid);
-        }
+            if ($method === 'GET')
+                $c->index();
+            elseif ($method === 'POST')
+                $c->store($uid);
+        } elseif ($path === 'compras/filtros')
+            $c->filtros();
+        elseif ($path === 'compras/pendientes')
+            $c->pendientes();
+        elseif ($path === 'compras/detalle')
+            $c->show();
+        elseif ($path === 'compras/pdf')
+            $c->downloadPdf();
+        elseif ($path === 'compras/upload')
+            $c->uploadFile();
+        elseif ($path === 'compras/recepcionar')
+            $c->recepcionar($uid);
         break;
 
     // --- PROVEEDORES ---
@@ -293,11 +291,17 @@ switch ($path) {
     case 'proveedores/auxiliares':
         AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
         $c = new ProveedorController();
-        if ($path === 'proveedores')
-            $c->index();
-        elseif ($path === 'proveedores/auxiliares')
-            // Asumiendo que existe el método auxiliares, si no, usa index o adáptalo
-            if (method_exists($c, 'auxiliares')) $c->auxiliares(); else $c->index();
+        if ($path === 'proveedores') {
+            if ($method === 'GET')
+                $c->index();
+            elseif ($method === 'POST')
+                $c->store();
+            elseif ($method === 'PUT')
+                $c->update();
+            elseif ($method === 'DELETE')
+                $c->delete();
+        } elseif ($path === 'proveedores/auxiliares')
+            $c->auxiliares();
         break;
 
     // --- BODEGA ---
@@ -308,22 +312,28 @@ switch ($path) {
         AuthMiddleware::hasPermission('ver_bodega');
         $c = new BodegaController();
         $uid = AuthMiddleware::verify();
-        
-        if ($path === 'bodega/entregar') $c->entregar($uid);
-        elseif ($path === 'bodega/pendientes') $c->pendientes();
-        elseif ($path === 'bodega/por-organizar') $c->porOrganizar();
-        elseif ($path === 'bodega/organizar') $c->organizar();
+        if ($path === 'bodega/entregar')
+            $c->entregar($uid);
+        elseif ($path === 'bodega/pendientes')
+            $c->pendientes();
+        elseif ($path === 'bodega/por-organizar')
+            $c->porOrganizar();
+        elseif ($path === 'bodega/organizar')
+            $c->organizar();
         break;
 
-    // --- DASHBOARD & NOTIFICACIONES ---
+    // --- DASHBOARD ---
     case 'dashboard':
     case 'dashboard/logs':
     case 'dashboard/analytics':
         AuthMiddleware::verify();
         $c = new DashboardController();
-        if ($path === 'dashboard') $c->index();
-        elseif ($path === 'dashboard/logs') $c->logs();
-        elseif ($path === 'dashboard/analytics') $c->analytics();
+        if ($path === 'dashboard')
+            $c->index();
+        elseif ($path === 'dashboard/logs')
+            $c->logs();
+        elseif ($path === 'dashboard/analytics')
+            $c->analytics();
         break;
 
     case 'notifications':
@@ -331,7 +341,7 @@ switch ($path) {
         (new NotificationController())->index();
         break;
 
-    // --- MANTENEDORES (Configuración) ---
+    // --- MANTENEDORES ---
     case 'mantenedores/empleados':
     case 'mantenedores/empleado':
     case 'mantenedores/centros':
@@ -339,29 +349,35 @@ switch ($path) {
     case 'mantenedores/areas':
     case 'mantenedores/area':
         AuthMiddleware::hasPermission('ver_config');
-        require_once __DIR__ . '/../../insuorders_private/src/App/Controllers/MantenedoresController.php';
         $c = new MantenedoresController();
-        $method = $_SERVER['REQUEST_METHOD'];
-
-        if (strpos($path, 'empleados') !== false) $c->getEmpleados();
+        if (strpos($path, 'empleados') !== false)
+            $c->getEmpleados();
         elseif (strpos($path, 'empleado') !== false) {
-            if ($method === 'POST') $c->saveEmpleado(); else $c->deleteEmpleado();
-        }
-        elseif (strpos($path, 'centros') !== false) $c->getCentros();
+            if ($method === 'POST')
+                $c->saveEmpleado();
+            else
+                $c->deleteEmpleado();
+        } elseif (strpos($path, 'centros') !== false)
+            $c->getCentros();
         elseif (strpos($path, 'centro') !== false) {
-            if ($method === 'POST') $c->saveCentro(); else $c->deleteCentro();
-        }
-        elseif (strpos($path, 'areas') !== false) $c->getAreas();
+            if ($method === 'POST')
+                $c->saveCentro();
+            else
+                $c->deleteCentro();
+        } elseif (strpos($path, 'areas') !== false)
+            $c->getAreas();
         elseif (strpos($path, 'area') !== false) {
-            if ($method === 'POST') $c->saveArea(); else $c->deleteArea();
+            if ($method === 'POST')
+                $c->saveArea();
+            else
+                $c->deleteArea();
         }
         break;
 
-    // --- IMPORTAR ---
     case 'importar':
     case 'importar/plantilla':
         $uid = AuthMiddleware::hasPermission('inv_importar');
-        if ($_SERVER['REQUEST_METHOD'] === 'POST')
+        if ($method === 'POST')
             (new ImportController())->importar($uid);
         break;
 
@@ -369,4 +385,3 @@ switch ($path) {
         jsonResponse(404, ["error" => "Ruta no encontrada: $path"]);
         break;
 }
-?>

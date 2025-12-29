@@ -16,8 +16,8 @@ class ProveedorRepository
     public function getAll()
     {
         $sql = "SELECT p.*, tv.descripcion as tipo_venta_nombre, c.nombre as comuna_nombre, 
-                    r.nombre as region_nombre, pa.nombre as pais_nombre, 
-                    pa.id as pais_id, r.id as region_id
+                       r.nombre as region_nombre, pa.nombre as pais_nombre, 
+                       pa.id as pais_id, r.id as region_id
                 FROM proveedores p
                 LEFT JOIN tipos_venta tv ON p.tipo_venta_id = tv.id
                 LEFT JOIN comunas c ON p.comuna_id = c.id
@@ -53,8 +53,8 @@ class ProveedorRepository
     public function registrarLog($accion, $id, $descripcion)
     {
         try {
-            $sql = "INSERT INTO sistema_logs (usuario_id, accion, tabla_afectada, registro_id, descripcion) 
-                    VALUES (1, :a, 'proveedores', :id, :d)";
+            $sql = "INSERT INTO sistema_logs (usuario_id, modulo, accion, detalle) 
+                    VALUES (1, 'Proveedores', :a, :d)";
             $this->db->prepare($sql)->execute([':a' => $accion, ':id' => $id, ':d' => $descripcion]);
         } catch (\Exception $e) {
         }
@@ -64,22 +64,19 @@ class ProveedorRepository
     {
         if ($this->existeRut($data['rut']))
             throw new \Exception("El RUT {$data['rut']} ya existe.");
-
         $sql = "INSERT INTO proveedores (rut, nombre, direccion, email, telefono, contacto_vendedor, tipo_venta_id, comuna_id) 
                 VALUES (:rut, :nombre, :dir, :email, :tel, :contacto, :tv, :comuna)";
-
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':rut' => $data['rut'],
             ':nombre' => $data['nombre'],
-            ':dir' => $data['direccion'],
-            ':email' => $data['email'],
-            ':tel' => $data['telefono'],
-            ':contacto' => $data['contacto_vendedor'],
-            ':tv' => $data['tipo_venta_id'],
-            ':comuna' => $data['comuna_id']
+            ':dir' => !empty($data['direccion']) ? $data['direccion'] : null,
+            ':email' => !empty($data['email']) ? $data['email'] : null,
+            ':tel' => !empty($data['telefono']) ? $data['telefono'] : null,
+            ':contacto' => !empty($data['contacto_vendedor']) ? $data['contacto_vendedor'] : null,
+            ':tv' => !empty($data['tipo_venta_id']) ? $data['tipo_venta_id'] : null,
+            ':comuna' => !empty($data['comuna_id']) ? $data['comuna_id'] : null
         ]);
-
         $id = $this->db->lastInsertId();
         $this->registrarLog('CREAR', $id, "Nuevo proveedor: " . $data['nombre']);
         return $id;
@@ -89,47 +86,32 @@ class ProveedorRepository
     {
         if ($this->existeRut($data['rut'], $id))
             throw new \Exception("El RUT ya existe.");
-
         $sql = "UPDATE proveedores SET 
                 rut=:rut, nombre=:nombre, direccion=:dir, email=:email, telefono=:tel, 
                 contacto_vendedor=:contacto, tipo_venta_id=:tv, comuna_id=:comuna 
                 WHERE id=:id";
-
         $stmt = $this->db->prepare($sql);
         $res = $stmt->execute([
             ':id' => $id,
             ':rut' => $data['rut'],
             ':nombre' => $data['nombre'],
-            ':dir' => $data['direccion'],
-            ':email' => $data['email'],
-            ':tel' => $data['telefono'],
-            ':contacto' => $data['contacto_vendedor'],
-            ':tv' => $data['tipo_venta_id'],
-            ':comuna' => $data['comuna_id']
+            ':dir' => !empty($data['direccion']) ? $data['direccion'] : null,
+            ':email' => !empty($data['email']) ? $data['email'] : null,
+            ':tel' => !empty($data['telefono']) ? $data['telefono'] : null,
+            ':contacto' => !empty($data['contacto_vendedor']) ? $data['contacto_vendedor'] : null,
+            ':tv' => !empty($data['tipo_venta_id']) ? $data['tipo_venta_id'] : null,
+            ':comuna' => !empty($data['comuna_id']) ? $data['comuna_id'] : null
         ]);
-
         if ($res)
-            $this->registrarLog('EDITAR', $id, "Actualización proveedor");
+            $this->registrarLog('EDITAR', $id, "Actualización proveedor: " . $data['nombre']);
         return $res;
     }
 
     public function delete($id)
     {
-        try {
-            $stmt = $this->db->prepare("DELETE FROM proveedores WHERE id = :id");
-            $stmt->execute([':id' => $id]);
-
-            if ($stmt->rowCount() > 0) {
-                $this->registrarLog('ELIMINAR', $id, "Proveedor eliminado");
-                return true;
-            }
-            return false;
-        } catch (\PDOException $e) {
-            if ($e->getCode() == '23000') {
-                throw new \Exception("No se puede eliminar: El proveedor tiene registros asociados.");
-            }
-            throw $e;
-        }
+        $stmt = $this->db->prepare("DELETE FROM proveedores WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        return $stmt->rowCount() > 0;
     }
 
     public function guardarDocumento($proveedorId, $nombre, $ruta)

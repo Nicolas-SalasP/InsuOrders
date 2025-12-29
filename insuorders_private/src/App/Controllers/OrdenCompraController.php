@@ -2,6 +2,7 @@
 namespace App\Controllers;
 
 use App\Services\OrdenCompraService;
+use App\Middleware\AuthMiddleware;
 
 class OrdenCompraController
 {
@@ -14,11 +15,12 @@ class OrdenCompraController
 
     public function index()
     {
+        AuthMiddleware::verify();
         $filtros = [
-            'search'       => $_GET['search'] ?? null,
-            'insumo_id'    => $_GET['insumo_id'] ?? null,
-            'fecha_inicio' => $_GET['start'] ?? null,
-            'fecha_fin'    => $_GET['end'] ?? null
+            'search' => $_GET['search'] ?? null,
+            'insumo_id' => $_GET['insumo_id'] ?? null,
+            'start' => $_GET['start'] ?? null,
+            'end' => $_GET['end'] ?? null
         ];
 
         try {
@@ -32,9 +34,10 @@ class OrdenCompraController
 
     public function filtros()
     {
+        AuthMiddleware::verify();
         try {
             $data = $this->service->obtenerDatosFiltros();
-            echo json_encode(["success" => true, "data" => $data]);
+            echo json_encode(["success" => true, "data" => $data['insumos']]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
@@ -43,6 +46,7 @@ class OrdenCompraController
 
     public function pendientes()
     {
+        AuthMiddleware::verify();
         try {
             $data = $this->service->obtenerAlertasCompra();
             echo json_encode(["success" => true, "data" => $data]);
@@ -54,13 +58,14 @@ class OrdenCompraController
 
     public function show()
     {
+        AuthMiddleware::verify();
         $id = $_GET['id'] ?? null;
         if (!$id) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => "ID requerido"]);
             return;
         }
-        
+
         $data = $this->service->obtenerDetalleOrden($id);
         if ($data) {
             echo json_encode(["success" => true, "data" => $data]);
@@ -72,6 +77,7 @@ class OrdenCompraController
 
     public function store($usuarioId = null)
     {
+        AuthMiddleware::verify();
         $input = file_get_contents("php://input");
         $data = json_decode($input, true);
 
@@ -92,6 +98,7 @@ class OrdenCompraController
 
     public function recepcionar($usuarioId)
     {
+        AuthMiddleware::verify();
         $input = file_get_contents("php://input");
         $data = json_decode($input, true);
 
@@ -114,13 +121,15 @@ class OrdenCompraController
 
     public function downloadPdf()
     {
+        AuthMiddleware::verify();
         $id = $_GET['id'] ?? null;
-        if (!$id) die("ID requerido");
+        if (!$id)
+            die("ID requerido");
 
         try {
             $pdfContent = $this->service->generarPDF($id);
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="OC_'.$id.'.pdf"');
+            header('Content-Disposition: inline; filename="OC_' . $id . '.pdf"');
             echo $pdfContent;
         } catch (\Exception $e) {
             die("Error PDF: " . $e->getMessage());
@@ -129,14 +138,25 @@ class OrdenCompraController
 
     public function uploadFile()
     {
-        if (!isset($_POST['orden_id']) || !isset($_FILES['archivo'])) {
+        // Forzamos la verificación con el prefijo correcto de namespace
+        AuthMiddleware::verify();
+
+        $id = $_POST['orden_id'] ?? null;
+        $file = $_FILES['archivo'] ?? null;
+
+        if (!$id || !$file) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => "Faltan datos"]);
+            echo json_encode([
+                "success" => false,
+                "message" => "Faltan datos",
+                "debug_post" => $_POST,
+                "debug_files" => $_FILES
+            ]);
             return;
         }
 
         try {
-            $url = $this->service->subirArchivo($_POST['orden_id'], $_FILES['archivo']);
+            $url = $this->service->subirArchivo($id, $file);
             echo json_encode(["success" => true, "url" => $url]);
         } catch (\Exception $e) {
             http_response_code(500);

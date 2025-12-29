@@ -5,18 +5,21 @@ use App\Repositories\OrdenCompraRepository;
 use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
 use App\Services\PDFService;
+use App\Database\Database;
 
 class OrdenCompraService
 {
     private $repo;
     private $insumoRepo;
     private $proveedorRepo;
+    private $db;
 
     public function __construct()
     {
         $this->repo = new OrdenCompraRepository();
         $this->insumoRepo = new InsumoRepository();
         $this->proveedorRepo = new ProveedorRepository();
+        $this->db = Database::getConnection();
     }
 
     public function listarOrdenes($filtros)
@@ -32,7 +35,6 @@ class OrdenCompraService
     public function obtenerDatosFiltros()
     {
         $insumos = $this->repo->getInsumosHistorial();
-
         $proveedores = $this->proveedorRepo->getAll();
 
         return [
@@ -55,7 +57,6 @@ class OrdenCompraService
 
         $itemsProcesados = [];
         $montoNeto = 0;
-        $idsOrigenGlobales = [];
 
         foreach ($data['items'] as $item) {
             $insumoId = $item['id'] ?? null;
@@ -64,7 +65,6 @@ class OrdenCompraService
                 $nuevoInsumo = [
                     'codigo_sku' => null,
                     'nombre' => $item['nombre'],
-                    'descripcion' => 'Creado desde OC',
                     'categoria_id' => 1,
                     'stock_actual' => 0,
                     'stock_minimo' => 0,
@@ -83,29 +83,18 @@ class OrdenCompraService
                 'precio' => $item['precio'],
                 'total' => $subtotal
             ];
-
-            if (!empty($item['ids_detalle_solicitud'])) {
-                $idsRaw = $item['ids_detalle_solicitud'];
-                if (is_string($idsRaw))
-                    $idsRaw = explode(',', $idsRaw);
-                $idsOrigenGlobales = array_merge($idsOrigenGlobales, $idsRaw);
-            }
         }
 
-        $porcentajeIVA = isset($data['impuesto_porcentaje']) ? floatval($data['impuesto_porcentaje']) : 19.0;
-        $iva = $montoNeto * ($porcentajeIVA / 100);
-        $total = $montoNeto + $iva;
+        $porcIVA = isset($data['impuesto_porcentaje']) ? floatval($data['impuesto_porcentaje']) : 19.0;
+        $iva = $montoNeto * ($porcIVA / 100);
 
         $datosCabecera = [
             'proveedor_id' => $data['proveedor_id'],
             'usuario_id' => $usuarioId,
             'neto' => $montoNeto,
             'impuesto' => $iva,
-            'total' => $total,
-            'moneda' => $data['moneda'] ?? 'CLP',
-            'tipo_cambio' => $data['tipo_cambio'] ?? 1,
-            'numero_cotizacion' => $data['numero_cotizacion'] ?? null,
-            'impuesto_porcentaje' => $porcentajeIVA
+            'total' => $montoNeto + $iva,
+            'moneda' => $data['moneda'] ?? 'CLP'
         ];
 
         $ordenId = $this->repo->create($datosCabecera);
@@ -113,10 +102,6 @@ class OrdenCompraService
         foreach ($itemsProcesados as $item) {
             $item['orden_id'] = $ordenId;
             $this->repo->addDetalle($item);
-        }
-
-        if (!empty($idsOrigenGlobales)) {
-            $this->repo->asociarSolicitudesAOrden($ordenId, array_unique($idsOrigenGlobales));
         }
 
         return $ordenId;
@@ -130,28 +115,32 @@ class OrdenCompraService
     public function generarPDF($ordenId)
     {
         $data = $this->repo->getOrdenCompleta($ordenId);
-        if (!$data)
-            throw new \Exception("Orden no encontrada");
-
         $pdf = new PDFService();
         $pdf->setOrdenData($data['cabecera']);
         return $pdf->generarPDF($data['detalles']);
     }
 
-    public function subirArchivo($ordenId, $file)
+    public function subirArchivo($id, $file)
     {
-        $uploadDir = __DIR__ . '/../../../../public_html/uploads/ordenes/';
-        if (!is_dir($uploadDir))
+        $uploadDir = realpath(__DIR__ . '/../../../../public_html/api') . '/uploads/ordenes/';
+        
+        if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0777, true);
+        }
 
         $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $fileName = "OC_{$ordenId}_" . time() . ".{$ext}";
+        $fileName = "OC_" . $id . "_" . time() . "." . $ext;
+        $targetPath = $uploadDir . $fileName;
 
-        if (move_uploaded_file($file['tmp_name'], $uploadDir . $fileName)) {
-            $url = "/uploads/ordenes/" . $fileName;
-            $this->repo->updateArchivo($ordenId, $url);
-            return $url;
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            $urlPath = "uploads/ordenes/" . $fileName;
+            
+            $stmt = $this->db->prepare("UPDATE ordenes_compra SET url_archivo = ? WHERE id = ?");
+            $stmt->execute([$urlPath, $id]);
+            
+            return "/" . $urlPath;
+        } else {
+            throw new \Exception("No se pudo mover el archivo. Carpeta: " . $uploadDir);
         }
-        throw new \Exception("Error al mover el archivo al servidor.");
     }
 }

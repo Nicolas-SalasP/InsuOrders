@@ -14,6 +14,7 @@ import Bodega from './pages/Bodega';
 import Usuarios from './pages/Usuarios';
 import Cronograma from './pages/Cronograma';
 import AdminMantenedores from './pages/AdminMantenedores';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
