@@ -14,24 +14,23 @@ import Bodega from './pages/Bodega';
 import Usuarios from './pages/Usuarios';
 import Cronograma from './pages/Cronograma';
 import AdminMantenedores from './pages/AdminMantenedores';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
-    if (loading) return <div className="p-5 text-center">Cargando...</div>;
+    if (loading) return <div className="p-5 text-center">Cargando sistema...</div>;
     return auth.token ? <Outlet /> : <Navigate to="/login" />;
 };
 
-const RoleGuard = ({ children, deniedRoles = [] }) => {
+const PermissionGuard = ({ children, permiso }) => {
     const { auth } = useContext(AuthContext);
 
-    if (deniedRoles.includes(auth.rol)) {
-        if (auth.rol === 'Compras') return <Navigate to="/compras" replace />;
-        if (auth.rol === 'Bodega') return <Navigate to="/bodega" replace />;
-        if (auth.rol === 'Mantencion') return <Navigate to="/mantencion" replace />;
-        return <Navigate to="/dashboard" replace />;
-    }
+    if (auth.rol === 'Admin' || auth.rol === 1) return children;
 
-    return children;
+    if (permiso && auth.permisos && auth.permisos.includes(permiso)) {
+        return children;
+    }
+    return <Navigate to="/dashboard" replace />;
 };
 
 function App() {
@@ -39,70 +38,65 @@ function App() {
         <BrowserRouter>
             <AuthProvider>
                 <Routes>
-                    {/* Ruta pública */}
                     <Route path="/login" element={<Login />} />
 
-                    {/* Rutas Privadas */}
                     <Route element={<PrivateRoute />}>
                         <Route element={<Layout />}>
-                            <Route path="/" element={<RoleGuard deniedRoles={['Compras', 'Mantencion']}><Navigate to="/dashboard" /></RoleGuard>} />
-
-                            {/* Dashboard Principal */}
-                            <Route path="/dashboard" element={
-                                <RoleGuard deniedRoles={['Compras', 'Mantencion']}>
-                                    <Dashboard />
-                                </RoleGuard>
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            
+                            <Route path="/compras" element={
+                                <PermissionGuard permiso="ver_compras">
+                                    <Compras />
+                                </PermissionGuard>
                             } />
 
-                            {/* Módulos Comunes */}
-                            <Route path="/compras" element={<Compras />} />
-                            <Route path="/proveedores" element={<Proveedores />} />
+                            <Route path="/proveedores" element={
+                                <PermissionGuard permiso="ver_proveedores">
+                                    <Proveedores />
+                                </PermissionGuard>
+                            } />
 
-                            {/* Inventario (Bodega y Admin) */}
                             <Route path="/inventario" element={
-                                <RoleGuard deniedRoles={['Mantencion']}>
+                                <PermissionGuard permiso="inv_ver">
                                     <Inventario />
-                                </RoleGuard>
+                                </PermissionGuard>
                             } />
 
-                            {/* Bodega (Exclusivo Bodega y Admin) */}
                             <Route path="/bodega" element={
-                                <RoleGuard deniedRoles={['Compras', 'Mantencion']}>
+                                <PermissionGuard permiso="ver_bodega">
                                     <Bodega />
-                                </RoleGuard>
+                                </PermissionGuard>
                             } />
 
-                            {/* Mantención (Exclusivo Mantención y Admin) */}
                             <Route path="/mantencion" element={
-                                <RoleGuard deniedRoles={['Compras', 'Bodega']}>
+                                <PermissionGuard permiso="mant_ver">
                                     <Mantencion />
-                                </RoleGuard>
+                                </PermissionGuard>
                             } />
 
                             <Route path="/cronograma" element={
-                                <RoleGuard deniedRoles={['Compras', 'Bodega']}>
+                                <PermissionGuard permiso="mant_ver">
                                     <Cronograma />
-                                </RoleGuard>
+                                </PermissionGuard>
                             } />
 
                             <Route path="/activos" element={
-                                <RoleGuard deniedRoles={['Compras', 'Bodega']}>
+                                <PermissionGuard permiso="mant_ver">
                                     <Activos />
-                                </RoleGuard>
+                                </PermissionGuard>
                             } />
 
-                            {/* Admin Mantenedores (Solo Admin) */}
                             <Route path="/mantenedores" element={
-                                <RoleGuard deniedRoles={['Compras', 'Bodega', 'Mantencion']}>
+                                <PermissionGuard permiso="ver_config">
                                     <AdminMantenedores />
-                                </RoleGuard>
+                                </PermissionGuard>
                             } />
 
-                            {/* Usuarios (Solo Admin) */}
                             <Route path="/usuarios" element={
-                                <RoleGuard deniedRoles={['Compras', 'Bodega', 'Mantencion']}>
+                                <PermissionGuard permiso="ver_usuarios">
                                     <Usuarios />
-                                </RoleGuard>
+                                </PermissionGuard>
                             } />
 
                         </Route>

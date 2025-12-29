@@ -13,98 +13,93 @@ class DashboardRepository
         $this->db = Database::getConnection();
     }
 
-    // --- ESTADÍSTICAS GENERALES (ADMIN) ---
-    public function getStats()
+    public function getGeneralKPIs($start, $end)
     {
         return [
-            'total_gasto' => $this->db->query("SELECT SUM(monto_total) FROM ordenes_compra WHERE estado_id != 5")->fetchColumn() ?: 0,
-            'total_ots' => $this->db->query("SELECT COUNT(*) FROM solicitudes_ot")->fetchColumn(),
+            'total_gasto' => $this->db->query("SELECT COALESCE(SUM(monto_total), 0) FROM ordenes_compra WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'")->fetchColumn(),
+            'total_ots' => $this->db->query("SELECT COUNT(*) FROM solicitudes_ot WHERE fecha_solicitud BETWEEN '$start' AND '$end'")->fetchColumn(),
             'stock_bajo' => $this->db->query("SELECT COUNT(*) FROM insumos WHERE stock_actual <= stock_minimo")->fetchColumn(),
-            'proveedores_activos' => $this->db->query("SELECT COUNT(*) FROM proveedores")->fetchColumn()
+            'proveedores_activos' => $this->db->query("SELECT COUNT(*) FROM proveedores")->fetchColumn(),
+            'insumos_usados' => $this->db->query("SELECT COALESCE(SUM(cantidad), 0) FROM movimientos_inventario WHERE tipo_movimiento_id = 2 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn()
         ];
     }
 
-    // --- ANALÍTICAS DE COMPRAS ---
-    public function getComprasStats($start, $end)
+    public function getComprasAnalytics($start, $end)
     {
-        $data = [];
+        $sqlTendencia = "SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') as mes, SUM(monto_total) as total 
+                         FROM ordenes_compra 
+                         WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'
+                         GROUP BY mes ORDER BY mes ASC";
 
-        // 1. Gasto Mensual (Últimos 6 meses)
-        $sqlTrend = "SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') as mes, SUM(monto_total) as total 
-                     FROM ordenes_compra 
-                     WHERE estado_id != 5 AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-                     GROUP BY mes ORDER BY mes ASC";
-        $data['tendencia'] = $this->db->query($sqlTrend)->fetchAll(PDO::FETCH_ASSOC);
+        $sqlTopProv = "SELECT p.nombre, SUM(oc.monto_total) as total
+                       FROM ordenes_compra oc
+                       JOIN proveedores p ON oc.proveedor_id = p.id
+                       WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
+                       GROUP BY p.id ORDER BY total DESC LIMIT 5";
 
-        // 2. Top Proveedores ($)
-        $sqlProv = "SELECT p.nombre, SUM(oc.monto_total) as total
-                    FROM ordenes_compra oc
-                    JOIN proveedores p ON oc.proveedor_id = p.id
-                    WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN :s AND :e
-                    GROUP BY p.id ORDER BY total DESC LIMIT 5";
-        $stmt = $this->db->prepare($sqlProv);
-        $stmt->execute([':s' => $start, ':e' => $end]);
-        $data['top_proveedores'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $sqlTopInsumos = "SELECT i.nombre, SUM(doc.total_linea) as total_gasto
+                          FROM detalle_orden_compra doc
+                          JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
+                          JOIN insumos i ON doc.insumo_id = i.id
+                          WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
+                          GROUP BY i.id ORDER BY total_gasto DESC LIMIT 5";
 
-        // 3. Top Insumos Comprados ($)
-        $sqlItems = "SELECT i.nombre, SUM(doc.total_linea) as total
-                     FROM detalle_orden_compra doc
-                     JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
-                     JOIN insumos i ON doc.insumo_id = i.id
-                     WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN :s AND :e
-                     GROUP BY i.id ORDER BY total DESC LIMIT 5";
-        $stmt = $this->db->prepare($sqlItems);
-        $stmt->execute([':s' => $start, ':e' => $end]);
-        $data['top_insumos'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        return $data;
+        return [
+            'tendencia_gasto' => $this->db->query($sqlTendencia)->fetchAll(PDO::FETCH_ASSOC),
+            'top_proveedores' => $this->db->query($sqlTopProv)->fetchAll(PDO::FETCH_ASSOC),
+            'top_insumos_comprados' => $this->db->query($sqlTopInsumos)->fetchAll(PDO::FETCH_ASSOC)
+        ];
     }
 
-    // --- ANALÍTICAS DE MANTENCIÓN ---
-    public function getMantencionStats($start, $end)
+    public function getMantencionAnalytics($start, $end)
     {
-        $data = [];
-
-        // 1. Insumos más usados (Cantidad)
-        $sqlUsados = "SELECT i.nombre, SUM(m.cantidad) as cantidad
-                      FROM movimientos_inventario m
-                      JOIN insumos i ON m.insumo_id = i.id
-                      WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN :s AND :e
-                      GROUP BY i.id ORDER BY cantidad DESC LIMIT 8";
-        $stmt = $this->db->prepare($sqlUsados);
-        $stmt->execute([':s' => $start, ':e' => $end]);
-        $data['insumos_usados'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // 2. Máquinas con más OTs
-        $sqlMaq = "SELECT a.nombre, COUNT(s.id) as total
-                   FROM solicitudes_ot s
-                   JOIN activos a ON s.activo_id = a.id
-                   WHERE s.fecha_solicitud BETWEEN :s AND :e
-                   GROUP BY a.id ORDER BY total DESC LIMIT 5";
-        $stmt = $this->db->prepare($sqlMaq);
-        $stmt->execute([':s' => $start, ':e' => $end]);
-        $data['top_maquinas'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // 3. Resumen OTs (Completadas vs Pendientes)
-        $sqlEstado = "SELECT e.nombre as estado, COUNT(s.id) as cantidad
+        $sqlTopMaq = "SELECT a.nombre, COUNT(s.id) as total_ots
                       FROM solicitudes_ot s
-                      JOIN estados_solicitud e ON s.estado_id = e.id
-                      WHERE s.fecha_solicitud BETWEEN :s AND :e
-                      GROUP BY e.id";
-        $stmt = $this->db->prepare($sqlEstado);
-        $stmt->execute([':s' => $start, ':e' => $end]);
-        $data['estado_ots'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                      JOIN activos a ON s.activo_id = a.id
+                      WHERE s.fecha_solicitud BETWEEN '$start' AND '$end'
+                      GROUP BY a.id ORDER BY total_ots DESC LIMIT 5";
 
-        return $data;
+        $sqlInsumosUso = "SELECT i.nombre, SUM(m.cantidad) as cantidad
+                          FROM movimientos_inventario m
+                          JOIN insumos i ON m.insumo_id = i.id
+                          WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN '$start' AND '$end'
+                          GROUP BY i.id ORDER BY cantidad DESC LIMIT 8";
+
+        $entregas = $this->db->query("SELECT COUNT(*) FROM movimientos_inventario WHERE tipo_movimiento_id = 2 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn();
+        $devoluciones = $this->db->query("SELECT COUNT(*) FROM movimientos_inventario WHERE tipo_movimiento_id = 5 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn();
+
+        return [
+            'top_maquinas' => $this->db->query($sqlTopMaq)->fetchAll(PDO::FETCH_ASSOC),
+            'insumos_mas_usados' => $this->db->query($sqlInsumosUso)->fetchAll(PDO::FETCH_ASSOC),
+            'ratio_devolucion' => ['entregas' => (int) $entregas, 'devoluciones' => (int) $devoluciones]
+        ];
     }
 
-    // --- LOGS DEL SISTEMA (Mantiene tu funcionalidad actual) ---
-    public function getLogs($area)
+    public function getBodegaAnalytics($start, $end, $empleadoId = null)
     {
-        $sql = "SELECT l.*, u.username 
-                FROM sistema_logs l 
-                LEFT JOIN usuarios u ON l.usuario_id = u.id 
-                ORDER BY l.fecha DESC LIMIT 50";
-        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        $sqlTopReceptores = "SELECT e.nombre_completo as nombre, SUM(m.cantidad) as total_items
+                             FROM movimientos_inventario m
+                             LEFT JOIN empleados e ON m.empleado_id = e.id
+                             WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN '$start' AND '$end'
+                             AND e.nombre_completo IS NOT NULL
+                             GROUP BY e.id ORDER BY total_items DESC LIMIT 5";
+
+        $sqlTimeline = "SELECT m.fecha as fecha_entrega, i.nombre as insumo, m.cantidad, e.nombre_completo as retirado_por, 
+                               ds.solicitud_id as ot_id, i.unidad_medida
+                        FROM movimientos_inventario m
+                        JOIN insumos i ON m.insumo_id = i.id
+                        LEFT JOIN empleados e ON m.empleado_id = e.id
+                        LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
+                        WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN '$start' AND '$end'";
+
+        if ($empleadoId)
+            $sqlTimeline .= " AND m.empleado_id = " . intval($empleadoId);
+        $sqlTimeline .= " ORDER BY m.fecha DESC LIMIT 20";
+
+        return [
+            'top_receptores' => $this->db->query($sqlTopReceptores)->fetchAll(PDO::FETCH_ASSOC),
+            'timeline_entregas' => $this->db->query($sqlTimeline)->fetchAll(PDO::FETCH_ASSOC),
+            'lista_empleados' => $this->db->query("SELECT id, nombre_completo FROM empleados WHERE activo = 1 ORDER BY nombre_completo ASC")->fetchAll(PDO::FETCH_ASSOC)
+        ];
     }
 }

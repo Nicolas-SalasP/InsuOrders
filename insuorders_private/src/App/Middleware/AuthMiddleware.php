@@ -3,78 +3,85 @@ namespace App\Middleware;
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use App\Database\Database;
 use App\Config\Config;
-use Exception;
 
-class AuthMiddleware {
-    public static function verify($allowedRoles = []) {
-        $token = null;
-        $headers = null;
+class AuthMiddleware
+{
+    public static function verify($allowedRoles = [])
+    {
+        $authHeader = self::getAuthHeader();
 
-        // 1. Intentar obtener el encabezado de varias fuentes posibles
-        if (isset($_SERVER['Authorization'])) {
-            $headers = trim($_SERVER["Authorization"]);
-        }
-        else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            $headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
-        }
-        else if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) { // Fix para algunos servidores Apache
-            $headers = trim($_SERVER["REDIRECT_HTTP_AUTHORIZATION"]);
-        }
-        elseif (function_exists('apache_request_headers')) {
-            $requestHeaders = apache_request_headers();
-            // Normalizar keys a minúsculas para evitar problemas de case-sensitivity
-            $requestHeaders = array_change_key_case($requestHeaders, CASE_LOWER);
-            if (isset($requestHeaders['authorization'])) {
-                $headers = trim($requestHeaders['authorization']);
-            }
+        if (!$authHeader) {
+            self::jsonResponse(401, ["error" => "Acceso denegado. Token no proporcionado."]);
         }
 
-        // 2. Extraer el token del encabezado "Bearer"
-        if (!empty($headers)) {
-            if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
-                $token = $matches[1];
-            }
+        if (!preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            self::jsonResponse(401, ["error" => "Acceso denegado. Formato de token inválido."]);
         }
 
-        // 3. Fallback: Intentar obtenerlo por GET (útil para pruebas o descargas)
-        if (!$token && isset($_GET['token'])) {
-            $token = $_GET['token'];
-        }
-
-        // 4. Validación Final
-        if (!$token) {
-            self::response(401, "Token de acceso no proporcionado o inválido.");
-        }
+        $jwt = $matches[1];
 
         try {
-            $decoded = JWT::decode($token, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
+            $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
             
-            // Verificación de Roles
+            if ($decoded->data->rol === 'Admin' || $decoded->data->rol_id == 1) {
+                return $decoded->data->id;
+            }
+
             if (!empty($allowedRoles)) {
-                // Admin siempre tiene acceso
-                if (!in_array('Admin', $allowedRoles)) {
-                    $allowedRoles[] = 'Admin';
-                }
-
-                $userRole = $decoded->data->rol;
-
-                if (!in_array($userRole, $allowedRoles)) {
-                    self::response(403, "Acceso Denegado: Rol insuficiente.");
+                if (!in_array($decoded->data->rol, $allowedRoles)) {
+                    self::jsonResponse(403, ["error" => "No tienes el rol necesario para acceder."]);
                 }
             }
 
             return $decoded->data->id;
 
-        } catch (Exception $e) {
-            self::response(401, "Sesión inválida: " . $e->getMessage());
+        } catch (\Exception $e) {
+            self::jsonResponse(401, ["error" => "Acceso denegado. Token inválido o expirado.", "details" => $e->getMessage()]);
         }
     }
 
-    private static function response($code, $message) {
+    public static function hasPermission($permisoRequerido)
+    {
+        $userId = self::verify([]); 
+
+        $db = Database::getConnection();
+        
+        $stmtRole = $db->prepare("SELECT rol_id FROM usuarios WHERE id = :uid");
+        $stmtRole->execute([':uid' => $userId]);
+        if ($stmtRole->fetchColumn() == 1) return $userId; 
+
+        $sql = "SELECT count(*) FROM usuario_permisos up 
+                JOIN permisos p ON up.permiso_id = p.id 
+                WHERE up.usuario_id = :uid AND p.codigo = :code";
+                
+        $stmt = $db->prepare($sql);
+        $stmt->execute([':uid' => $userId, ':code' => $permisoRequerido]);
+        
+        if ($stmt->fetchColumn() > 0) {
+            return $userId;
+        } else {
+            self::jsonResponse(403, ["error" => "Permisos insuficientes. Se requiere: $permisoRequerido"]);
+        }
+    }
+
+    private static function getAuthHeader()
+    {
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) return $_SERVER['HTTP_AUTHORIZATION'];
+        if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) return $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        if (function_exists('apache_request_headers')) {
+            $headers = apache_request_headers();
+            if (isset($headers['Authorization'])) return $headers['Authorization'];
+        }
+        return null;
+    }
+
+    private static function jsonResponse($code, $data)
+    {
         http_response_code($code);
-        header('Content-Type: application/json'); // Asegurar header JSON
-        echo json_encode(["success" => false, "message" => $message]);
+        header('Content-Type: application/json');
+        echo json_encode($data);
         exit;
     }
 }

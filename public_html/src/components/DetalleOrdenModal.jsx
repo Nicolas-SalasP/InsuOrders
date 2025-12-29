@@ -1,118 +1,99 @@
 import { useEffect, useState } from 'react';
+import { Modal, Button, Table, Badge, Spinner } from 'react-bootstrap';
 import api from '../api/axiosConfig';
 
-const DetalleOrdenModal = ({ show, onClose, ordenId }) => {
-    const [data, setData] = useState(null);
+const DetalleOrdenModal = ({ show, onHide, ordenId, onDownloadPdf, onExportExcel }) => {
+    const [orden, setOrden] = useState(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (show && ordenId) {
-            setLoading(true);
-            api.get(`/index.php/compras?id=${ordenId}`)
-                .then(res => setData(res.data.data))
-                .catch(err => console.error(err))
-                .finally(() => setLoading(false));
+            cargarDetalle();
         } else {
-            setData(null);
+            setOrden(null);
         }
     }, [show, ordenId]);
 
-    const handleDownloadPdf = async () => {
+    const cargarDetalle = async () => {
+        setLoading(true);
         try {
-            const res = await api.get(`/index.php/compras/pdf?id=${ordenId}`, { responseType: 'blob' });
-            const url = window.URL.createObjectURL(new Blob([res.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Orden_Compra_${ordenId}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        } catch (error) {
-            alert("Error al descargar el archivo.");
+            const res = await api.get(`/index.php/compras/detalle?id=${ordenId}`);
+            if (res.data.success) {
+                setOrden(res.data.data);
+            }
+        } catch (e) {
+            console.error("Error al cargar detalle OC", e);
+        } finally {
+            setLoading(false);
         }
     };
 
     if (!show) return null;
 
     return (
-        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <div className="modal-dialog modal-lg">
-                <div className="modal-content">
-                    <div className="modal-header bg-dark text-white">
-                        <h5 className="modal-title">Detalle Orden #{ordenId}</h5>
-                        <button className="btn-close btn-close-white" onClick={onClose}></button>
-                    </div>
-                    <div className="modal-body">
-                        {loading || !data ? (
-                            <div className="text-center p-4">Cargando...</div>
-                        ) : (
-                            <>
-                                {/* Cabecera */}
-                                <div className="row mb-4 border-bottom pb-3">
-                                    <div className="col-6">
-                                        <h6 className="text-primary fw-bold">PROVEEDOR</h6>
-                                        <div className="fs-5 fw-bold">{data.cabecera.proveedor}</div>
-                                        <div className="text-muted">RUT: {data.cabecera.proveedor_rut}</div>
-                                    </div>
-                                    <div className="col-6 text-end">
-                                        <div className="badge bg-success fs-6 mb-2">{data.cabecera.estado_nombre}</div>
-                                        <div>Fecha: {new Date(data.cabecera.fecha_creacion).toLocaleDateString()}</div>
-                                        <div>Creado por: {data.cabecera.creador}</div>
-                                    </div>
-                                </div>
+        <Modal show={show} onHide={onHide} size="lg" centered>
+            <Modal.Header closeButton className="bg-light">
+                <Modal.Title className="fw-bold">Detalle Orden de Compra #{ordenId}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body style={{ minHeight: '250px' }}>
+                {loading ? (
+                    <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
+                ) : orden && orden.cabecera ? (
+                    <>
+                        <div className="row mb-4">
+                            <div className="col-md-6">
+                                <p className="mb-1 text-muted small text-uppercase fw-bold">Proveedor</p>
+                                <p className="fw-bold mb-3">{orden.cabecera.proveedor || "N/A"}</p>
+                                <p className="mb-1 text-muted small text-uppercase fw-bold">RUT</p>
+                                <p className="mb-3">{orden.cabecera.proveedor_rut || "N/A"}</p>
+                                <p className="mb-1 text-muted small text-uppercase fw-bold">Fecha Emisión</p>
+                                <p className="mb-0">{new Date(orden.cabecera.fecha_creacion).toLocaleDateString()}</p>
+                            </div>
+                            <div className="col-md-6 text-md-end">
+                                <p className="mb-1 text-muted small text-uppercase fw-bold">Estado</p>
+                                <Badge bg="primary" className="mb-3">{orden.cabecera.estado_nombre}</Badge>
+                                <p className="mb-1 text-muted small text-uppercase fw-bold">Monto Total</p>
+                                <h4 className="fw-bold text-primary">${parseInt(orden.cabecera.monto_total).toLocaleString()}</h4>
+                            </div>
+                        </div>
 
-                                {/* Tabla */}
-                                <div className="table-responsive">
-                                    <table className="table table-striped table-hover">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>SKU</th>
-                                                <th>Producto</th>
-                                                <th className="text-center">Cant.</th>
-                                                <th className="text-end">Precio</th>
-                                                <th className="text-end">Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {data.detalles.map((d, i) => (
-                                                <tr key={i}>
-                                                    <td><small>{d.codigo_sku}</small></td>
-                                                    <td>{d.insumo}</td>
-                                                    <td className="text-center">{d.cantidad_solicitada}</td>
-                                                    <td className="text-end">${parseFloat(d.precio_unitario).toLocaleString()}</td>
-                                                    <td className="text-end fw-bold">${parseFloat(d.total_linea).toLocaleString()}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* Totales */}
-                                <div className="row justify-content-end mt-3">
-                                    <div className="col-md-5">
-                                        <ul className="list-group">
-                                            <li className="list-group-item d-flex justify-content-between">
-                                                <span>Neto</span> <span>${parseFloat(data.cabecera.monto_neto).toLocaleString()}</span>
-                                            </li>
-                                            <li className="list-group-item d-flex justify-content-between active">
-                                                <span className="fw-bold">TOTAL ({data.cabecera.moneda})</span>
-                                                <span className="fw-bold">${parseFloat(data.cabecera.monto_total).toLocaleString()}</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                    <div className="modal-footer">
-                        <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
-                        <button onClick={handleDownloadPdf} className="btn btn-danger">
-                            <i className="bi bi-file-pdf me-2"></i>Descargar PDF
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                        <Table responsive striped bordered hover className="small">
+                            <thead className="table-dark">
+                                <tr>
+                                    <th>SKU</th>
+                                    <th>Insumo</th>
+                                    <th className="text-center">Cant.</th>
+                                    <th className="text-end">Precio Unit.</th>
+                                    <th className="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {orden.detalles?.map((item, idx) => (
+                                    <tr key={idx}>
+                                        <td>{item.codigo_sku}</td>
+                                        <td>{item.insumo}</td>
+                                        <td className="text-center">{parseFloat(item.cantidad_solicitada)}</td>
+                                        <td className="text-end">${parseInt(item.precio_unitario).toLocaleString()}</td>
+                                        <td className="text-end">${parseInt(item.total_linea).toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </>
+                ) : (
+                    <div className="text-center py-5 text-muted small">No se encontró la información de la orden.</div>
+                )}
+            </Modal.Body>
+            <Modal.Footer className="bg-light">
+                <Button variant="outline-danger" onClick={() => onDownloadPdf(ordenId)} disabled={!orden}>
+                    <i className="bi bi-file-earmark-pdf me-2"></i>PDF
+                </Button>
+                <Button variant="outline-success" onClick={() => onExportExcel(ordenId)} disabled={!orden}>
+                    <i className="bi bi-file-earmark-excel me-2"></i>Excel Detalle
+                </Button>
+                <Button variant="secondary" onClick={onHide}>Cerrar</Button>
+            </Modal.Footer>
+        </Modal>
     );
 };
 

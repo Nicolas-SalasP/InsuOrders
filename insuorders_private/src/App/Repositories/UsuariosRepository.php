@@ -16,7 +16,7 @@ class UsuariosRepository
     public function getAll()
     {
         $sql = "SELECT u.id, u.nombre, u.apellido, u.username, u.email, u.telefono, u.activo,
-                       r.nombre as rol, r.id as rol_id
+                    r.nombre as rol, r.id as rol_id
                 FROM usuarios u
                 JOIN roles r ON u.rol_id = r.id
                 ORDER BY u.nombre ASC";
@@ -30,7 +30,6 @@ class UsuariosRepository
 
     public function create($data)
     {
-        // Validar duplicados
         $check = $this->db->prepare("SELECT id FROM usuarios WHERE username = :u OR email = :e");
         $check->execute([':u' => $data['username'], ':e' => $data['email']]);
         if ($check->fetch())
@@ -81,5 +80,19 @@ class UsuariosRepository
     {
         $stmt = $this->db->prepare("UPDATE usuarios SET activo = NOT activo WHERE id = :id");
         $stmt->execute([':id' => $id]);
+    }
+
+    public function findByUsername($username)
+    {
+        $sql = "SELECT u.*, r.nombre as rol_nombre 
+                FROM usuarios u 
+                INNER JOIN roles r ON u.rol_id = r.id 
+                WHERE u.username = :username 
+                AND u.activo = 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':username' => $username]);
+        
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 }

@@ -2,40 +2,53 @@
 namespace App\Controllers;
 
 use App\Services\ProveedorService;
+use App\Middleware\AuthMiddleware;
 
-class ProveedorController {
+class ProveedorController
+{
     private $service;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->service = new ProveedorService();
     }
 
-    public function index() {
+    public function index()
+    {
+        AuthMiddleware::hasPermission('ver_proveedores');
         echo json_encode(["success" => true, "data" => $this->service->listarTodos()]);
     }
 
-    public function auxiliares() {
+    public function auxiliares()
+    {
+        AuthMiddleware::verify();
         echo json_encode(["success" => true, "data" => $this->service->obtenerAuxiliares()]);
     }
 
-    public function store() {
+    public function store()
+    {
         try {
-            // Pasamos $_POST y $_FILES al servicio
-            $id = $this->service->crear($_POST, $_FILES['documento'] ?? null);
+            AuthMiddleware::hasPermission('ver_proveedores');
+            $data = !empty($_POST) ? $_POST : json_decode(file_get_contents("php://input"), true);
+            if (!$data)
+                throw new \Exception("No se recibieron datos para crear el proveedor.");
+            $id = $this->service->crear($data, $_FILES['documento'] ?? null);
             echo json_encode(["success" => true, "message" => "Proveedor creado correctamente", "id" => $id]);
         } catch (\Exception $e) {
-            http_response_code(400); 
+            http_response_code(400);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
-    public function update() {
+    public function update()
+    {
         try {
+            AuthMiddleware::hasPermission('ver_proveedores');
             $id = $_GET['id'] ?? $_POST['id'] ?? null;
-            if (!$id) throw new \Exception("ID no especificado");
-
-            // Pasamos ID, datos y posible archivo nuevo
-            $this->service->actualizar($id, $_POST, $_FILES['documento'] ?? null);
+            if (!$id)
+                throw new \Exception("ID no especificado para la actualización.");
+            $data = !empty($_POST) ? $_POST : json_decode(file_get_contents("php://input"), true);
+            $this->service->actualizar($id, $data, $_FILES['documento'] ?? null);
             echo json_encode(["success" => true, "message" => "Proveedor actualizado correctamente"]);
         } catch (\Exception $e) {
             http_response_code(400);
@@ -43,11 +56,13 @@ class ProveedorController {
         }
     }
 
-    public function delete() {
+    public function delete()
+    {
         try {
+            AuthMiddleware::hasPermission('ver_proveedores');
             $id = $_GET['id'] ?? null;
-            if (!$id) throw new \Exception("ID no especificado");
-
+            if (!$id)
+                throw new \Exception("ID no especificado para la eliminación.");
             if ($this->service->eliminar($id)) {
                 echo json_encode(["success" => true, "message" => "Proveedor eliminado"]);
             } else {

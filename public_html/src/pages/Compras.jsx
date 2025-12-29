@@ -13,7 +13,7 @@ const Compras = () => {
     // Modales
     const [showModal, setShowModal] = useState(false); 
     const [verModal, setVerModal] = useState({ show: false, id: null }); 
-    const [uploadModal, setUploadModal] = useState({ show: false, id: null }); 
+    const [uploadModal, setUploadModal] = useState({ show: false, id: null, url: null }); 
     const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null }); 
     
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
@@ -24,12 +24,12 @@ const Compras = () => {
     const [filtroFecha, setFiltroFecha] = useState('');
     
     // --- LÓGICA AUTOCOMPLETADO INSUMOS ---
-    const [filtroInsumo, setFiltroInsumo] = useState(''); // El ID real para la API
-    const [busquedaInsumo, setBusquedaInsumo] = useState(''); // Lo que escribe el usuario
-    const [listaInsumos, setListaInsumos] = useState([]); // Todos los insumos
-    const [sugerencias, setSugerencias] = useState([]); // Insumos filtrados
+    const [filtroInsumo, setFiltroInsumo] = useState(''); 
+    const [busquedaInsumo, setBusquedaInsumo] = useState(''); 
+    const [listaInsumos, setListaInsumos] = useState([]); 
+    const [sugerencias, setSugerencias] = useState([]); 
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
-    const wrapperRef = useRef(null); // Para detectar click fuera
+    const wrapperRef = useRef(null); 
 
     const [itemsPrecargados, setItemsPrecargados] = useState([]);
     const [pendientes, setPendientes] = useState([]);
@@ -39,7 +39,6 @@ const Compras = () => {
         cargarPendientes();
         cargarFiltrosInsumos();
         
-        // Evento para cerrar sugerencias al hacer click fuera
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 setMostrarSugerencias(false);
@@ -49,16 +48,14 @@ const Compras = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Recargar al cambiar el ID del insumo seleccionado
     useEffect(() => {
         cargarOrdenes();
     }, [filtroInsumo]);
 
-    // Filtrar sugerencias mientras escribe
     useEffect(() => {
         if (busquedaInsumo === '') {
             setSugerencias([]);
-            if (!filtroInsumo) setMostrarSugerencias(false); // Si borra todo, ocultar
+            if (!filtroInsumo) setMostrarSugerencias(false); 
         } else {
             const matches = listaInsumos.filter(item => {
                 const term = busquedaInsumo.toLowerCase();
@@ -80,11 +77,7 @@ const Compras = () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
-            if (filtroInsumo) params.append('insumo_id', filtroInsumo); // Usamos el ID
-            
-            // Nota: Los filtros locales (texto, estado) se aplican abajo en 'ordenesFiltradas'
-            // Si quieres enviarlos al backend, agrégalos aquí. Por ahora mantengo tu lógica mixta.
-            
+            if (filtroInsumo) params.append('insumo_id', filtroInsumo);
             const res = await api.get(`/index.php/compras?${params.toString()}`);
             if (res.data.success) setOrdenes(res.data.data);
         } catch (error) {
@@ -101,7 +94,6 @@ const Compras = () => {
         } catch (e) { }
     };
 
-    // ... (Tus funciones auxiliares se mantienen igual) ...
     const generarOrdenDesdePendientes = () => {
         const items = pendientes.map(p => ({
             id: p.id, nombre: p.nombre, sku: p.codigo_sku, unidad: p.unidad_medida,
@@ -113,31 +105,63 @@ const Compras = () => {
     };
     
     const handleNewOrder = () => { setItemsPrecargados([]); setShowModal(true); };
-    const descargarPdfOC = async (id) => { /* ... tu código ... */ };
-    const descargarExcelOC = async (id) => { /* ... tu código ... */ };
-    const handleExportar = () => { /* ... tu código ... */ };
+
+    // --- LÓGICA DE EXPORTACIÓN (IMPLEMENTADA) ---
+    const descargarPdfOC = async (id) => {
+        try {
+            const res = await api.get(`/index.php/compras/pdf?id=${id}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `OC_${id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (e) { alert("Error al generar PDF"); }
+    };
+
+    const descargarExcelOC = async (id) => {
+        try {
+            const res = await api.get(`/index.php/exportar?modulo=detalle_oc&id=${id}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Detalle_OC_${id}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (e) { alert("Error al generar Excel del detalle"); }
+    };
+
+    const handleExportar = async () => {
+        try {
+            const res = await api.get('/index.php/exportar?modulo=compras', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Reporte_Compras_${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (e) { alert("Error al exportar listado"); }
+    };
 
     const limpiarFiltros = () => {
         setFiltroProveedor('');
         setFiltroEstado('');
         setFiltroFecha('');
-        
-        // Limpiar autocompletado
         setFiltroInsumo('');
         setBusquedaInsumo('');
         setMostrarSugerencias(false);
-        
         cargarOrdenes();
     };
 
-    // Selección del Autocompletado
     const seleccionarInsumo = (item) => {
-        setFiltroInsumo(item.id);       // Guardamos ID para la API
-        setBusquedaInsumo(item.nombre); // Mostramos Nombre en el input
-        setMostrarSugerencias(false);   // Ocultamos lista
+        setFiltroInsumo(item.id); 
+        setBusquedaInsumo(item.nombre); 
+        setMostrarSugerencias(false); 
     };
 
-    // Lógica de Filtrado Local
     const ordenesFiltradas = ordenes.filter(oc => {
         const matchProveedor = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
         const matchEstado = filtroEstado ? oc.estado === filtroEstado : true;
@@ -160,115 +184,76 @@ const Compras = () => {
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
 
-            {/* MODALES */}
             <NuevaOrdenModal show={showModal} onClose={() => setShowModal(false)} onSave={() => { cargarOrdenes(); cargarPendientes(); }} itemsIniciales={itemsPrecargados} />
-            <DetalleOrdenModal show={verModal.show} onClose={() => setVerModal({ show: false, id: null })} ordenId={verModal.id} />
-            <SubirArchivoModal show={uploadModal.show} onClose={() => setUploadModal({ show: false, id: null })} ordenId={uploadModal.id} onSave={cargarOrdenes} />
+            <DetalleOrdenModal 
+                show={verModal.show} 
+                onHide={() => setVerModal({ show: false, id: null })} 
+                ordenId={verModal.id} 
+                onDownloadPdf={descargarPdfOC} 
+                onExportExcel={descargarExcelOC} 
+            />
+            <SubirArchivoModal 
+                show={uploadModal.show} 
+                onClose={() => setUploadModal({ show: false, id: null, url: null })} 
+                ordenId={uploadModal.id} 
+                currentUrl={uploadModal.url} 
+                onSave={cargarOrdenes} 
+            />
             <RecepcionCompraModal show={recepcionModal.show} onClose={() => setRecepcionModal({ show: false, id: null })} ordenId={recepcionModal.id} onSave={() => { cargarOrdenes(); cargarPendientes(); }} />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                
-                {/* --- ENCABEZADO MEJORADO RESPONSIVO --- */}
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
-                    
-                    {/* Título con Icono Destacado */}
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
                              <i className="bi bi-cart3 fs-3"></i>
                         </div>
                         <h4 className="mb-0 fw-bold text-dark">Gestión de Compras</h4>
                     </div>
-                    
-                    {/* Botones Adaptables: Cuadrados en móvil, Normales en PC */}
                     <div className="d-flex gap-2 justify-content-center flex-wrap">
-                        
-                        {/* Botón Exportar */}
-                        <button 
-                            // CLASES CLAVE: flex-column (móvil) flex-md-row (PC)
-                            className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
-                            onClick={handleExportar} 
-                            disabled={loading} 
-                            title="Exportar Listado"
-                        >
-                            {/* MARGENES ICONO: mb-1 (móvil) me-md-2 (PC) */}
+                        <button className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3" onClick={handleExportar} disabled={loading}>
                             <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
                             <span className="small fw-bold">Exportar</span>
                         </button>
-                        
-                        {/* Botón Nueva Orden */}
-                        <button 
-                            className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
-                            onClick={handleNewOrder}
-                        >
+                        <button className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3" onClick={handleNewOrder}>
                             <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
                             <span className="small fw-bold">Nueva Orden</span>
                         </button>
                     </div>
                 </div>
 
-                {/* BARRA DE FILTROS */}
                 <div className="bg-light p-3 border-bottom">
                     <div className="row g-2 align-items-center">
-                        
-                        {/* 1. Proveedor */}
                         <div className="col-md-3">
                             <div className="input-group">
                                 <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
                                 <input type="text" className="form-control border-start-0 ps-0" placeholder="Buscar proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} />
                             </div>
                         </div>
-
-                        {/* 2. AUTOCOMPLETADO INSUMO (MODIFICADO) */}
                         <div className="col-md-3 position-relative" ref={wrapperRef}>
                             <div className="input-group">
                                 <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-primary'}`}>
                                     <i className="bi bi-box-seam"></i>
                                 </span>
-                                <input 
-                                    type="text" 
-                                    className="form-control border-start-0 ps-0" 
-                                    placeholder="Filtrar por insumo..." 
-                                    value={busquedaInsumo}
-                                    onChange={(e) => {
-                                        setBusquedaInsumo(e.target.value);
-                                        setMostrarSugerencias(true);
-                                        if(e.target.value === '') setFiltroInsumo(''); // Limpiar ID si borra texto
-                                    }}
-                                    onFocus={() => setMostrarSugerencias(true)}
-                                />
+                                <input type="text" className="form-control border-start-0 ps-0" placeholder="Filtrar por insumo..." value={busquedaInsumo}
+                                    onChange={(e) => { setBusquedaInsumo(e.target.value); setMostrarSugerencias(true); if(e.target.value === '') setFiltroInsumo(''); }}
+                                    onFocus={() => setMostrarSugerencias(true)} />
                                 {filtroInsumo && (
-                                    <button className="btn btn-outline-secondary border-start-0" type="button" onClick={() => {
-                                        setFiltroInsumo('');
-                                        setBusquedaInsumo('');
-                                    }}>
+                                    <button className="btn btn-outline-secondary border-start-0" type="button" onClick={() => { setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes(); }}>
                                         <i className="bi bi-x"></i>
                                     </button>
                                 )}
                             </div>
-
-                            {/* Lista Flotante */}
                             {mostrarSugerencias && busquedaInsumo && (
                                 <ul className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 1050, maxHeight: '250px', overflowY: 'auto' }}>
-                                    {sugerencias.length > 0 ? (
-                                        sugerencias.map(item => (
-                                            <li 
-                                                key={item.id} 
-                                                className="list-group-item list-group-item-action cursor-pointer"
-                                                onClick={() => seleccionarInsumo(item)}
-                                                style={{ cursor: 'pointer' }}
-                                            >
-                                                <div className="fw-bold text-dark small">{item.nombre}</div>
-                                                <small className="text-muted" style={{fontSize: '0.75rem'}}>SKU: {item.codigo_sku}</small>
-                                            </li>
-                                        ))
-                                    ) : (
-                                        <li className="list-group-item text-muted small">No se encontraron insumos.</li>
-                                    )}
+                                    {sugerencias.length > 0 ? sugerencias.map(item => (
+                                        <li key={item.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => seleccionarInsumo(item)} style={{ cursor: 'pointer' }}>
+                                            <div className="fw-bold text-dark small">{item.nombre}</div>
+                                            <small className="text-muted" style={{fontSize: '0.75rem'}}>SKU: {item.codigo_sku}</small>
+                                        </li>
+                                    )) : <li className="list-group-item text-muted small">No se encontraron insumos.</li>}
                                 </ul>
                             )}
                         </div>
-
-                        {/* 3. Estado */}
                         <div className="col-md-2">
                             <select className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
                                 <option value="">Todos los Estados</option>
@@ -278,13 +263,7 @@ const Compras = () => {
                                 <option value="Anulada">Anulada</option>
                             </select>
                         </div>
-
-                        {/* 4. Fecha */}
-                        <div className="col-md-2">
-                            <input type="date" className="form-control" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} />
-                        </div>
-
-                        {/* 5. Botón Limpiar */}
+                        <div className="col-md-2"><input type="date" className="form-control" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} /></div>
                         <div className="col-md-2 text-end">
                             {(filtroProveedor || filtroEstado || filtroFecha || filtroInsumo) && (
                                 <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros}><i className="bi bi-x-lg me-1"></i>Limpiar Filtros</button>
@@ -294,7 +273,6 @@ const Compras = () => {
                 </div>
 
                 <div className="card-body p-0 flex-grow-1 overflow-auto">
-                    {/* ... (Resto de tu renderizado de alertas y tabla igual que antes) ... */}
                     {pendientes.length > 0 && (
                         <div className="alert alert-warning border-warning d-flex align-items-center justify-content-between m-3 shadow-sm fade show" role="alert">
                             <div className="d-flex align-items-center">
@@ -305,9 +283,7 @@ const Compras = () => {
                         </div>
                     )}
 
-                    {loading ? (
-                        <div className="text-center p-5">Cargando órdenes...</div>
-                    ) : (
+                    {loading ? <div className="text-center p-5">Cargando órdenes...</div> : (
                         <table className="table table-hover align-middle mb-0" style={{ minWidth: '900px' }}>
                             <thead className="bg-light sticky-top">
                                 <tr>
@@ -320,33 +296,26 @@ const Compras = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {ordenesFiltradas.length > 0 ? (
-                                    ordenesFiltradas.map(oc => (
-                                        <tr key={oc.id}>
-                                            <td className="ps-4 fw-bold text-primary">#{oc.id}</td>
-                                            <td><div className="fw-medium">{oc.proveedor}</div><small className="text-muted">{oc.proveedor_rut}</small></td>
-                                            <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
-                                            <td className="fw-bold text-dark">${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}</td>
-                                            <td><span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span></td>
-                                            <td className="text-end pe-4">
-                                                {/* Botones de acción */}
-                                                {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && (
-                                                    <button className="btn btn-sm btn-warning me-2 text-dark" title="Recepcionar" onClick={() => setRecepcionModal({ show: true, id: oc.id })}><i className="bi bi-truck"></i></button>
-                                                )}
-                                                <button onClick={() => descargarPdfOC(oc.id)} className="btn btn-sm btn-outline-danger me-2" title="Descargar PDF"><i className="bi bi-file-earmark-pdf"></i></button>
-                                                <button onClick={() => descargarExcelOC(oc.id)} className="btn btn-sm btn-outline-success me-2" title="Descargar Excel"><i className="bi bi-file-earmark-excel"></i></button>
-                                                <button className="btn btn-sm btn-outline-primary me-2" onClick={() => setVerModal({ show: true, id: oc.id })} title="Ver Detalle"><i className="bi bi-eye"></i></button>
-                                                {oc.url_archivo ? (
-                                                    <a href={`http://localhost/insuorders/public_html${oc.url_archivo}`} target="_blank" className="btn btn-sm btn-success" title="Ver Respaldo"><i className="bi bi-paperclip"></i></a>
-                                                ) : (
-                                                    <button className="btn btn-sm btn-outline-secondary" onClick={() => setUploadModal({ show: true, id: oc.id })} title="Adjuntar PDF"><i className="bi bi-upload"></i></button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="6" className="text-center py-5 text-muted">No se encontraron órdenes con esos filtros</td></tr>
-                                )}
+                                {ordenesFiltradas.length > 0 ? ordenesFiltradas.map(oc => (
+                                    <tr key={oc.id}>
+                                        <td className="ps-4 fw-bold text-primary">#{oc.id}</td>
+                                        <td><div className="fw-medium">{oc.proveedor}</div><small className="text-muted">{oc.proveedor_rut}</small></td>
+                                        <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
+                                        <td className="fw-bold text-dark">${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}</td>
+                                        <td><span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span></td>
+                                        <td className="text-end pe-4">
+                                            {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && (
+                                                <button className="btn btn-sm btn-warning me-2 text-dark" onClick={() => setRecepcionModal({ show: true, id: oc.id })}><i className="bi bi-truck"></i></button>
+                                            )}
+                                            <button onClick={() => descargarPdfOC(oc.id)} className="btn btn-sm btn-outline-danger me-2"><i className="bi bi-file-earmark-pdf"></i></button>
+                                            <button onClick={() => descargarExcelOC(oc.id)} className="btn btn-sm btn-outline-success me-2"><i className="bi bi-file-earmark-excel"></i></button>
+                                            <button className="btn btn-sm btn-outline-primary me-2" onClick={() => setVerModal({ show: true, id: oc.id })}><i className="bi bi-eye"></i></button>
+                                            <button className={`btn btn-sm ${oc.url_archivo ? 'btn-success' : 'btn-outline-secondary'}`} onClick={() => setUploadModal({ show: true, id: oc.id, url: oc.url_archivo })}>
+                                                <i className={oc.url_archivo ? "bi bi-paperclip" : "bi bi-upload"}></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )) : <tr><td colSpan="6" className="text-center py-5 text-muted">No se encontraron órdenes con esos filtros</td></tr>}
                             </tbody>
                         </table>
                     )}

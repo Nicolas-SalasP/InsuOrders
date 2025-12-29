@@ -1,19 +1,31 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axiosConfig';
 import UsuarioModal from '../components/UsuarioModal';
+import PermisosModal from '../components/PermisosModal'; // <--- Nuevo componente importado
 
 const Usuarios = () => {
+    // Estados para la lista y el modal de edición básico
     const [usuarios, setUsuarios] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [usuarioEditar, setUsuarioEditar] = useState(null);
 
-    useEffect(() => { cargarUsuarios(); }, []);
+    // Estados para el modal de permisos (El Escudo)
+    const [showPermisos, setShowPermisos] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState(null);
+
+    useEffect(() => {
+        cargarUsuarios();
+    }, []);
 
     const cargarUsuarios = async () => {
         try {
             const res = await api.get('/index.php/usuarios');
-            if(res.data.success) setUsuarios(res.data.data);
-        } catch (e) { console.error(e); }
+            if(res.data.success) {
+                setUsuarios(res.data.data);
+            }
+        } catch (e) {
+            console.error("Error cargando usuarios:", e);
+        }
     };
 
     const handleToggle = async (id, estadoActual) => {
@@ -22,12 +34,28 @@ const Usuarios = () => {
         
         try {
             await api.post('/index.php/usuarios/toggle', { id });
-            cargarUsuarios();
-        } catch (e) { alert("Error al cambiar estado"); }
+            cargarUsuarios(); // Recargar la lista para ver el cambio
+        } catch (e) {
+            alert("Error al cambiar estado");
+        }
     };
 
-    const handleEdit = (u) => { setUsuarioEditar(u); setShowModal(true); };
-    const handleNew = () => { setUsuarioEditar(null); setShowModal(true); };
+    // Manejadores para Edición Básica (Datos personales, Rol principal)
+    const handleEdit = (u) => {
+        setUsuarioEditar(u);
+        setShowModal(true);
+    };
+
+    const handleNew = () => {
+        setUsuarioEditar(null);
+        setShowModal(true);
+    };
+
+    // Manejador para Permisos Específicos (El nuevo botón)
+    const handlePermisos = (id) => {
+        setSelectedUserId(id);
+        setShowPermisos(true);
+    };
 
     const handleExportar = () => {
         api.get('/index.php/exportar?modulo=usuarios', { responseType: 'blob' })
@@ -45,14 +73,27 @@ const Usuarios = () => {
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             
-            <UsuarioModal show={showModal} onClose={()=>setShowModal(false)} onSave={cargarUsuarios} usuarioEditar={usuarioEditar} />
+            {/* 1. Modal de Edición Básica (Nombre, Email, Rol) */}
+            <UsuarioModal 
+                show={showModal} 
+                onClose={() => setShowModal(false)} 
+                onSave={cargarUsuarios} 
+                usuarioEditar={usuarioEditar} 
+            />
+
+            {/* 2. Modal de Permisos Detallados (Switches) */}
+            <PermisosModal 
+                show={showPermisos} 
+                onClose={() => setShowPermisos(false)} 
+                usuarioId={selectedUserId} 
+            />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 
-                {/* --- ENCABEZADO MEJORADO RESPONSIVO --- */}
+                {/* --- ENCABEZADO --- */}
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
                     
-                    {/* Título con Icono Destacado */}
+                    {/* Título */}
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
                              <i className="bi bi-people-gear fs-3"></i>
@@ -60,10 +101,9 @@ const Usuarios = () => {
                         <h4 className="mb-0 fw-bold text-dark">Gestión de Usuarios</h4>
                     </div>
                     
-                    {/* Botones Adaptables: Cuadrados en móvil, Normales en PC */}
+                    {/* Botones de Acción Global */}
                     <div className="d-flex gap-2 justify-content-center flex-wrap">
                         
-                        {/* Botón Exportar */}
                         <button 
                             className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
                             onClick={handleExportar} 
@@ -73,7 +113,6 @@ const Usuarios = () => {
                             <span className="small fw-bold">Exportar</span>
                         </button>
                         
-                        {/* Botón Nuevo Usuario (Destacado Azul) */}
                         <button 
                             className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
                             onClick={handleNew}
@@ -84,6 +123,7 @@ const Usuarios = () => {
                     </div>
                 </div>
 
+                {/* --- TABLA DE DATOS --- */}
                 <div className="card-body p-0 flex-grow-1 overflow-auto">
                     <table className="table table-hover align-middle mb-0" style={{ minWidth: '800px' }}>
                         <thead className="bg-light sticky-top">
@@ -91,7 +131,7 @@ const Usuarios = () => {
                                 <th className="ps-4">Usuario</th>
                                 <th>Nombre Completo</th>
                                 <th>Email</th>
-                                <th>Rol</th>
+                                <th>Rol Principal</th>
                                 <th>Estado</th>
                                 <th className="text-end pe-4">Acciones</th>
                             </tr>
@@ -109,9 +149,26 @@ const Usuarios = () => {
                                             : <span className="badge bg-danger">Bloqueado</span>}
                                     </td>
                                     <td className="text-end pe-4">
-                                        <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(u)} title="Editar">
+                                        
+                                        {/* BOTÓN NUEVO: GESTIONAR PERMISOS (ESCUDO) */}
+                                        <button 
+                                            className="btn btn-sm btn-outline-warning me-2" 
+                                            onClick={() => handlePermisos(u.id)} 
+                                            title="Gestionar Permisos Detallados"
+                                        >
+                                            <i className="bi bi-shield-lock"></i>
+                                        </button>
+
+                                        {/* Botón Editar Datos Básicos */}
+                                        <button 
+                                            className="btn btn-sm btn-outline-primary me-2" 
+                                            onClick={() => handleEdit(u)} 
+                                            title="Editar Datos"
+                                        >
                                             <i className="bi bi-pencil"></i>
                                         </button>
+                                        
+                                        {/* Botón Activar/Bloquear */}
                                         <button 
                                             className={`btn btn-sm ${u.activo == 1 ? 'btn-outline-danger' : 'btn-outline-success'}`} 
                                             onClick={() => handleToggle(u.id, u.activo)}

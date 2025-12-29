@@ -2,53 +2,95 @@
 namespace App\Controllers;
 
 use App\Repositories\DashboardRepository;
+use App\Middleware\AuthMiddleware;
+use App\Database\Database;
+use PDO;
 
 class DashboardController
 {
     private $repo;
+    private $db;
 
     public function __construct()
     {
         $this->repo = new DashboardRepository();
+        $this->db = Database::getConnection();
     }
 
-    // Método para la página de inicio (Resumen simple)
-    public function index()
-    {
-        try {
-            $stats = $this->repo->getStats();
-            echo json_encode(["success" => true, "data" => $stats]);
-        } catch (\Exception $e) {
-            http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
-        }
-    }
-
-    // NUEVO: Método para gráficos y filtros de fecha
     public function analytics()
     {
-        // Recibimos rango de fechas (o usamos mes actual por defecto)
-        $start = $_GET['start'] ?? date('Y-m-01');
-        $end = $_GET['end'] ?? date('Y-m-d 23:59:59');
-
+        $userId = AuthMiddleware::verify(); 
+        
         try {
-            $response = [
-                'general' => $this->repo->getStats(), // KPIs Globales
-                'compras' => $this->repo->getComprasStats($start, $end),
-                'mantencion' => $this->repo->getMantencionStats($start, $end)
+            // 1. Obtener Rol del Usuario
+            $stmtRole = $this->db->prepare("SELECT r.nombre FROM roles r JOIN usuarios u ON u.rol_id = r.id WHERE u.id = ?");
+            $stmtRole->execute([$userId]);
+            $userRole = $stmtRole->fetchColumn();
+
+            // 2. Obtener Permisos Específicos
+            $stmtPerms = $this->db->prepare("SELECT p.codigo FROM permisos p JOIN usuario_permisos up ON p.id = up.permiso_id WHERE up.usuario_id = ?");
+            $stmtPerms->execute([$userId]);
+            $permisos = $stmtPerms->fetchAll(PDO::FETCH_COLUMN);
+
+            // 3. Validar Permisos (Usando los códigos reales de tu DB)
+            $isAdmin = ($userRole === 'Admin' || $userId == 1);
+            
+            // Compras: ver_compras
+            $canVerCompras = $isAdmin || stripos($userRole, 'Compras') !== false || in_array('ver_compras', $permisos);
+            
+            // Mantención: mant_ver (Según tu SQL)
+            $canVerMant = $isAdmin || stripos($userRole, 'Mantencion') !== false || in_array('mant_ver', $permisos);
+            
+            // Bodega: ver_bodega
+            $canVerBodega = $isAdmin || stripos($userRole, 'Bodega') !== false || in_array('ver_bodega', $permisos);
+
+            // 4. Parámetros de Fecha
+            $start = $_GET['start'] ?? date('Y-m-01');
+            $end = $_GET['end'] ?? date('Y-m-d 23:59:59');
+            $empleadoId = $_GET['empleado_id'] ?? null;
+
+            // 5. Estructura de Respuesta
+            $data = [
+                'kpis' => [], // Datos generales (usados dentro de cada sección)
+                'compras' => null,
+                'mantencion' => null,
+                'bodega' => null
             ];
-            echo json_encode(["success" => true, "data" => $response]);
+
+            // Cargar KPIs Generales (Gasto total, Total OTs, etc.)
+            // Estos se distribuyen en las secciones visuales
+            $data['kpis'] = $this->repo->getGeneralKPIs($start, $end);
+
+            // Cargar datos específicos según permiso
+            if ($canVerCompras) {
+                $data['compras'] = $this->repo->getComprasAnalytics($start, $end);
+            }
+
+            if ($canVerMant) {
+                $data['mantencion'] = $this->repo->getMantencionAnalytics($start, $end);
+            }
+
+            if ($canVerBodega) {
+                $data['bodega'] = $this->repo->getBodegaAnalytics($start, $end, $empleadoId);
+            }
+
+            echo json_encode(["success" => true, "data" => $data]);
+
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
+    }
+
+    public function index()
+    {
+        $this->analytics();
     }
 
     public function logs()
     {
-        $area = $_GET['area'] ?? 'general';
         try {
-            $logs = $this->repo->getLogs($area);
+            $logs = $this->repo->getLogs('general');
             echo json_encode(["success" => true, "data" => $logs]);
         } catch (\Exception $e) {
             http_response_code(500);
@@ -56,3 +98,4 @@ class DashboardController
         }
     }
 }
+?>

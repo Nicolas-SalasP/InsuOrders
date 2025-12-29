@@ -3,27 +3,44 @@ namespace App\Services;
 
 use App\Repositories\OrdenCompraRepository;
 use App\Repositories\InsumoRepository;
+use App\Repositories\ProveedorRepository;
 use App\Services\PDFService;
+use App\Database\Database;
 
 class OrdenCompraService
 {
     private $repo;
     private $insumoRepo;
+    private $proveedorRepo;
+    private $db;
 
     public function __construct()
     {
         $this->repo = new OrdenCompraRepository();
         $this->insumoRepo = new InsumoRepository();
+        $this->proveedorRepo = new ProveedorRepository();
+        $this->db = Database::getConnection();
     }
 
-    public function listarOrdenes($filtros = [])
+    public function listarOrdenes($filtros)
     {
         return $this->repo->getAll($filtros);
     }
 
-    public function obtenerFiltrosInsumos()
+    public function obtenerAlertasCompra()
     {
-        return $this->repo->getInsumosHistorial();
+        return $this->repo->getPendientesMantencion();
+    }
+
+    public function obtenerDatosFiltros()
+    {
+        $insumos = $this->repo->getInsumosHistorial();
+        $proveedores = $this->proveedorRepo->getAll();
+
+        return [
+            'insumos' => $insumos,
+            'proveedores' => $proveedores
+        ];
     }
 
     public function obtenerDetalleOrden($id)
@@ -34,38 +51,26 @@ class OrdenCompraService
     public function crearOrden($data, $usuarioId)
     {
         if (empty($data['items']))
-            throw new \Exception("La orden está vacía.");
+            throw new \Exception("La orden debe tener items.");
         if (empty($data['proveedor_id']))
-            throw new \Exception("Falta el proveedor.");
+            throw new \Exception("Seleccione un proveedor.");
 
         $itemsProcesados = [];
         $montoNeto = 0;
-        $idsOrigenGlobales = [];
 
         foreach ($data['items'] as $item) {
-            $insumoId = null;
+            $insumoId = $item['id'] ?? null;
 
-            // Si el insumo ya existe (viene con ID), lo usamos
-            if (!empty($item['id'])) {
-                $insumoId = $item['id'];
-            } else {
-                // SI ES NUEVO:
-                // Pasamos 'codigo_sku' como NULL. 
-                // El InsumoRepository detectará esto y generará el correlativo 99000007199XXXX
-
+            if (!$insumoId) {
                 $nuevoInsumo = [
                     'codigo_sku' => null,
                     'nombre' => $item['nombre'],
-                    'descripcion' => 'Ingresado desde Compras',
-                    'categoria_id' => $item['categoria_id'] ?? 1, // Categoría default si no se especifica
-                    'ubicacion_id' => null,
+                    'categoria_id' => 1,
                     'stock_actual' => 0,
                     'stock_minimo' => 0,
                     'precio_costo' => $item['precio'],
-                    'moneda' => $data['moneda'] ?? 'CLP',
-                    'unidad_medida' => $item['unidad']
+                    'unidad_medida' => $item['unidad'] ?? 'UN'
                 ];
-
                 $insumoId = $this->insumoRepo->create($nuevoInsumo);
             }
 
@@ -78,72 +83,64 @@ class OrdenCompraService
                 'precio' => $item['precio'],
                 'total' => $subtotal
             ];
-
-            // Manejo de referencias a Solicitudes de Mantención
-            if (!empty($item['origen_ids'])) {
-                if (is_array($item['origen_ids'])) {
-                    $idsOrigenGlobales = array_merge($idsOrigenGlobales, $item['origen_ids']);
-                } else {
-                    $exploded = explode(',', $item['origen_ids']);
-                    $idsOrigenGlobales = array_merge($idsOrigenGlobales, $exploded);
-                }
-            }
         }
 
-        $moneda = $data['moneda'] ?? 'CLP';
-        $tipoCambio = $data['tipo_cambio'] ?? 1;
-        $numeroCotizacion = $data['numero_cotizacion'] ?? null;
+        $porcIVA = isset($data['impuesto_porcentaje']) ? floatval($data['impuesto_porcentaje']) : 19.0;
+        $iva = $montoNeto * ($porcIVA / 100);
 
-        // Cálculo de IVA
-        $porcentajeIVA = isset($data['impuesto_porcentaje']) ? floatval($data['impuesto_porcentaje']) : 19.0;
-        $iva = $montoNeto * ($porcentajeIVA / 100);
-        $total = $montoNeto + $iva;
-
-        // Crear Cabecera
-        $ordenId = $this->repo->create([
+        $datosCabecera = [
             'proveedor_id' => $data['proveedor_id'],
             'usuario_id' => $usuarioId,
             'neto' => $montoNeto,
             'impuesto' => $iva,
-            'total' => $total,
-            'moneda' => $moneda,
-            'tipo_cambio' => $tipoCambio,
-            'numero_cotizacion' => $numeroCotizacion,
-            'impuesto_porcentaje' => $porcentajeIVA
-        ]);
+            'total' => $montoNeto + $iva,
+            'moneda' => $data['moneda'] ?? 'CLP'
+        ];
 
-        // Insertar Detalles
+        $ordenId = $this->repo->create($datosCabecera);
+
         foreach ($itemsProcesados as $item) {
-            $this->repo->addDetalle(array_merge($item, ['orden_id' => $ordenId]));
-        }
-
-        // Vincular con Mantención si aplica
-        if (!empty($idsOrigenGlobales)) {
-            $this->repo->asociarSolicitudesAOrden($ordenId, array_unique($idsOrigenGlobales));
+            $item['orden_id'] = $ordenId;
+            $this->repo->addDetalle($item);
         }
 
         return $ordenId;
     }
 
+    public function recepcionarOrden($ordenId, $items, $usuarioId)
+    {
+        return $this->repo->recepcionarOrden($ordenId, $items, $usuarioId);
+    }
+
     public function generarPDF($ordenId)
     {
         $data = $this->repo->getOrdenCompleta($ordenId);
-        if (!$data || !$data['cabecera']) {
-            throw new \Exception("Orden #$ordenId no encontrada o sin datos.");
-        }
-
         $pdf = new PDFService();
         $pdf->setOrdenData($data['cabecera']);
         return $pdf->generarPDF($data['detalles']);
     }
 
-    public function adjuntarArchivo($id, $url)
+    public function subirArchivo($id, $file)
     {
-        return $this->repo->updateArchivo($id, $url);
-    }
+        $uploadDir = realpath(__DIR__ . '/../../../../public_html/api') . '/uploads/ordenes/';
+        
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
 
-    public function recepcionarOrden($ordenId, $items, $usuarioId)
-    {
-        return $this->repo->recepcionarOrden($ordenId, $items, $usuarioId);
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $fileName = "OC_" . $id . "_" . time() . "." . $ext;
+        $targetPath = $uploadDir . $fileName;
+
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            $urlPath = "uploads/ordenes/" . $fileName;
+            
+            $stmt = $this->db->prepare("UPDATE ordenes_compra SET url_archivo = ? WHERE id = ?");
+            $stmt->execute([$urlPath, $id]);
+            
+            return "/" . $urlPath;
+        } else {
+            throw new \Exception("No se pudo mover el archivo. Carpeta: " . $uploadDir);
+        }
     }
 }
