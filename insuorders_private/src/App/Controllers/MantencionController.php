@@ -17,7 +17,7 @@ class MantencionController
     }
 
     // =================================================================================
-    // 1. GESTIÓN DE OTs (Usando Service)
+    // 1. GESTIÓN DE OTs (CRUD Principal)
     // =================================================================================
 
     public function index()
@@ -49,6 +49,7 @@ class MantencionController
                 'origen_tipo' => $data['origen_tipo'] ?? 'Interna',
                 'area_negocio' => $data['area_negocio'] ?? null,
                 'centro_costo_ot' => $data['centro_costo_ot'] ?? null,
+                'solicitante_externo' => $data['solicitante_externo'] ?? null,
                 'items' => $data['items'] ?? []
             ], $usuarioId);
 
@@ -61,17 +62,21 @@ class MantencionController
 
     public function update()
     {
+        $id = $_GET['id'] ?? null;
         $data = json_decode(file_get_contents("php://input"), true);
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Falta ID de OT"]);
+            return;
+        }
+
         try {
-            $this->service->editarOT($data['id'], [
-                'activo_id' => $data['activo_id'],
-                'observacion' => $data['observacion'],
-                'items' => $data['items'] ?? []
-            ]);
-            echo json_encode(["success" => true, "message" => "Solicitud actualizada"]);
+            $this->repo->updateOT($id, $data);
+            echo json_encode(["success" => true, "message" => "OT Actualizada correctamente"]);
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error al actualizar: " . $e->getMessage()]);
         }
     }
 
@@ -80,17 +85,34 @@ class MantencionController
         $id = $_GET['id'] ?? null;
         if ($id) {
             $this->service->anularOT($id);
-            echo json_encode(["success" => true, "message" => "Anulada"]);
+            echo json_encode(["success" => true, "message" => "Orden anulada correctamente"]);
+        } else {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Falta ID"]);
         }
     }
 
     public function finalizar()
     {
-        $this->repo->finalizar();
+        $data = json_decode(file_get_contents("php://input"), true);
+        $id = $data['id'] ?? null;
+        
+        if ($id) {
+            try {
+                $this->repo->finalizar($id);
+                echo json_encode(["success" => true, "message" => "Orden finalizada"]);
+            } catch (\Exception $e) {
+                http_response_code(500);
+                echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Falta ID"]);
+        }
     }
 
     // =================================================================================
-    // 2. GESTIÓN DE ACTIVOS (Usando Repository Directo)
+    // 2. GESTIÓN DE ACTIVOS Y CENTROS DE COSTO
     // =================================================================================
 
     public function activos()
@@ -142,12 +164,13 @@ class MantencionController
     }
 
     // =================================================================================
-    // 3. KITS DE REPUESTOS
+    // 3. KITS DE REPUESTOS (Mantenimiento Preventivo)
     // =================================================================================
 
     public function getKit()
     {
-        echo json_encode(["success" => true, "data" => $this->repo->getKitActivo($_GET['id'] ?? 0)]);
+        $id = $_GET['id'] ?? 0;
+        echo json_encode(["success" => true, "data" => $this->repo->getKitActivo($id)]);
     }
 
     public function saveKit()
@@ -157,7 +180,8 @@ class MantencionController
             $this->repo->addInsumoToKit($d['activo_id'], $d['insumo_id'], $d['cantidad']);
             echo json_encode(["success" => true]);
         } catch (\Exception $e) {
-            http_response_code(500); echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
@@ -168,22 +192,28 @@ class MantencionController
             $this->repo->updateKitQuantity($d['activo_id'], $d['insumo_id'], $d['cantidad']);
             echo json_encode(["success" => true]);
         } catch (\Exception $e) {
-            http_response_code(500); echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
     public function removeKitItem()
     {
+        $activoId = $_GET['activo_id'] ?? null;
+        $insumoId = $_GET['insumo_id'] ?? null;
+
         try {
-            $this->repo->removeInsumoFromKit($_GET['activo_id'], $_GET['insumo_id']);
+            if (!$activoId || !$insumoId) throw new \Exception("Faltan IDs");
+            $this->repo->removeInsumoFromKit($activoId, $insumoId);
             echo json_encode(["success" => true]);
         } catch (\Exception $e) {
-            http_response_code(500); echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
     // =================================================================================
-    // 4. DOCUMENTACIÓN
+    // 4. DOCUMENTACIÓN (Archivos Adjuntos a Activos/OTs)
     // =================================================================================
 
     public function listDocs()
@@ -195,7 +225,9 @@ class MantencionController
     public function uploadDoc()
     {
         if (!isset($_FILES['archivo']) || !isset($_POST['activo_id'])) {
-            http_response_code(400); echo json_encode(["success" => false, "message" => "Datos faltantes"]); return;
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Datos faltantes"]);
+            return;
         }
 
         $activoId = $_POST['activo_id'];
@@ -206,26 +238,40 @@ class MantencionController
         $nuevoNombre = "DOC_{$activoId}_" . uniqid() . "." . $ext;
         
         $targetDir = __DIR__ . '/../../../../public_html/uploads/activos/';
-        if (!file_exists($targetDir)) mkdir($targetDir, 0777, true);
+        
+        if (!file_exists($targetDir)) {
+            mkdir($targetDir, 0777, true);
+        }
 
         if (move_uploaded_file($file['tmp_name'], $targetDir . $nuevoNombre)) {
             $url = "/uploads/activos/" . $nuevoNombre;
-            $this->repo->addDoc($activoId, $nombre, $url);
-            echo json_encode(["success" => true]);
+            try {
+                $this->repo->addDoc($activoId, $nombre, $url);
+                echo json_encode(["success" => true, "url" => $url]);
+            } catch (\Exception $e) {
+                http_response_code(500);
+                echo json_encode(["success" => false, "message" => "Error DB: " . $e->getMessage()]);
+            }
         } else {
-            http_response_code(500); echo json_encode(["success" => false, "message" => "Error al guardar archivo"]);
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Error al guardar archivo en disco"]);
         }
     }
 
     public function deleteDoc()
     {
         $id = $_GET['id'] ?? 0;
-        $this->repo->deleteDoc($id);
-        echo json_encode(["success" => true]);
+        try {
+            $this->repo->deleteDoc($id);
+            echo json_encode(["success" => true]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
     }
 
     // =================================================================================
-    // 5. PDF
+    // 5. GENERACIÓN DE PDF
     // =================================================================================
 
     public function downloadPdf()
@@ -235,14 +281,21 @@ class MantencionController
         $id = $_GET['id'] ?? 0;
         $type = $_GET['type'] ?? 'sol';
         
-        $ot = $this->repo->getOTHeader($id);
-        $pdf = new PDFService();
-        
-        if ($type === 'entrega')
-            echo $pdf->generarPdfEntrega($ot, $this->repo->getEntregasOT($id));
-        else
-            echo $pdf->generarPdfOT($ot, $this->repo->getDetallesOT($id));
-        
-        exit;
+        try {
+            $ot = $this->repo->getOTHeader($id);
+            $pdf = new PDFService();
+            
+            if ($type === 'entrega') {
+                $entregas = $this->repo->getEntregasOT($id);
+                echo $pdf->generarPdfEntrega($ot, $entregas);
+            } else {
+                $detalles = $this->repo->getDetallesOT($id);
+                echo $pdf->generarPdfOT($ot, $detalles);
+            }
+            exit;
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo "Error generando PDF: " . $e->getMessage();
+        }
     }
 }

@@ -1,49 +1,124 @@
 import { NavLink } from 'react-router-dom';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import AuthContext from '../context/AuthContext';
 import api from '../api/axiosConfig';
 
 const Sidebar = ({ onClose }) => {
     const { logout, auth } = useContext(AuthContext);
-    const [notificaciones, setNotificaciones] = useState({ compras: 0, bodega: 0, total: 0 });
+    
+    // Estado adaptado a la nueva estructura del backend
+    const [notificaciones, setNotificaciones] = useState({ 
+        compras: { count: 0, mensajes: [] }, 
+        bodega: { count: 0, mensajes: [] }, 
+        mantencion: { count: 0, mensajes: [] },
+        total: 0 
+    });
+    
     const [showNotifDetails, setShowNotifDetails] = useState(false);
+    const dropdownRef = useRef(null);
 
-    // --- LÓGICA ESTRICTA ---
-    // 1. Si es 'Admin', entra a todo (Superusuario).
-    // 2. Si NO es Admin, DEBE tener el permiso específico en su lista.
-    // YA NO validamos por nombre de rol (ej: 'Bodega' o 'Compras').
+    // --- PERMISOS ---
     const can = (permisoRequerido) => {
-        // ID 1 o nombre 'Admin' es el Dios del sistema
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
-
-        // Para los mortales, buscamos en la lista de permisos
         return auth.permisos && auth.permisos.includes(permisoRequerido);
     };
 
     useEffect(() => {
         const checkData = async () => {
             try {
-                // Cargar notificaciones
                 const res = await api.get('/index.php/notifications');
-                if (res.data.success) setNotificaciones(res.data.data);
+                if (res.data.success) {
+                    setNotificaciones(res.data.data);
+                }
             } catch (e) { }
         };
 
         if (auth.token) {
             checkData();
-            const interval = setInterval(checkData, 15000); // Cada 15s para no saturar
+            const interval = setInterval(checkData, 15000); 
             return () => clearInterval(interval);
         }
     }, [auth.token]);
+
+    // Cerrar menú al hacer clic fuera
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowNotifDetails(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [dropdownRef]);
 
     const handleNavClick = () => {
         if (onClose) onClose();
     };
 
+    // --- RENDERIZADO DE LA LISTA DE NOTIFICACIONES (LA PARTE BONITA) ---
+    const renderNotificationsList = () => {
+        let items = [];
+        let hasItems = false;
+
+        // Helper para items
+        const Item = ({ icon, color, title, text, to }) => (
+            <NavLink to={to} onClick={() => setShowNotifDetails(false)} className="dropdown-item p-2 border-bottom d-flex align-items-start text-wrap" style={{ whiteSpace: 'normal' }}>
+                <div className={`p-2 me-2 rounded bg-${color} bg-opacity-10 text-${color}`}>
+                    <i className={`bi ${icon}`}></i>
+                </div>
+                <div>
+                    <strong className="d-block small text-dark">{title}</strong>
+                    <span className="small text-muted">{text}</span>
+                </div>
+            </NavLink>
+        );
+
+        // 1. COMPRAS
+        if (can('ver_compras') && notificaciones.compras.mensajes.length > 0) {
+            notificaciones.compras.mensajes.forEach((msg, idx) => {
+                hasItems = true;
+                items.push(<Item key={`comp-${idx}`} icon="bi-cart-plus" color="danger" title={msg.titulo} text={msg.texto} to={msg.ruta} />);
+            });
+        }
+
+        // 2. BODEGA
+        if (can('ver_bodega') && notificaciones.bodega.mensajes.length > 0) {
+            notificaciones.bodega.mensajes.forEach((msg, idx) => {
+                hasItems = true;
+                items.push(<Item key={`bod-${idx}`} icon="bi-box-seam" color="warning" title={msg.titulo} text={msg.texto} to={msg.ruta} />);
+            });
+        }
+
+        // 3. MANTENCIÓN
+        if (can('ver_mantencion') && notificaciones.mantencion.mensajes.length > 0) {
+            notificaciones.mantencion.mensajes.forEach((msg, idx) => {
+                hasItems = true;
+                items.push(<Item key={`mant-${idx}`} icon="bi-tools" color="primary" title={msg.titulo} text={msg.texto} to={msg.ruta} />);
+            });
+        }
+
+        if (!hasItems) {
+            return <div className="text-center py-3 small text-muted">Sin novedades</div>;
+        }
+
+        return items;
+    };
+
+    // Total visible según rol
+    const totalUsuario = () => {
+        let t = 0;
+        if (can('ver_compras')) t += notificaciones.compras.count;
+        if (can('ver_bodega')) t += notificaciones.bodega.count;
+        if (can('ver_mantencion')) t += notificaciones.mantencion.count;
+        return t;
+    };
+
+    const countVisible = totalUsuario();
+
     return (
         <div className="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark h-100" style={{ width: '260px' }}>
 
-            {/* LOGO */}
+            {/* LOGO (Diseño Anterior) */}
             <div className="d-flex align-items-center justify-content-between mb-3 mb-md-0 me-md-auto">
                 <a href="/" className="d-flex align-items-center text-white text-decoration-none">
                     <i className="bi bi-box-seam fs-4 me-2"></i>
@@ -54,48 +129,66 @@ const Sidebar = ({ onClose }) => {
                 </button>
             </div>
 
-            {/* PERFIL */}
-            <div className="d-flex align-items-center justify-content-between mb-3 px-2 py-2 bg-secondary bg-opacity-25 rounded position-relative mt-3 mt-md-0">
+            {/* PERFIL (Diseño Anterior con Campana Mejorada) */}
+            <div className="d-flex align-items-center justify-content-between mb-3 px-2 py-2 bg-secondary bg-opacity-25 rounded position-relative mt-3 mt-md-0" ref={dropdownRef}>
                 <div style={{ overflow: 'hidden' }}>
                     <div className="fw-bold text-truncate" title={auth.nombre} style={{ maxWidth: '140px' }}>{auth.nombre}</div>
                     <span className="badge bg-primary" style={{ fontSize: '0.7rem' }}>{auth.rol}</span>
                 </div>
 
-                {/* CAMPANA NOTIFICACIONES */}
+                {/* CAMPANA INTERACTIVA */}
                 <div className="position-relative cursor-pointer" onClick={() => setShowNotifDetails(!showNotifDetails)}>
-                    <i className="bi bi-bell-fill fs-5 text-warning"></i>
-                    {notificaciones.total > 0 && (
+                    <i className={`bi bi-bell-fill fs-5 ${countVisible > 0 ? 'text-warning' : 'text-secondary'}`}></i>
+                    
+                    {countVisible > 0 && (
                         <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-dark">
-                            {notificaciones.total}
+                            {countVisible}
                         </span>
+                    )}
+
+                    {/* --- AQUÍ ESTÁ EL DESPLEGABLE MEJORADO --- */}
+                    {showNotifDetails && (
+                        <div className="position-absolute bg-white text-dark rounded shadow-lg" 
+                             style={{ 
+                                 top: '35px', 
+                                 left: '10px', 
+                                 width: '280px', 
+                                 zIndex: 1050, 
+                                 border: '1px solid #ccc',
+                                 maxHeight: '400px',
+                                 overflowY: 'auto'
+                             }}>
+                            <div className="bg-light p-2 border-bottom fw-bold small text-uppercase d-flex justify-content-between">
+                                <span>Notificaciones</span>
+                                {countVisible > 0 && <span className="badge bg-danger rounded-pill">{countVisible}</span>}
+                            </div>
+                            <div>
+                                {renderNotificationsList()}
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
 
-            {/* MENÚ DE NAVEGACIÓN */}
+            {/* MENÚ DE NAVEGACIÓN (Diseño Anterior Clásico) */}
             <div className="overflow-auto custom-scrollbar">
                 <ul className="nav nav-pills flex-column mb-auto gap-1">
 
-                    {/* DASHBOARD: Visible para todos (o puedes crear un permiso 'ver_dashboard') */}
                     <li className="nav-item">
                         <NavLink to="/dashboard" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
                             <i className="bi bi-speedometer2 me-2"></i> Dashboard
                         </NavLink>
                     </li>
 
-                    {/* --- AQUÍ APLICAMOS LA LÓGICA ESTRICTA 'can()' --- */}
-
-                    {/* BODEGA */}
                     {can('ver_bodega') && (
                         <li>
                             <NavLink to="/bodega" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''} d-flex justify-content-between`}>
                                 <span><i className="bi bi-inboxes me-2"></i> Bodega</span>
-                                {notificaciones.bodega > 0 && <span className="badge bg-danger rounded-pill">{notificaciones.bodega}</span>}
+                                {notificaciones.bodega.count > 0 && <span className="badge bg-danger rounded-pill">{notificaciones.bodega.count}</span>}
                             </NavLink>
                         </li>
                     )}
 
-                    {/* INVENTARIO (usa 'inv_ver' según tu DB) */}
                     {can('inv_ver') && (
                         <li>
                             <NavLink to="/inventario" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
@@ -104,17 +197,15 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
-                    {/* COMPRAS */}
                     {can('ver_compras') && (
                         <li>
                             <NavLink to="/compras" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''} d-flex justify-content-between`}>
                                 <span><i className="bi bi-cart3 me-2"></i> Compras</span>
-                                {notificaciones.compras > 0 && <span className="badge bg-danger rounded-pill">{notificaciones.compras}</span>}
+                                {notificaciones.compras.count > 0 && <span className="badge bg-danger rounded-pill">{notificaciones.compras.count}</span>}
                             </NavLink>
                         </li>
                     )}
 
-                    {/* PROVEEDORES */}
                     {can('ver_proveedores') && (
                         <li>
                             <NavLink to="/proveedores" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
@@ -123,7 +214,6 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
-                    {/* MANTENCION */}
                     {can('ver_mantencion') && (
                         <li>
                             <NavLink to="/mantencion" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
@@ -132,7 +222,6 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
-                    {/* CRONOGRAMA */}
                     {can('ver_cronograma') && (
                         <li>
                             <NavLink to="/cronograma" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
@@ -141,7 +230,6 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
-                    {/* ACTIVOS */}
                     {can('ver_activos') && (
                         <li>
                             <NavLink to="/activos" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
@@ -150,7 +238,6 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
-                    {/* ADMINISTRACIÓN (Usuarios, Config, etc.) */}
                     {(can('ver_usuarios') || can('ver_config')) && (
                         <li className="mt-3 pt-3 border-top border-secondary">
                             <div className="ps-3 mb-2 text-uppercase text-white-50 fw-bold" style={{ fontSize: '0.75rem' }}>

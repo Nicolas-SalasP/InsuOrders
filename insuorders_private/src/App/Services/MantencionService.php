@@ -2,117 +2,50 @@
 namespace App\Services;
 
 use App\Repositories\MantencionRepository;
-use App\Repositories\InsumoRepository;
 
 class MantencionService
 {
     private $repo;
-    private $insumoRepo;
 
     public function __construct()
     {
         $this->repo = new MantencionRepository();
-        $this->insumoRepo = new InsumoRepository();
     }
 
-    public function listarActivos()
-    {
-        return $this->repo->getActivos();
-    }
     public function listarSolicitudes()
     {
         return $this->repo->getSolicitudes();
     }
+
     public function obtenerDetalleOT($id)
     {
-        return $this->repo->getDetallesOT($id);
+        $header = $this->repo->getOTHeader($id);
+        if (!$header) return null;
+        
+        $items = $this->repo->getDetallesOT($id);
+        return array_merge($header, ['items' => $items]);
     }
 
     public function crearOT($data, $usuarioId)
     {
-        if (empty($data['items']))
-            throw new \Exception("La solicitud debe tener insumos.");
-
-        $otId = $this->repo->createSolicitud([
-            'usuario_id' => $usuarioId,
-            'activo_id' => $data['activo_id'],
-            'observacion' => $data['observacion'] ?? '',
-            'origen_tipo' => $data['origen_tipo'] ?? 'Interna'
-        ]);
-
-        $this->procesarItems($otId, $data['items']);
-        return $otId;
+        if (empty($data['items'])) {
+            throw new \Exception("Debe agregar al menos un insumo."); 
+        }
+        return $this->repo->createOT($data);
     }
 
     public function editarOT($id, $data)
     {
-        if (empty($data['items']))
-            throw new \Exception("La OT debe tener insumos.");
-
-        $this->repo->updateSolicitud($id, $data['activo_id'], $data['observacion']);
-        $this->repo->clearDetalles($id);
-        $this->procesarItems($id, $data['items']);
+        return $this->repo->updateOT($id, $data);
     }
 
     public function anularOT($id)
     {
+        $entregas = $this->repo->getEntregasOT($id);
+        if (!empty($entregas)) {
+            throw new \Exception("No se puede anular una OT que ya tiene materiales entregados. Debe finalizarlas.");
+        }
+        
         $this->repo->delete($id); 
-    }
-
-    private function procesarItems($otId, $items)
-    {
-        $insumosRaw = $this->insumoRepo->getAll();
-        $insumos = [];
-        foreach ($insumosRaw as $ins) {
-            $insumos[$ins['id']] = $ins;
-        }
-
-        foreach ($items as $item) {
-            $insumoId = $item['id'];
-            $cantidadSolicitada = (float) $item['cantidad'];
-
-            $stockActual = 0;
-            if (isset($insumos[$insumoId])) {
-                $stockActual = (float) $insumos[$insumoId]['stock_actual'];
-            }
-
-            // Lógica de Split Inteligente
-            if ($stockActual >= $cantidadSolicitada) {
-                // Hay stock completo -> Para Bodega
-                $this->repo->addDetalle([
-                    'solicitud_id' => $otId,
-                    'insumo_id' => $insumoId,
-                    'cantidad' => $cantidadSolicitada,
-                    'estado_linea' => 'EN_BODEGA'
-                ]);
-            } elseif ($stockActual > 0 && $stockActual < $cantidadSolicitada) {
-                // Hay stock parcial -> Split
-                $faltante = $cantidadSolicitada - $stockActual;
-
-                // Parte 1: Lo que hay en bodega
-                $this->repo->addDetalle([
-                    'solicitud_id' => $otId,
-                    'insumo_id' => $insumoId,
-                    'cantidad' => $stockActual,
-                    'estado_linea' => 'EN_BODEGA'
-                ]);
-
-                // Parte 2: Lo que falta (Para Compras)
-                $this->repo->addDetalle([
-                    'solicitud_id' => $otId,
-                    'insumo_id' => $insumoId,
-                    'cantidad' => $faltante,
-                    'estado_linea' => 'REQUIERE_COMPRA'
-                ]);
-            } else {
-                // No hay stock -> Todo para Compras
-                $this->repo->addDetalle([
-                    'solicitud_id' => $otId,
-                    'insumo_id' => $insumoId,
-                    'cantidad' => $cantidadSolicitada,
-                    'estado_linea' => 'REQUIERE_COMPRA'
-                ]);
-            }
-        }
     }
 }

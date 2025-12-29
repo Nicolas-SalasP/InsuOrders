@@ -10,51 +10,29 @@ class AuthMiddleware
 {
     public static function verify($allowedRoles = [])
     {
-        // -----------------------------------------------------------
-        // 1. OBTENCIÓN ROBUSTA DEL HEADER (A prueba de balas)
-        // -----------------------------------------------------------
-        $authHeader = null;
-        if (function_exists('apache_request_headers')) {
-            $requestHeaders = apache_request_headers();
-            $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
-            
-            if (isset($requestHeaders['Authorization'])) {
-                $authHeader = $requestHeaders['Authorization'];
-            }
-        }
+        $authHeader = self::getAuthHeader();
 
         if (!$authHeader) {
-            if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-                $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
-            } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-                $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
-            }
+            self::jsonResponse(401, ["error" => "Acceso denegado. Token no proporcionado."]);
         }
 
-        // -----------------------------------------------------------
-        // 2. VALIDACIÓN DEL HEADER
-        // -----------------------------------------------------------
-        if (!$authHeader) {
-            self::jsonResponse(401, ["error" => "Acceso denegado. Token no encontrado en la petición."]);
-        }
         if (!preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-            self::jsonResponse(401, ["error" => "Acceso denegado. Formato de token inválido (Se espera: Bearer <token>)."]);
+            self::jsonResponse(401, ["error" => "Acceso denegado. Formato de token inválido."]);
         }
 
         $jwt = $matches[1];
 
-        // -----------------------------------------------------------
-        // 3. DECODIFICACIÓN Y AUTORIZACIÓN
-        // -----------------------------------------------------------
         try {
             $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
             
-            if (empty($allowedRoles)) {
+            if ($decoded->data->rol === 'Admin' || $decoded->data->rol_id == 1) {
                 return $decoded->data->id;
             }
 
-            if (!in_array($decoded->data->rol, $allowedRoles)) {
-                self::jsonResponse(403, ["error" => "No tienes permiso para acceder a este recurso."]);
+            if (!empty($allowedRoles)) {
+                if (!in_array($decoded->data->rol, $allowedRoles)) {
+                    self::jsonResponse(403, ["error" => "No tienes el rol necesario para acceder."]);
+                }
             }
 
             return $decoded->data->id;
@@ -72,7 +50,6 @@ class AuthMiddleware
         
         $stmtRole = $db->prepare("SELECT rol_id FROM usuarios WHERE id = :uid");
         $stmtRole->execute([':uid' => $userId]);
-        
         if ($stmtRole->fetchColumn() == 1) return $userId; 
 
         $sql = "SELECT count(*) FROM usuario_permisos up 
@@ -87,6 +64,17 @@ class AuthMiddleware
         } else {
             self::jsonResponse(403, ["error" => "Permisos insuficientes. Se requiere: $permisoRequerido"]);
         }
+    }
+
+    private static function getAuthHeader()
+    {
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) return $_SERVER['HTTP_AUTHORIZATION'];
+        if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) return $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        if (function_exists('apache_request_headers')) {
+            $headers = apache_request_headers();
+            if (isset($headers['Authorization'])) return $headers['Authorization'];
+        }
+        return null;
     }
 
     private static function jsonResponse($code, $data)
