@@ -53,9 +53,8 @@ class ProveedorRepository
     public function registrarLog($accion, $id, $descripcion)
     {
         try {
-            $sql = "INSERT INTO sistema_logs (usuario_id, modulo, accion, detalle) 
-                    VALUES (1, 'Proveedores', :a, :d)";
-            $this->db->prepare($sql)->execute([':a' => $accion, ':id' => $id, ':d' => $descripcion]);
+            $sql = "INSERT INTO sistema_logs (usuario_id, modulo, accion, detalle) VALUES (1, 'Proveedores', :a, :d)";
+            $this->db->prepare($sql)->execute([':a' => $accion, ':d' => $descripcion]);
         } catch (\Exception $e) {
         }
     }
@@ -70,12 +69,12 @@ class ProveedorRepository
         $stmt->execute([
             ':rut' => $data['rut'],
             ':nombre' => $data['nombre'],
-            ':dir' => !empty($data['direccion']) ? $data['direccion'] : null,
-            ':email' => !empty($data['email']) ? $data['email'] : null,
-            ':tel' => !empty($data['telefono']) ? $data['telefono'] : null,
-            ':contacto' => !empty($data['contacto_vendedor']) ? $data['contacto_vendedor'] : null,
-            ':tv' => !empty($data['tipo_venta_id']) ? $data['tipo_venta_id'] : null,
-            ':comuna' => !empty($data['comuna_id']) ? $data['comuna_id'] : null
+            ':dir' => $data['direccion'] ?? null,
+            ':email' => $data['email'] ?? null,
+            ':tel' => $data['telefono'] ?? null,
+            ':contacto' => $data['contacto_vendedor'] ?? null,
+            ':tv' => $data['tipo_venta_id'] ?? 1,
+            ':comuna' => $data['comuna_id'] ?? null
         ]);
         $id = $this->db->lastInsertId();
         $this->registrarLog('CREAR', $id, "Nuevo proveedor: " . $data['nombre']);
@@ -86,21 +85,18 @@ class ProveedorRepository
     {
         if ($this->existeRut($data['rut'], $id))
             throw new \Exception("El RUT ya existe.");
-        $sql = "UPDATE proveedores SET 
-                rut=:rut, nombre=:nombre, direccion=:dir, email=:email, telefono=:tel, 
-                contacto_vendedor=:contacto, tipo_venta_id=:tv, comuna_id=:comuna 
-                WHERE id=:id";
+        $sql = "UPDATE proveedores SET rut=:rut, nombre=:nombre, direccion=:dir, email=:email, telefono=:tel, contacto_vendedor=:contacto, tipo_venta_id=:tv, comuna_id=:comuna WHERE id=:id";
         $stmt = $this->db->prepare($sql);
         $res = $stmt->execute([
             ':id' => $id,
             ':rut' => $data['rut'],
             ':nombre' => $data['nombre'],
-            ':dir' => !empty($data['direccion']) ? $data['direccion'] : null,
-            ':email' => !empty($data['email']) ? $data['email'] : null,
-            ':tel' => !empty($data['telefono']) ? $data['telefono'] : null,
-            ':contacto' => !empty($data['contacto_vendedor']) ? $data['contacto_vendedor'] : null,
-            ':tv' => !empty($data['tipo_venta_id']) ? $data['tipo_venta_id'] : null,
-            ':comuna' => !empty($data['comuna_id']) ? $data['comuna_id'] : null
+            ':dir' => $data['direccion'] ?? null,
+            ':email' => $data['email'] ?? null,
+            ':tel' => $data['telefono'] ?? null,
+            ':contacto' => $data['contacto_vendedor'] ?? null,
+            ':tv' => $data['tipo_venta_id'] ?? null,
+            ':comuna' => $data['comuna_id'] ?? null
         ]);
         if ($res)
             $this->registrarLog('EDITAR', $id, "Actualización proveedor: " . $data['nombre']);
