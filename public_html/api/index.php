@@ -16,6 +16,7 @@ use App\Controllers\CronogramaController;
 use App\Controllers\MantenedoresController;
 use App\Controllers\ImportController;
 use App\Controllers\PersonalController;
+use App\Controllers\OperarioController;
 
 // Configuración de CORS
 header("Access-Control-Allow-Origin: *");
@@ -40,6 +41,19 @@ if ($baseDir !== '/' && strpos($requestUri, $baseDir) === 0) {
 }
 $path = str_replace('/index.php', '', $path);
 $path = trim($path, '/');
+
+// ============================================================
+// CORRECCIÓN: LIMPIEZA DE PREFIJOS (api/...)
+// ============================================================
+// Si la ruta empieza con 'api/', se lo quitamos para que coincida con los switch case
+if (strpos($path, 'api/') === 0) {
+    $path = substr($path, 4);
+}
+// También limpiamos si viene con carpetas previas (parche de seguridad)
+if (strpos($path, 'insuorders/public_html/api/') !== false) {
+    $parts = explode('api/', $path);
+    $path = end($parts);
+}
 
 // ============================================================
 // SERVICIO DE ARCHIVOS ESTÁTICOS
@@ -92,9 +106,8 @@ switch ($path) {
         echo json_encode(["message" => "API Online", "ruta" => $path]);
         break;
 
-    // --- CRONOGRAMA (NUEVO) ---
+    // --- CRONOGRAMA ---
     case 'cronograma':
-        // Validación de permisos
         AuthMiddleware::hasPermission('cron_ver');
 
         $c = new CronogramaController();
@@ -108,7 +121,6 @@ switch ($path) {
         } elseif ($method === 'PUT') {
             $c->update();
         } elseif ($method === 'DELETE') {
-            // Soporte para ID en query params (?id=1)
             global $id;
             if (empty($id) && isset($_GET['id']))
                 $id = $_GET['id'];
@@ -149,7 +161,6 @@ switch ($path) {
         break;
 
     case 'mantencion/activos':
-        // Corregido: Permiso ver_activos
         AuthMiddleware::hasPermission('ver_activos');
         (new MantencionController())->activos();
         break;
@@ -195,8 +206,8 @@ switch ($path) {
             $c->deleteDoc();
         break;
 
-    // --- INVENTARIO (ALIAS PARA COMPATIBILIDAD) ---
-    case 'insumos': // Alias por si el front llama a 'insumos'
+    // --- INVENTARIO ---
+    case 'insumos':
     case 'inventario':
         $c = new InsumoController();
         if ($method === 'GET') {
@@ -217,7 +228,7 @@ switch ($path) {
         }
         break;
 
-    case 'insumos/auxiliares': // Alias
+    case 'insumos/auxiliares':
     case 'inventario/auxiliares':
         AuthMiddleware::hasPermission('inv_ver');
         (new InsumoController())->auxiliares();
@@ -267,6 +278,10 @@ switch ($path) {
     case 'compras/recepcionar':
         $uid = AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
         (new OrdenCompraController())->recepcionar($uid);
+        break;
+    case 'compras/cancelar':
+        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        (new OrdenCompraController())->cancelarOrden();
         break;
 
     // --- PROVEEDORES ---
@@ -342,6 +357,33 @@ switch ($path) {
     case 'bodega/organizar':
         AuthMiddleware::hasPermission('ver_bodega');
         (new BodegaController())->organizar();
+        break;
+
+    // --- OPERARIO / ENTREGAS PERSONALES  ---
+    case 'operario/asignar':
+        if ($method === 'POST')
+            (new OperarioController())->asignar();
+        break;
+
+    case 'operario/mis-insumos':
+        if ($method === 'GET')
+            // CORREGIDO: Se llama a getMisInsumos()
+            (new OperarioController())->getMisInsumos();
+        break;
+
+    case 'operario/responder':
+        if ($method === 'POST')
+            (new OperarioController())->responder();
+        break;
+
+    case 'operario/consumir':
+        if ($method === 'POST')
+            (new OperarioController())->consumir();
+        break;
+
+    case 'operario/dashboard':
+        if ($method === 'GET')
+            (new OperarioController())->dashboard();
         break;
 
     // --- DASHBOARD ---

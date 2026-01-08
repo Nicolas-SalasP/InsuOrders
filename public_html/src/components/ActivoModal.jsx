@@ -6,16 +6,16 @@ import ConfirmModal from './ConfirmModal';
 const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [tab, setTab] = useState('general');
     // Estado del formulario
-    const [formData, setFormData] = useState({ 
-        codigo_interno: '', nombre: '', tipo: '', ubicacion: '', descripcion: '', centro_costo: '' 
+    const [formData, setFormData] = useState({
+        codigo_interno: '', nombre: '', tipo: '', ubicacion: '', descripcion: '', centro_costo: ''
     });
     const [listaCentros, setListaCentros] = useState([]);
-    
+
     // Estados para el Kit de Repuestos
     const [kitItems, setKitItems] = useState([]);
     const [insumos, setInsumos] = useState([]);
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
-    const [cantidadKit, setCantidadKit] = useState(1); 
+    const [cantidadKit, setCantidadKit] = useState(1);
 
     // Estados para Documentos
     const [docs, setDocs] = useState([]);
@@ -30,8 +30,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         if (show) {
             // 1. Cargar lista de centros de costo
             api.get('/index.php/mantencion/centros-costo')
-                .then(res => { if(res.data.success) setListaCentros(res.data.data); });
-            
+                .then(res => { if (res.data.success) setListaCentros(res.data.data); });
+
             // 2. Llenar formulario si es edición
             if (activo) {
                 setFormData({
@@ -42,15 +42,15 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     descripcion: activo.descripcion || '',
                     // CORRECCIÓN CRÍTICA: Usamos 'centro_costo_id' que viene del backend corregido
                     // Esto asegura que el select muestre el valor guardado
-                    centro_costo: activo.centro_costo_id || '' 
+                    centro_costo: activo.centro_costo_id || ''
                 });
                 cargarKit(activo.id);
                 cargarDocs(activo.id);
             } else {
                 // Limpiar si es nuevo
                 setFormData({ codigo_interno: '', nombre: '', tipo: '', ubicacion: '', descripcion: '', centro_costo: '' });
-                setKitItems([]); 
-                setDocs([]); 
+                setKitItems([]);
+                setDocs([]);
             }
 
             // 3. Cargar inventario para el buscador de kits
@@ -82,33 +82,39 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     };
 
     // --- LÓGICA DE KITS ---
-    const cargarKit = async (id) => { 
-        try { 
-            const res = await api.get(`/index.php/mantencion/kit?id=${id}`); 
-            setKitItems(res.data.data || []); 
-        } catch(e){ setKitItems([]); } 
+    const cargarKit = async (id) => {
+        try {
+            const res = await api.get(`/index.php/mantencion/kit?id=${id}`);
+            setKitItems(res.data.data || []);
+        } catch (e) { setKitItems([]); }
     };
-    
+
     const agregarAlKit = async (insumo) => {
         if (!activo) return alert("Guarda el activo primero para agregar repuestos.");
         if (cantidadKit <= 0) return alert("Cantidad inválida");
         try {
-            await api.post('/index.php/mantencion/kit', { 
-                activo_id: activo.id, insumo_id: insumo.id, cantidad: cantidadKit 
+            await api.post('/index.php/mantencion/kit', {
+                activo_id: activo.id, insumo_id: insumo.id, cantidad: cantidadKit
             });
             cargarKit(activo.id);
             setBusquedaInsumo(''); setCantidadKit(1);
         } catch (e) { alert("Error al agregar repuesto"); }
     };
-    
+
     const actualizarCantKit = async (insumoId, nuevaCant) => {
-        if(nuevaCant < 1) return;
+        const cantidadEntera = parseInt(nuevaCant, 10);
+        if (isNaN(cantidadEntera) || cantidadEntera < 1) return;
+
         try {
             await api.put('/index.php/mantencion/kit', {
-                activo_id: activo.id, insumo_id: insumoId, cantidad: nuevaCant
+                activo_id: activo.id,
+                insumo_id: insumoId,
+                cantidad: cantidadEntera
             });
             cargarKit(activo.id);
-        } catch(e) { alert("Error al actualizar cantidad"); }
+        } catch (e) {
+            alert("Error al actualizar cantidad");
+        }
     };
 
     const solicitarQuitarKit = (insumoId) => {
@@ -117,24 +123,24 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             title: "Eliminar Repuesto",
             message: "¿Estás seguro de quitar este repuesto del kit?",
             action: async () => {
-                try { 
-                    await api.delete(`/index.php/mantencion/kit?activo_id=${activo.id}&insumo_id=${insumoId}`); 
-                    cargarKit(activo.id); 
-                } catch(e){}
+                try {
+                    await api.delete(`/index.php/mantencion/kit?activo_id=${activo.id}&insumo_id=${insumoId}`);
+                    cargarKit(activo.id);
+                } catch (e) { }
             }
         });
     };
 
     // --- LÓGICA DE DOCUMENTOS ---
-    const cargarDocs = async (id) => { 
-        try { 
-            const res = await api.get(`/index.php/mantencion/docs?id=${id}`); 
-            setDocs(Array.isArray(res.data.data) ? res.data.data : []); 
-        } catch(e){ 
-            setDocs([]); 
-        } 
+    const cargarDocs = async (id) => {
+        try {
+            const res = await api.get(`/index.php/mantencion/docs?id=${id}`);
+            setDocs(Array.isArray(res.data.data) ? res.data.data : []);
+        } catch (e) {
+            setDocs([]);
+        }
     };
-    
+
     const subirDoc = async () => {
         if (!file || !activo) return;
         const data = new FormData();
@@ -143,7 +149,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         try {
             await api.post('/index.php/mantencion/docs', data, { headers: { 'Content-Type': 'multipart/form-data' } });
             setFile(null);
-            document.getElementById('fileInput').value = ""; 
+            document.getElementById('fileInput').value = "";
             cargarDocs(activo.id);
         } catch (e) { alert("Error al subir archivo"); }
     };
@@ -171,16 +177,16 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     return (
         <>
-            <MessageModal 
-                show={msgModal.show} 
-                onClose={() => setMsgModal({ ...msgModal, show: false })} 
-                title={msgModal.title} 
-                message={msgModal.message} 
-                type={msgModal.type} 
+            <MessageModal
+                show={msgModal.show}
+                onClose={() => setMsgModal({ ...msgModal, show: false })}
+                title={msgModal.title}
+                message={msgModal.message}
+                type={msgModal.type}
             />
 
-            <ConfirmModal 
-                show={confirm.show} 
+            <ConfirmModal
+                show={confirm.show}
                 onClose={() => setConfirm({ ...confirm, show: false })}
                 onConfirm={handleConfirm}
                 title={confirm.title}
@@ -198,19 +204,19 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                             </h5>
                             <button className="btn-close btn-close-white" onClick={onClose}></button>
                         </div>
-                        
+
                         <div className="modal-body p-0">
                             {/* Pestañas de Navegación (Solo visibles si ya existe el activo) */}
                             {activo && (
                                 <ul className="nav nav-tabs nav-fill bg-light px-3 pt-3 border-bottom-0">
                                     <li className="nav-item">
-                                        <button className={`nav-link fw-bold ${tab==='general'?'active':''}`} onClick={()=>setTab('general')}>General</button>
+                                        <button className={`nav-link fw-bold ${tab === 'general' ? 'active' : ''}`} onClick={() => setTab('general')}>General</button>
                                     </li>
                                     <li className="nav-item">
-                                        <button className={`nav-link fw-bold ${tab==='kit'?'active':''}`} onClick={()=>setTab('kit')}>Kit Repuestos</button>
+                                        <button className={`nav-link fw-bold ${tab === 'kit' ? 'active' : ''}`} onClick={() => setTab('kit')}>Kit Repuestos</button>
                                     </li>
                                     <li className="nav-item">
-                                        <button className={`nav-link fw-bold ${tab==='docs'?'active':''}`} onClick={()=>setTab('docs')}>Documentación</button>
+                                        <button className={`nav-link fw-bold ${tab === 'docs' ? 'active' : ''}`} onClick={() => setTab('docs')}>Documentación</button>
                                     </li>
                                 </ul>
                             )}
@@ -222,29 +228,29 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                         <div className="row g-3">
                                             <div className="col-md-4">
                                                 <label className="form-label small fw-bold text-muted">CÓDIGO INTERNO</label>
-                                                <input 
-                                                    type="text" 
-                                                    name="codigo_interno" 
-                                                    className="form-control fw-bold" 
-                                                    required 
-                                                    value={formData.codigo_interno} 
-                                                    onChange={handleChange} 
+                                                <input
+                                                    type="text"
+                                                    name="codigo_interno"
+                                                    className="form-control fw-bold"
+                                                    required
+                                                    value={formData.codigo_interno}
+                                                    onChange={handleChange}
                                                     placeholder="Ej: GEN-01"
                                                 />
                                             </div>
                                             <div className="col-md-8">
                                                 <label className="form-label small fw-bold text-muted">NOMBRE ACTIVO</label>
-                                                <input 
-                                                    type="text" 
-                                                    name="nombre" 
-                                                    className="form-control" 
-                                                    required 
-                                                    value={formData.nombre} 
-                                                    onChange={handleChange} 
+                                                <input
+                                                    type="text"
+                                                    name="nombre"
+                                                    className="form-control"
+                                                    required
+                                                    value={formData.nombre}
+                                                    onChange={handleChange}
                                                     placeholder="Ej: Generador Caterpillar"
                                                 />
                                             </div>
-                                            
+
                                             <div className="col-md-4">
                                                 <label className="form-label small fw-bold text-muted">TIPO</label>
                                                 <select name="tipo" className="form-select" value={formData.tipo} onChange={handleChange}>
@@ -260,29 +266,28 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                     <option value="Otro">Otro</option>
                                                 </select>
                                             </div>
-                                            
+
                                             <div className="col-md-4">
                                                 <label className="form-label small fw-bold text-muted">UBICACIÓN FÍSICA</label>
-                                                <input 
-                                                    type="text" 
-                                                    name="ubicacion" 
-                                                    className="form-control" 
-                                                    value={formData.ubicacion} 
-                                                    onChange={handleChange} 
+                                                <input
+                                                    type="text"
+                                                    name="ubicacion"
+                                                    className="form-control"
+                                                    value={formData.ubicacion}
+                                                    onChange={handleChange}
                                                     placeholder="Ej: Patio Norte"
                                                 />
                                             </div>
-                                            
+
                                             <div className="col-md-4">
                                                 <label className="form-label small fw-bold text-primary">CENTRO DE COSTO</label>
-                                                <select 
-                                                    name="centro_costo" 
-                                                    className="form-select border-primary" 
-                                                    value={formData.centro_costo} 
+                                                <select
+                                                    name="centro_costo"
+                                                    className="form-select border-primary"
+                                                    value={formData.centro_costo}
                                                     onChange={handleChange}
                                                 >
                                                     <option value="">-- Sin Asignar --</option>
-                                                    {/* CORRECCIÓN: value={cc.id} para enviar el ID numérico (Foreign Key) */}
                                                     {listaCentros.map(cc => (
                                                         <option key={cc.id} value={cc.id}>
                                                             {cc.codigo} - {cc.nombre}
@@ -290,20 +295,20 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                     ))}
                                                 </select>
                                             </div>
-                                            
+
                                             <div className="col-12">
                                                 <label className="form-label small fw-bold text-muted">DESCRIPCIÓN / DETALLES</label>
-                                                <textarea 
-                                                    name="descripcion" 
-                                                    className="form-control" 
-                                                    rows="3" 
-                                                    value={formData.descripcion} 
+                                                <textarea
+                                                    name="descripcion"
+                                                    className="form-control"
+                                                    rows="3"
+                                                    value={formData.descripcion}
                                                     onChange={handleChange}
                                                     placeholder="Detalles técnicos..."
                                                 ></textarea>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="d-flex justify-content-end mt-4">
                                             <button type="submit" className="btn btn-primary px-4 fw-bold">
                                                 <i className="bi bi-save me-2"></i>Guardar Cambios
@@ -319,27 +324,27 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             <label className="form-label small fw-bold text-muted">AGREGAR REPUESTO AL KIT</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                                                <input 
-                                                    type="text" 
-                                                    className="form-control" 
-                                                    placeholder="Buscar insumo..." 
-                                                    value={busquedaInsumo} 
-                                                    onChange={e => setBusquedaInsumo(e.target.value)} 
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    placeholder="Buscar insumo..."
+                                                    value={busquedaInsumo}
+                                                    onChange={e => setBusquedaInsumo(e.target.value)}
                                                 />
-                                                <input 
-                                                    type="number" 
-                                                    className="form-control" 
-                                                    style={{maxWidth: '80px'}} 
-                                                    value={cantidadKit} 
-                                                    onChange={e => setCantidadKit(e.target.value)} 
-                                                    min="1" 
-                                                    placeholder="Cant." 
+                                                <input
+                                                    type="number"
+                                                    className="form-control"
+                                                    style={{ maxWidth: '80px' }}
+                                                    value={cantidadKit}
+                                                    onChange={e => setCantidadKit(parseInt(e.target.value) || 1)}
+                                                    min="1"
+                                                    step="1"
+                                                    placeholder="Cant."
                                                 />
                                             </div>
-                                            {/* Resultados de búsqueda */}
                                             {busquedaInsumo && (
-                                                <div className="list-group position-absolute w-100 shadow mt-1" style={{zIndex:1000, maxHeight: '200px', overflowY: 'auto'}}>
-                                                    {insumos.filter(i => i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase())).slice(0,10).map(i => (
+                                                <div className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                                                    {insumos.filter(i => i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase())).slice(0, 10).map(i => (
                                                         <button key={i.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onClick={() => agregarAlKit(i)}>
                                                             <span>{i.nombre}</span>
                                                             <span className="badge bg-secondary">{i.codigo_sku}</span>
@@ -354,16 +359,19 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 <li key={k.id} className="list-group-item d-flex justify-content-between align-items-center">
                                                     <div>
                                                         <div className="fw-bold">{k.nombre}</div>
-                                                        <small className="text-muted">SKU: {k.codigo_sku} | Stock Actual: {k.stock_actual}</small>
+                                                        <small className="text-muted">
+                                                            SKU: {k.codigo_sku} | Stock Actual: {Math.floor(k.stock_actual)}
+                                                        </small>
                                                     </div>
                                                     <div className="d-flex align-items-center gap-2">
                                                         <label className="small text-muted mb-0">Cant:</label>
-                                                        <input 
-                                                            type="number" 
-                                                            className="form-control form-control-sm text-center" 
-                                                            style={{width: '70px'}} 
-                                                            defaultValue={k.cantidad} 
-                                                            onBlur={(e) => actualizarCantKit(k.id, e.target.value)}
+                                                        <input
+                                                            type="number"
+                                                            className="form-control form-control-sm text-center"
+                                                            style={{ width: '70px' }}
+                                                            value={Math.floor(k.cantidad)}
+                                                            step="1"
+                                                            onChange={(e) => actualizarCantKit(k.id, e.target.value)}
                                                         />
                                                         <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarQuitarKit(k.id)} title="Quitar">
                                                             <i className="bi bi-trash"></i>

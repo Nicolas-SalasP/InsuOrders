@@ -12,16 +12,17 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     const [moneda, setMoneda] = useState('CLP');
     const [tipoCambio, setTipoCambio] = useState(1);
     const [numeroCotizacion, setNumeroCotizacion] = useState('');
-    
-    // MEJORA: Estado para Impuesto Variable (Por defecto 19)
+
+    // Estado para Impuesto Variable (Por defecto 19)
     const [impuestoPorcentaje, setImpuestoPorcentaje] = useState(19);
 
-    // Ítems
+    // Ítems y Estado General
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(''); // <--- NUEVO: Para manejar mensajes de error sin alert()
 
     // Estado para "Agregar Producto"
-    const [modoNuevo, setModoNuevo] = useState(false); // false: Buscar, true: Crear
+    const [modoNuevo, setModoNuevo] = useState(false);
     const [busqueda, setBusqueda] = useState('');
 
     // Formulario Producto Nuevo
@@ -29,6 +30,9 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
     useEffect(() => {
         if (show) {
+            // Limpiar errores al abrir
+            setError('');
+
             // Cargar listas
             api.get('/index.php/proveedores').then(res => {
                 if (res.data.success) setProveedores(res.data.data);
@@ -41,18 +45,22 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
             });
 
             // Resetear formulario
-            setProveedorId(''); 
-            setMoneda('CLP'); 
-            setTipoCambio(1); 
+            setProveedorId('');
+            setMoneda('CLP');
+            setTipoCambio(1);
             setNumeroCotizacion('');
-            setImpuestoPorcentaje(19); // Reset a 19%
-            setModoNuevo(false); 
+            setImpuestoPorcentaje(19);
+            setModoNuevo(false);
             setBusqueda('');
             setNuevoProd({ nombre: '', categoria_id: '', unidad: 'UN', precio: '', cantidad: '' });
 
-            // Cargar ítems iniciales (Alerta Mantención)
+            // Cargar ítems iniciales
             if (itemsIniciales.length > 0) {
-                setItems(itemsIniciales);
+                const itemsFormateados = itemsIniciales.map(i => ({
+                    ...i,
+                    ids_detalle_solicitud: i.ids_detalle_solicitud || i.origen_ids || null
+                }));
+                setItems(itemsFormateados);
             } else {
                 setItems([]);
             }
@@ -68,6 +76,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
         : [];
 
     const agregarItemExistente = (insumo) => {
+        setError(''); // Limpiar error si agrega bien
         setItems([...items, {
             id: insumo.id,
             nombre: insumo.nombre,
@@ -81,11 +90,14 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     };
 
     const agregarItemNuevo = () => {
+        setError(''); // Limpiar errores previos
         if (!nuevoProd.nombre || !nuevoProd.categoria_id || !nuevoProd.cantidad || !nuevoProd.precio) {
-            return alert("Completa todos los datos del nuevo producto (incluyendo precio).");
+            // REEMPLAZO DE ALERT: Seteamos el estado de error
+            setError("Completa todos los datos del nuevo producto (incluyendo precio).");
+            return;
         }
         setItems([...items, {
-            id: null, // Es nuevo
+            id: null,
             nombre: nuevoProd.nombre,
             unidad: nuevoProd.unidad,
             categoria_id: nuevoProd.categoria_id,
@@ -94,7 +106,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
             sku: 'NUEVO',
             tipo: 'nuevo'
         }]);
-        // Resetear form nuevo
+
         setNuevoProd({ nombre: '', categoria_id: '', unidad: 'UN', precio: '', cantidad: '' });
         setModoNuevo(false);
     };
@@ -110,7 +122,16 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     };
 
     const handleSubmit = async () => {
-        if (!proveedorId || items.length === 0) return alert("Faltan datos (Proveedor o Productos).");
+        setError(''); // Limpiar errores antes de enviar
+
+        if (!proveedorId) {
+            setError("Debes seleccionar un Proveedor.");
+            return;
+        }
+        if (items.length === 0) {
+            setError("La orden debe tener al menos un producto.");
+            return;
+        }
 
         setLoading(true);
         try {
@@ -119,20 +140,20 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                 moneda,
                 tipo_cambio: tipoCambio,
                 numero_cotizacion: numeroCotizacion,
-                // Enviamos el impuesto variable
                 impuesto_porcentaje: impuestoPorcentaje,
-                items // Aquí viajan los items y los origen_ids
+                items
             });
             onSave();
             onClose();
         } catch (error) {
-            alert("Error: " + (error.response?.data?.message || "Error desconocido"));
+            // REEMPLAZO DE ALERT: Mostrar error del backend en el banner
+            setError("Error: " + (error.response?.data?.message || "Error desconocido al guardar"));
         } finally {
             setLoading(false);
         }
     };
 
-    // Cálculos Totales con IVA Variable
+    // Cálculos Totales
     const totalNeto = items.reduce((acc, i) => acc + (i.cantidad * i.precio), 0);
     const totalIVA = totalNeto * (impuestoPorcentaje / 100);
     const totalFinal = totalNeto + totalIVA;
@@ -149,13 +170,22 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                     </div>
                     <div className="modal-body bg-light">
 
+                        {/* MENSAJE DE ERROR (Reemplazo del Alert) */}
+                        {error && (
+                            <div className="alert alert-danger d-flex align-items-center mb-3" role="alert">
+                                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                <div>{error}</div>
+                            </div>
+                        )}
+
                         {/* 1. Cabecera */}
                         <div className="card border-0 shadow-sm mb-4">
                             <div className="card-body">
                                 <div className="row g-3">
                                     <div className="col-md-4">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Proveedor</label>
-                                        <select className="form-select" value={proveedorId} onChange={e => setProveedorId(e.target.value)}>
+                                        <select className={`form-select ${!proveedorId && error ? 'is-invalid' : ''}`}
+                                            value={proveedorId} onChange={e => { setProveedorId(e.target.value); setError(''); }}>
                                             <option value="">Seleccione Proveedor...</option>
                                             {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.rut})</option>)}
                                         </select>
@@ -181,16 +211,13 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             disabled={moneda === 'CLP'}
                                         />
                                     </div>
-                                    
-                                    {/* MEJORA: Campo de Impuesto Variable */}
                                     <div className="col-md-2">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Impuesto %</label>
                                         <div className="input-group">
-                                            <input 
-                                                type="number" 
-                                                className="form-control" 
-                                                value={impuestoPorcentaje} 
-                                                onChange={e => setImpuestoPorcentaje(parseFloat(e.target.value) || 0)} 
+                                            <input
+                                                type="number" className="form-control"
+                                                value={impuestoPorcentaje}
+                                                onChange={e => setImpuestoPorcentaje(parseFloat(e.target.value) || 0)}
                                                 min="0" max="100" step="0.1"
                                             />
                                             <span className="input-group-text">%</span>
@@ -205,8 +232,8 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                             <div className="card-header bg-white d-flex justify-content-between align-items-center py-2">
                                 <span className="fw-bold small text-dark">DETALLE DE PRODUCTOS</span>
                                 <div className="btn-group btn-group-sm">
-                                    <button className={`btn ${!modoNuevo ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setModoNuevo(false)}>Buscar Existente</button>
-                                    <button className={`btn ${modoNuevo ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setModoNuevo(true)}>Crear Nuevo</button>
+                                    <button className={`btn ${!modoNuevo ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => { setModoNuevo(false); setError(''); }}>Buscar Existente</button>
+                                    <button className={`btn ${modoNuevo ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => { setModoNuevo(true); setError(''); }}>Crear Nuevo</button>
                                 </div>
                             </div>
                             <div className="card-body py-3">
@@ -285,7 +312,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             <td>
                                                 <div className="fw-medium">
                                                     {item.nombre}
-                                                    {item.origen_ids && <span className="badge bg-warning text-dark ms-2" title="Viene de Mantención"><i className="bi bi-link-45deg"></i> OT</span>}
+                                                    {item.ids_detalle_solicitud && <span className="badge bg-warning text-dark ms-2" title="Viene de Mantención"><i className="bi bi-link-45deg"></i> OT</span>}
                                                 </div>
                                                 <small className="text-muted" style={{ fontSize: '0.75rem' }}>{item.sku !== 'NUEVO' ? `SKU: ${item.sku}` : ''}</small>
                                             </td>
@@ -326,7 +353,6 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                         <strong>{totalNeto.toLocaleString('es-CL', { maximumFractionDigits: 2 })}</strong>
                                     </li>
                                     <li className="list-group-item d-flex justify-content-between">
-                                        {/* Etiqueta dinámica con el % seleccionado */}
                                         <span className="text-muted">IVA ({impuestoPorcentaje}%):</span>
                                         <span>{totalIVA.toLocaleString('es-CL', { maximumFractionDigits: 2 })}</span>
                                     </li>
@@ -341,7 +367,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                     </div>
                     <div className="modal-footer">
                         <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-                        <button className="btn btn-success px-4" onClick={handleSubmit} disabled={loading || items.length === 0}>
+                        <button className="btn btn-success px-4" onClick={handleSubmit} disabled={loading}>
                             {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check-lg me-2"></i>}
                             Confirmar Orden
                         </button>

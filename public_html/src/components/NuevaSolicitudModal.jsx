@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import api from '../api/axiosConfig'; 
+import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
 import ConfirmModal from './ConfirmModal';
 
@@ -11,7 +11,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [personal, setPersonal] = useState([]);
 
     // --- ESTADOS DEL FORMULARIO ---
-    const [modo, setModo] = useState('maquina'); 
+    const [modo, setModo] = useState('maquina');
     const [activoId, setActivoId] = useState('');
     const [solicitanteExterno, setSolicitanteExterno] = useState('');
     const [centroCostoOT, setCentroCostoOT] = useState('');
@@ -30,8 +30,8 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
     // --- DETERMINAR SI ES EDITABLE ---
     const esEditable = (estado) => {
-        if (!otEditar) return true; 
-        const estadosBloqueados = ['Anulada', 'Completada', 'Cerrada']; 
+        if (!otEditar) return true;
+        const estadosBloqueados = ['Anulada', 'Completada', 'Cerrada'];
         return !estadosBloqueados.includes(estado);
     };
 
@@ -64,7 +64,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 api.get('/index.php/mantencion/centros-costo'),
                 api.get('/index.php/personal')
             ]);
-            
+
             setActivos(resActivos.data.data || []);
             setInsumos(resInsumos.data.data || []);
             setCentrosCosto(resCC.data.success ? resCC.data.data : []);
@@ -85,8 +85,8 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
     const resetearFormulario = () => {
         setModo('maquina');
-        setActivoId(''); 
-        setObservacion(''); 
+        setActivoId('');
+        setObservacion('');
         setBusqueda('');
         setSolicitanteExterno('');
         setCentroCostoOT('');
@@ -107,13 +107,13 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             setObservacion(otEditar.descripcion_trabajo || '');
 
             const resDetalles = await api.get(`/index.php/mantencion?detalle=true&id=${otEditar.id}`);
-            
+
             if (resDetalles.data.success) {
-                const listaItems = resDetalles.data.data.items || []; 
+                const listaItems = resDetalles.data.data.items || [];
 
                 const itemsMapeados = listaItems.map(d => ({
-                    id_producto: d.insumo_id || d.id, 
-                    id_linea: d.detalle_id || d.id,   
+                    id_producto: d.insumo_id || d.id,
+                    id_linea: d.detalle_id || d.id,
                     nombre: d.nombre,
                     codigo_sku: d.codigo_sku,
                     stock_actual: parseFloat(d.stock_actual || 0),
@@ -121,7 +121,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                     cantidad: parseFloat(d.cantidad || 0),
                     oc_id: d.oc_id,
                     oc_proveedor: d.oc_proveedor,
-                    estado_linea: d.estado_linea || 'PENDIENTE', 
+                    estado_linea: d.estado_linea || 'PENDIENTE',
                     retirado_por: d.retirado_por,
                     fecha_retiro: d.fecha_retiro
                 }));
@@ -143,12 +143,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                     setConfirmModal({
                         show: true,
                         title: "Kit de Mantención Detectado",
-                        message: `Esta máquina tiene un kit predefinido con ${res.data.data.length} insumos. ¿Deseas cargarlos?`,
+                        message: `Esta máquina tiene un kit con ${res.data.data.length} insumos. ¿Deseas cargarlos?`,
                         action: () => {
                             const kitItems = res.data.data.map(k => ({
-                                id_producto: k.insumo_id,
-                                id_linea: null, 
-                                nombre: k.nombre_insumo || k.nombre, 
+                                id_producto: k.insumo_id || k.id,
+                                id_linea: null,
+                                nombre: k.nombre_insumo || k.nombre,
                                 codigo_sku: k.codigo_sku,
                                 stock_actual: parseFloat(k.stock_actual || 0),
                                 unidad_medida: k.unidad_medida,
@@ -159,40 +159,43 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                             setConfirmModal({ show: false });
                         }
                     });
+                } else {
+                    setItems([]);
                 }
-            } catch (e) { 
+            } catch (e) {
                 console.log("No hay kit o error al cargar kit", e);
+                setItems([]);
             }
         }
     };
 
     const agregarItem = (insumo, e) => {
         // Prevenir comportamiento default por si acaso
-        if(e) e.preventDefault();
+        if (e) e.preventDefault();
 
         console.log("Agregando insumo:", insumo); // Debug
 
         const yaExiste = items.some(i => String(i.id_producto) === String(insumo.id));
         if (yaExiste) {
             setMsgModal({ show: true, title: "Duplicado", message: "Este insumo ya está en la lista.", type: "warning" });
-            setBusqueda(''); 
+            setBusqueda('');
             setMostrarLista(false);
             return;
         }
-        
-        const nuevoItem = { 
+
+        const nuevoItem = {
             id_producto: insumo.id,
-            id_linea: null, 
+            id_linea: null,
             nombre: insumo.nombre,
             codigo_sku: insumo.codigo_sku,
             stock_actual: parseFloat(insumo.stock_actual || 0),
             unidad_medida: insumo.unidad_medida,
-            cantidad: 1, 
-            estado_linea: 'NUEVO' 
+            cantidad: 1,
+            estado_linea: 'NUEVO'
         };
 
         setItems(prev => [...prev, nuevoItem]);
-        setBusqueda(''); 
+        setBusqueda('');
         setMostrarLista(false);
     };
 
@@ -200,7 +203,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         const copia = [...items];
         let valor = parseFloat(val);
         if (isNaN(valor) || valor < 0) valor = 0;
-        copia[idx].cantidad = valor; 
+        copia[idx].cantidad = valor;
         setItems(copia);
     };
 
@@ -210,17 +213,17 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
     const preSubmit = () => {
         if (modo === 'maquina' && !activoId) {
-             return setMsgModal({ show: true, title: "Faltan Datos", message: "Por favor seleccione una máquina o activo.", type: "warning" });
+            return setMsgModal({ show: true, title: "Faltan Datos", message: "Por favor seleccione una máquina o activo.", type: "warning" });
         }
         if (modo === 'servicio' && (!centroCostoOT || !solicitanteExterno)) {
-             return setMsgModal({ show: true, title: "Faltan Datos", message: "Debe indicar el Solicitante y el Centro de Costo.", type: "warning" });
+            return setMsgModal({ show: true, title: "Faltan Datos", message: "Debe indicar el Solicitante y el Centro de Costo.", type: "warning" });
         }
         if (items.length === 0 && !observacion.trim()) {
             return setMsgModal({ show: true, title: "OT Vacía", message: "Debe agregar una descripción o al menos un insumo.", type: "warning" });
         }
 
         const itemsConStock = items.filter(i => (i.estado_linea === 'NUEVO' || i.estado_linea === 'PENDIENTE') && i.stock_actual >= i.cantidad && i.cantidad > 0);
-        
+
         if (!otEditar && itemsConStock.length > 0) {
             setConfirmModal({
                 show: true,
@@ -238,61 +241,65 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setConfirmModal({ show: false });
         setLoading(true);
         try {
+            const itemsFormateados = items.map(i => ({
+                id_linea: i.id_linea || null,
+                insumo_id: i.id_producto,
+                cantidad: parseFloat(i.cantidad)
+            }));
+
             const payload = {
                 id: otEditar ? otEditar.id : null,
                 activo_id: modo === 'maquina' ? activoId : null,
                 observacion: observacion,
-                items: items.map(i => ({
-                    id_linea: i.id_linea,
-                    insumo_id: i.id_producto, 
-                    cantidad: i.cantidad
-                })),
+                items: itemsFormateados,
                 solicitante_externo: modo === 'servicio' ? solicitanteExterno : null,
                 area_negocio: null,
                 centro_costo_ot: modo === 'servicio' ? centroCostoOT : null,
-                origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio' 
+                origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio'
             };
+
+            console.log("Enviando Payload:", payload);
 
             if (otEditar) {
                 await api.put(`/index.php/mantencion?id=${otEditar.id}`, payload);
-                setMsgModal({ show: true, title: "Actualizado", message: "La Orden de Trabajo ha sido actualizada.", type: "success" });
+                setMsgModal({ show: true, title: "Actualizado", message: "OT actualizada.", type: "success" });
             } else {
                 await api.post('/index.php/mantencion', payload);
-                setMsgModal({ show: true, title: "Creado", message: "Orden de Trabajo generada exitosamente.", type: "success" });
+                setMsgModal({ show: true, title: "Creado", message: "OT generada exitosamente.", type: "success" });
             }
 
             setTimeout(() => {
-                setMsgModal({ ...msgModal, show: false }); 
-                onSave(); 
-                onClose(); 
+                setMsgModal({ ...msgModal, show: false });
+                onSave();
+                onClose();
             }, 1500);
 
         } catch (error) {
-            console.error(error);
-            const errorMsg = error.response?.data?.message || "Ocurrió un error al procesar la solicitud.";
+            console.error("Error en petición:", error);
+            const errorMsg = error.response?.data?.message || "Error al procesar.";
             setMsgModal({ show: true, title: "Error", message: errorMsg, type: "error" });
         } finally {
             setLoading(false);
         }
     };
 
-    const insumosFiltrados = busqueda 
-        ? insumos.filter(i => 
-            i.nombre.toLowerCase().includes(busqueda.toLowerCase()) || 
+    const insumosFiltrados = busqueda
+        ? insumos.filter(i =>
+            i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
             (i.codigo_sku && i.codigo_sku.includes(busqueda))
-          ).slice(0, 10) 
+        ).slice(0, 10)
         : [];
 
     if (!show) return null;
 
     return (
         <>
-            <MessageModal 
-                show={msgModal.show} 
-                onClose={() => setMsgModal({ ...msgModal, show: false })} 
-                title={msgModal.title} 
-                message={msgModal.message} 
-                type={msgModal.type} 
+            <MessageModal
+                show={msgModal.show}
+                onClose={() => setMsgModal({ ...msgModal, show: false })}
+                title={msgModal.title}
+                message={msgModal.message}
+                type={msgModal.type}
             />
             <ConfirmModal
                 show={confirmModal.show}
@@ -307,7 +314,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }}>
                 <div className="modal-dialog modal-xl">
                     <div className="modal-content shadow-lg border-0">
-                        
+
                         <div className="modal-header bg-warning text-dark border-bottom border-warning">
                             <h5 className="modal-title fw-bold">
                                 {otEditar ? `✏️ Detalle OT #${otEditar.id}` : '🛠️ Nueva Orden de Trabajo'}
@@ -316,16 +323,16 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                         </div>
 
                         <div className="modal-body bg-light p-4">
-                            
+
                             {!otEditar && (
                                 <div className="d-flex justify-content-center mb-4">
                                     <div className="btn-group shadow-sm" role="group">
-                                        <button type="button" 
+                                        <button type="button"
                                             className={`btn fw-bold px-4 ${modo === 'maquina' ? 'btn-primary' : 'btn-outline-primary bg-white'}`}
                                             onClick={() => { setModo('maquina'); setActivoId(''); setItems([]); }}>
                                             <i className="bi bi-gear-fill me-2"></i>Maquinaria
                                         </button>
-                                        <button type="button" 
+                                        <button type="button"
                                             className={`btn fw-bold px-4 ${modo === 'servicio' ? 'btn-success' : 'btn-outline-success bg-white'}`}
                                             onClick={() => { setModo('servicio'); setActivoId(''); setItems([]); }}>
                                             <i className="bi bi-people-fill me-2"></i>Servicio / Área
@@ -341,9 +348,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                             {modo === 'maquina' ? (
                                                 <div className="mb-3">
                                                     <label className="form-label fw-bold small text-muted text-uppercase">Máquina / Activo</label>
-                                                    <select className="form-select border-primary shadow-sm" 
-                                                        value={activoId} 
-                                                        onChange={handleActivoChange} 
+                                                    <select className="form-select border-primary shadow-sm"
+                                                        value={activoId}
+                                                        onChange={handleActivoChange}
                                                         disabled={!!otEditar}
                                                     >
                                                         <option value="">-- Seleccione Máquina --</option>
@@ -382,7 +389,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                         <div className="col-md-6">
                                             <div className="h-100 d-flex flex-column">
                                                 <label className="form-label fw-bold small text-muted text-uppercase">Descripción del Trabajo</label>
-                                                <textarea className="form-control flex-grow-1 shadow-sm" style={{minHeight: '120px'}}
+                                                <textarea className="form-control flex-grow-1 shadow-sm" style={{ minHeight: '120px' }}
                                                     value={observacion} onChange={e => setObservacion(e.target.value)}
                                                     placeholder="Describa el problema o requerimiento detalladamente..."
                                                     disabled={!editable}
@@ -400,17 +407,17 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                             <div className="input-group shadow-sm">
                                                 <span className="input-group-text bg-white text-primary border-end-0"><i className="bi bi-search"></i></span>
                                                 <input type="text" className="form-control border-start-0" placeholder="Escriba para buscar repuestos..."
-                                                    value={busqueda} 
-                                                    onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }} 
-                                                    onFocus={() => setMostrarLista(true)} 
+                                                    value={busqueda}
+                                                    onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }}
+                                                    onFocus={() => setMostrarLista(true)}
                                                 />
                                             </div>
                                             {mostrarLista && busqueda && (
                                                 <ul className="list-group position-absolute w-100 shadow mt-1 start-0" style={{ zIndex: 2000, maxHeight: '250px', overflowY: 'auto' }}>
                                                     {insumosFiltrados.length > 0 ? insumosFiltrados.map(ins => (
-                                                        <li key={ins.id} 
-                                                            className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center p-3" 
-                                                            onMouseDown={(e) => agregarItem(ins, e)} 
+                                                        <li key={ins.id}
+                                                            className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center p-3"
+                                                            onMouseDown={(e) => agregarItem(ins, e)}
                                                         >
                                                             <div>
                                                                 <div className="fw-bold text-dark">{ins.nombre}</div>
@@ -520,7 +527,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
                         <div className="modal-footer bg-white border-top-0 py-3">
                             <button className="btn btn-secondary px-4" onClick={onClose} disabled={loading}>Cerrar</button>
-                            
+
                             {editable && (
                                 <button className="btn btn-warning fw-bold px-4 shadow-sm d-flex align-items-center" onClick={preSubmit} disabled={loading}>
                                     {loading ? (

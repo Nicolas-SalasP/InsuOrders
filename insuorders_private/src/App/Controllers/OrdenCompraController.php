@@ -138,7 +138,6 @@ class OrdenCompraController
 
     public function uploadFile()
     {
-        // Forzamos la verificación con el prefijo correcto de namespace
         AuthMiddleware::verify();
 
         $id = $_POST['orden_id'] ?? null;
@@ -161,6 +160,28 @@ class OrdenCompraController
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
+
+    public function cancelarOrden()
+    {
+        AuthMiddleware::verify();
+        $input = json_decode(file_get_contents("php://input"), true);
+        $id = $input['id'] ?? $_POST['id'] ?? null;
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID no proporcionado']);
+            return;
+        }
+
+        try {
+            $this->service->cancelarOrden($id);
+            echo json_encode(['success' => true, 'message' => 'Orden cancelada correctamente.']);
+        } catch (\Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     }
 }

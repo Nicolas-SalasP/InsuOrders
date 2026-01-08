@@ -118,22 +118,28 @@ class InsumoRepository
 
     public function registrarMovimiento($data)
     {
-        $sql = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, empleado_id, ubicacion_id, fecha) VALUES (:iid, :tid, :cant, :uid, :obs, :emp, :ubi, NOW())";
+        // Corregido: Aseguramos que empleado_id y ubicacion_id se manejen correctamente si vienen nulos
+        $sql = "INSERT INTO movimientos_inventario 
+                (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, empleado_id, ubicacion_id, fecha) 
+                VALUES (:iid, :tid, :cant, :uid, :obs, :emp, :ubi, NOW())";
+
         $this->db->prepare($sql)->execute([
             ':iid' => $data['insumo_id'],
             ':tid' => $data['tipo_movimiento_id'],
             ':cant' => $data['cantidad'],
             ':uid' => $data['usuario_id'],
             ':obs' => $data['observacion'],
-            ':emp' => $data['empleado_id'] ?? null,
-            ':ubi' => $data['ubicacion_id'] ?? null
+            ':emp' => !empty($data['empleado_id']) ? $data['empleado_id'] : null,
+            ':ubi' => !empty($data['ubicacion_id']) ? $data['ubicacion_id'] : null
         ]);
     }
 
-    public function ajustarStock($insumoId, $cantidad, $tipoMovimiento, $usuarioId, $observacion)
+    public function ajustarStock($insumoId, $cantidad, $tipoMovimiento, $usuarioId, $observacion, $empleadoId = null)
     {
         try {
             $this->db->beginTransaction();
+
+            // Buscamos la ubicación con más stock para descontar de ahí por defecto si no se especifica
             $stmtLoc = $this->db->prepare("SELECT ubicacion_id FROM insumo_stock_ubicacion WHERE insumo_id = :id ORDER BY cantidad DESC LIMIT 1");
             $stmtLoc->execute([':id' => $insumoId]);
             $ubicacionId = $stmtLoc->fetchColumn() ?: 1;
@@ -144,20 +150,35 @@ class InsumoRepository
                 'cantidad' => $cantidad,
                 'usuario_id' => $usuarioId,
                 'observacion' => $observacion,
-                'ubicacion_id' => $ubicacionId
+                'ubicacion_id' => $ubicacionId,
+                'empleado_id' => $empleadoId
             ]);
 
+            // Si es tipo 3 es entrada (+), si es 2 o 4 es salida (-)
             $operador = ($tipoMovimiento == 3) ? '+' : '-';
+
             if ($operador === '+') {
-                $sqlUpd = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:i, :u, :c) ON DUPLICATE KEY UPDATE cantidad = cantidad + :c";
+                $sqlUpd = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
+                           VALUES (:i, :u, :c) 
+                           ON DUPLICATE KEY UPDATE cantidad = cantidad + :c";
             } else {
-                $sqlUpd = "UPDATE insumo_stock_ubicacion SET cantidad = GREATEST(0, cantidad - :c) WHERE insumo_id = :i AND ubicacion_id = :u";
+                $sqlUpd = "UPDATE insumo_stock_ubicacion 
+                           SET cantidad = GREATEST(0, cantidad - :c) 
+                           WHERE insumo_id = :i AND ubicacion_id = :u";
             }
-            $this->db->prepare($sqlUpd)->execute([':i' => $insumoId, ':u' => $ubicacionId, ':c' => $cantidad]);
+
+            $this->db->prepare($sqlUpd)->execute([
+                ':i' => $insumoId,
+                ':u' => $ubicacionId,
+                ':c' => $cantidad
+            ]);
+
             $this->db->commit();
             return true;
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }

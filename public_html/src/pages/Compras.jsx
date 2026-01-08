@@ -10,20 +10,34 @@ const Compras = () => {
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Modales
+    // Modales Principales
     const [showModal, setShowModal] = useState(false); 
     const [verModal, setVerModal] = useState({ show: false, id: null }); 
     const [uploadModal, setUploadModal] = useState({ show: false, id: null, url: null }); 
     const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null }); 
     
+    // Modal de Mensajes (Feedback)
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
 
-    // Estados de Filtros
+    // Modal de Confirmación (Para anular)
+    const [confirmModal, setConfirmModal] = useState({ show: false, id: null });
+
+    // Estado para el Menú Flotante
+    const [actionMenu, setActionMenu] = useState({ 
+        show: false, 
+        top: 0, 
+        left: 0, 
+        id: null, 
+        url: null, 
+        estado: null 
+    });
+
+    // Filtros
     const [filtroProveedor, setFiltroProveedor] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
     
-    // --- LÓGICA AUTOCOMPLETADO INSUMOS ---
+    // Autocompletado Insumos
     const [filtroInsumo, setFiltroInsumo] = useState(''); 
     const [busquedaInsumo, setBusquedaInsumo] = useState(''); 
     const [listaInsumos, setListaInsumos] = useState([]); 
@@ -43,10 +57,21 @@ const Compras = () => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 setMostrarSugerencias(false);
             }
+            // Cerrar menú flotante si clickeamos fuera
+            if (actionMenu.show && !event.target.closest('.action-menu-trigger') && !event.target.closest('.floating-action-menu')) {
+                closeActionMenu();
+            }
         };
+        const handleScroll = () => { if(actionMenu.show) closeActionMenu(); };
+
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+        window.addEventListener("scroll", handleScroll, true); 
+        
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            window.removeEventListener("scroll", handleScroll, true);
+        };
+    }, [actionMenu.show]);
 
     useEffect(() => {
         cargarOrdenes();
@@ -106,8 +131,63 @@ const Compras = () => {
     
     const handleNewOrder = () => { setItemsPrecargados([]); setShowModal(true); };
 
-    // --- LÓGICA DE EXPORTACIÓN (IMPLEMENTADA) ---
-    const descargarPdfOC = async (id) => {
+    // --- LÓGICA DEL MENÚ FLOTANTE ---
+    const handleActionMenuClick = (e, oc) => {
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        
+        setActionMenu({
+            show: true,
+            top: rect.bottom + window.scrollY + 2,
+            left: rect.right - 180, 
+            id: oc.id,
+            url: oc.url_archivo,
+            estado: oc.estado
+        });
+    };
+
+    const closeActionMenu = () => {
+        setActionMenu({ ...actionMenu, show: false });
+    };
+
+    // --- LÓGICA DE CANCELACIÓN ---
+    const solicitarAnulacion = () => {
+        closeActionMenu();
+        if (actionMenu.id) {
+            setConfirmModal({ show: true, id: actionMenu.id });
+        }
+    };
+
+    const confirmarAnulacion = async () => {
+        setConfirmModal({ show: false, id: null });
+        
+        try {
+            const res = await api.post('/index.php/compras/cancelar', { id: confirmModal.id });
+            if (res.data.success) {
+                setMsg({ show: true, title: 'Orden Anulada', text: 'La orden ha sido cancelada correctamente.', type: 'success' });
+                cargarOrdenes(); 
+            } else {
+                setMsg({ show: true, title: 'Error', text: res.data.message || 'No se pudo anular la orden.', type: 'error' });
+            }
+        } catch (error) {
+            setMsg({ 
+                show: true, 
+                title: 'Error', 
+                text: error.response?.data?.message || 'Error de conexión al intentar anular.', 
+                type: 'error' 
+            });
+        }
+    };
+
+    // --- ACCIONES DEL MENÚ ---
+    const handleAdjuntar = () => {
+        setUploadModal({ show: true, id: actionMenu.id, url: actionMenu.url });
+        closeActionMenu();
+    };
+
+    const handleDescargarPdf = async () => {
+        closeActionMenu();
+        const id = actionMenu.id;
         try {
             const res = await api.get(`/index.php/compras/pdf?id=${id}`, { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -120,7 +200,9 @@ const Compras = () => {
         } catch (e) { alert("Error al generar PDF"); }
     };
 
-    const descargarExcelOC = async (id) => {
+    const handleDescargarExcel = async () => {
+        closeActionMenu();
+        const id = actionMenu.id;
         try {
             const res = await api.get(`/index.php/exportar?modulo=detalle_oc&id=${id}`, { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -189,8 +271,8 @@ const Compras = () => {
                 show={verModal.show} 
                 onHide={() => setVerModal({ show: false, id: null })} 
                 ordenId={verModal.id} 
-                onDownloadPdf={descargarPdfOC} 
-                onExportExcel={descargarExcelOC} 
+                onDownloadPdf={() => { setVerModal({ show: false }); handleDescargarPdf(); }} 
+                onExportExcel={() => { setVerModal({ show: false }); handleDescargarExcel(); }}
             />
             <SubirArchivoModal 
                 show={uploadModal.show} 
@@ -200,6 +282,70 @@ const Compras = () => {
                 onSave={cargarOrdenes} 
             />
             <RecepcionCompraModal show={recepcionModal.show} onClose={() => setRecepcionModal({ show: false, id: null })} ordenId={recepcionModal.id} onSave={() => { cargarOrdenes(); cargarPendientes(); }} />
+
+            {/* --- MODAL DE CONFIRMACIÓN DE ANULACIÓN --- */}
+            {confirmModal.show && (
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }} tabIndex="-1">
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-header bg-danger text-white">
+                                <h5 className="modal-title fw-bold"><i className="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Anulación</h5>
+                                <button type="button" className="btn-close btn-close-white" onClick={() => setConfirmModal({ show: false, id: null })}></button>
+                            </div>
+                            <div className="modal-body p-4 text-center">
+                                <p className="mb-1 fs-5">¿Estás seguro de que deseas anular esta orden?</p>
+                                <p className="text-muted small">Esta acción es irreversible y liberará los compromisos de compra.</p>
+                            </div>
+                            <div className="modal-footer justify-content-center bg-light">
+                                <button type="button" className="btn btn-secondary px-4" onClick={() => setConfirmModal({ show: false, id: null })}>Cancelar</button>
+                                <button type="button" className="btn btn-danger px-4 fw-bold" onClick={confirmarAnulacion}>Sí, Anular Orden</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- MENÚ FLOTANTE (FIXED) --- */}
+            {actionMenu.show && (
+                <div 
+                    className="floating-action-menu shadow rounded bg-white border"
+                    style={{
+                        position: 'absolute', 
+                        top: actionMenu.top,
+                        left: actionMenu.left,
+                        zIndex: 9999, 
+                        minWidth: '180px',
+                        padding: '0.5rem 0'
+                    }}
+                >
+                    {/* SOLO MOSTRAR SI NO ESTÁ ANULADA */}
+                    {actionMenu.estado !== 'Anulada' && (
+                        <>
+                            <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleAdjuntar}>
+                                <i className={`bi ${actionMenu.url ? "bi-paperclip text-success" : "bi-upload"} me-2`}></i>
+                                {actionMenu.url ? "Ver/Cambiar Archivo" : "Adjuntar Archivo"}
+                            </button>
+                            <div className="dropdown-divider my-1"></div>
+                        </>
+                    )}
+                    
+                    <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarPdf}>
+                        <i className="bi bi-file-earmark-pdf text-danger me-2"></i> Descargar PDF
+                    </button>
+                    <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarExcel}>
+                        <i className="bi bi-file-earmark-excel text-success me-2"></i> Descargar Excel
+                    </button>
+                    
+                    {actionMenu.estado === 'Emitida' && (
+                        <>
+                            <div className="dropdown-divider my-1"></div>
+                            <button className="dropdown-item py-2 px-3 d-flex align-items-center text-danger fw-bold" onClick={solicitarAnulacion}>
+                                <i className="bi bi-trash me-2"></i> Anular Orden
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
@@ -221,6 +367,7 @@ const Compras = () => {
                     </div>
                 </div>
 
+                {/* FILTROS */}
                 <div className="bg-light p-3 border-bottom">
                     <div className="row g-2 align-items-center">
                         <div className="col-md-3">
@@ -272,7 +419,8 @@ const Compras = () => {
                     </div>
                 </div>
 
-                <div className="card-body p-0 flex-grow-1 overflow-auto">
+                {/* TABLA DE RESULTADOS */}
+                <div className="card-body p-0 flex-grow-1 overflow-auto position-relative">
                     {pendientes.length > 0 && (
                         <div className="alert alert-warning border-warning d-flex align-items-center justify-content-between m-3 shadow-sm fade show" role="alert">
                             <div className="d-flex align-items-center">
@@ -299,20 +447,47 @@ const Compras = () => {
                                 {ordenesFiltradas.length > 0 ? ordenesFiltradas.map(oc => (
                                     <tr key={oc.id}>
                                         <td className="ps-4 fw-bold text-primary">#{oc.id}</td>
-                                        <td><div className="fw-medium">{oc.proveedor}</div><small className="text-muted">{oc.proveedor_rut}</small></td>
+                                        <td>
+                                            <div className="fw-medium">{oc.proveedor}</div>
+                                            <small className="text-muted">{oc.proveedor_rut}</small>
+                                        </td>
                                         <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
-                                        <td className="fw-bold text-dark">${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}</td>
+                                        <td className="fw-bold text-dark">
+                                            ${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}
+                                        </td>
                                         <td><span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span></td>
+                                        
                                         <td className="text-end pe-4">
-                                            {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && (
-                                                <button className="btn btn-sm btn-warning me-2 text-dark" onClick={() => setRecepcionModal({ show: true, id: oc.id })}><i className="bi bi-truck"></i></button>
-                                            )}
-                                            <button onClick={() => descargarPdfOC(oc.id)} className="btn btn-sm btn-outline-danger me-2"><i className="bi bi-file-earmark-pdf"></i></button>
-                                            <button onClick={() => descargarExcelOC(oc.id)} className="btn btn-sm btn-outline-success me-2"><i className="bi bi-file-earmark-excel"></i></button>
-                                            <button className="btn btn-sm btn-outline-primary me-2" onClick={() => setVerModal({ show: true, id: oc.id })}><i className="bi bi-eye"></i></button>
-                                            <button className={`btn btn-sm ${oc.url_archivo ? 'btn-success' : 'btn-outline-secondary'}`} onClick={() => setUploadModal({ show: true, id: oc.id, url: oc.url_archivo })}>
-                                                <i className={oc.url_archivo ? "bi bi-paperclip" : "bi bi-upload"}></i>
-                                            </button>
+                                            <div className="d-flex justify-content-end align-items-center gap-2">
+                                                {/* Botón Ver (Siempre visible) */}
+                                                <button 
+                                                    className="btn btn-sm btn-outline-primary" 
+                                                    onClick={() => setVerModal({ show: true, id: oc.id })} 
+                                                    title="Ver Detalle"
+                                                >
+                                                    <i className="bi bi-eye"></i>
+                                                </button>
+
+                                                {/* Botón Camión (Visible si aplica) */}
+                                                {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && (
+                                                    <button 
+                                                        className="btn btn-sm btn-warning text-dark" 
+                                                        onClick={() => setRecepcionModal({ show: true, id: oc.id })} 
+                                                        title="Recepcionar"
+                                                    >
+                                                        <i className="bi bi-truck"></i>
+                                                    </button>
+                                                )}
+
+                                                {/* Botón 3 Puntos (Abre menú flotante) */}
+                                                <button 
+                                                    className={`btn btn-sm btn-light border-0 action-menu-trigger ${actionMenu.id === oc.id && actionMenu.show ? 'active bg-light border' : ''}`}
+                                                    type="button" 
+                                                    onClick={(e) => handleActionMenuClick(e, oc)}
+                                                >
+                                                    <i className="bi bi-three-dots-vertical fs-5"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 )) : <tr><td colSpan="6" className="text-center py-5 text-muted">No se encontraron órdenes con esos filtros</td></tr>}
