@@ -5,26 +5,22 @@ import api from '../api/axiosConfig';
 
 const Sidebar = ({ onClose }) => {
     const { logout, auth } = useContext(AuthContext);
-    
-    // Estado para contadores y mensajes detallados
-    const [notificaciones, setNotificaciones] = useState({ 
-        compras: { count: 0, mensajes: [] }, 
-        bodega: { count: 0, mensajes: [] }, 
+
+    const [notificaciones, setNotificaciones] = useState({
+        compras: { count: 0, mensajes: [] },
+        bodega: { count: 0, mensajes: [] },
         mantencion: { count: 0, mensajes: [] },
-        total: 0 
+        total: 0
     });
-    
+
     const [showNotifDetails, setShowNotifDetails] = useState(false);
     const dropdownRef = useRef(null);
 
-    // --- LÓGICA DE PERMISOS ESTRICTA ---
-    // Si es Admin (rol 1) entra a todo, sino busca en el array de códigos
     const can = (permisoRequerido) => {
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
         return auth.permisos && auth.permisos.includes(permisoRequerido);
     };
 
-    // Carga de notificaciones periódica
     useEffect(() => {
         const checkData = async () => {
             try {
@@ -37,12 +33,11 @@ const Sidebar = ({ onClose }) => {
 
         if (auth.token) {
             checkData();
-            const interval = setInterval(checkData, 15000); 
+            const interval = setInterval(checkData, 15000);
             return () => clearInterval(interval);
         }
     }, [auth.token]);
 
-    // Cerrar dropdown al hacer clic fuera
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -57,7 +52,6 @@ const Sidebar = ({ onClose }) => {
         if (onClose) onClose();
     };
 
-    // Renderizado visual del menú de notificaciones
     const renderNotificationsList = () => {
         let items = [];
         let hasItems = false;
@@ -74,7 +68,6 @@ const Sidebar = ({ onClose }) => {
             </NavLink>
         );
 
-        // 1. COMPRAS
         if (can('ver_compras') && notificaciones.compras.mensajes.length > 0) {
             notificaciones.compras.mensajes.forEach((msg, idx) => {
                 hasItems = true;
@@ -82,7 +75,6 @@ const Sidebar = ({ onClose }) => {
             });
         }
 
-        // 2. BODEGA
         if (can('ver_bodega') && notificaciones.bodega.mensajes.length > 0) {
             notificaciones.bodega.mensajes.forEach((msg, idx) => {
                 hasItems = true;
@@ -90,7 +82,6 @@ const Sidebar = ({ onClose }) => {
             });
         }
 
-        // 3. MANTENCIÓN (Usando código 'mant_ver')
         if (can('mant_ver') && notificaciones.mantencion.mensajes.length > 0) {
             notificaciones.mantencion.mensajes.forEach((msg, idx) => {
                 hasItems = true;
@@ -105,7 +96,6 @@ const Sidebar = ({ onClose }) => {
         return items;
     };
 
-    // Cálculo dinámico del contador total según los permisos del usuario
     const totalUsuario = () => {
         let t = 0;
         if (can('ver_compras')) t += notificaciones.compras.count;
@@ -119,7 +109,6 @@ const Sidebar = ({ onClose }) => {
     return (
         <div className="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark h-100" style={{ width: '260px' }}>
 
-            {/* LOGO */}
             <div className="d-flex align-items-center justify-content-between mb-3 mb-md-0 me-md-auto">
                 <a href="/" className="d-flex align-items-center text-white text-decoration-none">
                     <i className="bi bi-box-seam fs-4 me-2"></i>
@@ -130,7 +119,6 @@ const Sidebar = ({ onClose }) => {
                 </button>
             </div>
 
-            {/* PERFIL Y CAMPANA */}
             <div className="d-flex align-items-center justify-content-between mb-3 px-2 py-2 bg-secondary bg-opacity-25 rounded position-relative mt-3 mt-md-0" ref={dropdownRef}>
                 <div style={{ overflow: 'hidden' }}>
                     <div className="fw-bold text-truncate" title={auth.nombre} style={{ maxWidth: '140px' }}>{auth.nombre}</div>
@@ -139,7 +127,7 @@ const Sidebar = ({ onClose }) => {
 
                 <div className="position-relative cursor-pointer" onClick={() => setShowNotifDetails(!showNotifDetails)}>
                     <i className={`bi bi-bell-fill fs-5 ${countVisible > 0 ? 'text-warning' : 'text-secondary'}`}></i>
-                    
+
                     {countVisible > 0 && (
                         <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-dark">
                             {countVisible}
@@ -147,16 +135,16 @@ const Sidebar = ({ onClose }) => {
                     )}
 
                     {showNotifDetails && (
-                        <div className="position-absolute bg-white text-dark rounded shadow-lg" 
-                             style={{ 
-                                 top: '35px', 
-                                 left: '10px', 
-                                 width: '280px', 
-                                 zIndex: 1050, 
-                                 border: '1px solid #ccc',
-                                 maxHeight: '400px',
-                                 overflowY: 'auto'
-                             }}>
+                        <div className="position-absolute bg-white text-dark rounded shadow-lg"
+                            style={{
+                                top: '35px',
+                                left: '10px',
+                                width: '280px',
+                                zIndex: 1050,
+                                border: '1px solid #ccc',
+                                maxHeight: '400px',
+                                overflowY: 'auto'
+                            }}>
                             <div className="bg-light p-2 border-bottom fw-bold small text-uppercase d-flex justify-content-between">
                                 <span>Notificaciones</span>
                                 {countVisible > 0 && <span className="badge bg-danger rounded-pill">{countVisible}</span>}
@@ -169,7 +157,6 @@ const Sidebar = ({ onClose }) => {
                 </div>
             </div>
 
-            {/* MENÚ DE NAVEGACIÓN */}
             <div className="overflow-auto custom-scrollbar">
                 <ul className="nav nav-pills flex-column mb-auto gap-1">
 
@@ -233,6 +220,14 @@ const Sidebar = ({ onClose }) => {
                         <li>
                             <NavLink to="/activos" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
                                 <i className="bi bi-hdd-rack me-2"></i> Activos
+                            </NavLink>
+                        </li>
+                    )}
+
+                    {(auth.rol === 4 || auth.rol === 1 || auth.rol === 'Admin' || auth.rol === 'Técnico Mantención') && (
+                        <li className="nav-item">
+                            <NavLink to="/mis-insumos" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
+                                <i className="bi bi-tools me-2"></i> Mis Insumos
                             </NavLink>
                         </li>
                     )}

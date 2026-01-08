@@ -14,6 +14,7 @@ import Bodega from './pages/Bodega';
 import Usuarios from './pages/Usuarios';
 import Cronograma from './pages/Cronograma';
 import AdminMantenedores from './pages/AdminMantenedores';
+import MisInsumos from './pages/MisInsumos';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const PrivateRoute = () => {
@@ -40,6 +41,7 @@ function App() {
                 <Routes>
                     <Route path="/login" element={<Login />} />
 
+                    {/* TODAS LAS RUTAS DE ABAJO SON PRIVADAS */}
                     <Route element={<PrivateRoute />}>
                         <Route element={<Layout />}>
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -86,6 +88,9 @@ function App() {
                                     <Activos />
                                 </PermissionGuard>
                             } />
+
+                            {/* CORREGIDO: Ya es privada por herencia, no necesita wrapper */}
+                            <Route path="/mis-insumos" element={<MisInsumos />} />
 
                             <Route path="/mantenedores" element={
                                 <PermissionGuard permiso="ver_config">

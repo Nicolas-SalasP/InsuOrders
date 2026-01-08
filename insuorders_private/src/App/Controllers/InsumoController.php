@@ -2,15 +2,18 @@
 namespace App\Controllers;
 
 use App\Services\InsumoService;
+use App\Repositories\OperarioRepository;
 use App\Middleware\AuthMiddleware;
 
 class InsumoController
 {
     private $service;
+    private $operarioRepo;
 
     public function __construct()
     {
         $this->service = new InsumoService();
+        $this->operarioRepo = new OperarioRepository(); 
     }
 
     public function index()
@@ -51,7 +54,6 @@ class InsumoController
         return null;
     }
 
-    // Función auxiliar para evitar errores de tipo con valores vacíos
     private function limpiarDato($valor, $tipo = 'string') {
         if ($valor === '' || $valor === 'null' || $valor === null) {
             return null;
@@ -97,7 +99,6 @@ class InsumoController
             return;
         }
 
-        // Limpieza de datos
         $data = [
             'codigo_sku'    => $_POST['codigo_sku'] ?? null,
             'nombre'        => $_POST['nombre'] ?? null,
@@ -111,7 +112,6 @@ class InsumoController
             'unidad_medida' => $_POST['unidad_medida'] ?? 'UN'
         ];
 
-        // Procesar imagen nueva solo si existe
         $nuevaImagen = $this->procesarImagen();
         if ($nuevaImagen) {
             $data['imagen_url'] = $nuevaImagen;
@@ -143,8 +143,24 @@ class InsumoController
 
         try {
             $usuarioId = AuthMiddleware::verify();
-            $this->service->gestionarStock($data, $usuarioId);
-            echo json_encode(["success" => true, "message" => "Movimiento registrado correctamente"]);
+            if (!empty($data['empleado_id'])) {
+                
+                $datosEntrega = [
+                    'insumo_id' => $data['insumo_id'],
+                    'cantidad' => $data['cantidad'],
+                    'empleado_id' => $data['empleado_id'],
+                    'observacion' => $data['motivo'] ?? $data['observacion'] ?? 'Entrega desde Inventario',
+                    'bodeguero_id' => $usuarioId
+                ];
+
+                $this->operarioRepo->asignarInsumo($datosEntrega);
+                echo json_encode(["success" => true, "message" => "Entrega asignada al empleado correctamente."]);
+
+            } else {
+                $this->service->gestionarStock($data, $usuarioId);
+                echo json_encode(["success" => true, "message" => "Ajuste de stock registrado correctamente."]);
+            }
+
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);

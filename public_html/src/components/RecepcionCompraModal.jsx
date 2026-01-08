@@ -3,7 +3,6 @@ import api from '../api/axiosConfig';
 
 const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
     const [detalles, setDetalles] = useState([]);
-    // Solo guardamos cantidad por ID
     const [inputs, setInputs] = useState({}); 
     
     const [loading, setLoading] = useState(false);
@@ -18,13 +17,18 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
     }, [show, ordenId]);
 
     const cargarDetalles = async () => {
+        setLoading(true);
         try {
-            const res = await api.get(`/index.php/compras?id=${ordenId}`);
+            const res = await api.get(`/index.php/compras/detalle?id=${ordenId}`);
+            
             if (res.data.success) {
-                setDetalles(res.data.data.detalles);
+                setDetalles(res.data.data.detalles || []);
             }
         } catch (e) {
+            console.error(e);
             setError("Error al cargar detalles de la orden.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -33,7 +37,6 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
     };
 
     const handleSubmit = async () => {
-        // Filtrar items con cantidad > 0
         const itemsAEnviar = Object.keys(inputs)
             .filter(key => parseFloat(inputs[key]) > 0)
             .map(key => ({
@@ -90,7 +93,13 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {detalles.map(d => {
+                                    {loading && detalles.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" className="text-center py-4">Cargando detalles...</td>
+                                        </tr>
+                                    )}
+
+                                    {detalles?.map(d => {
                                         const solicitado = parseFloat(d.cantidad_solicitada);
                                         const recibido = parseFloat(d.cantidad_recibida || 0);
                                         const pendiente = solicitado - recibido;
@@ -123,6 +132,12 @@ const RecepcionCompraModal = ({ show, onClose, ordenId, onSave }) => {
                                             </tr>
                                         );
                                     })}
+                                    
+                                    {!loading && detalles?.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" className="text-center text-muted py-3">No se encontraron items en esta orden.</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>

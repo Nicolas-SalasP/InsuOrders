@@ -11,6 +11,9 @@ const Dashboard = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     
+    // NUEVO: Estado para datos de personal (Jefe Mantención)
+    const [personalData, setPersonalData] = useState([]);
+
     // Filtros de fecha y empleado
     const [fechas, setFechas] = useState({
         start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -19,7 +22,7 @@ const Dashboard = () => {
     const [empleadoFilter, setEmpleadoFilter] = useState('');
 
     // --- LÓGICA DE PERMISOS ESTRICTA ---
-    // dash_resumen, dash_compras, dash_mantencion, dash_bodega
+    // dash_resumen, dash_compras, dash_mantencion, dash_bodega, dash_personal
     const can = (permiso) => {
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
         return auth.permisos && auth.permisos.includes(permiso);
@@ -27,6 +30,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         cargarDatos();
+        cargarDatosPersonal(); // Cargamos esto también
     }, [fechas, empleadoFilter]);
 
     const cargarDatos = async () => {
@@ -40,6 +44,18 @@ const Dashboard = () => {
             console.error("Error Dashboard:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // NUEVO: Cargar datos específicos de personal (Si tiene permiso dash_personal)
+    const cargarDatosPersonal = async () => {
+        if (can('dash_personal')) {
+            try {
+                const res = await api.get('/index.php/operario/dashboard');
+                if (res.data.success) setPersonalData(res.data.data);
+            } catch (error) {
+                console.error("Error Personal Dashboard:", error);
+            }
         }
     };
 
@@ -111,7 +127,8 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
-                <div className="col-12 col-lg-6">
+                {/* ... Resto de gráficos de compras ... */}
+                 <div className="col-12 col-lg-6">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">🏆 Top Proveedores</div>
                         <div className="card-body" style={{ height: '350px' }}>
@@ -188,7 +205,8 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
-                <div className="col-12 col-lg-8">
+                {/* ... Resto de gráficos mantención ... */}
+                 <div className="col-12 col-lg-8">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">🔧 Insumos Más Usados</div>
                         <div className="card-body" style={{ height: '350px' }}>
@@ -320,6 +338,63 @@ const Dashboard = () => {
         </div>
     );
 
+    // --- NUEVO: SECCIÓN 4: SUPERVISIÓN PERSONAL (dash_personal) ---
+    const renderPersonal = () => (
+        <div className="mb-5 animate__animated animate__fadeIn">
+            <h5 className="text-secondary border-bottom pb-2 mb-3"><i className="bi bi-people me-2"></i>Supervisión de Personal</h5>
+            <div className="card border-0 shadow-sm">
+                <div className="card-header bg-white border-bottom-0 pt-3">
+                    <h6 className="fw-bold text-secondary text-uppercase mb-0">Estado de Técnicos</h6>
+                </div>
+                <div className="card-body p-0">
+                    <div className="table-responsive">
+                        <table className="table table-hover align-middle mb-0">
+                            <thead className="table-light">
+                                <tr className="text-muted small text-uppercase">
+                                    <th className="ps-4">Técnico</th>
+                                    <th className="text-center">Entregas Pendientes</th>
+                                    <th className="text-center">Insumos en Poder</th>
+                                    <th className="text-end pe-4">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {personalData.map(emp => (
+                                    <tr key={emp.id}>
+                                        <td className="ps-4">
+                                            <div className="fw-bold text-dark">{emp.nombre} {emp.apellido}</div>
+                                            <div className="text-muted small">{emp.email}</div>
+                                        </td>
+                                        <td className="text-center">
+                                            {emp.pendientes > 0 ? (
+                                                <span className="badge bg-warning text-dark border border-warning">
+                                                    {emp.pendientes} Pendientes
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted small">-</span>
+                                            )}
+                                        </td>
+                                        <td className="text-center">
+                                            <span className="fw-bold text-primary fs-5">{emp.en_posesion}</span>
+                                        </td>
+                                        <td className="text-end pe-4">
+                                            {emp.pendientes > 0 
+                                                ? <span className="badge bg-danger">Requiere Atención</span> 
+                                                : <span className="badge bg-success">Al día</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                ))}
+                                {personalData.length === 0 && (
+                                    <tr><td colSpan="4" className="text-center py-4 text-muted">No hay datos de técnicos para mostrar</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="container-fluid p-3 p-md-4 bg-light min-vh-100">
             {/* HEADER PRINCIPAL */}
@@ -369,6 +444,9 @@ const Dashboard = () => {
 
                     {/* 3. SECCIÓN BODEGA (dash_bodega) */}
                     {can('dash_bodega') && data.bodega && renderBodega()}
+
+                    {/* 4. SECCIÓN PERSONAL (dash_personal) - NUEVO */}
+                    {can('dash_personal') && renderPersonal()}
                 </>
             )}
         </div>

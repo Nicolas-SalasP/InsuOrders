@@ -1,12 +1,12 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
-import AuthContext from '../context/AuthContext'; // <--- 1. Importar Contexto
+import AuthContext from '../context/AuthContext';
 import NuevaSolicitudModal from '../components/NuevaSolicitudModal';
 import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
 
 const Mantencion = () => {
-    const { auth } = useContext(AuthContext); // <--- 2. Obtener Auth
+    const { auth } = useContext(AuthContext);
     const [solicitudes, setSolicitudes] = useState([]);
     const [activos, setActivos] = useState([]);
     const [loading, setLoading] = useState(true);

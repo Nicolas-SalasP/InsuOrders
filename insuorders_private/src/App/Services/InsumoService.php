@@ -20,15 +20,12 @@ class InsumoService
         return $this->repo->getAuxiliares();
     }
 
-    // --- NUEVO MÉTODO PARA CENTRALIZAR LIMPIEZA DE DATOS ---
     private function sanearDatos($data)
     {
-        // 1. Forzar Enteros (Cero decimales)
         if (isset($data['stock_actual'])) $data['stock_actual'] = (int)$data['stock_actual'];
         if (isset($data['stock_minimo'])) $data['stock_minimo'] = (int)$data['stock_minimo'];
         if (isset($data['precio_costo'])) $data['precio_costo'] = (int)$data['precio_costo'];
 
-        // 2. Formateo de Textos
         if (isset($data['nombre'])) {
             $data['nombre'] = $this->formatearNombre($data['nombre']);
         }
@@ -44,7 +41,7 @@ class InsumoService
         if (strlen($data['codigo_sku']) < 3) throw new \Exception("El SKU es muy corto.");
         if (empty($data['nombre'])) throw new \Exception("El nombre es obligatorio.");
         
-        $data = $this->sanearDatos($data); // Limpiamos
+        $data = $this->sanearDatos($data);
 
         if ($data['precio_costo'] < 0) throw new \Exception("El precio no puede ser negativo.");
         if (empty($data['moneda'])) $data['moneda'] = 'CLP';
@@ -56,7 +53,7 @@ class InsumoService
     {
         if (!$id) throw new \Exception("ID no proporcionado.");
         
-        $data = $this->sanearDatos($data); // Limpiamos
+        $data = $this->sanearDatos($data); 
 
         if (isset($data['codigo_sku']) && strlen($data['codigo_sku']) < 3) {
             throw new \Exception("El SKU es muy corto.");
@@ -71,7 +68,6 @@ class InsumoService
             throw new \Exception("La cantidad debe ser mayor a 0.");
         }
         
-        // Aseguramos entero también en movimientos
         $cantidad = (int)$data['cantidad'];
         $empleadoId = $data['empleado_id'] ?? null;
 

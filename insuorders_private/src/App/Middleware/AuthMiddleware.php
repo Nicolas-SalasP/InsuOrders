@@ -24,8 +24,8 @@ class AuthMiddleware
 
         try {
             $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
-            
-            if ($decoded->data->rol === 'Admin' || $decoded->data->rol_id == 1) {
+
+            if (($decoded->data->rol ?? '') === 'Admin' || ($decoded->data->rol_id ?? 0) == 1) {
                 return $decoded->data->id;
             }
 
@@ -44,21 +44,22 @@ class AuthMiddleware
 
     public static function hasPermission($permisoRequerido)
     {
-        $userId = self::verify([]); 
+        $userId = self::verify([]);
 
         $db = Database::getConnection();
-        
+
         $stmtRole = $db->prepare("SELECT rol_id FROM usuarios WHERE id = :uid");
         $stmtRole->execute([':uid' => $userId]);
-        if ($stmtRole->fetchColumn() == 1) return $userId; 
+        if ($stmtRole->fetchColumn() == 1)
+            return $userId;
 
         $sql = "SELECT count(*) FROM usuario_permisos up 
                 JOIN permisos p ON up.permiso_id = p.id 
                 WHERE up.usuario_id = :uid AND p.codigo = :code";
-                
+
         $stmt = $db->prepare($sql);
         $stmt->execute([':uid' => $userId, ':code' => $permisoRequerido]);
-        
+
         if ($stmt->fetchColumn() > 0) {
             return $userId;
         } else {
@@ -66,13 +67,46 @@ class AuthMiddleware
         }
     }
 
+    public static function checkPermissionSilently($permisoRequerido)
+    {
+        $authHeader = self::getAuthHeader();
+        if (!$authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            return false;
+        }
+
+        try {
+            $decoded = JWT::decode($matches[1], new Key(Config::JWT_SECRET, Config::JWT_ALGO));
+            $userId = $decoded->data->id;
+
+            if (($decoded->data->rol ?? '') === 'Admin' || ($decoded->data->rol_id ?? 0) == 1) {
+                return true;
+            }
+
+            $db = Database::getConnection();
+            $sql = "SELECT count(*) FROM usuario_permisos up 
+                    JOIN permisos p ON up.permiso_id = p.id 
+                    WHERE up.usuario_id = :uid AND p.codigo = :code";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute([':uid' => $userId, ':code' => $permisoRequerido]);
+
+            return $stmt->fetchColumn() > 0;
+
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
     private static function getAuthHeader()
     {
-        if (isset($_SERVER['HTTP_AUTHORIZATION'])) return $_SERVER['HTTP_AUTHORIZATION'];
-        if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) return $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        if (isset($_SERVER['HTTP_AUTHORIZATION']))
+            return $_SERVER['HTTP_AUTHORIZATION'];
+        if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']))
+            return $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
         if (function_exists('apache_request_headers')) {
             $headers = apache_request_headers();
-            if (isset($headers['Authorization'])) return $headers['Authorization'];
+            if (isset($headers['Authorization']))
+                return $headers['Authorization'];
         }
         return null;
     }

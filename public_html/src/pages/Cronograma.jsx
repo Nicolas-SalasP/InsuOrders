@@ -1,229 +1,202 @@
-import { useState, useEffect } from 'react';
-import api from '../api/axiosConfig';
+import React, { useState, useEffect, useRef } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import esLocale from '@fullcalendar/core/locales/es';
 import ModalAgendar from '../components/ModalAgendar';
-import { Button, Badge, Form, Spinner } from 'react-bootstrap';
+import axios from '../api/axiosConfig';
+import Swal from 'sweetalert2';
+import { usePermission } from '../hooks/usePermission';
 
 const Cronograma = () => {
-    const [eventos, setEventos] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [events, setEvents] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [fechaSeleccionada, setFechaSeleccionada] = useState('');
-    const [selectedEventId, setSelectedEventId] = useState(null);
-    const [modalTipo, setModalTipo] = useState('MANTENCION'); 
-    const [filtroTipo, setFiltroTipo] = useState('TODOS'); 
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [modoModal, setModoModal] = useState('MANTENCION');
 
-    // --- SISTEMA DE PERMISOS ---
-    const permisosStr = localStorage.getItem('permisos');
-    const permisos = permisosStr ? JSON.parse(permisosStr) : [];
-    
-    const tienePermiso = (codigo) => permisos.some(p => p.codigo === codigo);
-    
-    // Debug de permisos en consola
-    console.log("Permisos cargados en el Cronograma:", permisos.map(p => p.codigo));
-
-    const canCreateMant = tienePermiso('cron_mant_crear'); // ID 37
-    const canCreateCompra = tienePermiso('cron_compra_crear'); // ID 38
-    const canViewMant = tienePermiso('cron_mant_ver'); // ID 35
-    const canViewCompra = tienePermiso('cron_insumos_ver'); // ID 36
+    const calendarRef = useRef(null);
+    const { can } = usePermission();
 
     useEffect(() => {
-        cargarEventos();
+        fetchEvents();
     }, []);
 
-    const cargarEventos = async () => {
-        setLoading(true);
+    const fetchEvents = async () => {
         try {
-            const res = await api.get('/index.php/cronograma');
-            if (res.data.success) {
-                // Filtrado por permisos de vista en el front para redundancia
-                const dataFiltrada = res.data.data.filter(ev => {
-                    if (ev.tipo_evento === 'MANTENCION') return canViewMant;
-                    if (ev.tipo_evento === 'COMPRA') return canViewCompra;
-                    return true;
-                });
-                setEventos(dataFiltrada);
+            const response = await axios.get('/index.php/cronograma');
+            if (response.data.success) {
+                const formattedEvents = response.data.data.map(evt => ({
+                    id: evt.id,
+                    title: evt.titulo,
+                    // Priorizar color personalizado del backend
+                    start: evt.fecha_programada,
+                    backgroundColor: evt.color || (evt.tipo_evento === 'COMPRA' ? '#198754' : '#0d6efd'),
+                    borderColor: 'transparent',
+                    extendedProps: { ...evt }
+                }));
+                setEvents(formattedEvents);
             }
-        } catch (error) { 
-            console.error("Error al cargar eventos:", error); 
-        } finally {
-            setLoading(false);
+        } catch (error) {
+            console.error("Error cargando eventos", error);
         }
     };
 
-    const handleSaveCallback = async () => {
-        try { await api.get('/index.php/cronograma/verificar'); } catch (e) { }
-        cargarEventos();
+    const renderEventContent = (eventInfo) => {
+        const props = eventInfo.event.extendedProps;
+        const isCompra = props.tipo_evento === 'COMPRA';
+        return (
+            <div className="d-flex align-items-center px-2 py-1 overflow-hidden" style={{ fontSize: '0.85rem' }}>
+                <i className={`bi ${props.icono || (isCompra ? 'bi-cart-fill' : 'bi-tools')} me-2`}></i>
+                <span className="fw-semibold text-truncate">{eventInfo.event.title}</span>
+                {props.solicitud_ot_id && <i className="bi bi-link-45deg ms-1 opacity-75"></i>}
+            </div>
+        );
     };
 
-    const handleDayClick = (day) => {
-        // Bloquear si no tiene permisos de creación
-        if (!canCreateMant && !canCreateCompra) return;
+    const handleDateSelect = async (selectInfo) => {
+        const calendarApi = selectInfo.view.calendar;
+        calendarApi.unselect();
 
-        const year = currentDate.getFullYear();
-        const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-        const diaStr = day.toString().padStart(2, '0');
-        setFechaSeleccionada(`${year}-${month}-${diaStr}`);
-        
-        setSelectedEventId(null);
-        // Ajustar tipo inicial según el permiso que tenga disponible
-        setModalTipo(canCreateMant ? 'MANTENCION' : 'COMPRA');
-        setShowModal(true);
-    };
+        const fechaSeleccionada = selectInfo.startStr.split('T')[0];
+        setSelectedDate(fechaSeleccionada);
+        setSelectedEvent(null);
 
-    const handleEventClick = (e, evento) => {
-        e.stopPropagation();
-        setSelectedEventId(evento.id);
-        setModalTipo(evento.tipo_evento);
-        setShowModal(true);
-    };
+        const puedeMantencion = can('cron_mant_crear');
+        const puedeCompra = can('cron_compra_crear');
 
-    const renderCells = () => {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const firstDayOfMonth = new Date(year, month, 1).getDay();
-
-        const blanks = Array.from({ length: firstDayOfMonth }, (_, i) => (
-            <div key={`blank-${i}`} className="bg-light border-end border-bottom"></div>
-        ));
-
-        const daysArray = Array.from({ length: daysInMonth }, (_, i) => {
-            const day = i + 1;
-            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-            
-            const dayEvents = eventos.filter(ev => {
-                const matchFecha = ev.fecha_programada.startsWith(dateStr);
-                const matchTipo = filtroTipo === 'TODOS' || ev.tipo_evento === filtroTipo;
-                return matchFecha && matchTipo;
-            });
-
-            const isToday = new Date().toISOString().slice(0, 10) === dateStr;
-
-            return (
-                <div key={day}
-                    className={`border-end border-bottom p-1 position-relative ${isToday ? 'bg-primary bg-opacity-10' : 'bg-white'}`}
-                    style={{ height: '140px', cursor: 'pointer', overflow: 'hidden', minWidth: '100px' }}
-                    onClick={() => handleDayClick(day)}
-                >
-                    <div className={`fw-bold small mb-1 ${isToday ? 'text-primary' : 'text-secondary'}`} style={{ textAlign: 'right' }}>{day}</div>
-
-                    <div className="d-flex flex-column gap-1" style={{ maxHeight: '110px', overflowY: 'auto' }}>
-                        {dayEvents.map(ev => (
-                            <div key={ev.id}
-                                className="badge text-start text-truncate fw-normal shadow-sm border p-1"
-                                style={{ 
-                                    backgroundColor: ev.tipo_evento === 'COMPRA' ? '#198754' : (ev.color || '#0d6efd'), 
-                                    color: '#fff', 
-                                    fontSize: '0.65rem', 
-                                    cursor: 'pointer' 
-                                }}
-                                onClick={(e) => handleEventClick(e, ev)}
-                            >
-                                <div className="d-flex flex-column">
-                                    <div className="d-flex justify-content-between align-items-center mb-1">
-                                        <span className="text-truncate flex-grow-1">
-                                            <i className={`bi ${ev.tipo_evento === 'COMPRA' ? 'bi-cart-plus' : (ev.icono || 'bi-tools')} me-1`}></i>
-                                            <strong>{ev.titulo}</strong>
-                                        </span>
-                                        {ev.solicitud_ot_id && (
-                                            <span className="badge bg-white text-dark ms-1 rounded-pill" style={{ fontSize: '0.55rem' }}>
-                                                OT{ev.solicitud_ot_id}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="text-truncate opacity-75" style={{ fontSize: '0.6rem' }}>
-                                        {ev.tipo_evento === 'MANTENCION' ? ev.activo_nombre : `${ev.insumo_nombre} (${parseFloat(ev.cantidad || 0)})`}
-                                    </div>
-                                </div>
+        if (puedeMantencion && puedeCompra) {
+            // RESTAURADO: Modal de elección de tipo con diseño estilizado
+            await Swal.fire({
+                title: 'Nueva Tarea Programada',
+                text: `¿Qué deseas agendar para el ${new Date(selectInfo.start).toLocaleDateString()}?`,
+                icon: 'question',
+                showConfirmButton: false,
+                showCloseButton: true,
+                html: `
+                    <div class="d-grid gap-3 mt-3">
+                        <button id="btn-mant" class="btn btn-outline-primary p-3 shadow-sm text-start d-flex align-items-center">
+                            <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-3">
+                                <i class="bi bi-tools fs-4 text-primary"></i>
                             </div>
-                        ))}
+                            <div>
+                                <h6 class="mb-0 fw-bold">Mantención Preventiva</h6>
+                                <small class="text-muted">Generará una OT automáticamente</small>
+                            </div>
+                        </button>
+                        <button id="btn-comp" class="btn btn-outline-success p-3 shadow-sm text-start d-flex align-items-center">
+                            <div class="bg-success bg-opacity-10 p-2 rounded-circle me-3">
+                                <i class="bi bi-cart-fill fs-4 text-success"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold">Compra Programada</h6>
+                                <small class="text-muted">Planificar adquisición de insumos</small>
+                            </div>
+                        </button>
                     </div>
-                </div>
-            );
-        });
-        return [...blanks, ...daysArray];
+                `,
+                didOpen: () => {
+                    document.getElementById('btn-mant').onclick = () => { Swal.close(); abrirModal('MANTENCION'); };
+                    document.getElementById('btn-comp').onclick = () => { Swal.close(); abrirModal('COMPRA'); };
+                }
+            });
+        } else if (puedeMantencion) {
+            abrirModal('MANTENCION');
+        } else if (puedeCompra) {
+            abrirModal('COMPRA');
+        } else {
+            Swal.fire('Acceso Denegado', 'No tienes permisos para crear eventos.', 'warning');
+        }
     };
 
-    const mesActual = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][currentDate.getMonth()];
+    const abrirModal = (modo) => {
+        setModoModal(modo);
+        setShowModal(true);
+    };
+
+    const handleEventClick = (clickInfo) => {
+        const props = clickInfo.event.extendedProps;
+        
+        // Verificación de permisos de edición
+        const sinPermisoMant = props.tipo_evento === 'MANTENCION' && !can('cron_mant_editar');
+        const sinPermisoComp = props.tipo_evento === 'COMPRA' && !can('cron_compra_editar');
+
+        if (sinPermisoMant || sinPermisoComp) {
+            Swal.fire({
+                title: props.titulo,
+                html: `<div class="text-start p-2">
+                        <p><strong>Tipo:</strong> ${props.tipo_evento}</p>
+                        <p><strong>Estado:</strong> ${props.estado}</p>
+                        <hr/>
+                        <p>${props.descripcion || 'Sin descripción'}</p>
+                       </div>`,
+                icon: 'info'
+            });
+            return;
+        }
+
+        setSelectedEvent(props);
+        setModoModal(props.tipo_evento);
+        setShowModal(true);
+    };
 
     return (
-        <div className="container-fluid h-100 p-0 d-flex flex-column bg-light">
-            <ModalAgendar
-                show={showModal}
-                onClose={() => setShowModal(false)}
-                fechaSeleccionada={fechaSeleccionada}
-                eventId={selectedEventId}
-                tipoInicial={modalTipo} 
-                onSave={handleSaveCallback}
-            />
-
-            <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column m-3" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex flex-column flex-lg-row justify-content-between align-items-center gap-3">
-                    <div className="d-flex align-items-center">
-                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
-                            <i className="bi bi-calendar-check fs-3"></i>
-                        </div>
-                        <div>
-                            <h4 className="mb-0 fw-bold">Cronograma Operativo</h4>
-                            <p className="text-muted small mb-0 d-none d-md-block">Gestión de planta e insumos</p>
-                        </div>
-                    </div>
-
-                    <div className="d-flex flex-wrap align-items-center gap-3 justify-content-center">
-                        <Form.Select 
-                            size="sm" 
-                            className="fw-bold text-primary"
-                            style={{ width: '180px' }}
-                            value={filtroTipo}
-                            onChange={(e) => setFiltroTipo(e.target.value)}
-                        >
-                            <option value="TODOS">📅 Ver Todo</option>
-                            <option value="MANTENCION">🛠️ Mantenciones</option>
-                            <option value="COMPRA">🛒 Compras</option>
-                        </Form.Select>
-
-                        <div className="d-flex align-items-center gap-2">
-                            <h5 className="mb-0 text-dark fw-bold px-2">{mesActual} {currentDate.getFullYear()}</h5>
-                            <div className="btn-group">
-                                <Button variant="outline-primary" size="sm" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}><i className="bi bi-chevron-left"></i></Button>
-                                <Button variant="primary" size="sm" onClick={() => setCurrentDate(new Date())}>Hoy</Button>
-                                <Button variant="outline-primary" size="sm" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}><i className="bi bi-chevron-right"></i></Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="d-flex gap-2">
-                        {canCreateCompra && (
-                            <Button variant="outline-success" size="sm" className="fw-bold" onClick={() => { setModalTipo('COMPRA'); setSelectedEventId(null); setFechaSeleccionada(new Date().toISOString().split('T')[0]); setShowModal(true); }}>
-                                <i className="bi bi-cart-plus me-2"></i> Programar Compra
-                            </Button>
-                        )}
-                        {canCreateMant && (
-                            <Button variant="primary" size="sm" className="fw-bold" onClick={() => { setModalTipo('MANTENCION'); setSelectedEventId(null); setFechaSeleccionada(new Date().toISOString().split('T')[0]); setShowModal(true); }}>
-                                <i className="bi bi-tools me-2"></i> Nueva Mantención
-                            </Button>
-                        )}
-                    </div>
+        <div className="container-fluid py-4 fade-in">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+                <div>
+                    <h3 className="fw-bold text-dark mb-1">
+                        <i className="bi bi-calendar-check text-primary me-2"></i>
+                        Planificación Operativa
+                    </h3>
+                    <p className="text-muted mb-0 small">Gestión unificada de activos y abastecimiento.</p>
                 </div>
-
-                <div className="card-body p-0 d-flex flex-column">
-                    <div className="d-grid bg-light border-bottom text-center fw-bold py-2 text-secondary small text-uppercase"
-                        style={{ gridTemplateColumns: 'repeat(7, 1fr)', minWidth: '800px' }}>
-                        <div>Domingo</div><div>Lunes</div><div>Martes</div><div>Miércoles</div><div>Jueves</div><div>Viernes</div><div>Sábado</div>
-                    </div>
-
-                    <div className="flex-grow-1 overflow-auto bg-light">
-                        {loading ? (
-                            <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
-                        ) : (
-                            <div className="d-grid bg-white shadow-inner" style={{ gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: 'minmax(140px, 1fr)', minWidth: '800px' }}>
-                                {renderCells()}
-                            </div>
-                        )}
-                    </div>
+                
+                <div className="d-flex gap-2 mt-3 mt-md-0">
+                    <span className="badge rounded-pill bg-primary bg-opacity-10 text-primary px-3 py-2 border border-primary border-opacity-25">
+                        <i className="bi bi-tools me-2"></i> Mantenciones
+                    </span>
+                    <span className="badge rounded-pill bg-success bg-opacity-10 text-success px-3 py-2 border border-success border-opacity-25">
+                        <i className="bi bi-cart-fill me-2"></i> Compras
+                    </span>
                 </div>
             </div>
+
+            <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div className="card-body p-0">
+                    <FullCalendar
+                        ref={calendarRef}
+                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                        initialView="dayGridMonth"
+                        locale={esLocale}
+                        headerToolbar={{
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth,timeGridWeek'
+                        }}
+                        selectable={true}
+                        events={events}
+                        select={handleDateSelect}
+                        eventClick={handleEventClick}
+                        eventContent={renderEventContent}
+                        height="auto"
+                        contentHeight="75vh"
+                        themeSystem="bootstrap5"
+                        eventClassNames="rounded-2 shadow-sm border-0 my-1 cursor-pointer"
+                    />
+                </div>
+            </div>
+
+            {showModal && (
+                <ModalAgendar
+                    show={showModal}
+                    onClose={() => { setShowModal(false); setSelectedEvent(null); }}
+                    onSave={() => { fetchEvents(); setShowModal(false); setSelectedEvent(null); }}
+                    initialDate={selectedDate}
+                    eventData={selectedEvent}
+                    mode={modoModal}
+                />
+            )}
         </div>
     );
 };

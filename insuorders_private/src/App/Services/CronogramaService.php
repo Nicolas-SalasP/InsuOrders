@@ -2,34 +2,57 @@
 namespace App\Services;
 
 use App\Repositories\CronogramaRepository;
-use App\Services\MantencionService;
+use App\Repositories\MantencionRepository;
 use App\Database\Database;
 
 class CronogramaService
 {
     private $repo;
-    private $mantencionService;
+    private $mantencionRepo;
     private $db;
 
     public function __construct()
     {
         $this->repo = new CronogramaRepository();
-        $this->mantencionService = new MantencionService();
+        $this->mantencionRepo = new MantencionRepository(); 
         $this->db = Database::getConnection();
     }
 
-    public function listar($filtros) { return $this->repo->getAll($filtros); }
+    public function listar($filtros)
+    {
+        return $this->repo->getAll($filtros);
+    }
 
-    public function obtener($id) { return $this->repo->findById($id); }
+    public function obtener($id)
+    {
+        return $this->repo->findById($id);
+    }
 
-    public function crear($data)
+    public function crear($data, $usuarioId)
     {
         try {
             $this->db->beginTransaction();
+
+            $otData = [
+                'usuario_id' => $usuarioId,
+                'activo_id' => $data['activo_id'],
+                'observacion' => "MANTENCION PROGRAMADA: " . $data['titulo'],
+                'origen_tipo' => 'Preventiva',
+                'area_negocio' => 'MANTENCION',
+                'centro_costo_ot' => '6400',
+                'solicitante_externo' => 'CRONOGRAMA',
+                'items' => $data['items'] ?? []
+            ];
+
+            $otId = $this->mantencionRepo->createOT($otData);
+
+            $data['solicitud_ot_id'] = $otId;
             $id = $this->repo->create($data);
-            if ($data['tipo_evento'] === 'MANTENCION' && !empty($data['items'])) {
+
+            if (!empty($data['items'])) {
                 $this->repo->addInsumos($id, $data['items']);
             }
+
             $this->db->commit();
             return $id;
         } catch (\Exception $e) {
@@ -42,13 +65,31 @@ class CronogramaService
     {
         try {
             $this->db->beginTransaction();
+
+            $eventoActual = $this->repo->findById($id);
+            if (!$eventoActual)
+                throw new \Exception("Evento no encontrado");
+
             $this->repo->update($id, $data);
-            if ($data['tipo_evento'] === 'MANTENCION') {
-                $this->repo->deleteInsumos($id);
-                if (!empty($data['items'])) {
-                    $this->repo->addInsumos($id, $data['items']);
-                }
+            $this->repo->deleteInsumos($id);
+
+            if (!empty($data['items'])) {
+                $this->repo->addInsumos($id, $data['items']);
             }
+
+            if (!empty($eventoActual['solicitud_ot_id'])) {
+                $otUpdateData = [
+                    'activo_id' => $data['activo_id'],
+                    'observacion' => "MANTENCION PROGRAMADA (EDITADO): " . $data['titulo'],
+                    'origen_tipo' => 'Preventiva',
+                    'area_negocio' => 'MANTENCION',
+                    'centro_costo_ot' => '6400',
+                    'solicitante_externo' => 'CRONOGRAMA',
+                    'items' => $data['items'] ?? []
+                ];
+                $this->mantencionRepo->updateOT($eventoActual['solicitud_ot_id'], $otUpdateData);
+            }
+
             $this->db->commit();
             return true;
         } catch (\Exception $e) {
@@ -57,37 +98,22 @@ class CronogramaService
         }
     }
 
-    public function eliminar($id) { return $this->repo->delete($id); }
-
-    public function procesarAlertasAutomaticas()
+    public function eliminar($id)
     {
-        $pendientes = $this->repo->getPendientesAlerta();
-        $generados = 0;
+        try {
+            $this->db->beginTransaction();
+            $evento = $this->repo->findById($id);
 
-        foreach ($pendientes as $p) {
-            try {
-                $detalle = $this->repo->findById($p['id']);
-                $items = $detalle['items'] ?? [];
+            if ($evento && !empty($evento['solicitud_ot_id'])) {
+                $this->mantencionRepo->delete($evento['solicitud_ot_id']);
+            }
 
-                if (empty($items)) {
-                    $stmtKit = $this->db->prepare("SELECT insumo_id as id, cantidad_default as cantidad FROM activos_insumos WHERE activo_id = ?");
-                    $stmtKit->execute([$p['activo_id']]);
-                    $items = $stmtKit->fetchAll(\PDO::FETCH_ASSOC);
-                }
-
-                if (!empty($items)) {
-                    $otId = $this->mantencionService->crearOT([
-                        'activo_id' => $p['activo_id'],
-                        'observacion' => "Preventiva Auto: " . $p['titulo'],
-                        'origen_tipo' => 'Preventiva',
-                        'items' => $items
-                    ], 1);
-
-                    $this->repo->updateEstado($p['id'], 'PROCESADO', $otId);
-                    $generados++;
-                }
-            } catch (\Exception $e) { continue; }
+            $this->repo->delete($id);
+            $this->db->commit();
+            return true;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            throw $e;
         }
-        return $generados;
     }
 }

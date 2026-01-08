@@ -1,279 +1,327 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
-import MessageModal from './MessageModal';
-import ConfirmModal from './ConfirmModal';
-import { Form, Row, Col, Badge, Spinner } from 'react-bootstrap';
+import Swal from 'sweetalert2';
 
-const ModalAgendar = ({ show, onClose, fechaSeleccionada, eventId, tipoInicial, onSave }) => {
-    // Estados de Datos
+const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode }) => {
+    const [formData, setFormData] = useState({
+        titulo: '',
+        descripcion: '',
+        fecha_programada: initialDate || '',
+        activo_id: '',
+        color: '#0d6efd',
+        icono: 'bi-tools',
+        tipo_evento: mode
+    });
+    const [items, setItems] = useState([]);
     const [activos, setActivos] = useState([]);
     const [insumos, setInsumos] = useState([]);
-
-    // Estados de UI
-    const [tipo, setTipo] = useState('MANTENCION');
     const [busqueda, setBusqueda] = useState('');
-    const [loadingData, setLoadingData] = useState(false);
 
-    // Estados para Modales
-    const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
-    const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', type: 'primary', action: null });
+    const listaIconos = [
+        { icon: 'bi-tools', label: 'Herramienta' },
+        { icon: 'bi-oil-can', label: 'Aceite' },
+        { icon: 'bi-shield-check', label: 'Seguridad' },
+        { icon: 'bi-lightning-charge', label: 'Energía' },
+        { icon: 'bi-gear-wide-connected', label: 'Engranaje' },
+        { icon: 'bi-truck', label: 'Transporte' },
+        { icon: 'bi-droplet-half', label: 'Fluido' },
+        { icon: 'bi-thermometer-half', label: 'Temperatura' }
+    ];
 
-    // Formulario
-    const [formData, setFormData] = useState({
-        titulo: '', descripcion: '', activo_id: '', insumo_id: '',
-        fecha_programada: '', icono: 'bi-tools', color: '#0d6efd',
-        cantidad: '', monto_estimado: '',
-        solicitud_ot_id: null, tipo_evento: 'MANTENCION'
-    });
-
-    const [itemsSeleccionados, setItemsSeleccionados] = useState([]);
-
-    // 1. Cargar Catálogos al abrir
     useEffect(() => {
         if (show) {
-            const cargarCatalogos = async () => {
-                try {
-                    const [resActivos, resInsumos] = await Promise.all([
-                        api.get('/index.php/mantencion/activos'),
-                        api.get('/index.php/inventario')
-                    ]);
-                    if (resActivos.data.success) setActivos(resActivos.data.data);
-                    const inventarioData = resInsumos.data.success ? resInsumos.data.data : [];
-                    setInsumos(inventarioData);
+            // Cargar catálogos
+            api.get('/index.php/mantencion/activos').then(res => setActivos(res.data.data || []));
+            api.get('/index.php/inventario').then(res => setInsumos(res.data.data || []));
 
-                    if (eventId) {
-                        cargarDetalleEvento(eventId, inventarioData);
-                    } else {
-                        setTipo(tipoInicial || 'MANTENCION');
-                        resetearFormulario(tipoInicial || 'MANTENCION');
-                    }
-                } catch (e) { console.error("Error catálogos", e); }
-            };
-            cargarCatalogos();
-            setBusqueda('');
-        }
-    }, [show, eventId, fechaSeleccionada, tipoInicial]);
+            // Si es edición (tiene ID), recargar datos completos desde el servidor para ver los insumos
+            if (eventData?.id) {
+                api.get(`/index.php/cronograma?id=${eventData.id}`)
+                    .then(res => {
+                        if (res.data.success) {
+                            const data = res.data.data;
+                            setFormData(prev => ({
+                                ...prev,
+                                titulo: data.titulo,
+                                descripcion: data.descripcion,
+                                fecha_programada: data.fecha_programada,
+                                activo_id: data.activo_id,
+                                color: data.color || '#0d6efd',
+                                icono: data.icono || 'bi-tools',
+                                tipo_evento: data.tipo_evento
+                            }));
 
-    const resetearFormulario = (t) => {
-        setFormData({
-            titulo: '', descripcion: '', activo_id: '', insumo_id: '',
-            fecha_programada: fechaSeleccionada || '',
-            icono: t === 'MANTENCION' ? 'bi-tools' : 'bi-cart-plus',
-            color: t === 'MANTENCION' ? '#0d6efd' : '#198754',
-            cantidad: '', monto_estimado: '',
-            solicitud_ot_id: null, tipo_evento: t
-        });
-        setItemsSeleccionados([]);
-    };
-
-    const cargarDetalleEvento = async (id, catalogoInsumos) => {
-        setLoadingData(true);
-        try {
-            const res = await api.get(`/index.php/cronograma?id=${id}`);
-            if (res.data.success) {
-                const ev = res.data.data;
-                setTipo(ev.tipo_evento);
-                setFormData({
-                    ...ev,
-                    fecha_programada: ev.fecha_programada.split(' ')[0],
-                    tipo_evento: ev.tipo_evento
-                });
-
-                if (ev.tipo_evento === 'MANTENCION') {
-                    const items = (ev.items || []).map(i => {
-                        const info = catalogoInsumos.find(inv => inv.id == i.id);
-                        return {
-                            id: i.id, nombre: i.nombre, codigo_sku: i.codigo_sku,
-                            cantidad: parseFloat(i.cantidad),
-                            stock_actual: info ? parseFloat(info.stock_actual) : 0,
-                            unidad: info ? info.unidad_medida : 'UN'
-                        };
-                    });
-                    setItemsSeleccionados(items);
-                }
+                            // Mapear items asegurando números enteros
+                            if (data.items) {
+                                const loadedItems = data.items.map(i => ({
+                                    insumo_id: i.insumo_id || i.id,
+                                    nombre: i.nombre,
+                                    codigo_sku: i.codigo_sku,
+                                    cantidad: Math.floor(i.cantidad),
+                                    stock_actual: Math.floor(i.stock_actual)
+                                }));
+                                setItems(loadedItems);
+                            }
+                        }
+                    })
+                    .catch(e => console.error("Error cargando detalles del evento", e));
             }
-        } catch (error) { onClose(); }
-        finally { setLoadingData(false); }
-    };
-
-    const handleActivoChange = async (e) => {
-        const id = e.target.value;
-        setFormData({ ...formData, activo_id: id });
-        if (id && tipo === 'MANTENCION' && itemsSeleccionados.length === 0) {
-            try {
-                const res = await api.get(`/index.php/mantencion/kit?id=${id}`);
-                const kit = res.data.data || [];
-                setItemsSeleccionados(kit.map(k => ({
-                    ...k, cantidad: parseFloat(k.cantidad),
-                    stock_actual: parseFloat(insumos.find(i => i.id == k.id)?.stock_actual || 0),
-                    unidad: insumos.find(i => i.id == k.id)?.unidad_medida || 'UN'
-                })));
-            } catch (e) { }
+            // Si es nuevo evento (click en calendario vacío)
+            else if (eventData) {
+                setFormData({ ...formData, ...eventData });
+                setItems(eventData.items || []);
+            }
         }
+    }, [show, eventData]);
+
+    const cargarKitActivo = async (activoId) => {
+        if (!activoId) return;
+        try {
+            const res = await api.get(`/index.php/mantencion/kit?id=${activoId}`);
+            if (res.data.success && res.data.data.length > 0) {
+                const kitItems = res.data.data.map(i => ({
+                    insumo_id: i.id,
+                    nombre: i.nombre,
+                    codigo_sku: i.codigo_sku,
+                    cantidad: Math.floor(i.cantidad),
+                    stock_actual: i.stock_actual
+                }));
+                setItems(kitItems);
+            }
+        } catch (e) { console.error("Error al cargar kit", e); }
     };
 
-    const agregarInsumo = (insumo) => {
-        if (itemsSeleccionados.find(i => i.id === insumo.id)) return;
-        setItemsSeleccionados([...itemsSeleccionados, {
-            id: insumo.id, nombre: insumo.nombre, codigo_sku: insumo.codigo_sku,
-            cantidad: 1, stock_actual: parseFloat(insumo.stock_actual), unidad: insumo.unidad_medida
+    const handleAddInsumo = (insumo) => {
+        if (items.find(i => i.insumo_id === insumo.id)) return;
+        setItems([...items, {
+            insumo_id: insumo.id,
+            nombre: insumo.nombre,
+            codigo_sku: insumo.codigo_sku,
+            cantidad: 1,
+            stock_actual: insumo.stock_actual
         }]);
         setBusqueda('');
     };
 
-    const procesarGuardado = async () => {
-        const payload = { ...formData, tipo_evento: tipo, items: itemsSeleccionados };
-        try {
-            if (eventId) await api.put('/index.php/cronograma', payload);
-            else await api.post('/index.php/cronograma', payload);
-            onSave(); onClose();
-        } catch (error) {
-            setMsgModal({ show: true, title: "Error", message: error.response?.data?.error || "Error al guardar", type: "error" });
-        }
-    };
-
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (tipo === 'MANTENCION' && !formData.activo_id) {
-            return setMsgModal({ show: true, title: "Atención", message: "Seleccione un activo.", type: "warning" });
-        }
-        if (tipo === 'COMPRA' && !formData.insumo_id) {
-            return setMsgModal({ show: true, title: "Atención", message: "Seleccione el insumo a comprar.", type: "warning" });
-        }
-
-        // Alerta de Stock solo para Mantenciones
-        if (tipo === 'MANTENCION') {
-            const faltantes = itemsSeleccionados.filter(i => i.cantidad > i.stock_actual);
-            if (faltantes.length > 0) {
-                return setConfirmModal({
-                    show: true, title: "Falta Stock",
-                    message: `Hay insumos sin stock. Se notificará a compras. ¿Agendar de todas formas?`,
-                    type: "warning", confirmText: "Sí, Agendar", action: procesarGuardado
-                });
+        try {
+            const payload = { ...formData, items };
+            if (eventData?.id) {
+                await api.put('/index.php/cronograma', { ...payload, id: eventData.id });
+            } else {
+                await api.post('/index.php/cronograma', payload);
             }
+            onSave();
+        } catch (error) {
+            Swal.fire('Error', error.response?.data?.error || 'No se pudo procesar la solicitud', 'error');
         }
-        procesarGuardado();
     };
 
-    const handleEliminar = () => {
-        setConfirmModal({
-            show: true, title: "Eliminar", message: "¿Borrar esta programación?",
-            type: "danger", confirmText: "Eliminar", action: async () => {
-                await api.delete(`/index.php/cronograma?id=${eventId}&tipo=${tipo}`);
-                onSave(); onClose();
-            }
+    const handleDelete = async () => {
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: "Se eliminará el evento y se anulará la Orden de Trabajo asociada.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
         });
+
+        if (result.isConfirmed) {
+            try {
+                await api.delete(`/index.php/cronograma?id=${eventData.id}`);
+                Swal.fire('Eliminado', 'La tarea ha sido eliminada.', 'success');
+                onSave();
+            } catch (error) {
+                Swal.fire('Error', 'No se pudo eliminar el evento', 'error');
+            }
+        }
     };
 
     if (!show) return null;
 
+    const activoSelect = activos.find(a => a.id == formData.activo_id);
+
     return (
-        <>
-            <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} {...msgModal} />
-            <ConfirmModal show={confirmModal.show} onClose={() => setConfirmModal({ ...confirmModal, show: false })} onConfirm={() => { confirmModal.action(); setConfirmModal({ ...confirmModal, show: false }); }} {...confirmModal} />
+        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1060, overflowY: 'auto' }}>
+            <div className="modal-dialog modal-lg shadow-lg my-4">
+                <form className="modal-content border-0 rounded-4 overflow-hidden" onSubmit={handleSubmit}>
 
-            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', overflowY: 'auto', zIndex: 1050 }}>
-                <div className="modal-dialog modal-lg">
-                    <div className="modal-content border-0 shadow-lg">
-                        <div className="modal-header text-white" style={{ backgroundColor: formData.color }}>
-                            <h5 className="modal-title fw-bold">
-                                <i className={`bi ${tipo === 'MANTENCION' ? 'bi-tools' : 'bi-cart-plus'} me-2`}></i>
-                                {eventId ? 'Editar' : 'Programar'} {tipo === 'MANTENCION' ? 'Mantención Técnica' : 'Compra de Insumo'}
-                            </h5>
-                            <button className="btn-close btn-close-white" onClick={onClose}></button>
-                        </div>
-
-                        {loadingData ? <div className="p-5 text-center"><Spinner animation="border" /></div> : (
-                            <form onSubmit={handleSubmit}>
-                                <div className="modal-body p-4">
-                                    <div className="row g-3">
-                                        <Col md={4}>
-                                            <label className="form-label small fw-bold text-muted">FECHA</label>
-                                            <input type="date" className="form-control fw-bold" required value={formData.fecha_programada} onChange={e => setFormData({ ...formData, fecha_programada: e.target.value })} />
-                                        </Col>
-
-                                        <Col md={8}>
-                                            <label className="form-label small fw-bold text-muted">TÍTULO O MOTIVO</label>
-                                            <input type="text" className="form-control" required placeholder="Ej: Cambio de rodamientos / Stock crítico" value={formData.titulo} onChange={e => setFormData({ ...formData, titulo: e.target.value })} />
-                                        </Col>
-
-                                        <Col md={12}>
-                                            {tipo === 'MANTENCION' ? (
-                                                <>
-                                                    <label className="form-label small fw-bold text-primary">SELECCIONAR MÁQUINA / ACTIVO</label>
-                                                    <select className="form-select border-primary" required value={formData.activo_id} onChange={handleActivoChange}>
-                                                        <option value="">Seleccione activo...</option>
-                                                        {activos.map(a => <option key={a.id} value={a.id}>{a.codigo_interno} - {a.nombre}</option>)}
-                                                    </select>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <label className="form-label small fw-bold text-success">INSUMO A COMPRAR</label>
-                                                    <select className="form-select border-success" required value={formData.insumo_id} onChange={e => setFormData({ ...formData, insumo_id: e.target.value })}>
-                                                        <option value="">Seleccione insumo...</option>
-                                                        {insumos.map(i => <option key={i.id} value={i.id}>{i.nombre} (Stock: {parseFloat(i.stock_actual)})</option>)}
-                                                    </select>
-                                                </>
-                                            )}
-                                        </Col>
-
-                                        {tipo === 'COMPRA' && (
-                                            <Col md={6}>
-                                                <label className="form-label small fw-bold">CANTIDAD A PEDIR</label>
-                                                <input type="number" className="form-control fw-bold" required value={formData.cantidad} onChange={e => setFormData({ ...formData, cantidad: e.target.value })} />
-                                            </Col>
-                                        )}
-
-                                        <Col md={tipo === 'COMPRA' ? 6 : 12}>
-                                            <label className="form-label small fw-bold">NOTAS</label>
-                                            <textarea className="form-control" rows="1" value={formData.descripcion} onChange={e => setFormData({ ...formData, descripcion: e.target.value })}></textarea>
-                                        </Col>
-                                    </div>
-
-                                    {tipo === 'MANTENCION' && (
-                                        <div className="mt-4">
-                                            <h6 className="fw-bold text-secondary border-bottom pb-2 mb-3">Insumos Planificados para la Tarea</h6>
-                                            <input type="text" className="form-control form-control-sm mb-2" placeholder="🔍 Buscar y agregar repuestos..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-                                            {busqueda && (
-                                                <div className="list-group shadow-sm mb-3">
-                                                    {insumos.filter(i => i.nombre.toLowerCase().includes(busqueda.toLowerCase())).slice(0, 5).map(i => (
-                                                        <button key={i.id} type="button" className="list-group-item list-group-item-action small" onClick={() => agregarInsumo(i)}>
-                                                            {i.nombre} <span className="float-end badge bg-light text-dark">Stock: {parseFloat(i.stock_actual)}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <div className="table-responsive border rounded" style={{ maxHeight: '200px' }}>
-                                                <table className="table table-sm align-middle mb-0">
-                                                    <thead className="table-light">
-                                                        <tr className="small"><th>Insumo</th><th className="text-center">Cant.</th><th className="text-end"></th></tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {itemsSeleccionados.map(item => (
-                                                            <tr key={item.id}>
-                                                                <td className="small ps-3"><strong>{item.nombre}</strong><br /><span className="text-muted">{item.codigo_sku}</span></td>
-                                                                <td style={{ width: '80px' }}><input type="number" className="form-control form-control-sm text-center" value={item.cantidad} onChange={e => setItemsSeleccionados(itemsSeleccionados.map(it => it.id === item.id ? { ...it, cantidad: e.target.value } : it))} /></td>
-                                                                <td className="text-end pe-3"><button type="button" className="btn btn-sm text-danger" onClick={() => setItemsSeleccionados(itemsSeleccionados.filter(it => it.id !== item.id))}><i className="bi bi-x-circle"></i></button></td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
+                    <div className="bg-dark p-3 text-white border-bottom border-secondary">
+                        <div className="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 className="fw-bold mb-1 text-white">
+                                    {eventData?.id ? 'Editar Actividad' : 'Nueva Actividad'}
+                                </h5>
+                                <div className="d-flex gap-2 flex-wrap">
+                                    <span className="badge bg-primary rounded-pill fw-normal">
+                                        <i className="bi bi-calendar3 me-1"></i>{formData.fecha_programada}
+                                    </span>
+                                    {activoSelect && (
+                                        <span className="badge bg-secondary rounded-pill fw-normal">
+                                            {activoSelect.codigo_interno}
+                                        </span>
                                     )}
                                 </div>
-
-                                <div className="modal-footer bg-light">
-                                    {eventId && <button type="button" className="btn btn-link text-danger me-auto" onClick={handleEliminar}>Eliminar</button>}
-                                    <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-                                    <button type="submit" className="btn btn-primary fw-bold">Guardar Cambios</button>
-                                </div>
-                            </form>
-                        )}
+                            </div>
+                            <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+                        </div>
                     </div>
-                </div>
+
+                    <div className="modal-body p-3 p-md-4 bg-white">
+                        <div className="row g-3">
+                            <div className="col-12 col-md-7">
+                                <label className="form-label fw-bold text-dark small">TÍTULO DE LA ACTIVIDAD</label>
+                                <input type="text" className="form-control fw-semibold" required
+                                    value={formData.titulo} onChange={e => setFormData({ ...formData, titulo: e.target.value })}
+                                    placeholder="Ej: Mantenimiento Preventivo" />
+                            </div>
+
+                            <div className="col-12 col-md-5">
+                                <label className="form-label fw-bold text-dark small">ICONO</label>
+                                <div className="d-flex flex-wrap gap-1 p-2 border rounded bg-light" style={{ minHeight: '38px' }}>
+                                    {listaIconos.map((obj) => (
+                                        <button
+                                            key={obj.icon}
+                                            type="button"
+                                            title={obj.label}
+                                            className={`btn btn-sm d-flex align-items-center justify-content-center ${formData.icono === obj.icon ? 'btn-primary' : 'btn-white border'}`}
+                                            style={{ width: '32px', height: '32px' }}
+                                            onClick={() => setFormData({ ...formData, icono: obj.icon })}
+                                        >
+                                            <i className={`bi ${obj.icon}`}></i>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="col-12 col-md-6">
+                                <label className="form-label fw-bold text-dark small">ASIGNAR A MAQUINARIA</label>
+                                <select className="form-select" required value={formData.activo_id}
+                                    onChange={e => { setFormData({ ...formData, activo_id: e.target.value }); cargarKitActivo(e.target.value); }}>
+                                    <option value="">Seleccione un activo...</option>
+                                    {activos.map(a => <option key={a.id} value={a.id}>{a.codigo_interno} - {a.nombre}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="col-12 col-md-6">
+                                <label className="form-label fw-bold text-dark small">COLOR IDENTIFICADOR</label>
+                                <div className="input-group">
+                                    <input type="color" className="form-control form-control-color"
+                                        style={{ maxWidth: '50px' }}
+                                        value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} />
+                                    <input type="text" className="form-control font-monospace"
+                                        value={formData.color.toUpperCase()}
+                                        onChange={e => setFormData({ ...formData, color: e.target.value })}
+                                        maxLength="7" />
+                                </div>
+                            </div>
+
+                            <div className="col-12">
+                                <label className="form-label fw-bold text-dark small">DESCRIPCIÓN</label>
+                                <textarea className="form-control" rows="2"
+                                    value={formData.descripcion} onChange={e => setFormData({ ...formData, descripcion: e.target.value })}
+                                    placeholder="Detalles adicionales..."></textarea>
+                            </div>
+
+                            <div className="col-12 mt-3">
+                                <div className="p-3 rounded border bg-light">
+                                    <label className="fw-bold text-dark small mb-2 d-block">
+                                        <i className="bi bi-box-seam-fill me-2 text-primary"></i>
+                                        INSUMOS REQUERIDOS
+                                    </label>
+
+                                    <div className="position-relative">
+                                        <div className="input-group mb-2">
+                                            <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
+                                            <input type="text" className="form-control"
+                                                placeholder="Buscar SKU o Nombre..."
+                                                value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+                                        </div>
+
+                                        {busqueda && (
+                                            <div className="list-group shadow position-absolute w-100" style={{ zIndex: 1050, top: '100%' }}>
+                                                {insumos.filter(i => i.nombre.toLowerCase().includes(busqueda.toLowerCase()) || i.codigo_sku?.toLowerCase().includes(busqueda.toLowerCase())).slice(0, 5).map(i => (
+                                                    <button key={i.id} type="button" className="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onClick={() => handleAddInsumo(i)}>
+                                                        <span className="small"><strong>{i.codigo_sku}</strong> - {i.nombre}</span>
+                                                        <span className={`badge ${i.stock_actual > 0 ? 'bg-success' : 'bg-danger'}`}>{Math.floor(i.stock_actual)}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="table-responsive bg-white border rounded">
+                                        <table className="table table-sm align-middle mb-0">
+                                            <thead className="table-light small">
+                                                <tr>
+                                                    <th className="ps-2">SKU</th>
+                                                    <th>Repuesto</th>
+                                                    <th className="text-center">Cant.</th>
+                                                    <th>Estado</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="small">
+                                                {items.map((item, idx) => (
+                                                    <tr key={idx}>
+                                                        <td className="ps-2 font-monospace fw-bold">{item.codigo_sku}</td>
+                                                        <td>{item.nombre}</td>
+                                                        <td style={{ width: '70px' }}>
+                                                            <input type="number" className="form-control form-control-sm text-center p-0"
+                                                                value={item.cantidad} onChange={e => {
+                                                                    const n = [...items]; n[idx].cantidad = Math.floor(e.target.value); setItems(n);
+                                                                }} />
+                                                        </td>
+                                                        <td>
+                                                            {item.stock_actual >= item.cantidad ?
+                                                                <span className="text-success fw-bold"><i className="bi bi-check-circle me-1"></i>OK</span> :
+                                                                <span className="badge bg-danger">Requiere Compra</span>
+                                                            }
+                                                        </td>
+                                                        <td className="text-end pe-2">
+                                                            <button type="button" className="btn btn-link text-danger p-0" onClick={() => setItems(items.filter((_, i) => i !== idx))}>
+                                                                <i className="bi bi-trash-fill"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {items.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan="5" className="text-center py-3 text-muted fst-italic">Sin insumos asignados.</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="modal-footer border-0 p-3 bg-light d-flex justify-content-between align-items-center">
+                        <div>
+                            {eventData?.id && (
+                                <button type="button" className="btn btn-outline-danger btn-sm fw-bold rounded-pill px-3" onClick={handleDelete}>
+                                    <i className="bi bi-trash me-1"></i>ELIMINAR TAREA
+                                </button>
+                            )}
+                        </div>
+                        <div className="d-flex gap-2">
+                            <button type="button" className="btn btn-outline-secondary rounded-pill px-4" onClick={onClose}>
+                                Cancelar
+                            </button>
+                            <button type="submit" className="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                                Guardar Actividad
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
-        </>
+        </div>
     );
 };
 

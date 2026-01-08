@@ -55,56 +55,98 @@ class OrdenCompraService
         if (empty($data['proveedor_id']))
             throw new \Exception("Seleccione un proveedor.");
 
-        $itemsProcesados = [];
-        $montoNeto = 0;
+        try {
+            $this->db->beginTransaction();
 
-        foreach ($data['items'] as $item) {
-            $insumoId = $item['id'] ?? null;
+            $itemsProcesados = [];
+            $montoNeto = 0;
+            $idsSolicitudes = [];
 
-            if (!$insumoId) {
-                $nuevoInsumo = [
-                    'codigo_sku' => null,
-                    'nombre' => $item['nombre'],
-                    'categoria_id' => 1,
-                    'stock_actual' => 0,
-                    'stock_minimo' => 0,
-                    'precio_costo' => $item['precio'],
-                    'unidad_medida' => $item['unidad'] ?? 'UN'
-                ];
-                $insumoId = $this->insumoRepo->create($nuevoInsumo);
+            if (!empty($data['ids_solicitudes'])) {
+                if (is_array($data['ids_solicitudes'])) {
+                    $idsSolicitudes = array_merge($idsSolicitudes, $data['ids_solicitudes']);
+                } else {
+                    $idsSolicitudes = array_merge($idsSolicitudes, explode(',', $data['ids_solicitudes']));
+                }
+            }
+            if (!empty($data['ids_solicitudes_seleccionadas'])) {
+                if (is_array($data['ids_solicitudes_seleccionadas'])) {
+                    $idsSolicitudes = array_merge($idsSolicitudes, $data['ids_solicitudes_seleccionadas']);
+                } else {
+                    $idsSolicitudes = array_merge($idsSolicitudes, explode(',', $data['ids_solicitudes_seleccionadas']));
+                }
             }
 
-            $subtotal = $item['cantidad'] * $item['precio'];
-            $montoNeto += $subtotal;
+            foreach ($data['items'] as $item) {
+                $insumoId = $item['id'] ?? null;
 
-            $itemsProcesados[] = [
-                'insumo_id' => $insumoId,
-                'cantidad' => $item['cantidad'],
-                'precio' => $item['precio'],
-                'total' => $subtotal
+                if (!$insumoId) {
+                    $nuevoInsumo = [
+                        'codigo_sku' => null,
+                        'nombre' => $item['nombre'],
+                        'categoria_id' => 1,
+                        'stock_actual' => 0,
+                        'stock_minimo' => 0,
+                        'precio_costo' => $item['precio'],
+                        'unidad_medida' => $item['unidad'] ?? 'UN'
+                    ];
+                    $insumoId = $this->insumoRepo->create($nuevoInsumo);
+                }
+
+                if (!empty($item['ids_detalle_solicitud'])) {
+                    if (is_array($item['ids_detalle_solicitud'])) {
+                        $idsSolicitudes = array_merge($idsSolicitudes, $item['ids_detalle_solicitud']);
+                    } else {
+                        $ids = explode(',', $item['ids_detalle_solicitud']);
+                        $idsSolicitudes = array_merge($idsSolicitudes, $ids);
+                    }
+                }
+
+                $subtotal = $item['cantidad'] * $item['precio'];
+                $montoNeto += $subtotal;
+
+                $itemsProcesados[] = [
+                    'insumo_id' => $insumoId,
+                    'cantidad' => $item['cantidad'],
+                    'precio' => $item['precio'],
+                    'total' => $subtotal
+                ];
+            }
+
+            $porcIVA = isset($data['impuesto_porcentaje']) ? floatval($data['impuesto_porcentaje']) : 19.0;
+            $iva = $montoNeto * ($porcIVA / 100);
+
+            $datosCabecera = [
+                'proveedor_id' => $data['proveedor_id'],
+                'usuario_id' => $usuarioId,
+                'neto' => $montoNeto,
+                'impuesto' => $iva,
+                'total' => $montoNeto + $iva,
+                'moneda' => $data['moneda'] ?? 'CLP',
+                'tipo_cambio' => $data['tipo_cambio'] ?? 1,
+                'numero_cotizacion' => $data['numero_cotizacion'] ?? null,
+                'impuesto_porcentaje' => $porcIVA
             ];
+
+            $ordenId = $this->repo->create($datosCabecera);
+
+            foreach ($itemsProcesados as $item) {
+                $item['orden_id'] = $ordenId;
+                $this->repo->addDetalle($item);
+            }
+
+            if (!empty($idsSolicitudes)) {
+                $idsUnicos = array_unique(array_filter($idsSolicitudes));
+                $this->repo->asociarSolicitudesAOrden($ordenId, $idsUnicos);
+            }
+
+            $this->db->commit();
+            return $ordenId;
+
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            throw $e;
         }
-
-        $porcIVA = isset($data['impuesto_porcentaje']) ? floatval($data['impuesto_porcentaje']) : 19.0;
-        $iva = $montoNeto * ($porcIVA / 100);
-
-        $datosCabecera = [
-            'proveedor_id' => $data['proveedor_id'],
-            'usuario_id' => $usuarioId,
-            'neto' => $montoNeto,
-            'impuesto' => $iva,
-            'total' => $montoNeto + $iva,
-            'moneda' => $data['moneda'] ?? 'CLP'
-        ];
-
-        $ordenId = $this->repo->create($datosCabecera);
-
-        foreach ($itemsProcesados as $item) {
-            $item['orden_id'] = $ordenId;
-            $this->repo->addDetalle($item);
-        }
-
-        return $ordenId;
     }
 
     public function recepcionarOrden($ordenId, $items, $usuarioId)
@@ -123,7 +165,7 @@ class OrdenCompraService
     public function subirArchivo($id, $file)
     {
         $uploadDir = realpath(__DIR__ . '/../../../../public_html/api') . '/uploads/ordenes/';
-        
+
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0777, true);
         }
@@ -134,13 +176,27 @@ class OrdenCompraService
 
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {
             $urlPath = "uploads/ordenes/" . $fileName;
-            
-            $stmt = $this->db->prepare("UPDATE ordenes_compra SET url_archivo = ? WHERE id = ?");
-            $stmt->execute([$urlPath, $id]);
-            
+            $this->repo->updateArchivo($id, $urlPath);
             return "/" . $urlPath;
         } else {
             throw new \Exception("No se pudo mover el archivo. Carpeta: " . $uploadDir);
         }
+    }
+
+    public function cancelarOrden($id)
+    {
+        $orden = $this->repo->getById($id);
+
+        if (!$orden) {
+            throw new \Exception("Orden no encontrada.");
+        }
+
+        $estadoActual = $orden['cabecera']['estado_id'];
+
+        if ($estadoActual >= 3) {
+            throw new \Exception("No se puede cancelar la orden porque ya tiene recepciones o está finalizada.");
+        }
+
+        return $this->repo->cancelar($id);
     }
 }
