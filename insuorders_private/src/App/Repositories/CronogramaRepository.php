@@ -16,9 +16,9 @@ class CronogramaRepository
     public function getAll($filtros = [])
     {
         $sql = "SELECT c.*, 
-                       a.nombre as activo_nombre, a.codigo_interno as activo_codigo,
-                       i.nombre as insumo_nombre, i.codigo_sku as insumo_sku,
-                       s.id as ot_id, s.estado_id as ot_estado
+                    a.nombre as activo_nombre, a.codigo_interno as activo_codigo,
+                    i.nombre as insumo_nombre, i.codigo_sku as insumo_sku,
+                    s.id as ot_id, s.estado_id as ot_estado
                 FROM cronograma_mantencion c
                 LEFT JOIN activos a ON c.activo_id = a.id
                 LEFT JOIN insumos i ON c.insumo_id = i.id
@@ -145,5 +145,37 @@ class CronogramaRepository
     {
         $sql = "UPDATE cronograma_mantencion SET estado = ?, solicitud_ot_id = ? WHERE id = ?";
         return $this->db->prepare($sql)->execute([$estado, $otId, $id]);
+    }
+
+    public function syncByOT($otId, $otData)
+    {
+        $stmt = $this->db->prepare("SELECT id FROM cronograma_mantencion WHERE solicitud_ot_id = ?");
+        $stmt->execute([$otId]);
+        $eventoId = $stmt->fetchColumn();
+
+        if (!$eventoId) return;
+        $stmtUpd = $this->db->prepare("UPDATE cronograma_mantencion SET descripcion = ? WHERE id = ?");
+        $stmtUpd->execute([$otData['observacion'], $eventoId]);
+        $this->deleteInsumos($eventoId);
+
+        if (!empty($otData['items'])) {
+            $itemsCronograma = [];
+            foreach ($otData['items'] as $item) {
+                $iid = $item['insumo_id'] ?? $item['id_producto'] ?? $item['id'] ?? null;
+                if (!$iid && !empty($item['id_linea'])) {
+                    $stmtGet = $this->db->prepare("SELECT insumo_id FROM detalle_solicitud WHERE id = ?");
+                    $stmtGet->execute([$item['id_linea']]);
+                    $iid = $stmtGet->fetchColumn();
+                }
+
+                if ($iid) {
+                    $itemsCronograma[] = [
+                        'insumo_id' => $iid,
+                        'cantidad' => $item['cantidad']
+                    ];
+                }
+            }
+            $this->addInsumos($eventoId, $itemsCronograma);
+        }
     }
 }

@@ -28,6 +28,21 @@ class CronogramaService
         return $this->repo->findById($id);
     }
 
+    private function validarEdicion($evento)
+    {
+        $hoy = date('Y-m-d');
+        if ($evento['fecha_programada'] < $hoy) {
+            throw new \Exception("No es posible editar ni eliminar eventos de fechas pasadas.");
+        }
+
+        if (!empty($evento['solicitud_ot_id'])) {
+            $ot = $this->mantencionRepo->getOTHeader($evento['solicitud_ot_id']);
+            if ($ot && in_array($ot['estado_id'], [5, 6])) {
+                throw new \Exception("La OT asociada ya se encuentra Finalizada o Anulada. Solo lectura.");
+            }
+        }
+    }
+
     public function crear($data, $usuarioId)
     {
         try {
@@ -67,27 +82,70 @@ class CronogramaService
             $this->db->beginTransaction();
 
             $eventoActual = $this->repo->findById($id);
-            if (!$eventoActual)
-                throw new \Exception("Evento no encontrado");
+            if (!$eventoActual) throw new \Exception("Evento no encontrado");
+
+            $this->validarEdicion($eventoActual);
 
             $this->repo->update($id, $data);
             $this->repo->deleteInsumos($id);
-
             if (!empty($data['items'])) {
                 $this->repo->addInsumos($id, $data['items']);
             }
 
             if (!empty($eventoActual['solicitud_ot_id'])) {
+                $otId = $eventoActual['solicitud_ot_id'];
+                
+                $headerOT = $this->mantencionRepo->getOTHeader($otId);
+                $itemsOT = $this->mantencionRepo->getDetallesOT($otId);
+
+                $itemsFinales = [];
+                $insumosEnCronograma = [];
+
+                $mapaItemsOT = [];
+                foreach ($itemsOT as $it) {
+                    $mapaItemsOT[$it['id']] = $it;
+                }
+
+                if (!empty($data['items'])) {
+                    foreach ($data['items'] as $itemCron) {
+                        $insumoId = $itemCron['insumo_id'] ?? $itemCron['id'] ?? null;
+                        if ($insumoId) {
+                            $insumosEnCronograma[] = $insumoId;
+                            
+                            $linea = [
+                                'insumo_id' => $insumoId,
+                                'cantidad' => $itemCron['cantidad']
+                            ];
+
+                            if (isset($mapaItemsOT[$insumoId])) {
+                                $linea['id_linea'] = $mapaItemsOT[$insumoId]['detalle_id'];
+                            }
+                            
+                            $itemsFinales[] = $linea;
+                        }
+                    }
+                }
+
+                foreach ($itemsOT as $it) {
+                    if (!in_array($it['id'], $insumosEnCronograma)) {
+                        $itemsFinales[] = [
+                            'id_linea' => $it['detalle_id'],
+                            'cantidad' => $it['cantidad']
+                        ];
+                    }
+                }
+
                 $otUpdateData = [
                     'activo_id' => $data['activo_id'],
                     'observacion' => "MANTENCION PROGRAMADA (EDITADO): " . $data['titulo'],
-                    'origen_tipo' => 'Preventiva',
-                    'area_negocio' => 'MANTENCION',
-                    'centro_costo_ot' => '6400',
-                    'solicitante_externo' => 'CRONOGRAMA',
-                    'items' => $data['items'] ?? []
+                    'origen_tipo' => $headerOT['origen_tipo'] ?? 'Preventiva',
+                    'area_negocio' => $headerOT['area_negocio'] ?? 'MANTENCION',
+                    'centro_costo_ot' => $headerOT['centro_costo_ot'] ?? '6400',
+                    'solicitante_externo' => $headerOT['solicitante_externo'] ?? 'CRONOGRAMA',
+                    'items' => $itemsFinales
                 ];
-                $this->mantencionRepo->updateOT($eventoActual['solicitud_ot_id'], $otUpdateData);
+                
+                $this->mantencionRepo->updateOT($otId, $otUpdateData);
             }
 
             $this->db->commit();
@@ -104,7 +162,10 @@ class CronogramaService
             $this->db->beginTransaction();
             $evento = $this->repo->findById($id);
 
-            if ($evento && !empty($evento['solicitud_ot_id'])) {
+            if (!$evento) throw new \Exception("Evento no existe");
+            $this->validarEdicion($evento);
+
+            if (!empty($evento['solicitud_ot_id'])) {
                 $this->mantencionRepo->delete($evento['solicitud_ot_id']);
             }
 

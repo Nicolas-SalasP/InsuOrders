@@ -5,10 +5,23 @@ import ConfirmModal from './ConfirmModal';
 
 const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [tab, setTab] = useState('general');
-    // Estado del formulario
+    
+    // Estado del formulario apegado a la DB (insuban_db)
     const [formData, setFormData] = useState({
-        codigo_interno: '', nombre: '', tipo: '', ubicacion: '', descripcion: '', centro_costo: ''
+        codigo_interno: '',
+        codigo_maquina: '', // Campo nuevo solicitado
+        nombre: '',
+        tipo: '',
+        marca: '',
+        modelo: '',
+        anio: '',           // Campo nuevo solicitado
+        numero_serie: '',   // Existe en DB
+        ubicacion: '',
+        estado_activo: 'OPERATIVO', // CORREGIDO: En tu DB es 'estado_activo', no 'estado_operativo'
+        descripcion: '',
+        centro_costo: ''    // Se mapea a centro_costo_id en backend
     });
+    
     const [listaCentros, setListaCentros] = useState([]);
 
     // Estados para el Kit de Repuestos
@@ -36,19 +49,27 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             if (activo) {
                 setFormData({
                     codigo_interno: activo.codigo_interno || '',
+                    codigo_maquina: activo.codigo_maquina || '',
                     nombre: activo.nombre || '',
                     tipo: activo.tipo || '',
+                    marca: activo.marca || '',
+                    modelo: activo.modelo || '',
+                    anio: activo.anio || '',
+                    numero_serie: activo.numero_serie || '',
                     ubicacion: activo.ubicacion || '',
+                    estado_activo: activo.estado_activo || 'OPERATIVO', // Usamos el campo correcto de la BD
                     descripcion: activo.descripcion || '',
-                    // CORRECCIÓN CRÍTICA: Usamos 'centro_costo_id' que viene del backend corregido
-                    // Esto asegura que el select muestre el valor guardado
                     centro_costo: activo.centro_costo_id || ''
                 });
                 cargarKit(activo.id);
                 cargarDocs(activo.id);
             } else {
                 // Limpiar si es nuevo
-                setFormData({ codigo_interno: '', nombre: '', tipo: '', ubicacion: '', descripcion: '', centro_costo: '' });
+                setFormData({
+                    codigo_interno: '', codigo_maquina: '', nombre: '', tipo: '',
+                    marca: '', modelo: '', anio: '', numero_serie: '',
+                    ubicacion: '', estado_activo: 'OPERATIVO', descripcion: '', centro_costo: ''
+                });
                 setKitItems([]);
                 setDocs([]);
             }
@@ -65,13 +86,17 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const handleSubmitGeneral = async (e) => {
         e.preventDefault();
         try {
+            // Mapeamos estado_activo a lo que espera el backend si es necesario, 
+            // pero idealmente el backend debe recibir 'estado_activo' o 'estado_operativo' según tu controller.
+            // Enviamos todo el formData. Asegúrate de que tu MantencionRepository use 'estado_activo' si cambiaste la lógica,
+            // o mapealo aquí si el backend espera 'estado_operativo'.
+            // Para consistencia con tu backend actual (que usa estado_operativo en el update), lo enviamos así:
+            const payload = { ...formData, estado_operativo: formData.estado_activo };
+
             if (activo) {
-                // MODO EDICIÓN: Usamos la ruta específica editar-activo
-                // Importante: Enviamos el ID en el cuerpo
-                await api.post('/index.php/mantencion/editar-activo', { ...formData, id: activo.id });
+                await api.post('/index.php/mantencion/editar-activo', { ...payload, id: activo.id });
             } else {
-                // MODO CREACIÓN
-                await api.post('/index.php/mantencion/crear-activo', formData);
+                await api.post('/index.php/mantencion/crear-activo', payload);
             }
 
             setMsgModal({ show: true, title: "Éxito", message: "Activo guardado correctamente", type: "success" });
@@ -107,14 +132,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
         try {
             await api.put('/index.php/mantencion/kit', {
-                activo_id: activo.id,
-                insumo_id: insumoId,
-                cantidad: cantidadEntera
+                activo_id: activo.id, insumo_id: insumoId, cantidad: cantidadEntera
             });
             cargarKit(activo.id);
-        } catch (e) {
-            alert("Error al actualizar cantidad");
-        }
+        } catch (e) { alert("Error al actualizar cantidad"); }
     };
 
     const solicitarQuitarKit = (insumoId) => {
@@ -136,9 +157,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         try {
             const res = await api.get(`/index.php/mantencion/docs?id=${id}`);
             setDocs(Array.isArray(res.data.data) ? res.data.data : []);
-        } catch (e) {
-            setDocs([]);
-        }
+        } catch (e) { setDocs([]); }
     };
 
     const subirDoc = async () => {
@@ -196,7 +215,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             />
 
             <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto', zIndex: 1050 }}>
-                <div className="modal-dialog modal-lg">
+                <div className="modal-dialog modal-lg modal-dialog-centered">
                     <div className="modal-content shadow border-0">
                         <div className="modal-header bg-dark text-white">
                             <h5 className="modal-title fw-bold">
@@ -206,7 +225,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                         </div>
 
                         <div className="modal-body p-0">
-                            {/* Pestañas de Navegación (Solo visibles si ya existe el activo) */}
                             {activo && (
                                 <ul className="nav nav-tabs nav-fill bg-light px-3 pt-3 border-bottom-0">
                                     <li className="nav-item">
@@ -226,32 +244,45 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 {tab === 'general' && (
                                     <form onSubmit={handleSubmitGeneral}>
                                         <div className="row g-3">
-                                            <div className="col-md-4">
+                                            
+                                            {/* FILA 1: CÓDIGOS */}
+                                            <div className="col-12 col-md-6">
                                                 <label className="form-label small fw-bold text-muted">CÓDIGO INTERNO</label>
-                                                <input
-                                                    type="text"
-                                                    name="codigo_interno"
-                                                    className="form-control fw-bold"
-                                                    required
-                                                    value={formData.codigo_interno}
-                                                    onChange={handleChange}
-                                                    placeholder="Ej: GEN-01"
-                                                />
+                                                <input type="text" name="codigo_interno" className="form-control fw-bold" required
+                                                    value={formData.codigo_interno} onChange={handleChange} placeholder="Ej: GEN-01" />
                                             </div>
-                                            <div className="col-md-8">
-                                                <label className="form-label small fw-bold text-muted">NOMBRE ACTIVO</label>
-                                                <input
-                                                    type="text"
-                                                    name="nombre"
-                                                    className="form-control"
-                                                    required
-                                                    value={formData.nombre}
-                                                    onChange={handleChange}
-                                                    placeholder="Ej: Generador Caterpillar"
-                                                />
+                                            <div className="col-12 col-md-6">
+                                                <label className="form-label small fw-bold text-muted">CÓDIGO MÁQUINA</label>
+                                                <input type="text" name="codigo_maquina" className="form-control"
+                                                    value={formData.codigo_maquina} onChange={handleChange} placeholder="Ej: CAT-320-X" />
                                             </div>
 
-                                            <div className="col-md-4">
+                                            {/* FILA 2: NOMBRE COMPLETO */}
+                                            <div className="col-12">
+                                                <label className="form-label small fw-bold text-muted">NOMBRE ACTIVO</label>
+                                                <input type="text" name="nombre" className="form-control" required
+                                                    value={formData.nombre} onChange={handleChange} placeholder="Ej: Generador Caterpillar" />
+                                            </div>
+
+                                            {/* FILA 3: DETALLES TÉCNICOS (MARCA Y MODELO SEPARADOS) */}
+                                            <div className="col-12 col-md-4">
+                                                <label className="form-label small fw-bold text-muted">MARCA</label>
+                                                <input type="text" name="marca" className="form-control"
+                                                    value={formData.marca} onChange={handleChange} placeholder="Ej: Caterpillar" />
+                                            </div>
+                                            <div className="col-12 col-md-4">
+                                                <label className="form-label small fw-bold text-muted">MODELO</label>
+                                                <input type="text" name="modelo" className="form-control"
+                                                    value={formData.modelo} onChange={handleChange} placeholder="Ej: 320 GC" />
+                                            </div>
+                                            <div className="col-12 col-md-4">
+                                                <label className="form-label small fw-bold text-muted">AÑO</label>
+                                                <input type="number" name="anio" className="form-control"
+                                                    value={formData.anio} onChange={handleChange} placeholder="Ej: 2023" />
+                                            </div>
+
+                                            {/* FILA 4: CLASIFICACIÓN Y ESTADO */}
+                                            <div className="col-12 col-md-4">
                                                 <label className="form-label small fw-bold text-muted">TIPO</label>
                                                 <select name="tipo" className="form-select" value={formData.tipo} onChange={handleChange}>
                                                     <option value="">Seleccione...</option>
@@ -266,51 +297,53 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                     <option value="Otro">Otro</option>
                                                 </select>
                                             </div>
-
-                                            <div className="col-md-4">
-                                                <label className="form-label small fw-bold text-muted">UBICACIÓN FÍSICA</label>
-                                                <input
-                                                    type="text"
-                                                    name="ubicacion"
-                                                    className="form-control"
-                                                    value={formData.ubicacion}
-                                                    onChange={handleChange}
-                                                    placeholder="Ej: Patio Norte"
-                                                />
+                                            
+                                            {/* ESTADO SEGÚN ENUM DE BASE DE DATOS */}
+                                            <div className="col-12 col-md-4">
+                                                <label className="form-label small fw-bold text-muted">ESTADO</label>
+                                                <select name="estado_activo" className="form-select" value={formData.estado_activo} onChange={handleChange}>
+                                                    <option value="OPERATIVO">OPERATIVO</option>
+                                                    <option value="EN_MANTENCION">EN MANTENCIÓN</option>
+                                                    <option value="BAJA">DE BAJA</option>
+                                                </select>
+                                            </div>
+                                            
+                                            <div className="col-12 col-md-4">
+                                                <label className="form-label small fw-bold text-muted">UBICACIÓN</label>
+                                                <input type="text" name="ubicacion" className="form-control"
+                                                    value={formData.ubicacion} onChange={handleChange} placeholder="Ej: Patio Norte" />
                                             </div>
 
-                                            <div className="col-md-4">
+                                            {/* FILA 5: IDENTIFICACIÓN Y COSTOS */}
+                                            <div className="col-12 col-md-6">
+                                                <label className="form-label small fw-bold text-muted">NÚMERO DE SERIE</label>
+                                                <input type="text" name="numero_serie" className="form-control"
+                                                    value={formData.numero_serie} onChange={handleChange} />
+                                            </div>
+                                            <div className="col-12 col-md-6">
                                                 <label className="form-label small fw-bold text-primary">CENTRO DE COSTO</label>
-                                                <select
-                                                    name="centro_costo"
-                                                    className="form-select border-primary"
-                                                    value={formData.centro_costo}
-                                                    onChange={handleChange}
-                                                >
+                                                <select name="centro_costo" className="form-select border-primary"
+                                                    value={formData.centro_costo} onChange={handleChange}>
                                                     <option value="">-- Sin Asignar --</option>
                                                     {listaCentros.map(cc => (
-                                                        <option key={cc.id} value={cc.id}>
-                                                            {cc.codigo} - {cc.nombre}
-                                                        </option>
+                                                        <option key={cc.id} value={cc.id}>{cc.codigo} - {cc.nombre}</option>
                                                     ))}
                                                 </select>
                                             </div>
 
                                             <div className="col-12">
                                                 <label className="form-label small fw-bold text-muted">DESCRIPCIÓN / DETALLES</label>
-                                                <textarea
-                                                    name="descripcion"
-                                                    className="form-control"
-                                                    rows="3"
-                                                    value={formData.descripcion}
-                                                    onChange={handleChange}
-                                                    placeholder="Detalles técnicos..."
-                                                ></textarea>
+                                                <textarea name="descripcion" className="form-control" rows="2"
+                                                    value={formData.descripcion} onChange={handleChange} placeholder="Detalles técnicos..."></textarea>
                                             </div>
                                         </div>
 
-                                        <div className="d-flex justify-content-end mt-4">
-                                            <button type="submit" className="btn btn-primary px-4 fw-bold">
+                                        {/* BOTONES ALINEADOS A LA DERECHA */}
+                                        <div className="modal-footer border-top-0 px-0 pb-0 mt-4 d-flex justify-content-end gap-2">
+                                            <button type="button" className="btn btn-outline-secondary px-4" onClick={onClose}>
+                                                Cancelar
+                                            </button>
+                                            <button type="submit" className="btn btn-primary px-4 fw-bold shadow-sm">
                                                 <i className="bi bi-save me-2"></i>Guardar Cambios
                                             </button>
                                         </div>
@@ -324,23 +357,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             <label className="form-label small fw-bold text-muted">AGREGAR REPUESTO AL KIT</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    placeholder="Buscar insumo..."
-                                                    value={busquedaInsumo}
-                                                    onChange={e => setBusquedaInsumo(e.target.value)}
-                                                />
-                                                <input
-                                                    type="number"
-                                                    className="form-control"
-                                                    style={{ maxWidth: '80px' }}
-                                                    value={cantidadKit}
-                                                    onChange={e => setCantidadKit(parseInt(e.target.value) || 1)}
-                                                    min="1"
-                                                    step="1"
-                                                    placeholder="Cant."
-                                                />
+                                                <input type="text" className="form-control" placeholder="Buscar insumo..."
+                                                    value={busquedaInsumo} onChange={e => setBusquedaInsumo(e.target.value)} />
+                                                <input type="number" className="form-control" style={{ maxWidth: '80px' }}
+                                                    value={cantidadKit} onChange={e => setCantidadKit(parseInt(e.target.value) || 1)} min="1" step="1" />
                                             </div>
                                             {busquedaInsumo && (
                                                 <div className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
@@ -359,27 +379,17 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 <li key={k.id} className="list-group-item d-flex justify-content-between align-items-center">
                                                     <div>
                                                         <div className="fw-bold">{k.nombre}</div>
-                                                        <small className="text-muted">
-                                                            SKU: {k.codigo_sku} | Stock Actual: {Math.floor(k.stock_actual)}
-                                                        </small>
+                                                        <small className="text-muted">SKU: {k.codigo_sku} | Stock: {Math.floor(k.stock_actual)}</small>
                                                     </div>
                                                     <div className="d-flex align-items-center gap-2">
                                                         <label className="small text-muted mb-0">Cant:</label>
-                                                        <input
-                                                            type="number"
-                                                            className="form-control form-control-sm text-center"
-                                                            style={{ width: '70px' }}
-                                                            value={Math.floor(k.cantidad)}
-                                                            step="1"
-                                                            onChange={(e) => actualizarCantKit(k.id, e.target.value)}
-                                                        />
-                                                        <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarQuitarKit(k.id)} title="Quitar">
-                                                            <i className="bi bi-trash"></i>
-                                                        </button>
+                                                        <input type="number" className="form-control form-control-sm text-center" style={{ width: '70px' }}
+                                                            value={Math.floor(k.cantidad)} step="1" onChange={(e) => actualizarCantKit(k.id, e.target.value)} />
+                                                        <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarQuitarKit(k.id)}><i className="bi bi-trash"></i></button>
                                                     </div>
                                                 </li>
                                             ))}
-                                            {kitItems.length === 0 && <li className="list-group-item text-center text-muted py-4">Este activo no tiene repuestos definidos en su kit.</li>}
+                                            {kitItems.length === 0 && <li className="list-group-item text-center text-muted py-4">Este activo no tiene repuestos definidos.</li>}
                                         </ul>
                                     </div>
                                 )}
@@ -394,7 +404,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             </button>
                                         </div>
                                         <div className="list-group">
-                                            {docs && Array.isArray(docs) && docs.map(d => (
+                                            {docs && docs.map(d => (
                                                 <div key={d.id} className="list-group-item d-flex justify-content-between align-items-center">
                                                     <a href={`http://localhost/insuorders/public_html${d.url_archivo}`} target="_blank" rel="noreferrer" className="text-decoration-none text-dark d-flex align-items-center">
                                                         <i className="bi bi-file-earmark-text me-3 fs-4 text-primary"></i>
@@ -403,9 +413,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                             <small className="text-muted">{new Date(d.fecha_subida).toLocaleDateString()}</small>
                                                         </div>
                                                     </a>
-                                                    <button className="btn btn-sm text-danger" onClick={() => solicitarBorrarDoc(d.id)} title="Eliminar">
-                                                        <i className="bi bi-trash fs-5"></i>
-                                                    </button>
+                                                    <button className="btn btn-sm text-danger" onClick={() => solicitarBorrarDoc(d.id)}><i className="bi bi-trash fs-5"></i></button>
                                                 </div>
                                             ))}
                                             {(!docs || docs.length === 0) && <div className="text-center text-muted py-4">No hay documentos adjuntos.</div>}

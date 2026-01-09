@@ -15,6 +15,9 @@ const Cronograma = () => {
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [modoModal, setModoModal] = useState('MANTENCION');
+    
+    // NUEVO ESTADO: Controla si el modal se abre solo para mirar
+    const [isReadOnly, setIsReadOnly] = useState(false);
 
     const calendarRef = useRef(null);
     const { can } = usePermission();
@@ -30,11 +33,14 @@ const Cronograma = () => {
                 const formattedEvents = response.data.data.map(evt => ({
                     id: evt.id,
                     title: evt.titulo,
-                    // Priorizar color personalizado del backend
                     start: evt.fecha_programada,
                     backgroundColor: evt.color || (evt.tipo_evento === 'COMPRA' ? '#198754' : '#0d6efd'),
                     borderColor: 'transparent',
-                    extendedProps: { ...evt }
+                    extendedProps: { 
+                        ...evt,
+                        // CORRECCIÓN ESTADO NULL: Si viene null, asignamos 'PENDIENTE' o 'SIN ESTADO'
+                        estado: evt.estado || 'PENDIENTE' 
+                    }
                 }));
                 setEvents(formattedEvents);
             }
@@ -46,10 +52,14 @@ const Cronograma = () => {
     const renderEventContent = (eventInfo) => {
         const props = eventInfo.event.extendedProps;
         const isCompra = props.tipo_evento === 'COMPRA';
+        const isClosed = (props.ot_estado == 5 || props.ot_estado == 6);
+
         return (
-            <div className="d-flex align-items-center px-2 py-1 overflow-hidden" style={{ fontSize: '0.85rem' }}>
+            <div className={`d-flex align-items-center px-2 py-1 overflow-hidden ${isClosed ? 'opacity-75' : ''}`} style={{ fontSize: '0.85rem' }}>
                 <i className={`bi ${props.icono || (isCompra ? 'bi-cart-fill' : 'bi-tools')} me-2`}></i>
-                <span className="fw-semibold text-truncate">{eventInfo.event.title}</span>
+                <span className={`fw-semibold text-truncate ${isClosed ? 'text-decoration-line-through' : ''}`}>
+                    {eventInfo.event.title}
+                </span>
                 {props.solicitud_ot_id && <i className="bi bi-link-45deg ms-1 opacity-75"></i>}
             </div>
         );
@@ -60,14 +70,26 @@ const Cronograma = () => {
         calendarApi.unselect();
 
         const fechaSeleccionada = selectInfo.startStr.split('T')[0];
+        
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hoyStr = `${year}-${month}-${day}`;
+
+        if (fechaSeleccionada < hoyStr) {
+            Swal.fire('Fecha Pasada', 'No puedes agendar eventos en fechas pasadas.', 'warning');
+            return;
+        }
+
         setSelectedDate(fechaSeleccionada);
         setSelectedEvent(null);
+        setIsReadOnly(false); // Al crear nuevo, nunca es readOnly
 
         const puedeMantencion = can('cron_mant_crear');
         const puedeCompra = can('cron_compra_crear');
 
         if (puedeMantencion && puedeCompra) {
-            // RESTAURADO: Modal de elección de tipo con diseño estilizado
             await Swal.fire({
                 title: 'Nueva Tarea Programada',
                 text: `¿Qué deseas agendar para el ${new Date(selectInfo.start).toLocaleDateString()}?`,
@@ -118,32 +140,32 @@ const Cronograma = () => {
     const handleEventClick = (clickInfo) => {
         const props = clickInfo.event.extendedProps;
         
-        // Verificación de permisos de edición
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hoyStr = `${year}-${month}-${day}`;
+
+        // Condiciones de bloqueo
+        const esPasado = props.fecha_programada < hoyStr;
+        const esFinalizada = props.ot_estado == 5 || props.ot_estado == 6; 
+        
         const sinPermisoMant = props.tipo_evento === 'MANTENCION' && !can('cron_mant_editar');
         const sinPermisoComp = props.tipo_evento === 'COMPRA' && !can('cron_compra_editar');
 
-        if (sinPermisoMant || sinPermisoComp) {
-            Swal.fire({
-                title: props.titulo,
-                html: `<div class="text-start p-2">
-                        <p><strong>Tipo:</strong> ${props.tipo_evento}</p>
-                        <p><strong>Estado:</strong> ${props.estado}</p>
-                        <hr/>
-                        <p>${props.descripcion || 'Sin descripción'}</p>
-                       </div>`,
-                icon: 'info'
-            });
-            return;
-        }
+        // Determinar si es Solo Lectura
+        const soloLectura = (sinPermisoMant || sinPermisoComp || esPasado || esFinalizada);
 
+        // ABRIMOS EL MODAL SIEMPRE, PERO PASAMOS EL FLAG
         setSelectedEvent(props);
         setModoModal(props.tipo_evento);
+        setIsReadOnly(soloLectura); // <--- ESTA ES LA CLAVE
         setShowModal(true);
     };
 
     return (
         <div className="container-fluid py-4 fade-in">
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
                 <div>
                     <h3 className="fw-bold text-dark mb-1">
                         <i className="bi bi-calendar-check text-primary me-2"></i>
@@ -190,11 +212,12 @@ const Cronograma = () => {
             {showModal && (
                 <ModalAgendar
                     show={showModal}
-                    onClose={() => { setShowModal(false); setSelectedEvent(null); }}
-                    onSave={() => { fetchEvents(); setShowModal(false); setSelectedEvent(null); }}
+                    onClose={() => { setShowModal(false); setSelectedEvent(null); setIsReadOnly(false); }}
+                    onSave={() => { fetchEvents(); setShowModal(false); setSelectedEvent(null); setIsReadOnly(false); }}
                     initialDate={selectedDate}
                     eventData={selectedEvent}
                     mode={modoModal}
+                    readOnly={isReadOnly} // <--- PASAMOS LA PROP
                 />
             )}
         </div>

@@ -72,8 +72,9 @@ class MantencionController
         }
 
         try {
-            $this->repo->updateOT($id, $data);
-            echo json_encode(["success" => true, "message" => "OT Actualizada correctamente"]);
+            $this->service->editarOT($id, $data);
+            
+            echo json_encode(["success" => true, "message" => "OT Actualizada y Sincronizada correctamente"]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => "Error al actualizar: " . $e->getMessage()]);

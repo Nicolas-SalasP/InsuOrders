@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
+import AuthContext from '../context/AuthContext'; // Importar Contexto
 import MessageModal from '../components/MessageModal';
 import ModalEntregaBodega from '../components/ModalEntregaBodega';
 import ModalOrganizarBodega from '../components/ModalOrganizarBodega';
 
 const Bodega = () => {
+    const { auth } = useContext(AuthContext); // Obtener auth
     const [vista, setVista] = useState('salidas');
     const [pendientesAgrupados, setPendientesAgrupados] = useState({});
     const [porOrganizar, setPorOrganizar] = useState([]);
@@ -14,10 +16,20 @@ const Bodega = () => {
     const [entregaModal, setEntregaModal] = useState({ show: false, item: null });
     const [organizarModal, setOrganizarModal] = useState({ show: false, item: null });
 
+    // Helper de permisos
+    const hasPermission = (permiso) => {
+        if (auth.rol === 'Admin') return true;
+        return auth.permisos && auth.permisos.includes(permiso);
+    };
+
     useEffect(() => {
-        cargarDatos();
-        const interval = setInterval(cargarDatos, 15000);
-        return () => clearInterval(interval);
+        if (hasPermission('bodega_ver')) {
+            cargarDatos();
+            const interval = setInterval(cargarDatos, 15000);
+            return () => clearInterval(interval);
+        } else {
+            setLoading(false); // Detener loading si no tiene permiso
+        }
     }, [vista]);
 
     const cargarDatos = () => {
@@ -59,7 +71,6 @@ const Bodega = () => {
 
     const procesarEntrega = async (detalleId, cantidad, receptorId) => {
         try {
-            // Nota: enviamos 'cantidad_entregar' para coincidir con el controlador PHP
             await api.post('/index.php/bodega/entregar', {
                 detalle_id: detalleId, 
                 cantidad_entregar: cantidad, 
@@ -73,11 +84,16 @@ const Bodega = () => {
         }
     };
 
+    // Verificación de acceso al módulo
+    if (!hasPermission('bodega_ver')) {
+        return <div className="alert alert-danger m-4 shadow-sm">No tienes permisos para acceder al módulo de Bodega.</div>;
+    }
+
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
 
-            {/* IMPORTANTE: Pasamos 'item' al prop 'item' del modal */}
+            {/* Solo renderizamos los modales si se activan y (redundante pero seguro) si tienen permiso */}
             <ModalEntregaBodega 
                 show={entregaModal.show} 
                 item={entregaModal.item} 
@@ -104,7 +120,7 @@ const Bodega = () => {
                 </div>
 
                 <div className="card-body p-3 flex-grow-1 overflow-auto bg-light">
-                    {loading ? <div className="p-5 text-center">Cargando...</div> : (
+                    {loading ? <div className="p-5 text-center"><div className="spinner-border text-primary"></div></div> : (
                         vista === 'salidas' ? (
                             <div className="row g-3">
                                 {Object.keys(pendientesAgrupados).length === 0 && <div className="col-12 text-center py-5 text-muted">✅ Todo despachado</div>}
@@ -141,9 +157,12 @@ const Bodega = () => {
                                                                     {parseFloat(p.cantidad_pendiente)} <small className="text-muted fs-6">{p.unidad_medida}</small>
                                                                 </td>
                                                                 <td className="text-end pe-4">
-                                                                    <button className="btn btn-success btn-sm px-3" onClick={() => setEntregaModal({ show: true, item: p })}>
-                                                                        <i className="bi bi-box-seam me-1"></i>Entregar
-                                                                    </button>
+                                                                    {/* Botón protegido por permiso bodega_despachar */}
+                                                                    {hasPermission('bodega_despachar') && (
+                                                                        <button className="btn btn-success btn-sm px-3" onClick={() => setEntregaModal({ show: true, item: p })}>
+                                                                            <i className="bi bi-box-seam me-1"></i>Entregar
+                                                                        </button>
+                                                                    )}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -156,7 +175,7 @@ const Bodega = () => {
                             </div>
                         ) : (
                             <div className="card border-0">
-                                {/* Tabla Entradas (Igual que antes) */}
+                                {/* Tabla Entradas */}
                                 <table className="table table-hover align-middle mb-0">
                                     <thead className="bg-light sticky-top">
                                         <tr>
@@ -175,9 +194,12 @@ const Bodega = () => {
                                                 <td className="text-center">{parseFloat(p.stock_actual)}</td>
                                                 <td className="text-center fw-bold text-danger">{parseFloat(p.por_organizar)}</td>
                                                 <td className="text-end pe-4">
-                                                    <button className="btn btn-primary btn-sm fw-bold px-3" onClick={() => setOrganizarModal({ show: true, item: p })}>
-                                                        <i className="bi bi-arrow-down-square me-2"></i>Ubicación
-                                                    </button>
+                                                    {/* Botón protegido por permiso bodega_organizar */}
+                                                    {hasPermission('bodega_organizar') && (
+                                                        <button className="btn btn-primary btn-sm fw-bold px-3" onClick={() => setOrganizarModal({ show: true, item: p })}>
+                                                            <i className="bi bi-arrow-down-square me-2"></i>Ubicación
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}

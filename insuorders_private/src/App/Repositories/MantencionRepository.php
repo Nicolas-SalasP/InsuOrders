@@ -54,16 +54,23 @@ class MantencionRepository
             throw new \Exception("El código '{$data['codigo_interno']}' ya existe.");
 
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
-        $sql = "INSERT INTO activos (codigo_interno, nombre, tipo, ubicacion, descripcion, centro_costo_id) 
-                VALUES (:cod, :nom, :tipo, :ubi, :desc, :cc)";
+        $sql = "INSERT INTO activos (codigo_interno, codigo_maquina, nombre, tipo, marca, modelo, anio, numero_serie, ubicacion, descripcion, centro_costo_id, estado_activo) 
+                VALUES (:cod, :cod_maq, :nom, :tipo, :marca, :mod, :anio, :serie, :ubi, :desc, :cc, :est)";
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            ':cod' => $data['codigo_interno'],
-            ':nom' => $data['nombre'],
-            ':tipo' => $data['tipo'],
-            ':ubi' => $data['ubicacion'],
-            ':desc' => $data['descripcion'] ?? '',
-            ':cc' => $ccId
+            ':cod'     => $data['codigo_interno'],
+            ':cod_maq' => $data['codigo_maquina'] ?? null,
+            ':nom'     => $data['nombre'],
+            ':tipo'    => $data['tipo'],
+            ':marca'   => $data['marca'] ?? null,
+            ':mod'     => $data['modelo'] ?? null,
+            ':anio'    => !empty($data['anio']) ? $data['anio'] : null,
+            ':serie'   => $data['numero_serie'] ?? null,
+            ':ubi'     => $data['ubicacion'],
+            ':desc'    => $data['descripcion'] ?? '',
+            ':cc'      => $ccId,
+            ':est'     => $data['estado_activo'] ?? 'OPERATIVO'
         ]);
         return $this->db->lastInsertId();
     }
@@ -71,16 +78,35 @@ class MantencionRepository
     public function updateActivo($data)
     {
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
-        $sql = "UPDATE activos SET codigo_interno=:cod, nombre=:nom, tipo=:tipo, ubicacion=:ubi, 
-                descripcion=:desc, centro_costo_id=:cc WHERE id=:id";
+        $sql = "UPDATE activos SET 
+                codigo_interno=:cod, 
+                codigo_maquina=:cod_maq,
+                nombre=:nom, 
+                tipo=:tipo, 
+                marca=:marca,
+                modelo=:mod,
+                anio=:anio,
+                numero_serie=:serie,
+                ubicacion=:ubi, 
+                descripcion=:desc, 
+                centro_costo_id=:cc,
+                estado_activo=:est
+                WHERE id=:id";
+        
         $this->db->prepare($sql)->execute([
-            ':cod' => $data['codigo_interno'],
-            ':nom' => $data['nombre'],
-            ':tipo' => $data['tipo'],
-            ':ubi' => $data['ubicacion'],
-            ':desc' => $data['descripcion'] ?? '',
-            ':cc' => $ccId,
-            ':id' => $data['id']
+            ':cod'     => $data['codigo_interno'],
+            ':cod_maq' => $data['codigo_maquina'] ?? null,
+            ':nom'     => $data['nombre'],
+            ':tipo'    => $data['tipo'],
+            ':marca'   => $data['marca'] ?? null,
+            ':mod'     => $data['modelo'] ?? null,
+            ':anio'    => !empty($data['anio']) ? $data['anio'] : null,
+            ':serie'   => $data['numero_serie'] ?? null,
+            ':ubi'     => $data['ubicacion'],
+            ':desc'    => $data['descripcion'] ?? '',
+            ':cc'      => $ccId,
+            ':est'     => $data['estado_activo'] ?? 'OPERATIVO',
+            ':id'      => $data['id']
         ]);
     }
 
@@ -215,8 +241,7 @@ class MantencionRepository
             $insumosFinales = [];
             if (!empty($data['items']) && is_array($data['items']) && count($data['items']) > 0) {
                 $insumosFinales = $data['items'];
-            }
-            elseif (!empty($data['activo_id'])) {
+            } elseif (!empty($data['activo_id'])) {
                 $sqlKit = "SELECT insumo_id, cantidad_default as cantidad FROM activos_insumos WHERE activo_id = :aid";
                 $stmtKit = $this->db->prepare($sqlKit);
                 $stmtKit->execute([':aid' => $data['activo_id']]);
@@ -226,7 +251,7 @@ class MantencionRepository
             if (!empty($insumosFinales)) {
                 $stmtStock = $this->db->prepare("SELECT stock_actual FROM insumos WHERE id = ?");
                 $stmtItem = $this->db->prepare("INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, estado_linea) 
-                                            VALUES (:sid, :iid, :cant, :estado)");
+                                                VALUES (:sid, :iid, :cant, :estado)");
 
                 foreach ($insumosFinales as $item) {
                     $iid = $item['insumo_id'] ?? $item['id_producto'] ?? $item['id'] ?? null;
@@ -292,19 +317,32 @@ class MantencionRepository
                     $this->db->prepare("DELETE FROM detalle_solicitud WHERE id IN ($placeholders)")->execute(array_values($idsParaBorrar));
                 }
 
-                $stmtUpdate = $this->db->prepare("UPDATE detalle_solicitud SET cantidad = :cant WHERE id = :id_linea");
+                $stmtUpdate = $this->db->prepare("UPDATE detalle_solicitud SET cantidad = :cant, estado_linea = :st WHERE id = :id_linea");
                 $stmtInsert = $this->db->prepare("INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, estado_linea) 
-                                              VALUES (:sid, :iid, :cant, :estado)");
+                                                VALUES (:sid, :iid, :cant, :estado)");
                 $stmtStock = $this->db->prepare("SELECT stock_actual FROM insumos WHERE id = ?");
+                $stmtGetInsumoLine = $this->db->prepare("SELECT insumo_id FROM detalle_solicitud WHERE id = ?");
 
                 foreach ($data['items'] as $item) {
+                    $cantidad = $item['cantidad'];
+                    
                     if (!empty($item['id_linea'])) {
-                        $stmtUpdate->execute([':cant' => $item['cantidad'], ':id_linea' => $item['id_linea']]);
+                        $stmtGetInsumoLine->execute([$item['id_linea']]);
+                        $iid = $stmtGetInsumoLine->fetchColumn();
+                        
+                        $stmtStock->execute([$iid]);
+                        $stockActual = $stmtStock->fetchColumn() ?: 0;
+                        $nuevoEstado = ($stockActual >= $cantidad) ? 'PENDIENTE' : 'REQUIERE_COMPRA';
+                                            
+                        $stmtUpdate->execute([
+                            ':cant' => $cantidad, 
+                            ':st' => $nuevoEstado, 
+                            ':id_linea' => $item['id_linea']
+                        ]);
                     } else {
                         $iid = $item['insumo_id'] ?? $item['id_producto'] ?? $item['id'];
-                        $cantidad = $item['cantidad'];
                         $stmtStock->execute([$iid]);
-                        $stockActual = $stmtStock->fetchColumn();
+                        $stockActual = $stmtStock->fetchColumn() ?: 0;
                         $estado = ($stockActual >= $cantidad) ? 'PENDIENTE' : 'REQUIERE_COMPRA';
 
                         $stmtInsert->execute([
@@ -429,14 +467,9 @@ class MantencionRepository
             $nuevoEstado = ($nuevaEntregada >= floatval($linea['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
             $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")
                 ->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
-
+            
             $otId = $linea['solicitud_id'];
-            $pendientes = $this->db->query("SELECT COUNT(*) FROM detalle_solicitud WHERE solicitud_id = $otId AND estado_linea NOT IN ('ENTREGADO','FINALIZADO','CANCELADO')")->fetchColumn();
-            if ($pendientes == 0) {
-                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")->execute([':id' => $otId]);
-            } else {
-                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $otId]);
-            }
+            $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $otId]);
 
             if (!$inTransaction)
                 $this->db->commit();

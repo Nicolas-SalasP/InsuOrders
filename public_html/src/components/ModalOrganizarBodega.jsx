@@ -13,12 +13,12 @@ const ModalOrganizarBodega = ({ show, onClose, insumo, onSave }) => {
 
     useEffect(() => {
         if (show) {
-            api.get('/index.php/inventario/auxiliares').then(res => {
+            api.get('/index.php/insumos/auxiliares').then(res => {
                 if (res.data.success) {
-                    setSectores(res.data.data.sectores);
-                    setUbicaciones(res.data.data.ubicaciones);
+                    setSectores(res.data.data.sectores || []);
+                    setUbicaciones(res.data.data.ubicaciones || []);
                 }
-            });
+            }).catch(err => console.error("Error cargando auxiliares:", err));
             
             if (insumo) {
                 setCantidad(insumo.por_organizar); 
@@ -32,6 +32,7 @@ const ModalOrganizarBodega = ({ show, onClose, insumo, onSave }) => {
     useEffect(() => {
         if (sectorId) {
             setUbicacionesFiltradas(ubicaciones.filter(u => u.sector_id == sectorId));
+            setUbicacionId(''); 
         } else {
             setUbicacionesFiltradas([]);
         }
