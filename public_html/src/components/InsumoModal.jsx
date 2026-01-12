@@ -27,7 +27,6 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                     if (res.data.success) {
                         setListas(res.data.data);
                         if (insumo) {
-                            // EDICIÓN: Cargar datos asegurando enteros
                             setFormData({
                                 ...insumo,
                                 stock_actual: parseInt(insumo.stock_actual) || 0,
@@ -91,8 +90,6 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
 
         try {
             const dataToSend = new FormData();
-
-            // Adjuntar datos (EXCLUYENDO ID del loop para evitar duplicados si existe en formData)
             Object.keys(formData).forEach(key => {
                 if (key !== 'id') {
                     dataToSend.append(key, formData[key] ?? '');
@@ -106,12 +103,10 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
             const config = { headers: { 'Content-Type': undefined } };
 
             if (insumo) {
-                // MODO EDICIÓN
-                dataToSend.append('id', insumo.id); // ID explícito
-                dataToSend.append('_method', 'PUT'); // Señal para el router
+                dataToSend.append('id', insumo.id);
+                dataToSend.append('_method', 'PUT');
                 await api.post('/index.php/inventario', dataToSend, config);
             } else {
-                // MODO CREACIÓN
                 await api.post('/index.php/inventario', dataToSend, config);
             }
 
