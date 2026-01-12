@@ -2,7 +2,7 @@
 namespace App\Services;
 
 use App\Repositories\OperarioRepository;
-use App\Repositories\UsuarioRepository;
+use Exception;
 
 class OperarioService
 {
@@ -15,8 +15,8 @@ class OperarioService
 
     public function asignarInsumo($data, $bodegueroId)
     {
-        if (empty($data['insumo_id']) || empty($data['operario_id']) || empty($data['cantidad'])) {
-            throw new \Exception("Faltan datos obligatorios para la asignación.");
+        if (empty($data['insumo_id']) || empty($data['empleado_id']) || empty($data['cantidad'])) {
+            throw new Exception("Faltan datos obligatorios para la asignación.");
         }
         
         $data['bodeguero_id'] = $bodegueroId;
@@ -31,7 +31,7 @@ class OperarioService
     public function responderEntrega($data)
     {
         if (empty($data['entrega_id']) || empty($data['accion'])) {
-            throw new \Exception("Datos inválidos.");
+            throw new Exception("Datos inválidos.");
         }
         return $this->repo->gestionarRecepcion($data['entrega_id'], $data['accion'], $data['observacion'] ?? null);
     }
@@ -39,9 +39,17 @@ class OperarioService
     public function reportarConsumo($data)
     {
         if (empty($data['entrega_id']) || empty($data['cantidad']) || $data['cantidad'] <= 0) {
-            throw new \Exception("Cantidad inválida.");
+            throw new Exception("Cantidad inválida para consumo.");
         }
         return $this->repo->reportarUso($data['entrega_id'], $data['cantidad']);
+    }
+
+    public function devolverInsumo($data)
+    {
+        if (empty($data['entrega_id']) || empty($data['cantidad']) || $data['cantidad'] <= 0) {
+            throw new Exception("Cantidad o ID de entrega inválidos para devolución.");
+        }
+        return $this->repo->devolverInsumo($data['entrega_id'], $data['cantidad']);
     }
 
     public function getDashboard()

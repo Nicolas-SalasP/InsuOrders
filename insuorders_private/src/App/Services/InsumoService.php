@@ -77,16 +77,13 @@ class InsumoService
         if (!isset($data['cantidad']) || abs($data['cantidad']) == 0) {
             throw new \Exception("La cantidad debe ser distinta de 0.");
         }
-        $cantidad = abs((float) $data['cantidad']);
-        $empleadoId = $data['empleado_id'] ?? null;
-
         return $this->repo->ajustarStock(
             $data['insumo_id'],
-            $cantidad,
+            $data['cantidad'],
             $data['tipo_movimiento_id'],
             $usuarioId,
-            $data['observacion'] ?? '',
-            $empleadoId
+            $data['observacion'],
+            $data['empleado_id'] ?? null
         );
     }
 

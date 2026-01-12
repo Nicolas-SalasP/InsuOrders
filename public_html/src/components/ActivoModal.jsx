@@ -5,7 +5,7 @@ import ConfirmModal from './ConfirmModal';
 
 const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [tab, setTab] = useState('general');
-    
+
     // Estado del formulario apegado a la DB (insuban_db)
     const [formData, setFormData] = useState({
         codigo_interno: '',
@@ -21,7 +21,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         descripcion: '',
         centro_costo: ''    // Se mapea a centro_costo_id en backend
     });
-    
+
     const [listaCentros, setListaCentros] = useState([]);
 
     // Estados para el Kit de Repuestos
@@ -244,7 +244,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 {tab === 'general' && (
                                     <form onSubmit={handleSubmitGeneral}>
                                         <div className="row g-3">
-                                            
+
                                             {/* FILA 1: CÓDIGOS */}
                                             <div className="col-12 col-md-6">
                                                 <label className="form-label small fw-bold text-muted">CÓDIGO INTERNO</label>
@@ -297,7 +297,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                     <option value="Otro">Otro</option>
                                                 </select>
                                             </div>
-                                            
+
                                             {/* ESTADO SEGÚN ENUM DE BASE DE DATOS */}
                                             <div className="col-12 col-md-4">
                                                 <label className="form-label small fw-bold text-muted">ESTADO</label>
@@ -307,7 +307,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                     <option value="BAJA">DE BAJA</option>
                                                 </select>
                                             </div>
-                                            
+
                                             <div className="col-12 col-md-4">
                                                 <label className="form-label small fw-bold text-muted">UBICACIÓN</label>
                                                 <input type="text" name="ubicacion" className="form-control"
@@ -364,7 +364,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             </div>
                                             {busquedaInsumo && (
                                                 <div className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                                                    {insumos.filter(i => i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase())).slice(0, 10).map(i => (
+                                                    {insumos.filter(i =>
+                                                        i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase()) ||
+                                                        (i.codigo_sku && i.codigo_sku.toLowerCase().includes(busquedaInsumo.toLowerCase()))
+                                                    ).slice(0, 10).map(i => (
                                                         <button key={i.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onClick={() => agregarAlKit(i)}>
                                                             <span>{i.nombre}</span>
                                                             <span className="badge bg-secondary">{i.codigo_sku}</span>

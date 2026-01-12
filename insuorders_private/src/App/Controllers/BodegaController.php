@@ -5,6 +5,7 @@ use App\Repositories\MantencionRepository;
 use App\Repositories\InsumoRepository;
 use App\Repositories\OperarioRepository;
 use App\Database\Database;
+use Exception;
 
 class BodegaController
 {
@@ -24,7 +25,7 @@ class BodegaController
         try {
             $data = $this->repo->getPendientesEntrega();
             echo json_encode(["success" => true, "data" => $data]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "error" => $e->getMessage()]);
         }
@@ -46,7 +47,7 @@ class BodegaController
 
             $data = $db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
             echo json_encode(["success" => true, "data" => $data]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "error" => $e->getMessage()]);
         }
@@ -102,7 +103,8 @@ class BodegaController
                     'cantidad'     => (float)$cantidad,
                     'empleado_id'  => (int)$data['receptor_id'],
                     'observacion'  => "Material para OT #" . ($data['ot_id'] ?? 'S/N'),
-                    'bodeguero_id' => $usuarioId
+                    'bodeguero_id' => $usuarioId,
+                    'ot_id'        => $data['ot_id'] ?? null
                 ];
                 
                 $this->operarioRepo->vincularEntregaOT($datosPersonal);
@@ -110,10 +112,10 @@ class BodegaController
                 echo json_encode(["success" => true, "message" => "Entrega de OT registrada y enviada al técnico"]);
 
             } else {
-                throw new \Exception("Faltan datos: Se requiere 'empleado_id' o 'detalle_id'.");
+                throw new Exception("Faltan datos: Se requiere 'empleado_id' o 'detalle_id'.");
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "error" => $e->getMessage()]);
         }
@@ -137,7 +139,7 @@ class BodegaController
             ]);
 
             echo json_encode(["success" => true, "message" => "Ubicación asignada correctamente"]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "error" => "Error SQL: " . $e->getMessage()]);
         }

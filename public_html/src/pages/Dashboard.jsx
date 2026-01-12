@@ -6,23 +6,47 @@ import {
     LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
 
+// --- COMPONENTE CORREGIDO PARA ETIQUETAS DEL EJE Y ---
+const CustomYAxisTick = ({ x, y, payload }) => {
+    if (!payload || !payload.value) return null;
+    
+    const text = payload.value.toString();
+    const words = text.split(' ');
+    let lines = [];
+
+    // Divide texto largo
+    if (text.length > 15 && words.length >= 2) {
+        const mid = Math.ceil(words.length / 2);
+        lines.push(words.slice(0, mid).join(' '));
+        lines.push(words.slice(mid).join(' '));
+    } else {
+        lines.push(text);
+    }
+
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text x={-5} y={0} dy={0} textAnchor="end" fill="#000" fontSize="11px" fontWeight="500">
+                {lines.map((line, index) => (
+                    <tspan x={-5} dy={index === 0 ? "0.35em" : "1.2em"} key={index}>
+                        {line}
+                    </tspan>
+                ))}
+            </text>
+        </g>
+    );
+};
+
 const Dashboard = () => {
     const { auth } = useContext(AuthContext);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
-    
-    // NUEVO: Estado para datos de personal (Jefe Mantención)
     const [personalData, setPersonalData] = useState([]);
-
-    // Filtros de fecha y empleado
     const [fechas, setFechas] = useState({
         start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
         end: new Date().toISOString().split('T')[0]
     });
     const [empleadoFilter, setEmpleadoFilter] = useState('');
 
-    // --- LÓGICA DE PERMISOS ESTRICTA ---
-    // dash_resumen, dash_compras, dash_mantencion, dash_bodega, dash_personal
     const can = (permiso) => {
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
         return auth.permisos && auth.permisos.includes(permiso);
@@ -30,7 +54,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         cargarDatos();
-        cargarDatosPersonal(); // Cargamos esto también
+        cargarDatosPersonal();
     }, [fechas, empleadoFilter]);
 
     const cargarDatos = async () => {
@@ -47,19 +71,20 @@ const Dashboard = () => {
         }
     };
 
-    // NUEVO: Cargar datos específicos de personal (Si tiene permiso dash_personal)
     const cargarDatosPersonal = async () => {
         if (can('dash_personal')) {
             try {
                 const res = await api.get('/index.php/operario/dashboard');
                 if (res.data.success) setPersonalData(res.data.data);
             } catch (error) {
-                console.error("Error Personal Dashboard:", error);
+                console.error("Error Personal:", error);
             }
         }
     };
 
-    // --- SECCIÓN 0: RESUMEN SUPERIOR (KPIs) ---
+    // --- SECCIONES RENDERIZADO (Resumen, Compras, Mantención) ---
+    // Son idénticas, las incluyo completas para que copies y pegues sin error.
+
     const renderResumenSuperior = () => (
         <div className="row g-3 mb-5 animate__animated animate__fadeIn">
             <div className="col-12 col-sm-6 col-lg-3">
@@ -97,7 +122,6 @@ const Dashboard = () => {
         </div>
     );
 
-    // --- SECCIÓN 1: GESTIÓN DE COMPRAS ---
     const renderCompras = () => (
         <div className="mb-5 animate__animated animate__fadeIn">
             <h5 className="text-secondary border-bottom pb-2 mb-3"><i className="bi bi-cart3 me-2"></i>Gestión de Compras</h5>
@@ -127,7 +151,6 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
-                {/* ... Resto de gráficos de compras ... */}
                  <div className="col-12 col-lg-6">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">🏆 Top Proveedores</div>
@@ -164,7 +187,6 @@ const Dashboard = () => {
         </div>
     );
 
-    // --- SECCIÓN 2: GESTIÓN DE MANTENCIÓN ---
     const renderMantencion = () => (
         <div className="mb-5 animate__animated animate__fadeIn">
             <h5 className="text-secondary border-bottom pb-2 mb-3"><i className="bi bi-wrench me-2"></i>Gestión de Mantención</h5>
@@ -205,7 +227,6 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
-                {/* ... Resto de gráficos mantención ... */}
                  <div className="col-12 col-lg-8">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">🔧 Insumos Más Usados</div>
@@ -249,7 +270,6 @@ const Dashboard = () => {
         </div>
     );
 
-    // --- SECCIÓN 3: GESTIÓN DE BODEGA ---
     const renderBodega = () => (
         <div className="mb-5 animate__animated animate__fadeIn">
             <h5 className="text-secondary border-bottom pb-2 mb-3"><i className="bi bi-box-seam me-2"></i>Gestión de Bodega</h5>
@@ -280,10 +300,10 @@ const Dashboard = () => {
                         <div className="card-header bg-white fw-bold py-3 border-0">👷‍♂️ Top Receptores (Más Insumos)</div>
                         <div className="card-body" style={{ height: '250px' }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={data.bodega?.top_receptores || []} layout="vertical" margin={{ left: 40, right: 20 }}>
+                                <BarChart data={data.bodega?.top_receptores || []} layout="vertical" margin={{ left: 10, right: 30, top: 10, bottom: 10 }}>
                                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                                     <XAxis type="number" hide />
-                                    <YAxis dataKey="nombre" type="category" width={100} style={{ fontSize: '11px', fontWeight: 'bold' }} />
+                                    <YAxis dataKey="nombre" type="category" width={150} tick={<CustomYAxisTick />} interval={0} />
                                     <Tooltip cursor={{fill: 'transparent'}} />
                                     <Bar dataKey="total_items" fill="#ffc107" radius={[0, 4, 4, 0]} barSize={25} name="Total Retirado" />
                                 </BarChart>
@@ -292,6 +312,7 @@ const Dashboard = () => {
                     </div>
                 </div>
 
+                {/* --- SECCIÓN CORREGIDA PARA NOMBRES COMPLETOS --- */}
                 <div className="col-12 col-md-6">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 d-flex justify-content-between align-items-center border-0">
@@ -303,26 +324,51 @@ const Dashboard = () => {
                                 <ul className="list-group list-group-flush">
                                     {data.bodega.timeline_entregas.map((log, idx) => (
                                         <li key={idx} className="list-group-item px-4 py-3 border-bottom-0 border-top">
-                                            <div className="d-flex">
-                                                <div className="d-flex flex-column align-items-center me-3" style={{minWidth: '50px'}}>
-                                                    <span className="fw-bold text-dark" style={{fontSize: '1.1rem'}}>
+                                            <div className="d-flex align-items-center">
+                                                {/* COLUMNA FECHA Y HORA */}
+                                                <div className="d-flex flex-column align-items-center me-4 text-center border-end pe-3" style={{minWidth: '90px'}}>
+                                                    <div className="fw-bold text-dark lh-1" style={{fontSize: '1.4rem'}}>
                                                         {new Date(log.fecha_entrega).getDate()}
-                                                    </span>
-                                                    <span className="text-uppercase text-muted small" style={{fontSize: '0.7rem'}}>
+                                                    </div>
+                                                    <div className="text-uppercase text-muted small fw-bold mb-1" style={{fontSize: '0.7rem'}}>
                                                         {new Date(log.fecha_entrega).toLocaleDateString('es-ES', { month: 'short' })}
-                                                    </span>
+                                                    </div>
+                                                    <div className="badge bg-light text-secondary border rounded-pill px-2 py-1" style={{fontSize: '0.75rem'}}>
+                                                        <i className="bi bi-clock me-1"></i>
+                                                        {new Date(log.fecha_entrega).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
                                                 </div>
+
+                                                {/* INFO ENTREGA: NOMBRE COMPLETO SIN CORTE */}
                                                 <div className="flex-grow-1">
-                                                    <div className="d-flex justify-content-between align-items-start">
-                                                        <h6 className="mb-1 fw-bold text-primary">{log.insumo}</h6>
-                                                        <span className="badge bg-success bg-opacity-10 text-success border border-success">
+                                                    <div className="d-flex justify-content-between align-items-start mb-2">
+                                                        <div>
+                                                            {/* CAMBIO AQUÍ: white-space: normal para evitar cortes */}
+                                                            <h6 className="mb-0 fw-bold text-primary lh-sm" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                                                {log.insumo}
+                                                            </h6>
+                                                            {log.ot_id && (
+                                                                <span className="badge bg-info bg-opacity-10 text-info border border-info px-2 py-0 mt-1" style={{fontSize: '0.7rem'}}>
+                                                                    OT #{log.ot_id}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <span className="badge bg-success bg-opacity-10 text-success border border-success ms-2 text-nowrap">
                                                             - {parseFloat(log.cantidad)} {log.unidad_medida}
                                                         </span>
                                                     </div>
-                                                    <div className="text-muted small">
-                                                        <i className="bi bi-person me-1"></i> Recibió: <strong>{log.retirado_por}</strong>
+
+                                                    <div className="d-flex align-items-center bg-light rounded p-2 mt-2 border border-light">
+                                                        <div className="bg-white rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm me-2" style={{width:'32px', height:'32px', minWidth: '32px'}}>
+                                                            <i className="bi bi-person-fill text-secondary fs-6"></i>
+                                                        </div>
+                                                        <div className="d-flex flex-column lh-1 overflow-hidden">
+                                                            <span className="text-muted mb-1" style={{fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Recibido por</span>
+                                                            <span className="fw-bold text-dark text-truncate" title={log.retirado_por || 'Desconocido'}>
+                                                                {log.retirado_por || 'Sin Información'}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    {log.ot_id && <div className="text-muted small mt-1"><i className="bi bi-ticket-detailed me-1"></i> OT #{log.ot_id}</div>}
                                                 </div>
                                             </div>
                                         </li>
@@ -338,7 +384,6 @@ const Dashboard = () => {
         </div>
     );
 
-    // --- NUEVO: SECCIÓN 4: SUPERVISIÓN PERSONAL (dash_personal) ---
     const renderPersonal = () => (
         <div className="mb-5 animate__animated animate__fadeIn">
             <h5 className="text-secondary border-bottom pb-2 mb-3"><i className="bi bi-people me-2"></i>Supervisión de Personal</h5>
@@ -397,7 +442,6 @@ const Dashboard = () => {
 
     return (
         <div className="container-fluid p-3 p-md-4 bg-light min-vh-100">
-            {/* HEADER PRINCIPAL */}
             <div className="d-flex flex-column flex-lg-row justify-content-between align-items-center mb-5 gap-3">
                 <div>
                     <h3 className="fw-bold text-dark mb-0">Dashboard Operativo</h3>
@@ -405,7 +449,6 @@ const Dashboard = () => {
                 </div>
                 
                 <div className="d-flex flex-wrap gap-2 justify-content-end bg-white p-2 rounded shadow-sm">
-                    {/* FILTRO TÉCNICO (dash_bodega) */}
                     {can('dash_bodega') && data?.bodega?.lista_empleados && (
                         <select className="form-select form-select-sm border-0 bg-light fw-600" style={{maxWidth: '180px'}} 
                             value={empleadoFilter} onChange={e => setEmpleadoFilter(e.target.value)}>
@@ -416,7 +459,6 @@ const Dashboard = () => {
                         </select>
                     )}
 
-                    {/* FILTRO FECHAS */}
                     <div className="input-group input-group-sm" style={{ maxWidth: '320px' }}>
                         <input type="date" className="form-control border-0 bg-light" value={fechas.start} onChange={e => setFechas({...fechas, start: e.target.value})} />
                         <span className="input-group-text border-0 bg-light text-muted">al</span>
@@ -433,19 +475,10 @@ const Dashboard = () => {
                 </div>
             ) : (
                 <>
-                    {/* 0. RESUMEN SUPERIOR (dash_resumen) */}
                     {can('dash_resumen') && renderResumenSuperior()}
-
-                    {/* 1. SECCIÓN COMPRAS (dash_compras) */}
                     {can('dash_compras') && data.compras && renderCompras()}
-
-                    {/* 2. SECCIÓN MANTENCIÓN (dash_mantencion) */}
                     {can('dash_mantencion') && data.mantencion && renderMantencion()}
-
-                    {/* 3. SECCIÓN BODEGA (dash_bodega) */}
                     {can('dash_bodega') && data.bodega && renderBodega()}
-
-                    {/* 4. SECCIÓN PERSONAL (dash_personal) - NUEVO */}
                     {can('dash_personal') && renderPersonal()}
                 </>
             )}

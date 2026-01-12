@@ -138,9 +138,10 @@ class InsumoController
     {
         $data = json_decode(file_get_contents("php://input"), true);
         $usuarioId = $uid ?? AuthMiddleware::verify();
+
         if (!isset($data['insumo_id']) || !isset($data['cantidad'])) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => "Datos incompletos: insumo_id y cantidad son requeridos"]);
+            echo json_encode(["success" => false, "message" => "Faltan datos obligatorios"]);
             return;
         }
 
@@ -150,7 +151,7 @@ class InsumoController
                     'insumo_id' => (int) $data['insumo_id'],
                     'cantidad' => abs((float) $data['cantidad']),
                     'empleado_id' => (int) $data['empleado_id'],
-                    'observacion' => $data['motivo'] ?? $data['observacion'] ?? 'Entrega operario',
+                    'observacion' => $data['motivo'] ?? 'Entrega operario',
                     'bodeguero_id' => $usuarioId
                 ];
                 $this->operarioRepo->asignarInsumo($datos);
@@ -163,21 +164,17 @@ class InsumoController
                     'observacion' => $data['motivo'] ?? $data['observacion'] ?? 'Ajuste manual',
                     'usuario_id' => $usuarioId,
                     'empleado_id' => null,
-                    'ubicacion_id' => null
+                    'ubicacion_id' => null 
                 ];
+
                 $this->service->gestionarStock($datosAjuste, $usuarioId);
             }
 
-            header('Content-Type: application/json');
             echo json_encode(["success" => true, "message" => "Operación registrada exitosamente"]);
 
         } catch (\Exception $e) {
             http_response_code(500);
-            header('Content-Type: application/json');
-            echo json_encode([
-                "success" => false,
-                "message" => "Error al procesar: " . $e->getMessage()
-            ]);
+            echo json_encode(["success" => false, "message" => "Error al procesar: " . $e->getMessage()]);
         }
     }
 

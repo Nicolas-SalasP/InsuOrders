@@ -62,8 +62,8 @@ class InsumoRepository
 
             if ($stockInicial > 0) {
                 $sqlStock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                             VALUES (:iid, :uid, :cant)
-                             ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant";
+                            VALUES (:iid, :uid, :cant)
+                            ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant";
 
                 $this->db->prepare($sqlStock)->execute([
                     ':iid' => $insumoId,
@@ -96,10 +96,11 @@ class InsumoRepository
                 ':cat' => $data['categoria_id'],
                 ':min' => $data['stock_minimo'],
                 ':precio' => $data['precio_costo'],
-                ':moneda' => $data['moneda'],
+                ':mon' => $data['moneda'],
                 ':uni' => $data['unidad_medida'],
                 ':id' => $id
             ];
+
             if (!empty($data['imagen_url']))
                 $params[':imagen_url'] = $data['imagen_url'];
             return $stmt->execute($params);
@@ -123,6 +124,7 @@ class InsumoRepository
             VALUES (:iid, :tid, :cant, :uid, :obs, :emp, :ubi, NOW())";
 
         $stmt = $this->db->prepare($sql);
+
         return $stmt->execute([
             ':iid' => $data['insumo_id'],
             ':tid' => $data['tipo_movimiento_id'],
@@ -139,9 +141,8 @@ class InsumoRepository
         try {
             $this->db->beginTransaction();
 
-            // Buscamos la ubicación con más stock para descontar de ahí por defecto si no se especifica
-            $stmtLoc = $this->db->prepare("SELECT ubicacion_id FROM insumo_stock_ubicacion WHERE insumo_id = :id ORDER BY cantidad DESC LIMIT 1");
-            $stmtLoc->execute([':id' => $insumoId]);
+            $stmtLoc = $this->db->prepare("SELECT ubicacion_id FROM insumo_stock_ubicacion WHERE insumo_id = ? ORDER BY cantidad DESC LIMIT 1");
+            $stmtLoc->execute([$insumoId]);
             $ubicacionId = $stmtLoc->fetchColumn() ?: 1;
 
             $this->registrarMovimiento([
@@ -154,24 +155,33 @@ class InsumoRepository
                 'empleado_id' => $empleadoId
             ]);
 
-            // Si es tipo 3 es entrada (+), si es 2 o 4 es salida (-)
             $operador = ($tipoMovimiento == 3) ? '+' : '-';
 
             if ($operador === '+') {
                 $sqlUpd = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                           VALUES (:i, :u, :c) 
-                           ON DUPLICATE KEY UPDATE cantidad = cantidad + :c";
+                        VALUES (?, ?, ?) 
+                        ON DUPLICATE KEY UPDATE cantidad = cantidad + ?";
+
+                $this->db->prepare($sqlUpd)->execute([
+                    $insumoId,
+                    $ubicacionId,
+                    $cantidad,
+                    $cantidad
+                ]);
             } else {
                 $sqlUpd = "UPDATE insumo_stock_ubicacion 
-                           SET cantidad = GREATEST(0, cantidad - :c) 
-                           WHERE insumo_id = :i AND ubicacion_id = :u";
+                        SET cantidad = GREATEST(0, cantidad - ?) 
+                        WHERE insumo_id = ? AND ubicacion_id = ?";
+
+                $this->db->prepare($sqlUpd)->execute([
+                    $cantidad,
+                    $insumoId,
+                    $ubicacionId
+                ]);
             }
 
-            $this->db->prepare($sqlUpd)->execute([
-                ':i' => $insumoId,
-                ':u' => $ubicacionId,
-                ':c' => $cantidad
-            ]);
+            $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT SUM(cantidad) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")
+                ->execute([$insumoId, $insumoId]);
 
             $this->db->commit();
             return true;
