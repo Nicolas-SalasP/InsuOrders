@@ -116,4 +116,14 @@ class DashboardRepository
             'lista_empleados' => $this->db->query("SELECT id, nombre_completo FROM empleados WHERE activo = 1 ORDER BY nombre_completo ASC")->fetchAll(PDO::FETCH_ASSOC)
         ];
     }
+
+    public function getLogs($tipo = 'general')
+    {
+        $sql = "SELECT l.*, u.nombre as usuario 
+                FROM sistema_logs l 
+                LEFT JOIN usuarios u ON l.usuario_id = u.id 
+                ORDER BY l.fecha DESC LIMIT 50";
+        
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
