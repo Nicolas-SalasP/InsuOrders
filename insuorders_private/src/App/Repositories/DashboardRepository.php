@@ -27,22 +27,22 @@ class DashboardRepository
     public function getComprasAnalytics($start, $end)
     {
         $sqlTendencia = "SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') as mes, SUM(monto_total) as total 
-                         FROM ordenes_compra 
-                         WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'
-                         GROUP BY mes ORDER BY mes ASC";
+                        FROM ordenes_compra 
+                        WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'
+                        GROUP BY mes ORDER BY mes ASC";
 
         $sqlTopProv = "SELECT p.nombre, SUM(oc.monto_total) as total
-                       FROM ordenes_compra oc
-                       JOIN proveedores p ON oc.proveedor_id = p.id
-                       WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
-                       GROUP BY p.id ORDER BY total DESC LIMIT 5";
+                    FROM ordenes_compra oc
+                    JOIN proveedores p ON oc.proveedor_id = p.id
+                    WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
+                    GROUP BY p.id ORDER BY total DESC LIMIT 5";
 
         $sqlTopInsumos = "SELECT i.nombre, SUM(doc.total_linea) as total_gasto
-                          FROM detalle_orden_compra doc
-                          JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
-                          JOIN insumos i ON doc.insumo_id = i.id
-                          WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
-                          GROUP BY i.id ORDER BY total_gasto DESC LIMIT 5";
+                        FROM detalle_orden_compra doc
+                        JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
+                        JOIN insumos i ON doc.insumo_id = i.id
+                        WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
+                        GROUP BY i.id ORDER BY total_gasto DESC LIMIT 5";
 
         return [
             'tendencia_gasto' => $this->db->query($sqlTendencia)->fetchAll(PDO::FETCH_ASSOC),
@@ -54,16 +54,16 @@ class DashboardRepository
     public function getMantencionAnalytics($start, $end)
     {
         $sqlTopMaq = "SELECT a.nombre, COUNT(s.id) as total_ots
-                      FROM solicitudes_ot s
-                      JOIN activos a ON s.activo_id = a.id
-                      WHERE s.fecha_solicitud BETWEEN '$start' AND '$end'
-                      GROUP BY a.id ORDER BY total_ots DESC LIMIT 5";
+                    FROM solicitudes_ot s
+                    JOIN activos a ON s.activo_id = a.id
+                    WHERE s.fecha_solicitud BETWEEN '$start' AND '$end'
+                    GROUP BY a.id ORDER BY total_ots DESC LIMIT 5";
 
         $sqlInsumosUso = "SELECT i.nombre, SUM(m.cantidad) as cantidad
-                          FROM movimientos_inventario m
-                          JOIN insumos i ON m.insumo_id = i.id
-                          WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN '$start' AND '$end'
-                          GROUP BY i.id ORDER BY cantidad DESC LIMIT 8";
+                        FROM movimientos_inventario m
+                        JOIN insumos i ON m.insumo_id = i.id
+                        WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN '$start' AND '$end'
+                        GROUP BY i.id ORDER BY cantidad DESC LIMIT 8";
 
         $entregas = $this->db->query("SELECT COUNT(*) FROM movimientos_inventario WHERE tipo_movimiento_id = 2 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn();
         $devoluciones = $this->db->query("SELECT COUNT(*) FROM movimientos_inventario WHERE tipo_movimiento_id = 5 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn();
@@ -77,23 +77,37 @@ class DashboardRepository
 
     public function getBodegaAnalytics($start, $end, $empleadoId = null)
     {
-        $sqlTopReceptores = "SELECT e.nombre_completo as nombre, SUM(m.cantidad) as total_items
-                             FROM movimientos_inventario m
-                             LEFT JOIN empleados e ON m.empleado_id = e.id
-                             WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN '$start' AND '$end'
-                             AND e.nombre_completo IS NOT NULL
-                             GROUP BY e.id ORDER BY total_items DESC LIMIT 5";
+        $sqlTopReceptores = "SELECT COALESCE(e.nombre_completo, u.nombre, 'Externo') as nombre, 
+                                    SUM(m.cantidad) as total_items
+                            FROM movimientos_inventario m
+                            LEFT JOIN empleados e ON m.empleado_id = e.id
+                            LEFT JOIN usuarios u ON m.empleado_id = u.id
+                            WHERE m.tipo_movimiento_id = 2 
+                            AND m.fecha BETWEEN '$start' AND '$end'
+                            GROUP BY nombre 
+                            ORDER BY total_items DESC LIMIT 5";
 
-        $sqlTimeline = "SELECT m.fecha as fecha_entrega, i.nombre as insumo, m.cantidad, e.nombre_completo as retirado_por, 
-                               ds.solicitud_id as ot_id, i.unidad_medida
+        $sqlTimeline = "SELECT m.fecha as fecha_entrega, 
+                            i.nombre as insumo, 
+                            m.cantidad, 
+                            COALESCE(e.nombre_completo, u.nombre, u_sol.nombre, 'Externo/Manual') as retirado_por, 
+                            ds.solicitud_id as ot_id, 
+                            i.unidad_medida
                         FROM movimientos_inventario m
                         JOIN insumos i ON m.insumo_id = i.id
                         LEFT JOIN empleados e ON m.empleado_id = e.id
+                        LEFT JOIN usuarios u ON m.empleado_id = u.id
                         LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
-                        WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN '$start' AND '$end'";
+                        LEFT JOIN solicitudes_ot sot ON ds.solicitud_id = sot.id
+                        LEFT JOIN usuarios u_sol ON sot.usuario_solicitante_id = u_sol.id
+                        
+                        WHERE m.tipo_movimiento_id = 2 
+                        AND m.fecha BETWEEN '$start' AND '$end'";
 
-        if ($empleadoId)
+        if ($empleadoId) {
             $sqlTimeline .= " AND m.empleado_id = " . intval($empleadoId);
+        }
+
         $sqlTimeline .= " ORDER BY m.fecha DESC LIMIT 20";
 
         return [
