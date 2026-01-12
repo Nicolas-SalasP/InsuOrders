@@ -89,7 +89,7 @@ function App() {
                             } />
 
                             <Route path="/cronograma" element={
-                                <PermissionGuard permiso="mant_ver">
+                                <PermissionGuard permiso="cron_ver">
                                     <Cronograma />
                                 </PermissionGuard>
                             } />
