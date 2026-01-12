@@ -222,7 +222,7 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
-                    {can('mant_ver') && (
+                    {can('cron_ver') && (
                         <li>
                             <NavLink to="/cronograma" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
                                 <i className="bi bi-calendar-check me-2"></i> Cronograma

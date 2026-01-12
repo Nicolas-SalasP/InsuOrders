@@ -43,9 +43,8 @@ $path = str_replace('/index.php', '', $path);
 $path = trim($path, '/');
 
 // ============================================================
-// CORRECCIÓN: LIMPIEZA DE PREFIJOS (api/...)
+// LIMPIEZA DE PREFIJOS (api/...)
 // ============================================================
-// Si la ruta empieza con 'api/', se lo quitamos para que coincida con los switch case
 if (strpos($path, 'api/') === 0) {
     $path = substr($path, 4);
 }
@@ -178,7 +177,7 @@ switch ($path) {
         break;
 
     case 'mantencion/centros-costo':
-        AuthMiddleware::verify(['Admin', 'Mantencion']);
+        AuthMiddleware::verify(['Admin', 'Jefe Mantención']);
         (new MantencionController())->centrosCosto();
         break;
 
@@ -242,7 +241,7 @@ switch ($path) {
 
     // --- COMPRAS ---
     case 'compras':
-        $uid = AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        $uid = AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
         $c = new OrdenCompraController();
         if ($method === 'GET')
             $c->index();
@@ -251,36 +250,36 @@ switch ($path) {
         break;
 
     case 'compras/filtros':
-        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
         (new OrdenCompraController())->filtros();
         break;
 
     case 'compras/pendientes':
-        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
         (new OrdenCompraController())->pendientes();
         break;
 
     case 'compras/detalle':
-        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
         (new OrdenCompraController())->show();
         break;
 
     case 'compras/pdf':
-        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
         (new OrdenCompraController())->downloadPdf();
         break;
 
     case 'compras/upload':
-        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
         (new OrdenCompraController())->uploadFile();
         break;
 
     case 'compras/recepcionar':
-        $uid = AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        $uid = AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
         (new OrdenCompraController())->recepcionar($uid);
         break;
     case 'compras/cancelar':
-        AuthMiddleware::verify(['Compras', 'Admin', 'Bodega']);
+        AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
         (new OrdenCompraController())->cancelarOrden();
         break;
 
@@ -340,22 +339,22 @@ switch ($path) {
 
     // --- BODEGA ---
     case 'bodega/entregar':
-        $uid = AuthMiddleware::hasPermission('ver_bodega');
+        $uid = AuthMiddleware::hasPermission('bodega_despachar');
         (new BodegaController())->entregar($uid);
         break;
 
     case 'bodega/pendientes':
-        AuthMiddleware::hasPermission('ver_bodega');
+        AuthMiddleware::hasPermission('bodega_despachar');
         (new BodegaController())->pendientes();
         break;
 
     case 'bodega/por-organizar':
-        AuthMiddleware::hasPermission('ver_bodega');
+        AuthMiddleware::hasPermission('bodega_organizar');
         (new BodegaController())->porOrganizar();
         break;
 
     case 'bodega/organizar':
-        AuthMiddleware::hasPermission('ver_bodega');
+        AuthMiddleware::hasPermission('bodega_organizar');
         (new BodegaController())->organizar();
         break;
 
