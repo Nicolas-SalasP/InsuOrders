@@ -160,7 +160,7 @@ switch ($path) {
         break;
 
     case 'mantencion/activos':
-        AuthMiddleware::hasPermission('ver_activos');
+        AuthMiddleware::hasPermission('activos_ver');
         (new MantencionController())->activos();
         break;
 

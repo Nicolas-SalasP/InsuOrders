@@ -22,46 +22,37 @@ class DashboardController
         $userId = AuthMiddleware::verify(); 
         
         try {
-            // 1. Obtener Rol del Usuario
             $stmtRole = $this->db->prepare("SELECT r.nombre FROM roles r JOIN usuarios u ON u.rol_id = r.id WHERE u.id = ?");
             $stmtRole->execute([$userId]);
             $userRole = $stmtRole->fetchColumn();
-
-            // 2. Obtener Permisos Específicos
             $stmtPerms = $this->db->prepare("SELECT p.codigo FROM permisos p JOIN usuario_permisos up ON p.id = up.permiso_id WHERE up.usuario_id = ?");
             $stmtPerms->execute([$userId]);
             $permisos = $stmtPerms->fetchAll(PDO::FETCH_COLUMN);
-
-            // 3. Validar Permisos (Usando los códigos reales de tu DB)
             $isAdmin = ($userRole === 'Admin' || $userId == 1);
-            
-            // Compras: ver_compras
-            $canVerCompras = $isAdmin || stripos($userRole, 'Compras') !== false || in_array('ver_compras', $permisos);
-            
-            // Mantención: mant_ver (Según tu SQL)
-            $canVerMant = $isAdmin || stripos($userRole, 'Mantencion') !== false || in_array('mant_ver', $permisos);
-            
-            // Bodega: ver_bodega
-            $canVerBodega = $isAdmin || stripos($userRole, 'Bodega') !== false || in_array('ver_bodega', $permisos);
+            $canVerCompras = $isAdmin || 
+                            stripos($userRole, 'Encargado Compras') !== false || 
+                            in_array('dash_compras', $permisos) || 
+                            in_array('ver_compras', $permisos);
+            $canVerMant = $isAdmin || 
+                        stripos($userRole, 'Jefe Mantención') !== false || 
+                        in_array('dash_mantencion', $permisos) || 
+                        in_array('mant_ver', $permisos);
+            $canVerBodega = $isAdmin || 
+                            stripos($userRole, 'Bodega') !== false || 
+                            in_array('dash_bodega', $permisos) || 
+                            in_array('bodega_ver', $permisos);
 
-            // 4. Parámetros de Fecha
             $start = $_GET['start'] ?? date('Y-m-01');
             $end = $_GET['end'] ?? date('Y-m-d 23:59:59');
             $empleadoId = $_GET['empleado_id'] ?? null;
 
-            // 5. Estructura de Respuesta
             $data = [
-                'kpis' => [], // Datos generales (usados dentro de cada sección)
+                'kpis' => [], 
                 'compras' => null,
                 'mantencion' => null,
                 'bodega' => null
             ];
-
-            // Cargar KPIs Generales (Gasto total, Total OTs, etc.)
-            // Estos se distribuyen en las secciones visuales
             $data['kpis'] = $this->repo->getGeneralKPIs($start, $end);
-
-            // Cargar datos específicos según permiso
             if ($canVerCompras) {
                 $data['compras'] = $this->repo->getComprasAnalytics($start, $end);
             }
@@ -98,4 +89,3 @@ class DashboardController
         }
     }
 }
-?>
