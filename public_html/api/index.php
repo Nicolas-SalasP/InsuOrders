@@ -367,7 +367,6 @@ switch ($path) {
 
     case 'operario/mis-insumos':
         if ($method === 'GET')
-            // CORREGIDO: Se llama a getMisInsumos()
             (new OperarioController())->getMisInsumos();
         break;
 
@@ -384,6 +383,10 @@ switch ($path) {
     case 'operario/dashboard':
         if ($method === 'GET')
             (new OperarioController())->dashboard();
+        break;
+    case 'operario/devolver':
+        if ($method === 'POST')
+            (new OperarioController())->devolver();
         break;
 
     // --- DASHBOARD ---
