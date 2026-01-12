@@ -12,19 +12,24 @@ class InsumoService
         $this->repo = new InsumoRepository();
     }
 
-    public function listarTodo() {
+    public function listarTodo()
+    {
         return $this->repo->getAll();
     }
 
-    public function obtenerAuxiliares() {
+    public function obtenerAuxiliares()
+    {
         return $this->repo->getAuxiliares();
     }
 
     private function sanearDatos($data)
     {
-        if (isset($data['stock_actual'])) $data['stock_actual'] = (int)$data['stock_actual'];
-        if (isset($data['stock_minimo'])) $data['stock_minimo'] = (int)$data['stock_minimo'];
-        if (isset($data['precio_costo'])) $data['precio_costo'] = (int)$data['precio_costo'];
+        if (isset($data['stock_actual']))
+            $data['stock_actual'] = (int) $data['stock_actual'];
+        if (isset($data['stock_minimo']))
+            $data['stock_minimo'] = (int) $data['stock_minimo'];
+        if (isset($data['precio_costo']))
+            $data['precio_costo'] = (int) $data['precio_costo'];
 
         if (isset($data['nombre'])) {
             $data['nombre'] = $this->formatearNombre($data['nombre']);
@@ -38,22 +43,27 @@ class InsumoService
 
     public function crearInsumo($data)
     {
-        if (strlen($data['codigo_sku']) < 3) throw new \Exception("El SKU es muy corto.");
-        if (empty($data['nombre'])) throw new \Exception("El nombre es obligatorio.");
-        
+        if (strlen($data['codigo_sku']) < 3)
+            throw new \Exception("El SKU es muy corto.");
+        if (empty($data['nombre']))
+            throw new \Exception("El nombre es obligatorio.");
+
         $data = $this->sanearDatos($data);
 
-        if ($data['precio_costo'] < 0) throw new \Exception("El precio no puede ser negativo.");
-        if (empty($data['moneda'])) $data['moneda'] = 'CLP';
+        if ($data['precio_costo'] < 0)
+            throw new \Exception("El precio no puede ser negativo.");
+        if (empty($data['moneda']))
+            $data['moneda'] = 'CLP';
 
         return $this->repo->create($data);
     }
 
     public function actualizarInsumo($id, $data)
     {
-        if (!$id) throw new \Exception("ID no proporcionado.");
-        
-        $data = $this->sanearDatos($data); 
+        if (!$id)
+            throw new \Exception("ID no proporcionado.");
+
+        $data = $this->sanearDatos($data);
 
         if (isset($data['codigo_sku']) && strlen($data['codigo_sku']) < 3) {
             throw new \Exception("El SKU es muy corto.");
@@ -64,11 +74,10 @@ class InsumoService
 
     public function gestionarStock($data, $usuarioId)
     {
-        if (!isset($data['cantidad']) || $data['cantidad'] <= 0) {
-            throw new \Exception("La cantidad debe ser mayor a 0.");
+        if (!isset($data['cantidad']) || abs($data['cantidad']) == 0) {
+            throw new \Exception("La cantidad debe ser distinta de 0.");
         }
-        
-        $cantidad = (int)$data['cantidad'];
+        $cantidad = abs((float) $data['cantidad']);
         $empleadoId = $data['empleado_id'] ?? null;
 
         return $this->repo->ajustarStock(

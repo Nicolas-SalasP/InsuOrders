@@ -16,9 +16,20 @@ const Sidebar = ({ onClose }) => {
     const [showNotifDetails, setShowNotifDetails] = useState(false);
     const dropdownRef = useRef(null);
 
+    // Helper para verificar permisos
     const can = (permisoRequerido) => {
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
         return auth.permisos && auth.permisos.includes(permisoRequerido);
+    };
+
+    // Función auxiliar para ver si tiene ALGÚN permiso de Dashboard
+    const canViewDashboard = () => {
+        if (can('dash_resumen')) return true;     // Admin general
+        if (can('dash_compras')) return true;     // Jefe compras
+        if (can('dash_mantencion')) return true;  // Jefe mantención
+        if (can('dash_bodega')) return true;      // Jefe bodega
+        if (can('dash_personal')) return true;    // Operario
+        return false;
     };
 
     useEffect(() => {
@@ -75,7 +86,8 @@ const Sidebar = ({ onClose }) => {
             });
         }
 
-        if (can('ver_bodega') && notificaciones.bodega.mensajes.length > 0) {
+        // CORREGIDO: permiso 'bodega_ver'
+        if (can('bodega_ver') && notificaciones.bodega.mensajes.length > 0) {
             notificaciones.bodega.mensajes.forEach((msg, idx) => {
                 hasItems = true;
                 items.push(<Item key={`bod-${idx}`} icon="bi-box-seam" color="warning" title={msg.titulo} text={msg.texto} to={msg.ruta} />);
@@ -99,7 +111,7 @@ const Sidebar = ({ onClose }) => {
     const totalUsuario = () => {
         let t = 0;
         if (can('ver_compras')) t += notificaciones.compras.count;
-        if (can('ver_bodega')) t += notificaciones.bodega.count;
+        if (can('bodega_ver')) t += notificaciones.bodega.count;
         if (can('mant_ver')) t += notificaciones.mantencion.count;
         return t;
     };
@@ -160,13 +172,15 @@ const Sidebar = ({ onClose }) => {
             <div className="overflow-auto custom-scrollbar">
                 <ul className="nav nav-pills flex-column mb-auto gap-1">
 
-                    <li className="nav-item">
-                        <NavLink to="/dashboard" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
-                            <i className="bi bi-speedometer2 me-2"></i> Dashboard
-                        </NavLink>
-                    </li>
+                    {canViewDashboard() && (
+                        <li className="nav-item">
+                            <NavLink to="/dashboard" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
+                                <i className="bi bi-speedometer2 me-2"></i> Dashboard
+                            </NavLink>
+                        </li>
+                    )}
 
-                    {can('ver_bodega') && (
+                    {can('bodega_ver') && (
                         <li>
                             <NavLink to="/bodega" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''} d-flex justify-content-between`}>
                                 <span><i className="bi bi-inboxes me-2"></i> Bodega</span>
@@ -216,15 +230,14 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
-                    {can('mant_ver') && (
+                    {can('activos_ver') && (
                         <li>
                             <NavLink to="/activos" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
                                 <i className="bi bi-hdd-rack me-2"></i> Activos
                             </NavLink>
                         </li>
                     )}
-
-                    {(auth.rol === 4 || auth.rol === 1 || auth.rol === 'Admin' || auth.rol === 'Técnico Mantención') && (
+                    {(auth.rol === 4 || auth.rol === 1 || auth.rol === 'Admin' || auth.rol === 'Técnico Mantención' || can('ope_ver')) && (
                         <li className="nav-item">
                             <NavLink to="/mis-insumos" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
                                 <i className="bi bi-tools me-2"></i> Mis Insumos

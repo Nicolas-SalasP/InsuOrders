@@ -98,26 +98,72 @@ class OperarioRepository
         }
     }
 
+    public function vincularEntregaOT($datos)
+    {
+        try {
+
+            $stmtEmp = $this->db->prepare("SELECT id, nombre_completo, usuario_id FROM empleados WHERE id = :eid");
+            $stmtEmp->execute([':eid' => $datos['empleado_id']]);
+            $empleado = $stmtEmp->fetch(PDO::FETCH_ASSOC);
+
+            if (!$empleado)
+                return false;
+
+            $usuarioOperarioId = null;
+            $receptorExterno = null;
+            $estadoId = 3;
+
+            if (!empty($empleado['usuario_id'])) {
+                $usuarioOperarioId = $empleado['usuario_id'];
+                $estadoId = 1;
+            } else {
+                $receptorExterno = $empleado['nombre_completo'];
+                $estadoId = 3;
+            }
+
+            $cantidadUtilizada = ($estadoId === 3) ? $datos['cantidad'] : 0;
+
+            $sqlEntrega = "INSERT INTO entregas_personal 
+                (insumo_id, usuario_operario_id, receptor_externo, usuario_bodeguero_id, cantidad_entregada, cantidad_utilizada, estado_id, observacion, fecha_entrega) 
+                VALUES (:iid, :u_op, :ext, :u_bod, :cant, :used, :est, :obs, NOW())";
+
+            $this->db->prepare($sqlEntrega)->execute([
+                ':iid' => $datos['insumo_id'],
+                ':u_op' => $usuarioOperarioId,
+                ':ext' => $receptorExterno,
+                ':u_bod' => $datos['bodeguero_id'],
+                ':cant' => $datos['cantidad'],
+                ':used' => $cantidadUtilizada,
+                ':est' => $estadoId,
+                ':obs' => $datos['observacion'] ?? null
+            ]);
+
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
     public function getMisInsumosCorrecto($usuarioId)
     {
         $sqlPendientes = "SELECT e.id, e.cantidad_entregada, e.fecha_entrega, e.observacion,
-                                 i.nombre as insumo, i.codigo_sku, i.unidad_medida, 
-                                 u.nombre as bodeguero_nombre
-                          FROM entregas_personal e
-                          JOIN insumos i ON e.insumo_id = i.id
-                          JOIN usuarios u ON e.usuario_bodeguero_id = u.id
-                          WHERE e.usuario_operario_id = :uid AND e.estado_id = 1";
+                                i.nombre as insumo, i.codigo_sku, i.unidad_medida, 
+                                u.nombre as bodeguero_nombre
+                            FROM entregas_personal e
+                            JOIN insumos i ON e.insumo_id = i.id
+                            JOIN usuarios u ON e.usuario_bodeguero_id = u.id
+                            WHERE e.usuario_operario_id = :uid AND e.estado_id = 1";
 
         $stmt1 = $this->db->prepare($sqlPendientes);
         $stmt1->execute([':uid' => $usuarioId]);
         $pendientes = $stmt1->fetchAll(PDO::FETCH_ASSOC);
 
         $sqlInventario = "SELECT e.id, e.cantidad_entregada, e.cantidad_utilizada, 
-                                 (e.cantidad_entregada - e.cantidad_utilizada) as saldo_actual,
-                                 i.nombre as insumo, i.codigo_sku, i.unidad_medida
-                          FROM entregas_personal e
-                          JOIN insumos i ON e.insumo_id = i.id
-                          WHERE e.usuario_operario_id = :uid AND e.estado_id = 2";
+                                (e.cantidad_entregada - e.cantidad_utilizada) as saldo_actual,
+                                i.nombre as insumo, i.codigo_sku, i.unidad_medida
+                        FROM entregas_personal e
+                        JOIN insumos i ON e.insumo_id = i.id
+                        WHERE e.usuario_operario_id = :uid AND e.estado_id = 2";
 
         $stmt2 = $this->db->prepare($sqlInventario);
         $stmt2->execute([':uid' => $usuarioId]);

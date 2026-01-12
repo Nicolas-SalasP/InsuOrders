@@ -23,15 +23,17 @@ const PrivateRoute = () => {
     return auth.token ? <Outlet /> : <Navigate to="/login" />;
 };
 
-const PermissionGuard = ({ children, permiso }) => {
+const PermissionGuard = ({ children, permiso, redirectTo = "/dashboard" }) => {
     const { auth } = useContext(AuthContext);
-
     if (auth.rol === 'Admin' || auth.rol === 1) return children;
-
-    if (permiso && auth.permisos && auth.permisos.includes(permiso)) {
+    if (Array.isArray(permiso)) {
+        const tieneAlguno = permiso.some(p => auth.permisos && auth.permisos.includes(p));
+        if (tieneAlguno) return children;
+    }
+    else if (permiso && auth.permisos && auth.permisos.includes(permiso)) {
         return children;
     }
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={redirectTo} replace />;
 };
 
 function App() {
@@ -41,11 +43,19 @@ function App() {
                 <Routes>
                     <Route path="/login" element={<Login />} />
 
-                    {/* TODAS LAS RUTAS DE ABAJO SON PRIVADAS */}
                     <Route element={<PrivateRoute />}>
                         <Route element={<Layout />}>
+                            
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                            <Route path="/dashboard" element={<Dashboard />} />
+                            
+                            <Route path="/dashboard" element={
+                                <PermissionGuard 
+                                    permiso={['dash_resumen', 'dash_compras', 'dash_mantencion', 'dash_bodega', 'dash_personal']}
+                                    redirectTo="/login"
+                                >
+                                    <Dashboard />
+                                </PermissionGuard>
+                            } />
                             
                             <Route path="/compras" element={
                                 <PermissionGuard permiso="ver_compras">
@@ -65,8 +75,9 @@ function App() {
                                 </PermissionGuard>
                             } />
 
+                            {/* CORREGIDO: permiso 'bodega_ver' */}
                             <Route path="/bodega" element={
-                                <PermissionGuard permiso="ver_bodega">
+                                <PermissionGuard permiso="bodega_ver">
                                     <Bodega />
                                 </PermissionGuard>
                             } />
@@ -84,12 +95,10 @@ function App() {
                             } />
 
                             <Route path="/activos" element={
-                                <PermissionGuard permiso="mant_ver">
+                                <PermissionGuard permiso="activos_ver">
                                     <Activos />
                                 </PermissionGuard>
                             } />
-
-                            {/* CORREGIDO: Ya es privada por herencia, no necesita wrapper */}
                             <Route path="/mis-insumos" element={<MisInsumos />} />
 
                             <Route path="/mantenedores" element={

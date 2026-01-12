@@ -37,13 +37,11 @@ class BodegaController
             $sql = "SELECT 
                         i.id, i.codigo_sku, i.nombre, c.nombre as categoria_nombre, 
                         i.stock_actual, i.unidad_medida,
-                        ROUND(
-                            i.stock_actual - COALESCE((SELECT SUM(cantidad) FROM insumo_stock_ubicacion WHERE insumo_id = i.id), 0), 
-                            2
-                        ) as por_organizar
+                        isu.cantidad as por_organizar
                     FROM insumos i
+                    JOIN insumo_stock_ubicacion isu ON i.id = isu.insumo_id
                     LEFT JOIN categorias_insumo c ON i.categoria_id = c.id
-                    HAVING por_organizar > 0.01
+                    WHERE isu.ubicacion_id = 1 AND isu.cantidad > 0.01
                     ORDER BY i.nombre ASC";
 
             $data = $db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
@@ -72,7 +70,6 @@ class BodegaController
         }
 
         try {
-            // CASO 1: Entrega Personal Directa (Sin OT)
             if (!empty($data['empleado_id']) && empty($data['detalle_id'])) {
                 
                 $datosEntrega = [
@@ -87,19 +84,14 @@ class BodegaController
                 echo json_encode(["success" => true, "message" => "Material entregado al empleado correctamente"]);
 
             } 
-            // CASO 2: Entrega para Mantención (OT)
             elseif (!empty($data['detalle_id']) && !empty($data['receptor_id'])) {
-                
-                // 1. Proceso estándar de Bodega (Descuenta stock y actualiza OT)
                 $this->repo->entregarMaterial(
                     (int)$data['detalle_id'], 
                     (int)$usuarioId, 
                     (float)$cantidad, 
                     (int)$data['receptor_id']
                 );
-
-                // 2. VINCULACIÓN: También lo mandamos al panel "Mis Insumos" del técnico
-                // Buscamos el insumo_id si no viene directamente
+                
                 $db = Database::getConnection();
                 $stmt = $db->prepare("SELECT insumo_id FROM detalle_solicitud WHERE id = ?");
                 $stmt->execute([$data['detalle_id']]);
@@ -113,8 +105,7 @@ class BodegaController
                     'bodeguero_id' => $usuarioId
                 ];
                 
-                // Esto crea el registro en la tabla entregas_personal
-                $this->operarioRepo->asignarInsumo($datosPersonal);
+                $this->operarioRepo->vincularEntregaOT($datosPersonal);
                 
                 echo json_encode(["success" => true, "message" => "Entrega de OT registrada y enviada al técnico"]);
 

@@ -13,7 +13,7 @@ class InsumoController
     public function __construct()
     {
         $this->service = new InsumoService();
-        $this->operarioRepo = new OperarioRepository(); 
+        $this->operarioRepo = new OperarioRepository();
     }
 
     public function index()
@@ -54,27 +54,30 @@ class InsumoController
         return null;
     }
 
-    private function limpiarDato($valor, $tipo = 'string') {
+    private function limpiarDato($valor, $tipo = 'string')
+    {
         if ($valor === '' || $valor === 'null' || $valor === null) {
             return null;
         }
-        if ($tipo === 'int') return (int)$valor;
-        if ($tipo === 'float') return (float)$valor;
+        if ($tipo === 'int')
+            return (int) $valor;
+        if ($tipo === 'float')
+            return (float) $valor;
         return trim($valor);
     }
 
     public function store()
     {
         $data = [
-            'codigo_sku'    => $_POST['codigo_sku'] ?? null,
-            'nombre'        => $_POST['nombre'] ?? null,
-            'descripcion'   => $_POST['descripcion'] ?? '',
-            'categoria_id'  => !empty($_POST['categoria_id']) ? $_POST['categoria_id'] : null,
-            'ubicacion_id'  => !empty($_POST['ubicacion_id']) ? $_POST['ubicacion_id'] : null,
-            'stock_actual'  => $this->limpiarDato($_POST['stock_actual'] ?? 0, 'float') ?? 0,
-            'stock_minimo'  => $this->limpiarDato($_POST['stock_minimo'] ?? 0, 'float') ?? 0,
-            'precio_costo'  => $this->limpiarDato($_POST['precio_costo'] ?? 0, 'float') ?? 0,
-            'moneda'        => $_POST['moneda'] ?? 'CLP',
+            'codigo_sku' => $_POST['codigo_sku'] ?? null,
+            'nombre' => $_POST['nombre'] ?? null,
+            'descripcion' => $_POST['descripcion'] ?? '',
+            'categoria_id' => !empty($_POST['categoria_id']) ? $_POST['categoria_id'] : null,
+            'ubicacion_id' => !empty($_POST['ubicacion_id']) ? $_POST['ubicacion_id'] : null,
+            'stock_actual' => $this->limpiarDato($_POST['stock_actual'] ?? 0, 'float') ?? 0,
+            'stock_minimo' => $this->limpiarDato($_POST['stock_minimo'] ?? 0, 'float') ?? 0,
+            'precio_costo' => $this->limpiarDato($_POST['precio_costo'] ?? 0, 'float') ?? 0,
+            'moneda' => $_POST['moneda'] ?? 'CLP',
             'unidad_medida' => $_POST['unidad_medida'] ?? 'UN'
         ];
 
@@ -100,15 +103,15 @@ class InsumoController
         }
 
         $data = [
-            'codigo_sku'    => $_POST['codigo_sku'] ?? null,
-            'nombre'        => $_POST['nombre'] ?? null,
-            'descripcion'   => $_POST['descripcion'] ?? '',
-            'categoria_id'  => !empty($_POST['categoria_id']) ? $_POST['categoria_id'] : null,
-            'ubicacion_id'  => !empty($_POST['ubicacion_id']) ? $_POST['ubicacion_id'] : null,
-            'stock_actual'  => $this->limpiarDato($_POST['stock_actual'] ?? 0, 'float') ?? 0,
-            'stock_minimo'  => $this->limpiarDato($_POST['stock_minimo'] ?? 0, 'float') ?? 0,
-            'precio_costo'  => $this->limpiarDato($_POST['precio_costo'] ?? 0, 'float') ?? 0,
-            'moneda'        => $_POST['moneda'] ?? 'CLP',
+            'codigo_sku' => $_POST['codigo_sku'] ?? null,
+            'nombre' => $_POST['nombre'] ?? null,
+            'descripcion' => $_POST['descripcion'] ?? '',
+            'categoria_id' => !empty($_POST['categoria_id']) ? $_POST['categoria_id'] : null,
+            'ubicacion_id' => !empty($_POST['ubicacion_id']) ? $_POST['ubicacion_id'] : null,
+            'stock_actual' => $this->limpiarDato($_POST['stock_actual'] ?? 0, 'float') ?? 0,
+            'stock_minimo' => $this->limpiarDato($_POST['stock_minimo'] ?? 0, 'float') ?? 0,
+            'precio_costo' => $this->limpiarDato($_POST['precio_costo'] ?? 0, 'float') ?? 0,
+            'moneda' => $_POST['moneda'] ?? 'CLP',
             'unidad_medida' => $_POST['unidad_medida'] ?? 'UN'
         ];
 
@@ -131,39 +134,50 @@ class InsumoController
         }
     }
 
-    public function ajustar()
+    public function ajustar($uid = null)
     {
         $data = json_decode(file_get_contents("php://input"), true);
-
+        $usuarioId = $uid ?? AuthMiddleware::verify();
         if (!isset($data['insumo_id']) || !isset($data['cantidad'])) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => "Faltan datos obligatorios"]);
+            echo json_encode(["success" => false, "message" => "Datos incompletos: insumo_id y cantidad son requeridos"]);
             return;
         }
 
         try {
-            $usuarioId = AuthMiddleware::verify();
             if (!empty($data['empleado_id'])) {
-                
-                $datosEntrega = [
-                    'insumo_id' => $data['insumo_id'],
-                    'cantidad' => $data['cantidad'],
-                    'empleado_id' => $data['empleado_id'],
-                    'observacion' => $data['motivo'] ?? $data['observacion'] ?? 'Entrega desde Inventario',
+                $datos = [
+                    'insumo_id' => (int) $data['insumo_id'],
+                    'cantidad' => abs((float) $data['cantidad']),
+                    'empleado_id' => (int) $data['empleado_id'],
+                    'observacion' => $data['motivo'] ?? $data['observacion'] ?? 'Entrega operario',
                     'bodeguero_id' => $usuarioId
                 ];
-
-                $this->operarioRepo->asignarInsumo($datosEntrega);
-                echo json_encode(["success" => true, "message" => "Entrega asignada al empleado correctamente."]);
-
+                $this->operarioRepo->asignarInsumo($datos);
             } else {
-                $this->service->gestionarStock($data, $usuarioId);
-                echo json_encode(["success" => true, "message" => "Ajuste de stock registrado correctamente."]);
+                $cantidadOriginal = (float) $data['cantidad'];
+                $datosAjuste = [
+                    'insumo_id' => (int) $data['insumo_id'],
+                    'cantidad' => abs($cantidadOriginal),
+                    'tipo_movimiento_id' => ($cantidadOriginal >= 0) ? 3 : 4,
+                    'observacion' => $data['motivo'] ?? $data['observacion'] ?? 'Ajuste manual',
+                    'usuario_id' => $usuarioId,
+                    'empleado_id' => null,
+                    'ubicacion_id' => null
+                ];
+                $this->service->gestionarStock($datosAjuste, $usuarioId);
             }
+
+            header('Content-Type: application/json');
+            echo json_encode(["success" => true, "message" => "Operación registrada exitosamente"]);
 
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "success" => false,
+                "message" => "Error al procesar: " . $e->getMessage()
+            ]);
         }
     }
 

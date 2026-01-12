@@ -118,17 +118,17 @@ class InsumoRepository
 
     public function registrarMovimiento($data)
     {
-        // Corregido: Aseguramos que empleado_id y ubicacion_id se manejen correctamente si vienen nulos
         $sql = "INSERT INTO movimientos_inventario 
-                (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, empleado_id, ubicacion_id, fecha) 
-                VALUES (:iid, :tid, :cant, :uid, :obs, :emp, :ubi, NOW())";
+            (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, empleado_id, ubicacion_id, fecha) 
+            VALUES (:iid, :tid, :cant, :uid, :obs, :emp, :ubi, NOW())";
 
-        $this->db->prepare($sql)->execute([
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
             ':iid' => $data['insumo_id'],
             ':tid' => $data['tipo_movimiento_id'],
             ':cant' => $data['cantidad'],
             ':uid' => $data['usuario_id'],
-            ':obs' => $data['observacion'],
+            ':obs' => $data['observacion'] ?? '',
             ':emp' => !empty($data['empleado_id']) ? $data['empleado_id'] : null,
             ':ubi' => !empty($data['ubicacion_id']) ? $data['ubicacion_id'] : null
         ]);
