@@ -422,6 +422,31 @@ switch ($path) {
             (new ImportController())->importar($uid);
         break;
 
+    // --- COTIZACIONES ---
+    case 'cotizaciones':
+        $c = new App\Controllers\CotizacionController();
+        if ($method === 'GET')
+            $c->index();
+        elseif ($method === 'POST')
+            $c->store();
+        break;
+
+    case 'cotizaciones/detalle':
+        (new App\Controllers\CotizacionController())->show();
+        break;
+
+    case 'cotizaciones/estado':
+        if ($method === 'POST')
+            (new App\Controllers\CotizacionController())->cambiarEstado();
+        break;
+
+    case 'cotizaciones/estados-lista':
+        (new App\Controllers\CotizacionController())->getEstados();
+        break;
+    case 'cotizaciones/pdf':
+        (new App\Controllers\CotizacionController())->downloadPdf();
+        break;
+
     // --- MANTENEDORES (CONFIG) ---
     case 'mantenedores/empleados':
         AuthMiddleware::hasPermission('ver_config');

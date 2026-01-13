@@ -5,16 +5,12 @@ use FPDF;
 
 class PDFService extends FPDF {
     private $orden = [];
-    
-    // Configuración de Colores Corporativos
     private $colores = [
         'primary'   => [51, 102, 153],
         'secondary' => [100, 100, 100],
         'table_header' => [230, 230, 230],
         'total_bg'  => [240, 240, 240] 
     ];
-
-    // Datos de la Empresa
     private $empresa = [
         'nombre' => 'Procesadora Insuban Spa.',
         'rut'    => '78.730.890-2',
@@ -403,5 +399,170 @@ class PDFService extends FPDF {
         $this->Line(145, $this->GetY() + 15, 205, $this->GetY() + 15);
 
         return $this->Output('S');
+    }
+
+    // -----------------------------------------------------------
+    // Genera el PDF de una Cotización (Sin precios, para cliente)
+    // -----------------------------------------------------------
+
+public function generarCotizacion($cotizacion)
+    {
+        // 1. SUPRIMIR ERRORES DEPRECATED EN TIEMPO DE EJECUCIÓN
+        error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
+
+        // 2. LIMPIAR BUFFER (CRÍTICO)
+        if (ob_get_length()) ob_end_clean();
+
+        $this->AliasNbPages();
+        $this->AddPage();
+
+        // 1. Franja Decorativa Superior
+        $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Rect(0, 0, 210, 5, 'F');
+
+        // 2. Logo
+        $logoPath = __DIR__ . '/../../../../public_html/assets/img/LogoInsuban_SinFondo.png';
+        $yStart = 15;
+        if (file_exists($logoPath)) {
+            $this->Image($logoPath, 10, 8, 55);
+            $yStart = 25;
+        }
+
+        // 3. Datos Empresa (Cabecera Izquierda)
+        $this->SetXY(10, $yStart);
+        $this->SetFont('Arial', 'B', 12);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(90, 5, $this->txt($this->empresa['nombre']), 0, 1);
+        
+        $this->SetFont('Arial', 'B', 8);
+        $this->SetTextColor(50);
+        $this->Cell(90, 4, 'RUT: ' . $this->empresa['rut'], 0, 1);
+        
+        $this->SetFont('Arial', '', 8);
+        $this->Cell(90, 4, $this->txt($this->empresa['giro']), 0, 1);
+        $this->Cell(90, 4, $this->txt($this->empresa['dir']), 0, 1);
+        $this->Cell(90, 4, $this->empresa['mail'], 0, 1);
+
+        // 4. Datos Cotización (Cabecera Derecha)
+        $this->SetY(10);
+        $this->SetX(110);
+        
+        $this->SetFont('Arial', 'B', 18);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(90, 10, $this->txt('SOLICITUD DE COTIZACIÓN'), 0, 1, 'R');
+        
+        $this->SetTextColor(0);
+        $this->SetFont('Arial', 'B', 9);
+        
+        $xLabel = 140;
+        $yDat = 25;
+
+        // Folio
+        $this->SetXY($xLabel, $yDat);
+        $this->Cell(30, 5, 'FOLIO:', 0, 0, 'R');
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(30, 5, '#' . str_pad($cotizacion['id'], 6, '0', STR_PAD_LEFT), 0, 1, 'R');
+
+        // Fecha
+        $yDat += 5;
+        $this->SetXY($xLabel, $yDat);
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 5, 'FECHA:', 0, 0, 'R');
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(30, 5, date('d/m/Y', strtotime($cotizacion['fecha_creacion'])), 0, 1, 'R');
+
+        // Solicitante
+        $yDat += 5;
+        $this->SetXY($xLabel, $yDat);
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 5, 'SOLICITANTE:', 0, 0, 'R');
+        $this->SetFont('Arial', '', 9);
+        $nombreCreador = ($cotizacion['creador_nombre'] ?? '') . ' ' . ($cotizacion['creador_apellido'] ?? '');
+        $this->Cell(30, 5, $this->txt(trim($nombreCreador)), 0, 1, 'R');
+
+        $this->Ln(15);
+
+        // 5. Tabla de Ítems
+        // Anchos: # (10), Descripción (150), Cantidad (30)
+        $this->SetFont('Arial', 'B', 9);
+        $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->SetTextColor(255);
+        
+        $this->Cell(10, 8, '#', 0, 0, 'C', true);
+        $this->Cell(150, 8, $this->txt('DESCRIPCION DEL PRODUCTO / INSUMO'), 0, 0, 'L', true);
+        $this->Cell(30, 8, 'CANTIDAD', 0, 1, 'C', true);
+
+        $this->SetFont('Arial', '', 9);
+        $this->SetTextColor(0);
+        $i = 1;
+        $fill = false;
+        
+        foreach ($cotizacion['items'] as $item) {
+            $this->SetFillColor(245, 245, 245); 
+
+            $nombre = $this->txt($item['nombre_item']);
+            if (!empty($item['codigo_sku'])) {
+                $nombre .= ' (SKU: ' . $this->txt($item['codigo_sku']) . ')';
+            }
+
+            // Calculamos altura dinámica
+            $cellWidth = 150;
+            $cellHeight = 7;
+            
+            if ($this->GetStringWidth($nombre) < $cellWidth) {
+                $line = 1;
+            } else {
+                $line = 2; 
+            }
+            $height = $line * $cellHeight;
+
+            // Salto de página
+            if ($this->GetY() + $height > 260) {
+                $this->AddPage();
+                $this->SetFont('Arial', 'B', 9);
+                $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+                $this->SetTextColor(255);
+                $this->Cell(10, 8, '#', 0, 0, 'C', true);
+                $this->Cell(150, 8, $this->txt('DESCRIPCION DEL PRODUCTO / INSUMO'), 0, 0, 'L', true);
+                $this->Cell(30, 8, 'CANTIDAD', 0, 1, 'C', true);
+                $this->Ln();
+                $this->SetFont('Arial', '', 9);
+                $this->SetTextColor(0);
+            }
+
+            $this->Cell(10, $height, $i++, 0, 0, 'C', $fill);
+            
+            $x = $this->GetX();
+            $y = $this->GetY();
+            
+            $this->MultiCell($cellWidth, $cellHeight, $nombre, 0, 'L', $fill);
+            
+            $this->SetXY($x + $cellWidth, $y);
+
+            $this->Cell(30, $height, number_format($item['cantidad'], 2), 0, 1, 'C', $fill);
+            
+            $fill = !$fill;
+            // Línea separadora
+            $this->SetDrawColor(230);
+            $this->Line(10, $this->GetY(), 200, $this->GetY());
+            
+            // Salto explícito
+            $this->Ln();
+        }
+
+        // 6. Observaciones
+        if (!empty($cotizacion['observacion'])) {
+            $this->Ln(10);
+            $this->SetFont('Arial', 'B', 9);
+            $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+            $this->Cell(0, 6, $this->txt('OBSERVACIONES / INSTRUCCIONES:'), 0, 1);
+            
+            $this->SetFont('Arial', '', 9);
+            $this->SetTextColor(0);
+            $this->MultiCell(0, 6, $this->txt($cotizacion['observacion']), 0, 'L');
+        }
+
+        $this->Output('D', 'Cotizacion_' . $cotizacion['id'] . '.pdf');
+        exit;
     }
 }

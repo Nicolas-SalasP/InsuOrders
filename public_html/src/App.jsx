@@ -8,6 +8,7 @@ import Proveedores from './pages/Proveedores';
 import Layout from './components/Layout';
 import Inventario from './pages/Inventario';
 import Compras from './pages/Compras';
+import Cotizaciones from './pages/Cotizaciones';
 import Mantencion from './pages/Mantencion';
 import Activos from './pages/Activos';
 import Bodega from './pages/Bodega';
@@ -63,6 +64,12 @@ function App() {
                                 </PermissionGuard>
                             } />
 
+                            <Route path="/cotizaciones" element={
+                                <PermissionGuard permiso="cot_ver">
+                                    <Cotizaciones />
+                                </PermissionGuard>
+                            } />
+
                             <Route path="/proveedores" element={
                                 <PermissionGuard permiso="ver_proveedores">
                                     <Proveedores />
@@ -75,7 +82,6 @@ function App() {
                                 </PermissionGuard>
                             } />
 
-                            {/* CORREGIDO: permiso 'bodega_ver' */}
                             <Route path="/bodega" element={
                                 <PermissionGuard permiso="bodega_ver">
                                     <Bodega />
