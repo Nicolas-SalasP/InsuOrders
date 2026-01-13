@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Services\CronogramaService;
 use App\Middleware\AuthMiddleware;
+use Exception;
 
 class CronogramaController
 {
@@ -49,7 +50,7 @@ class CronogramaController
             $data['insumo_id'] = !empty($data['insumo_id']) ? $data['insumo_id'] : null;
             $id = $this->service->crear($data, $userId);
             echo json_encode(["success" => true, "id" => $id, "message" => "Evento agendado y OT generada"]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "error" => $e->getMessage()]);
         }
@@ -73,15 +74,16 @@ class CronogramaController
 
             $this->service->actualizar($id, $data);
             echo json_encode(["success" => true, "message" => "Evento y OT actualizados"]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "error" => $e->getMessage()]);
         }
     }
 
-    public function delete()
+    public function delete($id = null)
     {
-        $id = $_GET['id'] ?? null;
+        $id = $id ?? $_GET['id'] ?? null;
+        
         $tipo = $_GET['tipo'] ?? 'MANTENCION';
         if ($tipo === 'MANTENCION') {
             AuthMiddleware::hasPermission('cron_mant_eliminar');
@@ -92,7 +94,7 @@ class CronogramaController
         try {
             $this->service->eliminar($id);
             echo json_encode(["success" => true, "message" => "Evento eliminado"]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["error" => $e->getMessage()]);
         }
