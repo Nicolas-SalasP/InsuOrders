@@ -211,8 +211,8 @@ class OrdenCompraRepository
                     ->execute([':c' => $cantidad, ':id' => $detalleId]);
 
                 $sqlStock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                             VALUES (:iid, :uid, :cant)
-                             ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_update";
+                            VALUES (:iid, :uid, :cant)
+                            ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_update";
 
                 $this->db->prepare($sqlStock)->execute([
                     ':iid' => $linea['insumo_id'],

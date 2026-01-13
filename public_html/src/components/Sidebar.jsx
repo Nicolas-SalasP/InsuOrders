@@ -205,6 +205,13 @@ const Sidebar = ({ onClose }) => {
                             </NavLink>
                         </li>
                     )}
+                    {can('cot_ver') && (
+                        <li>
+                            <NavLink to="/cotizaciones" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
+                                <i className="bi bi-cart3 me-2"></i> Cotizaciones
+                            </NavLink>
+                        </li>
+                    )}
 
                     {can('ver_proveedores') && (
                         <li>
@@ -268,6 +275,7 @@ const Sidebar = ({ onClose }) => {
                             </NavLink>
                         </li>
                     )}
+
                 </ul>
             </div>
 
