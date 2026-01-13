@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Services\InsumoService;
 use App\Repositories\OperarioRepository;
 use App\Middleware\AuthMiddleware;
+use Exception;
 
 class InsumoController
 {
@@ -86,7 +87,7 @@ class InsumoController
 
             $id = $this->service->crearInsumo($data);
             echo json_encode(["success" => true, "message" => "Insumo creado correctamente", "id" => $id]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -94,6 +95,8 @@ class InsumoController
 
     public function update()
     {
+        $usuarioId = AuthMiddleware::verify(); 
+
         $id = $_POST['id'] ?? $_GET['id'] ?? null;
 
         if (!$id) {
@@ -121,14 +124,14 @@ class InsumoController
         }
 
         try {
-            $resultado = $this->service->actualizarInsumo($id, $data);
+            $resultado = $this->service->actualizarInsumo($id, $data, $usuarioId);
 
             if ($resultado) {
                 echo json_encode(["success" => true, "message" => "Actualizado correctamente"]);
             } else {
                 echo json_encode(["success" => true, "message" => "Datos procesados correctamente"]);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => "Error interno: " . $e->getMessage()]);
         }
@@ -172,7 +175,7 @@ class InsumoController
 
             echo json_encode(["success" => true, "message" => "Operación registrada exitosamente"]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => "Error al procesar: " . $e->getMessage()]);
         }
@@ -185,9 +188,9 @@ class InsumoController
             if ($this->service->eliminarInsumo($id)) {
                 echo json_encode(["success" => true, "message" => "Insumo eliminado"]);
             } else {
-                throw new \Exception("No se pudo eliminar el insumo");
+                throw new Exception("No se pudo eliminar el insumo");
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
