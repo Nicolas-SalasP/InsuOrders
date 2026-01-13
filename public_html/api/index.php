@@ -367,6 +367,12 @@ switch ($path) {
         (new BodegaController())->organizar();
         break;
 
+    case 'bodega/entregar-masivo':
+        AuthMiddleware::hasPermission('bodega_organizar');  
+        $userId = AuthMiddleware::verify();
+        (new BodegaController())->entregarMasivo($userId);
+        break;
+
     // --- OPERARIO / ENTREGAS PERSONALES  ---
     case 'operario/asignar':
         if ($method === 'POST')
@@ -458,45 +464,58 @@ switch ($path) {
 
     // --- MANTENEDORES (CONFIG) ---
     case 'mantenedores/empleados':
-        AuthMiddleware::hasPermission('ver_config');
-        (new MantenedoresController())->getEmpleados();
-        break;
-
-    case 'mantenedores/empleado':
-        AuthMiddleware::hasPermission('ver_config');
+        AuthMiddleware::verify();
         $c = new MantenedoresController();
         if ($method === 'POST')
             $c->saveEmpleado();
-        else
+        elseif ($method === 'DELETE')
             $c->deleteEmpleado();
+        else
+            $c->getEmpleados();
         break;
 
     case 'mantenedores/centros':
-        AuthMiddleware::hasPermission('ver_config');
-        (new MantenedoresController())->getCentros();
-        break;
-
-    case 'mantenedores/centro':
-        AuthMiddleware::hasPermission('ver_config');
+        AuthMiddleware::verify();
         $c = new MantenedoresController();
         if ($method === 'POST')
             $c->saveCentro();
-        else
+        elseif ($method === 'DELETE')
             $c->deleteCentro();
+        else
+            $c->getCentros();
         break;
 
     case 'mantenedores/areas':
-        AuthMiddleware::hasPermission('ver_config');
-        (new MantenedoresController())->getAreas();
-        break;
-
-    case 'mantenedores/area':
-        AuthMiddleware::hasPermission('ver_config');
+        AuthMiddleware::verify();
         $c = new MantenedoresController();
         if ($method === 'POST')
             $c->saveArea();
-        else
+        elseif ($method === 'DELETE')
             $c->deleteArea();
+        else
+            $c->getAreas();
+        break;
+
+    case 'mantenedores/sectores':
+        AuthMiddleware::verify();
+        $c = new MantenedoresController();
+        if ($method === 'POST')
+            $c->saveSector();
+        elseif ($method === 'DELETE')
+            $c->deleteSector();
+        else
+            $c->getSectores();
+        break;
+
+    case 'mantenedores/ubicaciones':
+        AuthMiddleware::verify();
+        $c = new MantenedoresController();
+        if ($method === 'POST')
+            $c->saveUbicacion();
+        elseif ($method === 'DELETE')
+            $c->deleteUbicacion();
+        else
+            $c->getUbicaciones();
         break;
 
     // --- PERSONAL ---

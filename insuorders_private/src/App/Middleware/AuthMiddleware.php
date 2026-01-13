@@ -8,6 +8,8 @@ use App\Config\Config;
 
 class AuthMiddleware
 {
+    private static $currentUser = null;
+
     public static function verify($allowedRoles = [])
     {
         $authHeader = self::getAuthHeader();
@@ -40,6 +42,11 @@ class AuthMiddleware
         } catch (\Exception $e) {
             self::jsonResponse(401, ["error" => "Acceso denegado. Token inválido o expirado.", "details" => $e->getMessage()]);
         }
+    }
+
+    public static function getUser()
+    {
+        return self::$currentUser;
     }
 
     public static function hasPermission($permisoRequerido)

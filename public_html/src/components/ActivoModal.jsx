@@ -6,7 +6,6 @@ import ConfirmModal from './ConfirmModal';
 const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [tab, setTab] = useState('general');
 
-    // Estado del formulario apegado a la DB (insuban_db)
     const [formData, setFormData] = useState({
         codigo_interno: '',
         codigo_maquina: '',
@@ -23,26 +22,22 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     });
 
     const [listaCentros, setListaCentros] = useState([]);
-
-    // Estados para el Kit de Repuestos
     const [kitItems, setKitItems] = useState([]);
     const [insumos, setInsumos] = useState([]);
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
     const [cantidadKit, setCantidadKit] = useState(1);
-
-    // Estados para Documentos
     const [docs, setDocs] = useState([]);
     const [file, setFile] = useState(null);
-
-    // Mensajes y Confirmaciones
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
 
-    // --- CARGA INICIAL DE DATOS ---
+    const showMessage = (title, message, type = 'error') => {
+        setMsgModal({ show: true, title, message, type });
+    };
+
     useEffect(() => {
         if (show) {
-            api.get('/index.php/mantencion/centros-costo')
-                .then(res => { if (res.data.success) setListaCentros(res.data.data); });
+            api.get('/index.php/mantencion/centros-costo').then(res => { if (res.data.success) setListaCentros(res.data.data); });
 
             if (activo) {
                 setFormData({
@@ -70,8 +65,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 setKitItems([]);
                 setDocs([]);
             }
-
-            // 3. Cargar inventario para el buscador de kits
             api.get('/index.php/inventario').then(res => setInsumos(res.data.data || []));
             setTab('general');
         }
@@ -79,26 +72,22 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    // --- GUARDAR ACTIVO (GENERAL) ---
     const handleSubmitGeneral = async (e) => {
         e.preventDefault();
         try {
             const payload = { ...formData, estado_operativo: formData.estado_activo };
-
             if (activo) {
                 await api.post('/index.php/mantencion/editar-activo', { ...payload, id: activo.id });
             } else {
                 await api.post('/index.php/mantencion/crear-activo', payload);
             }
-
-            setMsgModal({ show: true, title: "Éxito", message: "Activo guardado correctamente", type: "success" });
+            showMessage("Éxito", "Activo guardado correctamente", "success");
             setTimeout(() => { onSave(); onClose(); }, 1000);
         } catch (error) {
-            setMsgModal({ show: true, title: "Error", message: error.response?.data?.message || "Error al guardar", type: "error" });
+            showMessage("Error", error.response?.data?.message || "Error al guardar", "error");
         }
     };
 
-    // --- LÓGICA DE KITS ---
     const cargarKit = async (id) => {
         try {
             const res = await api.get(`/index.php/mantencion/kit?id=${id}`);
@@ -107,27 +96,26 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     };
 
     const agregarAlKit = async (insumo) => {
-        if (!activo) return alert("Guarda el activo primero para agregar repuestos.");
-        if (cantidadKit <= 0) return alert("Cantidad inválida");
+        if (!activo) return showMessage("Atención", "Guarda el activo primero para agregar repuestos.", "warning");
+        if (cantidadKit <= 0) return showMessage("Error", "Cantidad inválida", "error");
         try {
             await api.post('/index.php/mantencion/kit', {
                 activo_id: activo.id, insumo_id: insumo.id, cantidad: cantidadKit
             });
             cargarKit(activo.id);
             setBusquedaInsumo(''); setCantidadKit(1);
-        } catch (e) { alert("Error al agregar repuesto"); }
+        } catch (e) { showMessage("Error", "Error al agregar repuesto", "error"); }
     };
 
     const actualizarCantKit = async (insumoId, nuevaCant) => {
         const cantidadEntera = parseInt(nuevaCant, 10);
         if (isNaN(cantidadEntera) || cantidadEntera < 1) return;
-
         try {
             await api.put('/index.php/mantencion/kit', {
                 activo_id: activo.id, insumo_id: insumoId, cantidad: cantidadEntera
             });
             cargarKit(activo.id);
-        } catch (e) { alert("Error al actualizar cantidad"); }
+        } catch (e) { showMessage("Error", "Error al actualizar cantidad", "error"); }
     };
 
     const solicitarQuitarKit = (insumoId) => {
@@ -144,7 +132,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         });
     };
 
-    // --- LÓGICA DE DOCUMENTOS ---
     const cargarDocs = async (id) => {
         try {
             const res = await api.get(`/index.php/mantencion/docs?id=${id}`);
@@ -162,7 +149,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             setFile(null);
             document.getElementById('fileInput').value = "";
             cargarDocs(activo.id);
-        } catch (e) { alert("Error al subir archivo"); }
+        } catch (e) { showMessage("Error", "Error al subir archivo", "error"); }
     };
 
     const solicitarBorrarDoc = (docId) => {
@@ -174,7 +161,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 try {
                     await api.delete(`/index.php/mantencion/docs?id=${docId}`);
                     cargarDocs(activo.id);
-                } catch (e) { alert("Error al eliminar archivo"); }
+                } catch (e) { showMessage("Error", "Error al eliminar archivo", "error"); }
             }
         });
     };
@@ -236,7 +223,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 {tab === 'general' && (
                                     <form onSubmit={handleSubmitGeneral}>
                                         <div className="row g-3">
-
+                                            {/* Para ahorrar espacio aquí, asumo que mantienes los inputs igual */}
+                                            
                                             {/* FILA 1: CÓDIGOS */}
                                             <div className="col-12 col-md-6">
                                                 <label className="form-label small fw-bold text-muted">CÓDIGO INTERNO</label>
@@ -290,7 +278,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 </select>
                                             </div>
 
-                                            {/* ESTADO SEGÚN ENUM DE BASE DE DATOS */}
                                             <div className="col-12 col-md-4">
                                                 <label className="form-label small fw-bold text-muted">ESTADO</label>
                                                 <select name="estado_activo" className="form-select" value={formData.estado_activo} onChange={handleChange}>
@@ -330,19 +317,14 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             </div>
                                         </div>
 
-                                        {/* BOTONES ALINEADOS A LA DERECHA */}
                                         <div className="modal-footer border-top-0 px-0 pb-0 mt-4 d-flex justify-content-end gap-2">
-                                            <button type="button" className="btn btn-outline-secondary px-4" onClick={onClose}>
-                                                Cancelar
-                                            </button>
-                                            <button type="submit" className="btn btn-primary px-4 fw-bold shadow-sm">
-                                                <i className="bi bi-save me-2"></i>Guardar Cambios
-                                            </button>
+                                            <button type="button" className="btn btn-outline-secondary px-4" onClick={onClose}>Cancelar</button>
+                                            <button type="submit" className="btn btn-primary px-4 fw-bold shadow-sm"><i className="bi bi-save me-2"></i>Guardar Cambios</button>
                                         </div>
                                     </form>
                                 )}
 
-                                {/* TAB 2: KIT DE REPUESTOS */}
+                                {/* TAB 2: KIT */}
                                 {tab === 'kit' && (
                                     <div>
                                         <div className="mb-3 border p-3 rounded bg-light">
@@ -374,12 +356,11 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 <li key={k.id} className="list-group-item d-flex justify-content-between align-items-center">
                                                     <div>
                                                         <div className="fw-bold">{k.nombre}</div>
-                                                        <small className="text-muted">SKU: {k.codigo_sku} | Stock: {Math.floor(k.stock_actual)}</small>
+                                                        <small className="text-muted">SKU: {k.codigo_sku}</small>
                                                     </div>
                                                     <div className="d-flex align-items-center gap-2">
-                                                        <label className="small text-muted mb-0">Cant:</label>
                                                         <input type="number" className="form-control form-control-sm text-center" style={{ width: '70px' }}
-                                                            value={Math.floor(k.cantidad)} step="1" onChange={(e) => actualizarCantKit(k.id, e.target.value)} />
+                                                            value={Math.floor(k.cantidad)} onChange={(e) => actualizarCantKit(k.id, e.target.value)} />
                                                         <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarQuitarKit(k.id)}><i className="bi bi-trash"></i></button>
                                                     </div>
                                                 </li>

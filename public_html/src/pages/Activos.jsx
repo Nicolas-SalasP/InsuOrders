@@ -3,6 +3,7 @@ import api from '../api/axiosConfig';
 import AuthContext from '../context/AuthContext';
 import ActivoModal from '../components/ActivoModal';
 import ModalCargaMasiva from '../components/ModalCargaMasiva';
+import MessageModal from '../components/MessageModal';
 
 const Activos = () => {
     const { auth } = useContext(AuthContext);
@@ -11,55 +12,32 @@ const Activos = () => {
     const [showImport, setShowImport] = useState(false);
     const [activoSeleccionado, setActivoSeleccionado] = useState(null);
     const [loading, setLoading] = useState(false);
-    
-    // Estado para el buscador
     const [searchTerm, setSearchTerm] = useState('');
+    const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
 
-    // Helper para verificar permisos
     const hasPermission = (permiso) => {
-        // Asume que auth.permisos es un array de strings con los códigos.
-        // Si eres Admin, tienes acceso total por defecto.
         if (auth.rol === 'Admin') return true;
         return auth.permisos && auth.permisos.includes(permiso);
     };
 
-    useEffect(() => { 
-        if (hasPermission('activos_ver')) {
-            cargarActivos(); 
-        }
-    }, []);
+    useEffect(() => { if (hasPermission('activos_ver')) cargarActivos(); }, []);
 
     const cargarActivos = async () => {
         setLoading(true);
         try {
             const res = await api.get('/index.php/mantencion/activos');
             if (res.data.success) setActivos(res.data.data);
-        } catch (e) {
-            console.error(e);
-            // Opcional: Mostrar error si no tiene permiso en el backend
-        } finally {
-            setLoading(false);
-        }
+        } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
-    // Lógica de filtrado
     const activosFiltrados = activos.filter(a => 
         (a.nombre && a.nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (a.codigo_interno && a.codigo_interno.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (a.codigo_maquina && a.codigo_maquina.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (a.modelo && a.modelo.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (a.marca && a.marca.toLowerCase().includes(searchTerm.toLowerCase()))
+        (a.codigo_maquina && a.codigo_maquina.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const handleEdit = (activo) => {
-        setActivoSeleccionado(activo);
-        setShowModal(true);
-    };
-
-    const handleNew = () => {
-        setActivoSeleccionado(null);
-        setShowModal(true);
-    };
+    const handleEdit = (activo) => { setActivoSeleccionado(activo); setShowModal(true); };
+    const handleNew = () => { setActivoSeleccionado(null); setShowModal(true); };
 
     const handleExport = async () => {
         setLoading(true);
@@ -74,100 +52,38 @@ const Activos = () => {
             link.remove();
             window.URL.revokeObjectURL(url);
         } catch (error) {
-            console.error("Error exportando", error);
-            alert("Error al exportar. Verifique sus permisos.");
-        } finally {
-            setLoading(false);
-        }
+            setMsgModal({ show: true, title: "Error", message: "Error al exportar. Verifique sus permisos.", type: "error" });
+        } finally { setLoading(false); }
     };
 
-    // Si no tiene permiso de ver, mostramos un mensaje de acceso denegado
-    if (!hasPermission('activos_ver')) {
-        return <div className="alert alert-danger m-4">No tienes permisos para ver este módulo.</div>;
-    }
+    if (!hasPermission('activos_ver')) return <div className="alert alert-danger m-4">No tienes permisos para ver este módulo.</div>;
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
-
-            {/* Solo renderizamos el modal si tiene permiso de crear o editar */}
+            <MessageModal show={msgModal.show} onClose={() => setMsgModal({...msgModal, show: false})} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
+            
             {(hasPermission('activos_crear') || hasPermission('activos_editar')) && (
-                <ActivoModal
-                    show={showModal}
-                    onClose={() => setShowModal(false)}
-                    activo={activoSeleccionado}
-                    onSave={cargarActivos}
-                />
+                <ActivoModal show={showModal} onClose={() => setShowModal(false)} activo={activoSeleccionado} onSave={cargarActivos} />
             )}
-
-            <ModalCargaMasiva
-                show={showImport}
-                onClose={() => setShowImport(false)}
-                tipo="activos"
-                onSave={cargarActivos}
-            />
+            <ModalCargaMasiva show={showImport} onClose={() => setShowImport(false)} tipo="activos" onSave={cargarActivos} />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
-
                     <div className="d-flex align-items-center mb-2 mb-md-0">
-                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
-                            <i className="bi bi-truck fs-3"></i>
-                        </div>
+                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block"><i className="bi bi-truck fs-3"></i></div>
                         <h4 className="mb-0 fw-bold text-dark">Activos / Máquinas</h4>
                     </div>
-
                     <div className="d-flex gap-2 justify-content-center justify-content-md-end flex-wrap align-items-center w-100 w-md-auto">
-                        
                         <div className="input-group" style={{ maxWidth: '300px' }}>
                             <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
-                            <input 
-                                type="text" 
-                                className="form-control border-start-0 ps-0" 
-                                placeholder="Buscar equipo..." 
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                            />
+                            <input type="text" className="form-control border-start-0 ps-0" placeholder="Buscar equipo..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                         </div>
-
-                        {hasPermission('activos_exportar') && (
-                            <button
-                                className="btn btn-outline-success shadow-sm d-flex align-items-center py-2 px-3"
-                                onClick={handleExport}
-                                disabled={loading}
-                                title="Exportar a Excel"
-                            >
-                                {loading ? (
-                                    <span className="spinner-border spinner-border-sm"></span>
-                                ) : (
-                                    <i className="bi bi-file-earmark-excel fs-5"></i>
-                                )}
-                            </button>
-                        )}
-                        
-                        {/* La importación masiva la dejamos exclusiva para Admin por seguridad */}
-                        {auth.rol === 'Admin' && (
-                            <button
-                                className="btn btn-outline-dark shadow-sm d-flex align-items-center py-2 px-3"
-                                onClick={() => setShowImport(true)}
-                                title="Importar Masivamente"
-                            >
-                                <i className="bi bi-file-earmark-arrow-up fs-5"></i>
-                            </button>
-                        )}
-                        
-                        {hasPermission('activos_crear') && (
-                            <button
-                                className="btn btn-primary fw-bold shadow-sm d-flex align-items-center py-2 px-3"
-                                onClick={handleNew}
-                            >
-                                <i className="bi bi-plus-lg fs-5 me-2"></i>
-                                <span className="small">Nuevo</span>
-                            </button>
-                        )}
+                        {hasPermission('activos_exportar') && <button className="btn btn-outline-success shadow-sm d-flex align-items-center py-2 px-3" onClick={handleExport} disabled={loading}><i className="bi bi-file-earmark-excel fs-5"></i></button>}
+                        {auth.rol === 'Admin' && <button className="btn btn-outline-dark shadow-sm d-flex align-items-center py-2 px-3" onClick={() => setShowImport(true)}><i className="bi bi-file-earmark-arrow-up fs-5"></i></button>}
+                        {hasPermission('activos_crear') && <button className="btn btn-primary fw-bold shadow-sm d-flex align-items-center py-2 px-3" onClick={handleNew}><i className="bi bi-plus-lg fs-5 me-2"></i><span className="small">Nuevo</span></button>}
                     </div>
                 </div>
-
+                
                 <div className="card-body p-0 flex-grow-1 overflow-auto">
                     {loading && activos.length === 0 ? (
                         <div className="text-center p-5"><div className="spinner-border text-primary"></div></div>
