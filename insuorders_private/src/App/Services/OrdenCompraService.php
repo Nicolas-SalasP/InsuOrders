@@ -6,7 +6,7 @@ use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
 use App\Services\PDFService;
 use App\Database\Database;
-
+use Exception;
 class OrdenCompraService
 {
     private $repo;
@@ -51,9 +51,9 @@ class OrdenCompraService
     public function crearOrden($data, $usuarioId)
     {
         if (empty($data['items']))
-            throw new \Exception("La orden debe tener items.");
+            throw new Exception("La orden debe tener items.");
         if (empty($data['proveedor_id']))
-            throw new \Exception("Seleccione un proveedor.");
+            throw new Exception("Seleccione un proveedor.");
 
         try {
             $this->db->beginTransaction();
@@ -143,7 +143,7 @@ class OrdenCompraService
             $this->db->commit();
             return $ordenId;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->db->rollBack();
             throw $e;
         }
@@ -179,7 +179,7 @@ class OrdenCompraService
             $this->repo->updateArchivo($id, $urlPath);
             return "/" . $urlPath;
         } else {
-            throw new \Exception("No se pudo mover el archivo. Carpeta: " . $uploadDir);
+            throw new Exception("No se pudo mover el archivo. Carpeta: " . $uploadDir);
         }
     }
 
@@ -188,13 +188,13 @@ class OrdenCompraService
         $orden = $this->repo->getById($id);
 
         if (!$orden) {
-            throw new \Exception("Orden no encontrada.");
+            throw new Exception("Orden no encontrada.");
         }
 
         $estadoActual = $orden['cabecera']['estado_id'];
 
         if ($estadoActual >= 3) {
-            throw new \Exception("No se puede cancelar la orden porque ya tiene recepciones o está finalizada.");
+            throw new Exception("No se puede cancelar la orden porque ya tiene recepciones o está finalizada.");
         }
 
         return $this->repo->cancelar($id);

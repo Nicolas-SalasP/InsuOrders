@@ -124,24 +124,64 @@ class BodegaController
     public function organizar()
     {
         $data = json_decode(file_get_contents("php://input"), true);
+        
+        $insumoId = $data['insumo_id'];
+        $ubicacionDestino = $data['ubicacion_id'];
+        $cantidad = (float)$data['cantidad'];
+        $ubicacionOrigen = 1;
+
+        if ($cantidad <= 0) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "error" => "La cantidad debe ser mayor a 0"]);
+            return;
+        }
+
+        if ($ubicacionOrigen == $ubicacionDestino) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "error" => "La ubicación destino debe ser diferente a la de origen"]);
+            return;
+        }
 
         try {
             $db = Database::getConnection();
-            $sql = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                    VALUES (:iid, :uid, :cant) 
-                    ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
+            $db->beginTransaction();
 
-            $db->prepare($sql)->execute([
-                ':iid' => $data['insumo_id'],
-                ':uid' => $data['ubicacion_id'],
-                ':cant' => $data['cantidad'],
-                ':cant_upd' => $data['cantidad']
+            $stmtCheck = $db->prepare("SELECT cantidad FROM insumo_stock_ubicacion WHERE insumo_id = :iid AND ubicacion_id = :uid FOR UPDATE");
+            $stmtCheck->execute([':iid' => $insumoId, ':uid' => $ubicacionOrigen]);
+            $stockPendiente = $stmtCheck->fetchColumn();
+
+            if ($stockPendiente === false || $stockPendiente < $cantidad) {
+                throw new Exception("No hay stock suficiente por organizar. Disponible: " . ($stockPendiente ?: 0));
+            }
+
+            $sqlRestar = "UPDATE insumo_stock_ubicacion SET cantidad = cantidad - :cant 
+                          WHERE insumo_id = :iid AND ubicacion_id = :uid";
+            $db->prepare($sqlRestar)->execute([
+                ':cant' => $cantidad,
+                ':iid' => $insumoId,
+                ':uid' => $ubicacionOrigen
             ]);
 
-            echo json_encode(["success" => true, "message" => "Ubicación asignada correctamente"]);
+            $sqlSumar = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
+                         VALUES (:iid, :uid, :cant) 
+                         ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
+            
+            $db->prepare($sqlSumar)->execute([
+                ':iid' => $insumoId,
+                ':uid' => $ubicacionDestino,
+                ':cant' => $cantidad,
+                ':cant_upd' => $cantidad
+            ]);
+
+            $db->commit();
+            echo json_encode(["success" => true, "message" => "Stock movido correctamente"]);
+
         } catch (Exception $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => "Error SQL: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => "Error al organizar: " . $e->getMessage()]);
         }
     }
 }
