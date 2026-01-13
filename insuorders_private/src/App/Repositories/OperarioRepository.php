@@ -19,14 +19,42 @@ class OperarioRepository
         try {
             $this->db->beginTransaction();
 
-            $bodegaId = 1;
+            $insumoId = $datos['insumo_id'];
+            $cantidadRequerida = floatval($datos['cantidad']);
+            $sqlStock = "SELECT id, ubicacion_id, cantidad FROM insumo_stock_ubicacion 
+                        WHERE insumo_id = :iid AND cantidad > 0 
+                        ORDER BY cantidad DESC";
+            $stmtStock = $this->db->prepare($sqlStock);
+            $stmtStock->execute([':iid' => $insumoId]);
+            $ubicaciones = $stmtStock->fetchAll(PDO::FETCH_ASSOC);
 
-            $stmtCheck = $this->db->prepare("SELECT cantidad FROM insumo_stock_ubicacion WHERE insumo_id = :iid AND ubicacion_id = :uid");
-            $stmtCheck->execute([':iid' => $datos['insumo_id'], ':uid' => $bodegaId]);
-            $stockActual = $stmtCheck->fetchColumn();
+            $stockTotal = 0;
+            foreach ($ubicaciones as $u) {
+                $stockTotal += floatval($u['cantidad']);
+            }
 
-            if ($stockActual === false || $stockActual < $datos['cantidad']) {
-                throw new Exception("Stock insuficiente en Bodega para realizar esta entrega.");
+            if ($stockTotal < $cantidadRequerida) {
+                throw new Exception("Stock insuficiente. Tienes $stockTotal pero necesitas $cantidadRequerida.");
+            }
+
+            $porDescontar = $cantidadRequerida;
+            $detalleUbicaciones = [];
+
+            foreach ($ubicaciones as $ubicacion) {
+                if ($porDescontar <= 0)
+                    break;
+
+                $disponible = floatval($ubicacion['cantidad']);
+                $aDescontar = min($disponible, $porDescontar);
+
+                $sqlUpdate = "UPDATE insumo_stock_ubicacion SET cantidad = cantidad - :cant WHERE id = :id";
+                $this->db->prepare($sqlUpdate)->execute([
+                    ':cant' => $aDescontar,
+                    ':id' => $ubicacion['id']
+                ]);
+
+                $porDescontar -= $aDescontar;
+                $detalleUbicaciones[] = "Ubi #" . $ubicacion['ubicacion_id'] . " (-$aDescontar)";
             }
 
             $stmtEmp = $this->db->prepare("SELECT id, nombre_completo, usuario_id FROM empleados WHERE id = :eid");
@@ -37,13 +65,12 @@ class OperarioRepository
                 throw new Exception("El empleado seleccionado no existe.");
             }
 
-            $usuarioOperarioId = null;
+            $usuarioOperarioId = $empleado['usuario_id'] ?? null;
             $receptorExterno = null;
             $estadoId = 3;
             $nombreReceptor = "";
 
-            if (!empty($empleado['usuario_id'])) {
-                $usuarioOperarioId = $empleado['usuario_id'];
+            if (!empty($usuarioOperarioId)) {
                 $estadoId = 1;
                 $nombreReceptor = $empleado['nombre_completo'] . " (App)";
             } else {
@@ -52,38 +79,32 @@ class OperarioRepository
                 $nombreReceptor = $empleado['nombre_completo'] . " (Directo)";
             }
 
-            $this->db->prepare("UPDATE insumo_stock_ubicacion SET cantidad = cantidad - :cant WHERE insumo_id = :iid AND ubicacion_id = :uid")
-                ->execute([
-                    ':cant' => $datos['cantidad'],
-                    ':iid' => $datos['insumo_id'],
-                    ':uid' => $bodegaId
-                ]);
+            $ubicacionRef = $ubicaciones[0]['ubicacion_id'] ?? 1;
 
-            $obsKardex = "Entrega a: " . $nombreReceptor . ". Obs: " . ($datos['observacion'] ?? 'Sin obs');
+            $obsKardex = "Entrega a: $nombreReceptor. Obs: " . ($datos['observacion'] ?? 'Sin obs') . ". Detalle: " . implode(', ', $detalleUbicaciones);
 
             $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
-                       VALUES (:iid, 2, :cant, :uid, :obs, :ubi, NOW())";
+                    VALUES (:iid, 2, :cant, :uid, :obs, :ubi, NOW())";
 
             $this->db->prepare($sqlMov)->execute([
-                ':iid' => $datos['insumo_id'],
-                ':cant' => $datos['cantidad'],
+                ':iid' => $insumoId,
+                ':cant' => $cantidadRequerida,
                 ':uid' => $datos['bodeguero_id'],
-                ':obs' => $obsKardex,
-                ':ubi' => $bodegaId
+                ':obs' => substr($obsKardex, 0, 255),
+                ':ubi' => $ubicacionRef
             ]);
-
-            $cantidadUtilizada = ($estadoId === 3) ? $datos['cantidad'] : 0;
+            $cantidadUtilizada = ($estadoId === 3) ? $cantidadRequerida : 0;
 
             $sqlEntrega = "INSERT INTO entregas_personal 
                 (insumo_id, usuario_operario_id, receptor_externo, usuario_bodeguero_id, cantidad_entregada, cantidad_utilizada, estado_id, observacion, fecha_entrega) 
                 VALUES (:iid, :u_op, :ext, :u_bod, :cant, :used, :est, :obs, NOW())";
 
             $this->db->prepare($sqlEntrega)->execute([
-                ':iid' => $datos['insumo_id'],
+                ':iid' => $insumoId,
                 ':u_op' => $usuarioOperarioId,
                 ':ext' => $receptorExterno,
                 ':u_bod' => $datos['bodeguero_id'],
-                ':cant' => $datos['cantidad'],
+                ':cant' => $cantidadRequerida,
                 ':used' => $cantidadUtilizada,
                 ':est' => $estadoId,
                 ':obs' => $datos['observacion'] ?? null
@@ -105,7 +126,8 @@ class OperarioRepository
             $stmtEmp->execute([':eid' => $datos['empleado_id']]);
             $empleado = $stmtEmp->fetch(PDO::FETCH_ASSOC);
 
-            if (!$empleado) return false;
+            if (!$empleado)
+                return false;
 
             $usuarioOperarioId = $empleado['usuario_id'] ?? null;
             $receptorExterno = empty($usuarioOperarioId) ? $empleado['nombre_completo'] : null;
@@ -178,10 +200,12 @@ class OperarioRepository
             $stmt->execute([':id' => $entregaId]);
             $entrega = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$entrega) throw new Exception("Entrega no encontrada");
+            if (!$entrega)
+                throw new Exception("Entrega no encontrada");
 
             $saldo = floatval($entrega['cantidad_entregada']) - floatval($entrega['cantidad_utilizada']);
-            if ($cantidad > $saldo) throw new Exception("No puedes devolver más de lo que tienes.");
+            if ($cantidad > $saldo)
+                throw new Exception("No puedes devolver más de lo que tienes.");
             $nuevaEntregada = floatval($entrega['cantidad_entregada']) - $cantidad;
             $nuevoEstado = ($nuevaEntregada - floatval($entrega['cantidad_utilizada']) <= 0.001) ? 3 : 2;
 
@@ -191,7 +215,7 @@ class OperarioRepository
             $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant) ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant")
                 ->execute([':iid' => $entrega['insumo_id'], ':uid' => $bodegaId, ':cant' => $cantidad]);
             $obs = "Devolución de operario (Entrega #$entregaId). OT: " . ($entrega['referencia_ot_id'] ?? 'N/A');
-            
+
             $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
                                 VALUES (:iid, 5, :cant, :uid, :obs, :ubi, NOW())")
                 ->execute([
@@ -266,6 +290,4 @@ class OperarioRepository
 
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    
 }

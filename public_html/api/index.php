@@ -55,13 +55,22 @@ if (strpos($path, 'insuorders/public_html/api/') !== false) {
 }
 
 // ============================================================
-// SERVICIO DE ARCHIVOS ESTÁTICOS
+// SERVICIO DE ARCHIVOS ESTÁTICOS (CORREGIDO)
 // ============================================================
-if (preg_match('/uploads\/(.+)$/', $path, $matches)) {
+if (preg_match('/^uploads\/(.+)$/', $path, $matches)) {
     $relativePath = 'uploads/' . $matches[1];
-    $fullPathOnDisk = __DIR__ . '/' . $relativePath;
+    $pathApi = __DIR__ . '/' . $relativePath;
+    $pathPublic = __DIR__ . '/../' . $relativePath;
 
-    if (file_exists($fullPathOnDisk) && is_file($fullPathOnDisk)) {
+    $fullPathOnDisk = null;
+
+    if (file_exists($pathApi) && is_file($pathApi)) {
+        $fullPathOnDisk = $pathApi;
+    } elseif (file_exists($pathPublic) && is_file($pathPublic)) {
+        $fullPathOnDisk = $pathPublic;
+    }
+
+    if ($fullPathOnDisk) {
         $mime = mime_content_type($fullPathOnDisk);
         header("Content-Type: $mime");
         header("Content-Disposition: inline; filename=\"" . basename($fullPathOnDisk) . "\"");

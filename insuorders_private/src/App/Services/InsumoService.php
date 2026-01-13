@@ -2,7 +2,7 @@
 namespace App\Services;
 
 use App\Repositories\InsumoRepository;
-
+use Exception;
 class InsumoService
 {
     private $repo;
@@ -44,38 +44,38 @@ class InsumoService
     public function crearInsumo($data)
     {
         if (strlen($data['codigo_sku']) < 3)
-            throw new \Exception("El SKU es muy corto.");
+            throw new Exception("El SKU es muy corto.");
         if (empty($data['nombre']))
-            throw new \Exception("El nombre es obligatorio.");
+            throw new Exception("El nombre es obligatorio.");
 
         $data = $this->sanearDatos($data);
 
         if ($data['precio_costo'] < 0)
-            throw new \Exception("El precio no puede ser negativo.");
+            throw new Exception("El precio no puede ser negativo.");
         if (empty($data['moneda']))
             $data['moneda'] = 'CLP';
 
         return $this->repo->create($data);
     }
 
-    public function actualizarInsumo($id, $data)
+    public function actualizarInsumo($id, $data, $usuarioId = null)
     {
         if (!$id)
-            throw new \Exception("ID no proporcionado.");
+            throw new Exception("ID no proporcionado.");
 
         $data = $this->sanearDatos($data);
 
         if (isset($data['codigo_sku']) && strlen($data['codigo_sku']) < 3) {
-            throw new \Exception("El SKU es muy corto.");
+            throw new Exception("El SKU es muy corto.");
         }
 
-        return $this->repo->update($id, $data);
+        return $this->repo->update($id, $data, $usuarioId);
     }
 
     public function gestionarStock($data, $usuarioId)
     {
         if (!isset($data['cantidad']) || abs($data['cantidad']) == 0) {
-            throw new \Exception("La cantidad debe ser distinta de 0.");
+            throw new Exception("La cantidad debe ser distinta de 0.");
         }
         return $this->repo->ajustarStock(
             $data['insumo_id'],

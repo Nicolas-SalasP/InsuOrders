@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 09-01-2026 a las 19:52:47
+-- Tiempo de generación: 13-01-2026 a las 15:15:48
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -51,7 +51,40 @@ CREATE TABLE `activos` (
 --
 
 INSERT INTO `activos` (`id`, `codigo_interno`, `codigo_maquina`, `nombre`, `tipo`, `marca`, `modelo`, `anio`, `numero_serie`, `descripcion`, `ubicacion`, `centro_costo_id`, `estado_activo`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Gen-01', 'GEN109821', 'Genedador Ejemplo', 'Maquinaria', 'CaterPilla', '320GC', 2025, '10782908738', '', 'Patio', 1, 'OPERATIVO', '2025-12-29 19:48:43', '2026-01-09 17:58:46', NULL);
+(1, '1028', '6988-2', 'Metradora', 'Maquinaria', 'Stridhs', 'DI-ME-804', 2002, '6988-2', '', 'Planta 1', 1, 'EN_MANTENCION', '2025-12-29 19:48:43', '2026-01-12 15:47:12', NULL),
+(2, '1027', '9016-A', 'Metradora ', 'Maquinaria', 'Stridhs', 'DI-ME-804', 2011, '9016-A', '', 'Planta 1', NULL, 'EN_MANTENCION', '2026-01-12 11:22:34', '2026-01-12 15:47:20', NULL),
+(3, '1029', '6988-1', 'Metradora', 'Maquinaria', 'Stridhs', 'DI-ME-804', 2002, '6988-1', '', 'Planta 1', NULL, 'OPERATIVO', '2026-01-12 11:30:24', '2026-01-12 15:47:27', NULL),
+(4, '1030', '1102', 'Metradora', 'Maquinaria', 'Stridhs', 'STR805', 2021, '1102', '', 'Planta 1', NULL, 'EN_MANTENCION', '2026-01-12 11:33:27', '2026-01-12 15:47:34', NULL),
+(5, 'TUBIN-01', '', 'Entubadora TSS1', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:38:15', '2026-01-12 14:46:51', NULL),
+(6, 'TUBIN-02', '', 'Entubadora TSS2', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:38:34', '2026-01-12 14:47:02', NULL),
+(7, 'TUBIN-03', '', 'Entubadora TSS3', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:46:05', '2026-01-12 14:47:13', NULL),
+(8, 'TUBIN-04', '', 'Entubadora TSS4', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:46:19', '2026-01-12 14:47:26', NULL),
+(9, 'TUBIN-05', '', 'Entubadora TSS5', '', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:46:43', '2026-01-12 14:46:43', NULL),
+(10, 'TUBIN-06', '', 'Entubadora TSS6', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:47:55', '2026-01-12 14:47:55', NULL),
+(11, 'TUBIN-07', '', 'Entubadora TSS7', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:48:26', '2026-01-12 14:48:32', NULL),
+(12, 'TUBIN-08', '', 'Entubadora TSS8', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:48:52', '2026-01-12 14:49:44', NULL),
+(13, 'TUBIN-09', '', 'Entubadora TSS9', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:49:14', '2026-01-12 14:49:52', NULL),
+(14, 'TUBIN-10', '', 'Entubadora TSS10', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:49:35', '2026-01-12 14:49:35', NULL),
+(15, 'TUBIN-11', '', 'Entubadora TSS11', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:52:10', '2026-01-12 14:52:10', NULL),
+(16, 'TUBIN-12', '', 'Entubadora TSS12', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:52:33', '2026-01-12 14:52:33', NULL),
+(17, 'TUBIN-13', '', 'Entubadora TSS13', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:52:52', '2026-01-12 14:52:52', NULL),
+(18, 'TUBIN-14', '', 'Entubadora TSS14', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:53:15', '2026-01-12 14:53:15', NULL),
+(19, 'TUBIN-15', '', 'Entubadora TSS15', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:53:30', '2026-01-12 14:53:30', NULL),
+(20, 'TUBIN-16', '', 'Entubadora TSS16', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:53:50', '2026-01-12 14:53:50', NULL),
+(21, 'TUBIN-17', '', 'Entubadora TSS17', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:54:07', '2026-01-12 14:54:07', NULL),
+(22, 'TUBIN-18', '', 'Entubadora TSS18', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:54:38', '2026-01-12 14:54:38', NULL),
+(23, 'TUBIN-19', '', 'Entubadora TSS19', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:06:24', '2026-01-12 15:06:24', NULL),
+(24, 'TUBIN-20', '', 'Entubadora TSS20', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:08:27', '2026-01-12 15:08:27', NULL),
+(25, 'CMFR-01', '', 'LT-2', '', '', '', NULL, '', '', '', 20, 'OPERATIVO', '2026-01-12 15:10:06', '2026-01-12 16:51:37', NULL),
+(26, 'CMFR-02', '', 'Mucosa', 'Maquinaria', '', '', NULL, '', '', '', 18, 'OPERATIVO', '2026-01-12 15:10:30', '2026-01-12 15:10:42', NULL),
+(27, 'CMER-03', '', 'Centrifuga', 'Maquinaria', '', '', NULL, '', '', '', 20, 'OPERATIVO', '2026-01-12 15:11:02', '2026-01-12 17:07:21', NULL),
+(28, 'MAQ-01', '', 'Extractor', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:12:04', '2026-01-12 15:12:04', NULL),
+(29, 'MAQ-02', '', 'Prensa neumática', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:12:51', '2026-01-12 15:12:51', NULL),
+(30, 'MAQ-03', '', 'Agitador de salmuera', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:05', '2026-01-12 15:13:05', NULL),
+(31, 'MAQ-04', '', 'Tanque de almacenamiento de salmuera', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:25', '2026-01-12 15:13:25', NULL),
+(32, 'MAQ-05', '', 'Bomba de salmuera dosificación', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:50', '2026-01-12 15:13:50', NULL),
+(33, 'MAQ-06', '', 'Tornillo sinfín ', 'Maquinaria', '', '', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:16:33', '2026-01-12 15:16:33', NULL),
+(34, 'KIT-01', '', 'Auditoría', 'Infraestructura', '', '', NULL, '', 'Kit de distintos insumos para auditoria', '', 25, 'OPERATIVO', '2026-01-12 15:17:42', '2026-01-12 15:44:17', NULL);
 
 -- --------------------------------------------------------
 
@@ -92,7 +125,135 @@ CREATE TABLE `activos_insumos` (
 --
 
 INSERT INTO `activos_insumos` (`id`, `activo_id`, `insumo_id`, `cantidad_default`) VALUES
-(1, 1, 552, 100.00);
+(5, 1, 89, 4.00),
+(6, 1, 1118, 4.00),
+(7, 1, 1452, 1.00),
+(8, 1, 1453, 1.00),
+(9, 1, 1454, 1.00),
+(10, 1, 1455, 1.00),
+(11, 1, 1456, 1.00),
+(12, 1, 1457, 1.00),
+(13, 1, 1458, 1.00),
+(14, 1, 1459, 1.00),
+(15, 1, 1460, 1.00),
+(16, 1, 1461, 1.00),
+(17, 1, 1462, 1.00),
+(18, 1, 1463, 1.00),
+(19, 1, 1464, 1.00),
+(20, 1, 1465, 1.00),
+(21, 1, 1466, 1.00),
+(22, 1, 1467, 1.00),
+(23, 1, 1468, 1.00),
+(24, 1, 1469, 1.00),
+(25, 1, 1470, 1.00),
+(26, 1, 1471, 1.00),
+(27, 1, 1472, 1.00),
+(28, 3, 89, 4.00),
+(30, 3, 1120, 4.00),
+(31, 3, 1452, 1.00),
+(32, 3, 1453, 1.00),
+(33, 3, 1454, 1.00),
+(34, 3, 1455, 1.00),
+(35, 3, 1456, 1.00),
+(36, 3, 1457, 1.00),
+(37, 3, 1458, 1.00),
+(38, 3, 1459, 1.00),
+(39, 3, 1460, 1.00),
+(40, 3, 1461, 1.00),
+(41, 3, 1462, 1.00),
+(42, 3, 1463, 1.00),
+(43, 3, 1464, 1.00),
+(44, 3, 1465, 1.00),
+(45, 3, 1466, 1.00),
+(46, 3, 1467, 1.00),
+(47, 3, 1468, 1.00),
+(48, 3, 1469, 1.00),
+(49, 3, 1470, 1.00),
+(50, 3, 1471, 1.00),
+(51, 3, 1472, 1.00),
+(52, 2, 89, 4.00),
+(53, 2, 1120, 4.00),
+(54, 2, 1452, 1.00),
+(55, 2, 1453, 1.00),
+(56, 2, 1454, 1.00),
+(57, 2, 1455, 1.00),
+(58, 2, 1456, 1.00),
+(59, 2, 1457, 1.00),
+(60, 2, 1458, 1.00),
+(61, 2, 1459, 1.00),
+(62, 2, 1460, 1.00),
+(63, 2, 1461, 1.00),
+(64, 2, 1462, 1.00),
+(65, 2, 1463, 1.00),
+(66, 2, 1464, 1.00),
+(67, 2, 1465, 1.00),
+(68, 2, 1466, 1.00),
+(69, 2, 1467, 1.00),
+(70, 2, 1468, 1.00),
+(71, 2, 1469, 1.00),
+(72, 2, 1470, 1.00),
+(73, 2, 1471, 1.00),
+(74, 2, 1472, 1.00),
+(75, 4, 89, 4.00),
+(76, 4, 1120, 4.00),
+(77, 4, 1452, 1.00),
+(78, 4, 1453, 1.00),
+(79, 4, 1454, 1.00),
+(80, 4, 1455, 1.00),
+(81, 4, 1456, 1.00),
+(82, 4, 1457, 1.00),
+(83, 4, 1458, 1.00),
+(84, 4, 1459, 1.00),
+(85, 4, 1460, 1.00),
+(86, 4, 1461, 1.00),
+(87, 4, 1462, 1.00),
+(88, 4, 1463, 1.00),
+(89, 4, 1464, 1.00),
+(90, 4, 1465, 1.00),
+(91, 4, 1466, 1.00),
+(92, 4, 1467, 1.00),
+(93, 4, 1468, 1.00),
+(94, 4, 1469, 1.00),
+(95, 4, 1470, 1.00),
+(96, 4, 1471, 1.00),
+(97, 4, 1472, 1.00),
+(98, 34, 380, 12.00),
+(99, 34, 1419, 7.00),
+(100, 34, 1053, 7.00),
+(101, 34, 202, 24.00),
+(102, 34, 1421, 12.00),
+(103, 34, 225, 3.00),
+(104, 34, 1422, 1.00),
+(105, 34, 1117, 6.00),
+(106, 34, 1198, 10.00),
+(107, 34, 228, 10.00),
+(108, 34, 1197, 10.00),
+(109, 28, 1280, 2.00),
+(110, 28, 1281, 2.00),
+(111, 29, 966, 8.00),
+(112, 29, 71, 1.00),
+(113, 29, 1358, 1.00),
+(114, 29, 1357, 8.00),
+(115, 29, 767, 2.00),
+(116, 29, 790, 1.00),
+(117, 30, 1294, 1.00),
+(118, 30, 1295, 1.00),
+(119, 30, 1431, 1.00),
+(120, 33, 700, 2.00),
+(121, 33, 1221, 1.00),
+(122, 25, 115, 2.00),
+(123, 25, 160, 4.00),
+(124, 25, 817, 4.00),
+(125, 25, 127, 2.00),
+(126, 25, 696, 2.00),
+(127, 27, 1555, 2.00),
+(128, 27, 1556, 2.00),
+(129, 27, 1557, 2.00),
+(130, 27, 1558, 2.00),
+(131, 27, 1559, 1.00),
+(132, 27, 1560, 2.00),
+(133, 27, 1561, 1.00),
+(134, 27, 1562, 1.00);
 
 -- --------------------------------------------------------
 
@@ -348,6 +509,28 @@ INSERT INTO `comunas` (`id`, `nombre`, `region_id`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `cotizaciones`
+--
+
+CREATE TABLE `cotizaciones` (
+  `id` int(11) NOT NULL,
+  `usuario_id` int(11) NOT NULL,
+  `fecha_creacion` datetime DEFAULT current_timestamp(),
+  `estado_id` int(11) NOT NULL DEFAULT 1,
+  `observacion` text DEFAULT NULL,
+  `total_estimado` decimal(10,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `cotizaciones`
+--
+
+INSERT INTO `cotizaciones` (`id`, `usuario_id`, `fecha_creacion`, `estado_id`, `observacion`, `total_estimado`) VALUES
+(1, 3, '2026-01-13 10:17:34', 1, '', 0.00);
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `cronograma_insumos`
 --
 
@@ -357,6 +540,120 @@ CREATE TABLE `cronograma_insumos` (
   `insumo_id` int(11) NOT NULL,
   `cantidad` decimal(10,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `cronograma_insumos`
+--
+
+INSERT INTO `cronograma_insumos` (`id`, `cronograma_id`, `insumo_id`, `cantidad`) VALUES
+(42, 7, 89, 4.00),
+(43, 7, 1120, 4.00),
+(44, 7, 1452, 1.00),
+(45, 7, 1453, 1.00),
+(46, 7, 1454, 1.00),
+(47, 7, 1455, 1.00),
+(48, 7, 1456, 1.00),
+(49, 7, 1457, 1.00),
+(50, 7, 1458, 1.00),
+(51, 7, 1459, 1.00),
+(52, 7, 1460, 1.00),
+(53, 7, 1461, 1.00),
+(54, 7, 1462, 1.00),
+(55, 7, 1463, 1.00),
+(56, 7, 1464, 1.00),
+(57, 7, 1465, 1.00),
+(58, 7, 1466, 1.00),
+(59, 7, 1467, 1.00),
+(60, 7, 1468, 1.00),
+(61, 7, 1469, 1.00),
+(62, 7, 1470, 1.00),
+(63, 7, 1471, 1.00),
+(64, 7, 1472, 1.00),
+(295, 10, 89, 4.00),
+(296, 10, 1120, 4.00),
+(297, 10, 1452, 1.00),
+(298, 10, 1453, 1.00),
+(299, 10, 1454, 1.00),
+(300, 10, 1455, 1.00),
+(301, 10, 1456, 1.00),
+(302, 10, 1457, 1.00),
+(303, 10, 1458, 1.00),
+(304, 10, 1459, 1.00),
+(305, 10, 1460, 1.00),
+(306, 10, 1461, 1.00),
+(307, 10, 1462, 1.00),
+(308, 10, 1463, 1.00),
+(309, 10, 1464, 1.00),
+(310, 10, 1465, 1.00),
+(311, 10, 1466, 1.00),
+(312, 10, 1467, 1.00),
+(313, 10, 1468, 1.00),
+(314, 10, 1469, 1.00),
+(315, 10, 1470, 1.00),
+(316, 10, 1471, 1.00),
+(317, 10, 1472, 1.00),
+(318, 11, 1280, 2.00),
+(319, 11, 1281, 2.00),
+(326, 13, 1294, 1.00),
+(327, 13, 1295, 1.00),
+(328, 13, 1431, 1.00),
+(340, 9, 89, 4.00),
+(341, 9, 1120, 4.00),
+(342, 9, 1452, 1.00),
+(343, 9, 1453, 1.00),
+(344, 9, 1454, 1.00),
+(345, 9, 1455, 1.00),
+(346, 9, 1456, 1.00),
+(347, 9, 1457, 1.00),
+(348, 9, 1458, 1.00),
+(349, 9, 1459, 1.00),
+(350, 9, 1460, 1.00),
+(351, 9, 1461, 1.00),
+(352, 9, 1462, 1.00),
+(353, 9, 1463, 1.00),
+(354, 9, 1464, 1.00),
+(355, 9, 1465, 1.00),
+(356, 9, 1466, 1.00),
+(357, 9, 1467, 1.00),
+(358, 9, 1468, 1.00),
+(359, 9, 1469, 1.00),
+(360, 9, 1470, 1.00),
+(361, 9, 1471, 1.00),
+(362, 9, 1472, 1.00),
+(363, 8, 89, 4.00),
+(364, 8, 1452, 1.00),
+(365, 8, 1453, 1.00),
+(366, 8, 1454, 1.00),
+(367, 8, 1455, 1.00),
+(368, 8, 1456, 1.00),
+(369, 8, 1457, 1.00),
+(370, 8, 1458, 1.00),
+(371, 8, 1459, 1.00),
+(372, 8, 1460, 1.00),
+(373, 8, 1461, 1.00),
+(374, 8, 1462, 1.00),
+(375, 8, 1463, 1.00),
+(376, 8, 1464, 1.00),
+(377, 8, 1465, 1.00),
+(378, 8, 1466, 1.00),
+(379, 8, 1467, 1.00),
+(380, 8, 1468, 1.00),
+(381, 8, 1469, 1.00),
+(382, 8, 1470, 1.00),
+(383, 8, 1471, 1.00),
+(384, 8, 1472, 1.00),
+(385, 8, 1120, 4.00),
+(408, 16, 202, 24.00),
+(409, 16, 225, 3.00),
+(410, 16, 228, 10.00),
+(411, 16, 380, 12.00),
+(412, 16, 1053, 7.00),
+(413, 16, 1117, 6.00),
+(414, 16, 1197, 10.00),
+(415, 16, 1198, 10.00),
+(416, 16, 1419, 7.00),
+(417, 16, 1421, 12.00),
+(418, 16, 1422, 1.00);
 
 -- --------------------------------------------------------
 
@@ -383,6 +680,43 @@ CREATE TABLE `cronograma_mantencion` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Volcado de datos para la tabla `cronograma_mantencion`
+--
+
+INSERT INTO `cronograma_mantencion` (`id`, `tipo_evento`, `titulo`, `descripcion`, `fecha_programada`, `hora_programada`, `estado`, `solicitud_ot_id`, `activo_id`, `insumo_id`, `cantidad`, `monto_estimado`, `icono`, `color`, `created_at`, `updated_at`) VALUES
+(7, 'MANTENCION', 'Mantenimiento preventivo', '', '2026-01-12', NULL, '', 19, 3, NULL, NULL, NULL, 'bi-tools', '#eebb2f', '2026-01-12 12:07:33', '2026-01-12 12:07:33'),
+(8, 'MANTENCION', 'Mantenimiento preventivo OT 1671', 'Mantenimiento preventivo OT 1671', '2026-01-14', NULL, NULL, 20, 1, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 12:14:26', '2026-01-12 19:57:46'),
+(9, 'MANTENCION', 'Mantenimiento preventivo OT 1673', 'Mantenimiento preventivo OT 1673', '2026-01-20', NULL, NULL, 21, 2, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 14:19:32', '2026-01-12 19:57:26'),
+(10, 'MANTENCION', 'Mantenimiento preventivo OT 1703', '', '2026-01-16', NULL, NULL, 22, 4, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 14:25:25', '2026-01-12 17:11:35'),
+(11, 'MANTENCION', 'Mantenimiento preventivo', '', '2026-02-02', NULL, '', 23, 28, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:30:45', '2026-01-12 18:30:45'),
+(13, 'MANTENCION', 'Mantenimiento preventivo ', '', '2026-02-10', NULL, '', 25, 30, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:33:27', '2026-01-12 18:33:27'),
+(14, 'MANTENCION', 'Mantenimiento preventivo', 'Mantenimiento preventivo', '2026-02-12', NULL, '', 26, 31, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:34:12', '2026-01-12 19:56:49'),
+(16, 'COMPRA', 'Auditoría Perú', 'Auditoría Perú', '2026-01-22', NULL, NULL, 29, 34, NULL, NULL, NULL, 'bi-tools', '#e89191', '2026-01-12 20:03:50', '2026-01-12 20:08:56');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `detalle_cotizacion`
+--
+
+CREATE TABLE `detalle_cotizacion` (
+  `id` int(11) NOT NULL,
+  `cotizacion_id` int(11) NOT NULL,
+  `insumo_id` int(11) DEFAULT NULL COMMENT 'Null si es producto nuevo',
+  `nombre_item` varchar(150) NOT NULL COMMENT 'Nombre del insumo o texto libre',
+  `cantidad` decimal(10,2) NOT NULL,
+  `precio_unitario` decimal(10,2) DEFAULT 0.00,
+  `total_linea` decimal(10,2) GENERATED ALWAYS AS (`cantidad` * `precio_unitario`) STORED
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `detalle_cotizacion`
+--
+
+INSERT INTO `detalle_cotizacion` (`id`, `cotizacion_id`, `insumo_id`, `nombre_item`, `cantidad`, `precio_unitario`) VALUES
+(1, 1, 39, 'RODAMIENTO 1205.C3', 5.00, NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -399,6 +733,14 @@ CREATE TABLE `detalle_orden_compra` (
   `total_linea` decimal(15,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Volcado de datos para la tabla `detalle_orden_compra`
+--
+
+INSERT INTO `detalle_orden_compra` (`id`, `orden_compra_id`, `insumo_id`, `cantidad_solicitada`, `cantidad_recibida`, `precio_unitario`, `total_linea`) VALUES
+(11, 11, 384, 3.00, 0.00, 17497.00, 52491.00),
+(12, 11, 545, 20.00, 0.00, 3720.00, 74400.00);
+
 -- --------------------------------------------------------
 
 --
@@ -414,6 +756,165 @@ CREATE TABLE `detalle_solicitud` (
   `estado_linea` enum('PENDIENTE','APROBADO','RECHAZADO','REQUIERE_COMPRA','EN_BODEGA','COMPRADO','RESERVADO','ENTREGADO','PARCIAL','CANCELADO','ANULADO') DEFAULT 'PENDIENTE',
   `orden_compra_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `detalle_solicitud`
+--
+
+INSERT INTO `detalle_solicitud` (`id`, `solicitud_id`, `insumo_id`, `cantidad`, `cantidad_entregada`, `estado_linea`, `orden_compra_id`) VALUES
+(22, 18, 89, 4.00, 0.00, 'ANULADO', NULL),
+(23, 18, 1118, 4.00, 0.00, 'ANULADO', NULL),
+(24, 18, 1452, 1.00, 0.00, 'ANULADO', NULL),
+(25, 18, 1453, 1.00, 0.00, 'ANULADO', NULL),
+(26, 18, 1454, 1.00, 0.00, 'ANULADO', NULL),
+(27, 18, 1455, 1.00, 0.00, 'ANULADO', NULL),
+(28, 18, 1456, 1.00, 0.00, 'ANULADO', NULL),
+(29, 18, 1457, 1.00, 0.00, 'ANULADO', NULL),
+(30, 18, 1458, 1.00, 0.00, 'ANULADO', NULL),
+(31, 18, 1459, 1.00, 0.00, 'ANULADO', NULL),
+(32, 18, 1460, 1.00, 0.00, 'ANULADO', NULL),
+(33, 18, 1461, 1.00, 0.00, 'ANULADO', NULL),
+(34, 18, 1462, 1.00, 0.00, 'ANULADO', NULL),
+(35, 18, 1463, 1.00, 0.00, 'ANULADO', NULL),
+(36, 18, 1464, 1.00, 0.00, 'ANULADO', NULL),
+(37, 18, 1465, 1.00, 0.00, 'ANULADO', NULL),
+(38, 18, 1466, 1.00, 0.00, 'ANULADO', NULL),
+(39, 18, 1467, 1.00, 0.00, 'ANULADO', NULL),
+(40, 18, 1468, 1.00, 0.00, 'ANULADO', NULL),
+(41, 18, 1469, 1.00, 0.00, 'ANULADO', NULL),
+(42, 18, 1470, 1.00, 0.00, 'ANULADO', NULL),
+(43, 18, 1471, 1.00, 0.00, 'ANULADO', NULL),
+(44, 18, 1472, 1.00, 0.00, 'ANULADO', NULL),
+(45, 19, 89, 4.00, 0.00, 'CANCELADO', NULL),
+(46, 19, 1120, 4.00, 0.00, 'CANCELADO', NULL),
+(47, 19, 1452, 1.00, 0.00, 'CANCELADO', NULL),
+(48, 19, 1453, 1.00, 0.00, 'CANCELADO', NULL),
+(49, 19, 1454, 1.00, 0.00, 'CANCELADO', NULL),
+(50, 19, 1455, 1.00, 0.00, 'CANCELADO', NULL),
+(51, 19, 1456, 1.00, 0.00, 'CANCELADO', NULL),
+(52, 19, 1457, 1.00, 0.00, 'CANCELADO', NULL),
+(53, 19, 1458, 1.00, 0.00, 'CANCELADO', NULL),
+(54, 19, 1459, 1.00, 0.00, 'CANCELADO', NULL),
+(55, 19, 1460, 1.00, 0.00, 'CANCELADO', NULL),
+(56, 19, 1461, 1.00, 0.00, 'CANCELADO', NULL),
+(57, 19, 1462, 1.00, 0.00, 'CANCELADO', NULL),
+(58, 19, 1463, 1.00, 0.00, 'CANCELADO', NULL),
+(59, 19, 1464, 1.00, 0.00, 'CANCELADO', NULL),
+(60, 19, 1465, 1.00, 0.00, 'CANCELADO', NULL),
+(61, 19, 1466, 1.00, 0.00, 'CANCELADO', NULL),
+(62, 19, 1467, 1.00, 0.00, 'CANCELADO', NULL),
+(63, 19, 1468, 1.00, 0.00, 'CANCELADO', NULL),
+(64, 19, 1469, 1.00, 0.00, 'CANCELADO', NULL),
+(65, 19, 1470, 1.00, 0.00, 'CANCELADO', NULL),
+(66, 19, 1471, 1.00, 0.00, 'CANCELADO', NULL),
+(67, 19, 1472, 1.00, 0.00, 'CANCELADO', NULL),
+(68, 20, 89, 4.00, 0.00, 'PENDIENTE', NULL),
+(70, 20, 1452, 1.00, 0.00, 'PENDIENTE', NULL),
+(71, 20, 1453, 1.00, 0.00, 'PENDIENTE', NULL),
+(72, 20, 1454, 1.00, 0.00, 'PENDIENTE', NULL),
+(73, 20, 1455, 1.00, 0.00, 'PENDIENTE', NULL),
+(74, 20, 1456, 1.00, 0.00, 'PENDIENTE', NULL),
+(75, 20, 1457, 1.00, 0.00, 'PENDIENTE', NULL),
+(76, 20, 1458, 1.00, 0.00, 'PENDIENTE', NULL),
+(77, 20, 1459, 1.00, 0.00, 'PENDIENTE', NULL),
+(78, 20, 1460, 1.00, 0.00, 'PENDIENTE', NULL),
+(79, 20, 1461, 1.00, 0.00, 'PENDIENTE', NULL),
+(80, 20, 1462, 1.00, 0.00, 'PENDIENTE', NULL),
+(81, 20, 1463, 1.00, 0.00, 'PENDIENTE', NULL),
+(82, 20, 1464, 1.00, 0.00, 'PENDIENTE', NULL),
+(83, 20, 1465, 1.00, 0.00, 'PENDIENTE', NULL),
+(84, 20, 1466, 1.00, 0.00, 'PENDIENTE', NULL),
+(85, 20, 1467, 1.00, 0.00, 'PENDIENTE', NULL),
+(86, 20, 1468, 1.00, 0.00, 'PENDIENTE', NULL),
+(87, 20, 1469, 1.00, 0.00, 'PENDIENTE', NULL),
+(88, 20, 1470, 1.00, 0.00, 'PENDIENTE', NULL),
+(89, 20, 1471, 1.00, 0.00, 'PENDIENTE', NULL),
+(90, 20, 1472, 1.00, 0.00, 'PENDIENTE', NULL),
+(91, 20, 1120, 4.00, 0.00, 'PENDIENTE', NULL),
+(92, 21, 89, 4.00, 0.00, 'PENDIENTE', NULL),
+(93, 21, 1120, 4.00, 0.00, 'PENDIENTE', NULL),
+(94, 21, 1452, 1.00, 0.00, 'PENDIENTE', NULL),
+(95, 21, 1453, 1.00, 0.00, 'PENDIENTE', NULL),
+(96, 21, 1454, 1.00, 0.00, 'PENDIENTE', NULL),
+(97, 21, 1455, 1.00, 0.00, 'PENDIENTE', NULL),
+(98, 21, 1456, 1.00, 0.00, 'PENDIENTE', NULL),
+(99, 21, 1457, 1.00, 0.00, 'PENDIENTE', NULL),
+(100, 21, 1458, 1.00, 0.00, 'PENDIENTE', NULL),
+(101, 21, 1459, 1.00, 0.00, 'PENDIENTE', NULL),
+(102, 21, 1460, 1.00, 0.00, 'PENDIENTE', NULL),
+(103, 21, 1461, 1.00, 0.00, 'PENDIENTE', NULL),
+(104, 21, 1462, 1.00, 0.00, 'PENDIENTE', NULL),
+(105, 21, 1463, 1.00, 0.00, 'PENDIENTE', NULL),
+(106, 21, 1464, 1.00, 0.00, 'PENDIENTE', NULL),
+(107, 21, 1465, 1.00, 0.00, 'PENDIENTE', NULL),
+(108, 21, 1466, 1.00, 0.00, 'PENDIENTE', NULL),
+(109, 21, 1467, 1.00, 0.00, 'PENDIENTE', NULL),
+(110, 21, 1468, 1.00, 0.00, 'PENDIENTE', NULL),
+(111, 21, 1469, 1.00, 0.00, 'PENDIENTE', NULL),
+(112, 21, 1470, 1.00, 0.00, 'PENDIENTE', NULL),
+(113, 21, 1471, 1.00, 0.00, 'PENDIENTE', NULL),
+(114, 21, 1472, 1.00, 0.00, 'PENDIENTE', NULL),
+(115, 22, 89, 4.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(116, 22, 1120, 4.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(117, 22, 1452, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(118, 22, 1453, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(119, 22, 1454, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(120, 22, 1455, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(121, 22, 1456, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(122, 22, 1457, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(123, 22, 1458, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(124, 22, 1459, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(125, 22, 1460, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(126, 22, 1461, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(127, 22, 1462, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(128, 22, 1463, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(129, 22, 1464, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(130, 22, 1465, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(131, 22, 1466, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(132, 22, 1467, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(133, 22, 1468, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(134, 22, 1469, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(135, 22, 1470, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(136, 22, 1471, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(137, 22, 1472, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(138, 23, 1280, 2.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(139, 23, 1281, 2.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(140, 24, 71, 1.00, 0.00, 'ANULADO', NULL),
+(141, 24, 767, 2.00, 0.00, 'ANULADO', NULL),
+(142, 24, 790, 1.00, 0.00, 'ANULADO', NULL),
+(143, 24, 966, 8.00, 0.00, 'ANULADO', NULL),
+(144, 24, 1357, 8.00, 0.00, 'ANULADO', NULL),
+(145, 24, 1358, 1.00, 0.00, 'ANULADO', NULL),
+(146, 25, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(147, 25, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(148, 25, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(149, 27, 202, 24.00, 0.00, 'ANULADO', NULL),
+(150, 27, 225, 3.00, 0.00, 'ANULADO', NULL),
+(151, 27, 228, 10.00, 0.00, 'ANULADO', NULL),
+(152, 27, 380, 12.00, 0.00, 'ANULADO', NULL),
+(153, 27, 1053, 7.00, 0.00, 'ANULADO', NULL),
+(154, 27, 1117, 6.00, 0.00, 'ANULADO', NULL),
+(155, 27, 1197, 10.00, 0.00, 'ANULADO', NULL),
+(156, 27, 1198, 10.00, 0.00, 'ANULADO', NULL),
+(157, 27, 1419, 7.00, 0.00, 'ANULADO', NULL),
+(158, 27, 1421, 12.00, 0.00, 'ANULADO', NULL),
+(159, 27, 1422, 1.00, 0.00, 'ANULADO', NULL),
+(160, 28, 1569, 1.00, 0.00, 'PENDIENTE', NULL),
+(161, 28, 1565, 1.00, 0.00, 'PENDIENTE', NULL),
+(162, 28, 467, 1.00, 0.00, 'PENDIENTE', NULL),
+(163, 28, 1539, 1.00, 0.00, 'PENDIENTE', NULL),
+(164, 28, 1570, 25.00, 0.00, 'PENDIENTE', NULL),
+(165, 29, 202, 24.00, 0.00, 'PENDIENTE', NULL),
+(166, 29, 225, 3.00, 0.00, 'PENDIENTE', NULL),
+(167, 29, 228, 10.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(168, 29, 380, 12.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(169, 29, 1053, 7.00, 0.00, 'PENDIENTE', NULL),
+(170, 29, 1117, 6.00, 0.00, 'PENDIENTE', NULL),
+(171, 29, 1197, 10.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(172, 29, 1198, 10.00, 0.00, 'PENDIENTE', NULL),
+(173, 29, 1419, 7.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(174, 29, 1421, 12.00, 0.00, 'PENDIENTE', NULL),
+(175, 29, 1422, 1.00, 0.00, 'PENDIENTE', NULL);
 
 -- --------------------------------------------------------
 
@@ -442,7 +943,8 @@ INSERT INTO `empleados` (`id`, `nombre_completo`, `email`, `cargo`, `rut`, `cent
 (1, 'Nicolas Salas', 'nsalas@insuban.cl', 'Usuario Sistema', '263285808', 30, 1, 1, '2026-01-07 03:56:04', '2026-01-08 15:34:08'),
 (2, 'Froilan Urdaneta', 'furdaneta@insuban.cl', 'Usuario Sistema', NULL, NULL, 2, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04'),
 (3, 'Carlos Ruiz', 'cruiz@insuban.cl', 'Usuario Sistema', NULL, NULL, 3, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04'),
-(4, 'Rafael Morales', 'rmorales@insuban.cl', 'Usuario Sistema', NULL, NULL, 4, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04');
+(4, 'Rafael Morales', 'rmorales@insuban.cl', 'Usuario Sistema', NULL, NULL, 4, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04'),
+(5, 'Carla Tapia', NULL, NULL, '243791588', 23, NULL, 1, '2026-01-12 00:33:02', '2026-01-12 00:33:02');
 
 -- --------------------------------------------------------
 
@@ -472,8 +974,33 @@ CREATE TABLE `entregas_personal` (
 --
 
 INSERT INTO `entregas_personal` (`id`, `insumo_id`, `usuario_operario_id`, `receptor_externo`, `usuario_bodeguero_id`, `estado_id`, `observacion`, `referencia_ot_id`, `cantidad_entregada`, `cantidad_utilizada`, `fecha_entrega`, `fecha_aceptacion`, `fecha_uso`, `observacion_rechazo`) VALUES
-(1, 552, 1, NULL, 1, 2, 'Nicolas', NULL, 10.00, 8.00, '2026-01-07 01:36:20', '2026-01-09 13:15:30', '2026-01-09 13:15:35', NULL),
-(2, 552, 1, NULL, 1, 2, 'Material para OT #S/N', NULL, 100.00, 98.00, '2026-01-09 13:33:17', '2026-01-09 13:33:22', '2026-01-09 13:33:35', NULL);
+(1, 552, 1, NULL, 1, 2, 'Nicolas', NULL, 10.00, 9.00, '2026-01-07 01:36:20', '2026-01-09 13:15:30', '2026-01-11 20:18:10', NULL),
+(2, 552, 1, NULL, 1, 2, 'Material para OT #S/N', NULL, 100.00, 98.00, '2026-01-09 13:33:17', '2026-01-09 13:33:22', '2026-01-09 13:33:35', NULL),
+(3, 552, 1, NULL, 3, 3, 'Entrega operario', NULL, 5.00, 5.00, '2026-01-12 10:33:09', '2026-01-12 10:35:06', '2026-01-12 10:35:14', NULL),
+(4, 552, 1, NULL, 3, 2, 'Entrega operario', NULL, 10.00, 9.00, '2026-01-12 10:35:51', '2026-01-12 10:36:11', '2026-01-12 10:36:18', NULL),
+(5, 552, 1, NULL, 3, 2, 'Entrega operario', NULL, 170.00, 0.00, '2026-01-12 16:56:02', '2026-01-13 10:28:18', NULL, NULL),
+(6, 71, 1, NULL, 1, 1, 'Entrega operario', NULL, 10.00, 0.00, '2026-01-13 10:30:27', NULL, NULL, NULL),
+(7, 552, 1, NULL, 1, 1, 'Entrega operario', NULL, 100.00, 0.00, '2026-01-13 10:42:37', NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `estados_cotizacion`
+--
+
+CREATE TABLE `estados_cotizacion` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `estados_cotizacion`
+--
+
+INSERT INTO `estados_cotizacion` (`id`, `nombre`) VALUES
+(1, 'Pendiente'),
+(2, 'Aprobada'),
+(3, 'Rechazada');
 
 -- --------------------------------------------------------
 
@@ -642,7 +1169,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (68, '990000071991075', 'RODAMIENTO 62072ZC3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:19', '2025-12-30 16:34:19', NULL),
 (69, '990000071991076', 'RODAMIENTO 62122RSC3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:19', '2025-12-30 16:34:19', NULL),
 (70, '990000071991077', 'RODAMIENTO 6309-2RS-CO7-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:19', '2025-12-30 16:34:19', NULL),
-(71, '990000071991078', 'RODAMIENTO 6204-2RS2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:19', '2025-12-30 16:34:19', NULL),
+(71, '990000071991078', 'RODAMIENTO 6204-2RS2', '', NULL, 56.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:19', '2026-01-13 13:30:27', NULL),
 (72, '990000071991079', 'RODAMIENTO 6209-2R2-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (73, '990000071991080', 'RODAMIENTO 6206-2RS2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (74, '990000071991081', 'RODAMIENTO 6206-RS2-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
@@ -654,13 +1181,13 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (80, '990000071991087', 'RODAMIENTO 3205-B-2RS-TV-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (81, '990000071991088', 'RODAMIENTO 2206-TV-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (82, '990000071991107', 'RODAMIENTO 3206-B-2RS-TV-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
-(83, '990000071991090', 'RODAMIENTO 3206-B-2Z-TV-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
+(83, '990000071991090', 'RODAMIENTO 3206-B-2Z-TV-C3', '', NULL, 0.00, 0.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2026-01-12 11:54:46', NULL),
 (84, '990000071991091', 'RODAMIENTO 16009-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (85, '990000071991092', 'RODAMIENTO 51109', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (86, '990000071991093', 'RODAMIENTO 6308-2LFS', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (87, '990000071991094', 'RODAMIENTO 6009-2RS2-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (88, '990000071991095', 'RODAMIENTO 6007-2RS-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
-(89, '990000071991096', 'RODAMIENTO 607-2RSR-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
+(89, '990000071991096', 'RODAMIENTO 607-2RSR-C3', '', NULL, 24.00, 16.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2026-01-12 19:03:10', NULL),
 (90, '990000071991097', 'RODAMIENTO UCF205', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (91, '990000071991098', 'RODAMIENTO 6211-2RS2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (92, '990000071991099', 'RODAMIENTO 6212-2RS2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
@@ -686,7 +1213,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (112, '990000071991123', 'RETEN 45-65-8', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (113, '990000071991124', 'RETEN 40-72-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (114, '990000071991125', 'RETEN 44-60-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
-(115, '990000071991126', 'RETEN 45-62-10', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
+(115, '990000071991126', 'RETEN 45-62-10', '', NULL, 0.00, 2.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2026-01-12 16:47:36', NULL),
 (116, '990000071991127', 'RETEN 40-62-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (117, '990000071991128', 'RETEN 45-55-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (118, '990000071991129', 'RETEN 45-62-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
@@ -698,7 +1225,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (124, '990000071991135', 'RETEN 35-50-10', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (125, '990000071991136', 'RETEN 35-72-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (126, '990000071991137', 'RETEN 30-47-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
-(127, '990000071991138', 'RETEN 30-40-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
+(127, '990000071991138', 'RETEN 30-40-7', '', NULL, 0.00, 2.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2026-01-12 16:50:19', NULL),
 (128, '990000071991139', 'RETEN 25-37-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (129, '990000071991140', 'RETEN 25-40-8', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (130, '990000071991141', 'RETEN 25-36-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
@@ -731,7 +1258,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (157, '990000071991168', 'RETEN 18-35-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (158, '990000071991169', 'RETEN 30-55-8', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (159, '990000071991170', 'RETEN 24-47-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
-(160, '990000071991171', 'RETEN 25-35-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
+(160, '990000071991171', 'RETEN 25-35-7', '', NULL, 0.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2026-01-12 16:47:46', NULL),
 (161, '990000071991172', 'RETEN 35-55-10', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (162, '990000071991173', 'RETEN 15-25-5', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (163, '990000071991174', 'RETEN 24-38-8', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
@@ -773,7 +1300,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (199, '990000071991212', 'HUAIPE', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (200, '990000071991213', 'SPRAY ANTI-FLASH ROJO (ROYAL)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (201, '990000071991214', 'SPRAY DE ZINC BRILLANTE (WURT)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
-(202, '990000071991215', '(WALTEK) SPRAY PAINT BLANCO BRILLANTE', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
+(202, '990000071991215', '(WALTEK) SPRAY PAINT BLANCO BRILLANTE', '', NULL, 48.00, 24.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2026-01-13 13:29:45', NULL),
 (203, '990000071991216', '(WALTEK) SPRAY PAINT ROJO', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (204, '990000071991217', '(WALTEK) SPRAY PAINT GRIS MAQUINA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (205, '990000071991218', '(WALTEK) SPRAY PAINT AZUL CIELO', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
@@ -796,10 +1323,10 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (222, '990000071991235', '(HELA) RODILLO CHICO 50MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (223, '990000071991236', '(HELA) RODILLO MEDIANO 70MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (224, '990000071991237', '(HELA) ESPATULA 60MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
-(225, '990000071991238', 'ESPATULA 50MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
+(225, '990000071991238', 'ESPATULA 50MM', '', NULL, 6.00, 3.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2026-01-12 19:03:51', NULL),
 (226, '990000071991239', '(HELA) BROCHA CERDA 5/8X1', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (227, '990000071991240', '(HELA) BROCHA CERDA 6/8X2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
-(228, '990000071991241', '(HELA) BROCHA CERDA 5/8 X3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
+(228, '990000071991241', '(HELA) BROCHA CERDA 5/8 X3', '', NULL, 12.00, 10.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2026-01-13 12:29:16', NULL),
 (229, '990000071991242', '(HELA) BROCHA CERDA 5/8X5', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (230, '990000071991243', 'BROCHA 1 (ECOSA)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
 (231, '990000071991244', 'BROCHA 4( ECOSA )', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:20', '2025-12-30 16:34:20', NULL),
@@ -952,7 +1479,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (377, '990000071991400', 'CADENA DE ACOPLAMIENTO  PHC40-1 C/L', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (378, '990000071991401', 'CADENA DE ACOPLAMIENTO PHC40-1 O/L', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (379, '990000071991402', 'AISLANTE ELECTRICO ROJO PVC 19MMX 18', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
-(380, '990000071991403', 'DILUYENTE DUCO PXL 400 (1L) (DIDEVAL)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
+(380, '990000071991403', 'DILUYENTE DUCO PXL 400 (1L) (DIDEVAL)', '', NULL, 4.00, 12.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2026-01-12 19:04:30', NULL),
 (381, '990000071991404', 'BISAGRA 4X4 (SCANAVINI)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (382, '990000071991405', 'BISAGRA L38', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (383, '990000071991406', 'BISAGRA DE ACERO POLI 3\' x 3\' RUSTICA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
@@ -1039,7 +1566,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (464, '990000071991490', 'ABRAZADERA PARA RIEL DE 32MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (465, '990000071991491', 'ABRAZADERA PARA RIEL 3/4', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (466, '990000071991501', 'INTERRUPTOR', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
-(467, '990000071991502', 'CONTROLADOR CONFIGURABLE Fuzzy. 1 salida rele. 1 alarma. entradas:PT100/ TC. 48x48 mm', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
+(467, '990000071991502', 'CONTROLADOR CONFIGURABLE Fuzzy. 1 salida rele. 1 alarma. entradas:PT100/ TC. 48x48 mm', '', NULL, 2.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2026-01-12 19:42:29', NULL),
 (468, '990000071991503', 'GUARDAMOTOR 40.6 3AMP PB2ME10 TE14658', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (469, '990000071991505', 'RELE MOTO CIRCUITO GV2P16 TE92582', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (470, '990000071991506', 'GUARDAMOTOR MMS - 32H REG 4-6 AMCU', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
@@ -1117,14 +1644,14 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (542, '990000071991578', 'TOMA CORRIENTE TRIPLE 10 AMP', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (543, '990000071991579', 'ENCHUFE HEMBRA 10-16 AMP', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (544, '990000071991580', 'ENCHUFE MACHO 10-16 AMP', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
-(545, '990000071991581', 'TUNGSTENO 2% THORIO 2.4MMX 175MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
+(545, '990000071991581', 'Tungsteno 2% Thorio 3/32 2.4Mmx Tg332K', '', 10, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2026-01-13 12:02:50', NULL),
 (546, '990000071991582', 'VARILLAS DE TUNGSTENO 3.2MMX175MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (547, '990000071991583', 'VARILLAS DE TUNGSTENO 1.6MMX175MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (548, '990000071991584', 'SIERRAS PERFORADORAS 1.5/8(41MM)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (549, '990000071991585', '(IRWIN) BROCA PARA CONCRETO 3.0MMX75MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (550, '990000071991586', '(ALPEN) BROCA PARA CONCRETO 5.0MMX85MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
-(551, '990000071991587', '(ALPEN) BROCA PARA CONCRETO 4.0MMX75MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
-(552, '990000071991588', '(ALPEN) BROCA PARA CONCRETO 3.0MMX60MM', '', NULL, 0.00, 100.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2026-01-09 16:33:17', NULL),
+(551, '990000071991587', '(Alpen) Broca Para Concreto 4.0Mmx75Mm', '', 32, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2026-01-13 13:21:36', NULL),
+(552, '990000071991588', '(Alpen) Broca Para Concreto 3.0Mmx60Mm', '', 10, 0.00, 0.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2026-01-13 13:42:37', NULL),
 (553, '990000071991589', 'BROCA PARA CONCRETO 10mmx150MM(IRWIN)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (554, '990000071991590', 'BROCA PARA CONCRETO 12.0MMX150MM(ALPEN)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (555, '990000071991591', 'BROCA PARA CONCRETO 12.0MM(KRAFT)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
@@ -1269,11 +1796,11 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (693, '990000071991730', '(TRANSLINK) RODAMIENTO UFL002', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (694, '990000071991731', 'CADENA(SEDIS)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (695, '990000071991732', 'PREMIUM ROLLER CHAIN 29I12', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
-(696, '990000071991733', 'CADENA 40-1 (SEDIS)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
+(696, '990000071991733', 'CADENA 40-1 (SEDIS)', '', NULL, 0.00, 2.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2026-01-12 16:50:32', NULL),
 (697, '990000071991734', 'CHUMACERA UCF210(TIMKEN)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (698, '990000071991735', 'CHUMACERA TP-F207 (KML)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (699, '990000071991736', 'CONECTOR CURVO METALICO 21MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
-(700, '990000071991737', 'CHUMACERA F207 WHITE(TRANSLINK)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
+(700, '990000071991737', 'CHUMACERA F207 WHITE(TRANSLINK)', '', NULL, 0.00, 2.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2026-01-12 16:44:38', NULL),
 (701, '990000071991738', 'CHUMACERA UFF205(TIMKEN)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (702, '990000071991739', 'FY50TF', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (703, '990000071991740', 'RODAMIENTO UFL002(A', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
@@ -1340,7 +1867,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (764, '990000071991803', 'FIL-REG-LUB 1/2 MANOM PUR/NA AC40-04DE-B', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (765, '990000071991804', 'TEMPORIZ.24-240VAC/DC 8201', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (766, '990000071991805', 'KQG2H10-04S', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
-(767, '990000071991806', 'VAL.REG.FLUJO T/10', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
+(767, '990000071991806', 'VAL.REG.FLUJO T/10', '', NULL, 4.00, 2.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2026-01-12 19:04:47', NULL),
 (768, '990000071991807', 'PERNO D1=25L1=242X5CRNI18-10', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (769, '990000071991808', 'BLACKET TIPO T FRL 40 Y400T-A', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (770, '990000071991809', 'VALVULA 3/2 MANUAL VHS40-04B', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
@@ -1363,7 +1890,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (787, '990000071991826', 'FILTRO REGULADOR 3/4 AW40-06BDE-B', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (788, '990000071991827', 'VALVULA MANUAL 3/4 VHS30-02B', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (789, '990000071991828', 'SILEN.PLASTICO .COMPACTO 1/4 AN15-02', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
-(790, '990000071991829', 'VAL.5/3 S/S CERRADO 24VDC CJ VFS3300-5FZ-03', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
+(790, '990000071991829', 'VAL.5/3 S/S CERRADO 24VDC CJ VFS3300-5FZ-03', '', NULL, 2.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2026-01-12 19:11:03', NULL),
 (791, '990000071991830', 'REGULADOR DE FLUJO T/10MMX1/2 AS4201F-U04-10A', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (792, '990000071991831', 'SOPORTE AC30 TIPO T MODULAR Y300T-A', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (793, '990000071991832', 'VAL.5/3 S/S VFS2320-5DZ-02', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
@@ -1390,7 +1917,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (814, '990000071991853', 'PLIEGO DE LIJA 220', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (815, '990000071991854', 'SELLO MECANICO ESTILO 491/DIN', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (816, '990000071991855', 'CONECTOR CURVO 32MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
-(817, '990000071991856', 'RETEN 25-38-7', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
+(817, '990000071991856', 'RETEN 25-38-7', '', NULL, 0.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2026-01-12 16:50:06', NULL),
 (818, '990000071991857', 'TABLERO POLIESTER 400X300X260 SPLACA LEX54320', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (819, '990000071991858', 'CAJA GALVANIZADA 200X100', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (820, '990000071991859', 'RODAMIENTO 6011-2RS1/C3(SKF)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
@@ -1406,7 +1933,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (830, '990000071991870', 'SOPLETE DE GAS M-878', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (831, '990000071991871', 'FLOAT FLOTADOR SENSOR DE AGUA SWITCH YC-M15-2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (832, '990000071991872', 'FLOAT SMITCH 10M', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
-(833, '990000071991873', 'CONTROLADOR ELECTRICO (BESTFLOW)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
+(833, '990000071991873', 'Controlador Electrico (Bestflow)', '', 2, 2.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2026-01-12 19:41:48', NULL),
 (834, '990000071991874', 'GAS REGULATORS (KEBEN)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (835, '990000071991875', 'FECHADURA GIRO 323/55 9210505', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
 (836, '990000071991876', 'KIT MACANETA 6635/85', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:23', '2025-12-30 16:34:23', NULL),
@@ -1540,7 +2067,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (963, '990000071992005', '2505-003 SILENC METALICO 3/8IN 006198', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:24', '2025-12-30 16:34:24', NULL),
 (964, '990000071992006', 'AFG30-03BD-D SEP DE AGUA 3/8PURG N.A 300337', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:24', '2025-12-30 16:34:24', NULL),
 (965, '990000071992007', 'ASIENTO WC FUSCHER POLIPROPILENO TAUMM 21 000 10 10', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:24', '2025-12-30 16:34:24', NULL),
-(966, '990000071992008', 'CILINDRO NEUMATICO 100x1200 C96SDB100-1200C-XC65 CIL 2E 100x1200 A/M VA/TI INOX 302905', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:24', '2025-12-30 16:34:24', NULL),
+(966, '990000071992008', 'CILINDRO NEUMATICO 100x1200 C96SDB100-1200C-XC65 CIL 2E 100x1200 A/M VA/TI INOX 302905', '', NULL, 30.00, 8.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:24', '2026-01-12 19:11:19', NULL),
 (967, '990000071992009', 'REGULADORES DE FLUJO AS4201F-04-10SA VAL REG FLUJO T/10mm x 1/2P 027669', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:24', '2025-12-30 16:34:24', NULL),
 (968, '990000071992010', 'ENGOMADO DE RODILLO LISO 99x138x450MM ACRILO NITRILO RR566 70 N NGOMADO DE RODILLO TRIPER', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:24', '2025-12-30 16:34:24', NULL),
 (969, '990000071992011', 'ENGOMADO DE RODILLO LISO 90x118x450MM ACRILO NITRILO RR566 70 N NGOMADO DE RODILLO TRIPER', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:24', '2025-12-30 16:34:24', NULL),
@@ -1627,7 +2154,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1050, '990000071992092', 'REGULADOR DE ARGON', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1051, '990000071992093', 'Valvula Seguridad DN 80 304/PB 0-6 Bar ANSI-B16 Pos', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1052, '990000071992094', 'CABLE LIBRE DE HALOGENO RZ1-K MULTIPOLAR 3 X 4.0MM2 0002604412N', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Metros', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
-(1053, '990000071992095', '(HELA) RODILLO CORTAGOTA 23 CM/ 9\"', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
+(1053, '990000071992095', '(HELA) RODILLO CORTAGOTA 23 CM/ 9\"', '', NULL, 8.00, 7.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2026-01-12 19:28:33', NULL),
 (1054, '990000071992096', '(JK) BROCA COBALTO 4MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1055, '990000071992097', 'CAJA PARA BORNERA PA66 (ROHS)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1056, '990000071992098', 'NIPLE TUERCA CENTRAL INOX 304 NPT 1/2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
@@ -1691,10 +2218,10 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1114, '990000071992156', '(SYN FX) PURITY FG COMPRESSOR FLUID 100 20L', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Galon', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1115, '990000071992157', '(PETRO CANADA) TRAXON SAE 85W - 140 GL-5', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Galon', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1116, '990000071992158', '(PETRO CANADA) TRAXON TM/MC 80W - 90 20L', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Galon', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
-(1117, '990000071992159', 'SPRAY GALVANIZADO EN FRIO', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
-(1118, '990000071992160', 'TORNILLO VOLCA 6-20x1 PUNTA BROCA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
+(1117, '990000071992159', 'SPRAY GALVANIZADO EN FRIO', '', NULL, 19.00, 6.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2026-01-12 19:28:52', NULL),
+(1118, '990000071992160', 'TORNILLO VOLCA 6-20x1 PUNTA BROCA', '', NULL, 0.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2026-01-12 11:58:40', NULL),
 (1119, '990000071992161', 'FUSIBLE 10x38 1A 500V (VITEL)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
-(1120, '990000071992162', 'RODAMIENTO 685 2RS A', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
+(1120, '990000071992162', 'RODAMIENTO 685 2RS A', '', NULL, 22.00, 12.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2026-01-12 19:29:02', NULL),
 (1121, '990000071992163', '(SIPA) BLANCO - ESMALTE AL AGUA SEMIBRILLO 5 GALONES', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Galon', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1122, '990000071992164', '(CERESITA) BLANCO 4 GALONES - ESMALTE AL AGUA PIEZA Y FACHADA INTERIOR / EXTERIOR', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Galon', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1123, '990000071992165', 'TERMINAL ELECTRICO MACHO AISLADO 18-22AWG ROJO 8061146424', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
@@ -1772,8 +2299,8 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1194, '990000071992236', 'RETEN LABIAL CODIGO 6.365-052.0', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1195, '990000071992237', 'RETENES CODIGO 6.365-377.0', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1196, '990000071992238', 'INTERRUPTOR AUTOMATICO 6A 380/415V 15 KA SCHNEIDER A9F87206 MGA87206', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
-(1197, '990000071992239', '(HELA) BROCHA CERDA 5/8X4', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
-(1198, '990000071992240', '(HELA) BROCHA CERDA 5/8X2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
+(1197, '990000071992239', '(HELA) BROCHA CERDA 5/8X4', '', NULL, 9.00, 10.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-12 19:29:41', NULL),
+(1198, '990000071992240', '(HELA) BROCHA CERDA 5/8X2', '', NULL, 17.00, 10.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-12 19:29:23', NULL),
 (1199, '990000071992241', 'ROSCALATA BINDING 12X1 1/2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1200, '990000071992242', 'ROSCALATA BINDING 10X1 1/4', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1201, '990000071992243', 'TARUGO 6 MM C/TOPE 100 PCS', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
@@ -1796,7 +2323,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1218, '990000071992260', 'RUEDA NYLON PUR HORQ. FIJA INOX 080MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1219, '990000071992261', 'SENSOR FRENO METRADORA KEB 41.18 0102100-0081 008V DC P=6W', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1220, '990000071992262', 'SPEEDLUB SPEEDSOLV HF-80 (20L)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
-(1221, '990000071992263', 'MOTORREDUCTOR DE VELOCIDAD MARCA KEB 1,5Kw (2HP)-1400RPM-B5-380V EJE PASANTE DE 35MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
+(1221, '990000071992263', 'Motorreductor De Velocidad Marca Keb 1,5Kw (2Hp)-1400Rpm-B5-380V Eje Pasante De 35Mm', '', 34, 0.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-12 16:45:42', NULL),
 (1222, '990000071992264', 'TABLERO POLIESTER 300X250X140 S/PLACA S/PUERTA INT. IK08 IP6', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1223, '990000071992265', 'TERMINAL ELECTRICO MACHO ROJO TOTALMENTE AISLADO NYLON 18-22AWG 8061146424', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1224, '990000071992266', 'CINTA AISLANTE ELECTRICA ROJA 3M', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
@@ -1855,9 +2382,9 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1277, '990000071992319', 'CALEFONT RINNAI ECO 30/36 GL', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1278, '990000071992320', 'RUEDAS PARA PUERTA DUCHA BANOS', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1279, '990000071992321', 'BROCA DE 4 PUNTAS 6X160MM(HEMIC)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
-(1280, '990000071992322', 'EXTRACTOR AX CASALS HJBM PLUS 56 T4 0.75KW', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
-(1281, '990000071992323', 'SFC 400 III 2.2A (PARA HJBMPLUS 56 T4)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
-(1282, '990000071992324', 'RODAMIENTO 6004-2RSH (SKF)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
+(1280, '990000071992322', 'EXTRACTOR AX CASALS HJBM PLUS 56 T4 0.75KW', '', NULL, 2.00, 2.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-12 19:29:32', NULL),
+(1281, '990000071992323', 'SFC 400 III 2.2A (PARA HJBMPLUS 56 T4)', '', NULL, 2.00, 2.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-12 19:30:06', NULL),
+(1282, '990000071992324', 'RODAMIENTO 6004-2RSH (SKF)', '', NULL, 0.00, 0.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-12 00:26:32', NULL),
 (1283, '990000071992325', 'ELECTROVALVULA SOLENOIDE DE 1/2\" 220v/50hz', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1284, '990000071992326', 'Arandela D1=42,5 D2=6 L1=6 codigo 105892254', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1285, '990000071992327', '(WURTH) CORONA HSS ROMPERITUTAS COMPL D=38', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
@@ -1869,8 +2396,8 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1291, '990000071992333', 'RESORTES ACERO INOXIDABLE 2.5', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1292, '990000071992334', 'ELECTROVALVULA SOLENOIDE DE 1/2\" DE 24 VDC BSP', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1293, '990000071992335', 'LLAVE DE TABLERO CRUZ', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
-(1294, '990000071992336', 'BUJE DE AGITADOR (FABRICADO)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
-(1295, '990000071992337', 'MOTOR TRIFASICO volt 380 5.5 kw rpm 960 frecuencia 50HZ\"', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
+(1294, '990000071992336', 'Buje De Agitador (Fabricado)', 'BUJE DE AGITADOR - Fabricación buje con cabeza en POLIETILENO de ultra alta densidad (UHMW). Este material es sanitario y tiene mayor estabilidad dimensional) Diámetro exterior cabeza 60 mm. Diámetro del cuerpo 43.5 mm. Interior 30 mm por un largo de 55 mm.', 1, 0.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-12 16:40:07', NULL),
+(1295, '990000071992337', 'Motor Trifasico Volt 380 5.5 Kw Rpm 960 Frecuencia 50Hz\"', '\"MOTOR TRIFASICO\r\nvolt 380\r\n5,5 kw \r\nrpm 960\r\nfrecuencia 50HZ\"', 34, 0.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-12 16:41:25', NULL),
 (1296, '990000071992338', 'FOTOSENSOR, NPN, DISTANCIA 10 CM DC10-30V, FRECUENCIA 80 HZ', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1297, '990000071992339', 'INTERRUPTOR AUTOMATICO IC60H 4P 40A C A9F87440 MGA87440', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1298, '990000071992340', 'INTERRUPTOR AUT 3P 25A 6KA EASY9 EZ9F56325', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
@@ -1932,8 +2459,8 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1354, '990000071992396', 'REMACHE 4.8X12', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1355, '990000071992397', 'REMACHE 4X12', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1356, '990000071992398', 'RODAMIENTO 6306-2RSR-C07-C3', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1357, '990000071992399', 'Terminales neumaticos de 3/8 x 10 (conector recto nique)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1358, '990000071992400', 'Electro-valvulas SMC modelo VT 317-5DZ-02 (valvula solenoide) de 3/8” normalmente cerrada bobina 24 VDC', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
+(1357, '990000071992399', 'Terminales neumaticos de 3/8 x 10 (conector recto nique)', '', NULL, 16.00, 8.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:30:43', NULL),
+(1358, '990000071992400', 'Electro-valvulas SMC modelo VT 317-5DZ-02 (valvula solenoide) de 3/8” normalmente cerrada bobina 24 VDC', '', NULL, 2.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:30:51', NULL),
 (1359, '990000071992401', 'CALEFACTOR HORNO ELECTRICO VHC-1A/4A', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1360, '990000071992402', 'CAM LOCK TYPE A INOX 3/4', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1361, '990000071992403', 'CAM LOCK TYPE C INOX 3/4', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
@@ -1994,10 +2521,10 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1416, '990000071992459', 'Redondo Azul 16-14 Awg(1.5mm²-2.5mm²) Diámetro 4 Mm Código vitel SKU 0730542024', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1417, '990000071992460', 'Cable Libre De Halógeno RZ1-K Multipolar 5 x 2.5mm²', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Metros', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1418, '990000071992461', 'HUINCHA DE MEDIR 8 MT TRUPER 14579', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1419, '990000071992462', '(HELA) RODILLO CORTAGOTA 18/7\"', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
+(1419, '990000071992462', '(HELA) RODILLO CORTAGOTA 18/7\"', '', NULL, 5.00, 7.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:30:59', NULL),
 (1420, '990000071992463', 'CINTA MASKING TAPE 36 MM X 40 MTS TESA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1421, '990000071992464', 'ESMALTE SPRAY BLANCO OPACO WALTEK', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1422, '990000071992465', 'ESPATULA HELA 100 MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
+(1421, '990000071992464', 'ESMALTE SPRAY BLANCO OPACO WALTEK', '', NULL, 53.00, 12.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:31:17', NULL),
+(1422, '990000071992465', 'ESPATULA HELA 100 MM', '', NULL, 3.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:31:07', NULL),
 (1423, '990000071992466', 'TELEMETRO LASER GLM 40 TELCU / BOSCH', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1424, '990000071992467', 'MT. MANGUERA NIVEL M10 INDUSTRIAL', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1425, '990000071992468', 'Reten doble labio de biton 40x55x8mm', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
@@ -2006,7 +2533,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1428, '990000071992471', 'PIÑON 16 DIENTES 06 B', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1429, '990000071992472', 'PIÑON 15 DIENTES 06 B', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1430, '990000071992473', 'MONOMANDO LAVAPLATO CUELLO FLEXIBLE BLACK 6NV2000-00 NIBSA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1431, '990000071992474', 'Motor electrico ABB 1,5 Kw (2 HP) - 2800 RPM - B3 - 380 V frame 90 EJE de 24 mm', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
+(1431, '990000071992474', 'Motor Electrico Abb 1,5 Kw (2 Hp) - 2800 Rpm - B3 - 380 V Frame 90 Eje De 24 Mm', '', 34, 1.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:31:26', NULL),
 (1432, '990000071992475', 'PULSADOR HONGO ROJO 22MM 1NC XB4BT842 TE45048', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1433, '990000071992476', 'SELECTOR MANETA LARGA 3 POSICIONES METAL NEGRO 22MM 2NA XB4BJ33 TE46233', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1434, '990000071992477', '020601 VSH4310A-03 VAL.5/3 MAN.3/8in. PAL/AIRE', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
@@ -2027,28 +2554,28 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1449, '990000071992492', 'HILO X METRO INOX 16-2MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1450, '990000071992493', 'TUERCA HEXAGONAL INOXIDABLE 3/8', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1451, '990000071992494', 'DCI-500 GAL. (3.785 L) COMP. B, CATALIZADOR EXTERIOR (DCI-300 / DPI-500) IU500N0000N35', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1452, '990000071992495', '805-67/67A CORREA RUEDA ESTIRADERA TOPOS (cerdo/vaca/cordero)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1453, '990000071992496', '805-82 EJE CLUSTER', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1454, '990000071992497', '805-82-1 ARANDELA PARA EJE CLUSTER', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1455, '990000071992498', '805-93 MUELLE FLOJO', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1456, '990000071992499', '805-60 RUEDA-NAVE, COMPLETA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1457, '990000071992500', '805-110 FRENO MAGNETICO 24V', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1458, '990000071992501', '805-94 TRANSMISSOR IMPULSOS ROJO', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1459, '990000071992502', '805-95 TRANSMISSOR IMPULSOS VERDE', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1460, '990000071992503', '805-90A GOMA PALANCA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1461, '990000071992504', '805-111 FRENO MECANICO PARA DIME 804-805', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1462, '990000071992505', '805-29 SEPARADOR CON RETEN', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1463, '990000071992506', '805-62 TAPA RUEDA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1464, '990000071992507', '805-160 PLC', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1465, '990000071992508', '805-162N UNIDAD DE ENTRADA/SALIDA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1466, '990000071992509', '805-163 FUENTE DE ALIMENTACION', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1467, '990000071992510', '805-164 MAGNETOTERMICO', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1468, '990000071992511', '805-165 VENTILADOR', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1469, '990000071992512', '805-166 PULSADOR', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL);
+(1452, '990000071992495', '805-67/67A CORREA RUEDA ESTIRADERA TOPOS (cerdo/vaca/cordero)', '', NULL, 4.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:31:45', NULL),
+(1453, '990000071992496', '805-82 EJE CLUSTER', '', NULL, 6.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:31:55', NULL),
+(1454, '990000071992497', '805-82-1 ARANDELA PARA EJE CLUSTER', '', NULL, 6.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:32:05', NULL),
+(1455, '990000071992498', '805-93 MUELLE FLOJO', '', NULL, 6.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:32:13', NULL),
+(1456, '990000071992499', '805-60 RUEDA-NAVE, COMPLETA', '', NULL, 3.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:32:21', NULL),
+(1457, '990000071992500', '805-110 FRENO MAGNETICO 24V', '', NULL, 6.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:33:33', NULL),
+(1458, '990000071992501', '805-94 TRANSMISSOR IMPULSOS ROJO', '', NULL, 6.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:33:42', NULL),
+(1459, '990000071992502', '805-95 TRANSMISSOR IMPULSOS VERDE', '', NULL, 6.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:33:51', NULL),
+(1460, '990000071992503', '805-90A GOMA PALANCA', '', NULL, 2.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:34:01', NULL),
+(1461, '990000071992504', '805-111 FRENO MECANICO PARA DIME 804-805', '', NULL, 6.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:34:10', NULL),
+(1462, '990000071992505', '805-29 SEPARADOR CON RETEN', '', NULL, 3.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:34:25', NULL),
+(1463, '990000071992506', '805-62 TAPA RUEDA', '', NULL, 2.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:34:38', NULL),
+(1464, '990000071992507', '805-160 PLC', '', NULL, 1.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:34:45', NULL),
+(1465, '990000071992508', '805-162N UNIDAD DE ENTRADA/SALIDA', '', NULL, 1.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:34:54', NULL),
+(1466, '990000071992509', '805-163 FUENTE DE ALIMENTACION', '', NULL, 1.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:35:00', NULL),
+(1467, '990000071992510', '805-164 MAGNETOTERMICO', '', NULL, 1.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:35:12', NULL);
 INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_id`, `stock_actual`, `stock_minimo`, `stock_critico`, `precio_costo`, `moneda`, `unidad_medida`, `imagen_url`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1470, '990000071992513', '805-81 MECANISMO DE MEDICION', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1471, '990000071992514', '805-93A MUELLE DURO', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1472, '990000071992515', '805-148 MOTOR ELECTRICO 0.18KW', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
+(1468, '990000071992511', '805-165 VENTILADOR', '', NULL, 1.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:35:23', NULL),
+(1469, '990000071992512', '805-166 PULSADOR', '', NULL, 3.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:35:38', NULL),
+(1470, '990000071992513', '805-81 MECANISMO DE MEDICION', '', NULL, 2.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:35:48', NULL),
+(1471, '990000071992514', '805-93A MUELLE DURO', '', NULL, 3.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:35:59', NULL),
+(1472, '990000071992515', '805-148 MOTOR ELECTRICO 0.18KW', '', NULL, 2.00, 4.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-13 13:29:55', NULL),
 (1473, '990000071992516', 'Tubo conduit métalico flexible c/pvc 32mm 2490125', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1474, '990000071992517', 'Conector tubo flexible curvo 90° 25mm LLTN25', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1475, '990000071992518', 'Cinta de teflon 81.848121005', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
@@ -2115,7 +2642,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1536, '990000071992579', 'Silicona Ultra BLANCO (LANCO) 305 ml', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
 (1537, '990000071992580', 'REFRIGERATION TUBO DEHYDRATED JT TUBE 3/16 O.D X 0.6MM X50FT COIL', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
 (1538, '990000071992581', 'RASMI ELECTRONICS SINGLE PHASE RFI FILTER TYPE RF 1007-BER', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
-(1539, '990000071992582', 'MEDIDOR DE AGUA SJ-SDC- DN20, L 130 Q3 =4 (COSMOPLAS)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
+(1539, '990000071992582', 'MEDIDOR DE AGUA SJ-SDC- DN20, L 130 Q3 =4 (COSMOPLAS)', '', NULL, 1.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2026-01-12 19:42:06', NULL),
 (1540, '990000071992583', 'VALVULA DE DESCARGA ANTIVANDALISMO - CHROME (DOCOL)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
 (1541, '990000071992584', 'VALVULA PARA CHUVEIRO AP - PRESSMATIC ANTIVANDALISMO CHROME', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
 (1542, '990000071992585', 'Tamiz 80.121.4082.84 (Multivac)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
@@ -2130,7 +2657,18 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1551, '990000071992594', 'Spare part kit screw set for flow sensor 8012', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
 (1552, '990000071992595', 'MANGUERA INDUSTRIAL 6MM 124022 DURA PVC CLEAR HOSE 6MM X 8.4MM X 50M', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
 (1553, '990000071992596', 'RODAMIENTO 608 2RSR2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
-(1554, '990000071992597', 'RODAMIENTO 51110', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL);
+(1554, '990000071992597', 'RODAMIENTO 51110', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:28', '2025-12-30 16:34:28', NULL),
+(1555, '990000071992670', 'Bomba Centrifuga - Sello  Para Bomba Centrifuga Reggio  Sn 40 1608', '', 30, 0.00, 2.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 17:05:19', '2026-01-12 17:07:36', NULL),
+(1556, '990000071992671', 'Safety Relay Pnoz Pilz S4 Numero Pnoz S.4', '', 2, 0.00, 2.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 17:05:35', '2026-01-12 17:07:45', NULL),
+(1557, '990000071992672', 'Relay Sockert 40.52 Marca Finder Numero 95.55', '', 2, 0.00, 2.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 17:05:48', '2026-01-12 17:07:53', NULL),
+(1558, '990000071992673', 'Linkrelay 2X Change-Over Contact  Marca Finder Numero 42.52', '', 2, 0.00, 2.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 17:06:04', '2026-01-12 17:08:00', NULL),
+(1559, '990000071992674', 'Safety Switch Plastic Numero Bns3302Zst-2187 Marca Schmersal', '', 2, 0.00, 1.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 17:06:19', '2026-01-12 17:08:09', NULL),
+(1560, '990000071992675', 'Electro-Valvula 3/4 De Cetrifuga Con Bobina De  24 Voltios/ Ip 65 Para Agua', '', 2, 0.00, 2.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 17:06:30', '2026-01-12 17:08:15', NULL),
+(1561, '990000071992676', 'Logo 12/24Rce Logic Module, Disp Ps/I/= 12/24Vd', '', 2, 0.00, 1.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 17:06:43', '2026-01-12 17:08:22', NULL),
+(1562, '990000071992677', 'Modulo 4Di 12-24Vdc/4Do Rele', '', 2, 0.00, 1.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 17:06:55', '2026-01-12 17:08:25', NULL),
+(1565, '990000071992600', 'Termometro Bimetalico 0 120 C, 60X 70 X 6,35Mm  Bulbo Inox, Hilo 1/4 Npt', '', 2, 2.00, 5.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 19:44:27', '2026-01-12 19:44:42', NULL),
+(1569, '990000071992601', 'Termpozo Vaina Hilo Hi-1/4Npt Hembra 1/2 Npt Macho, Largo:  60Mm, Inoxidable', '', 10, 2.00, 5.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 19:48:10', '2026-01-12 19:50:33', NULL),
+(1570, '990000071992602', 'Cable Para Sensores Pt100 3 X 0,35Mm2 Funda Fibra  Vidrio Y Malla Metalica Temp.max. -50 + 260 C', '', 2, 30.00, 5.00, 2.00, 0.00, 'CLP', 'MTS', NULL, '2026-01-12 19:48:32', '2026-01-12 19:51:25', NULL);
 
 -- --------------------------------------------------------
 
@@ -2145,6 +2683,67 @@ CREATE TABLE `insumo_stock_ubicacion` (
   `cantidad` decimal(10,2) NOT NULL DEFAULT 0.00,
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `insumo_stock_ubicacion`
+--
+
+INSERT INTO `insumo_stock_ubicacion` (`id`, `insumo_id`, `ubicacion_id`, `cantidad`, `updated_at`) VALUES
+(13, 71, 1, 0.00, '2026-01-13 13:29:51'),
+(14, 89, 1, 24.00, '2026-01-12 19:03:10'),
+(15, 202, 1, 0.00, '2026-01-13 13:29:45'),
+(16, 225, 1, 6.00, '2026-01-12 19:03:51'),
+(17, 228, 1, 4.00, '2026-01-12 19:04:10'),
+(18, 380, 1, 4.00, '2026-01-12 19:04:30'),
+(19, 767, 1, 4.00, '2026-01-12 19:04:47'),
+(20, 790, 1, 2.00, '2026-01-12 19:11:03'),
+(21, 966, 1, 30.00, '2026-01-12 19:11:19'),
+(22, 1053, 1, 8.00, '2026-01-12 19:28:33'),
+(23, 1117, 1, 19.00, '2026-01-12 19:28:52'),
+(25, 1120, 1, 22.00, '2026-01-12 19:29:02'),
+(26, 1197, 1, 9.00, '2026-01-12 19:29:41'),
+(27, 1198, 1, 17.00, '2026-01-12 19:29:23'),
+(28, 1280, 1, 2.00, '2026-01-12 19:29:32'),
+(30, 1281, 1, 2.00, '2026-01-12 19:30:06'),
+(31, 1357, 1, 16.00, '2026-01-12 19:30:43'),
+(32, 1358, 1, 2.00, '2026-01-12 19:30:51'),
+(33, 1419, 1, 5.00, '2026-01-12 19:30:59'),
+(34, 1422, 1, 3.00, '2026-01-12 19:31:07'),
+(35, 1421, 1, 53.00, '2026-01-12 19:31:17'),
+(36, 1431, 1, 1.00, '2026-01-12 19:31:26'),
+(37, 1452, 1, 4.00, '2026-01-12 19:31:45'),
+(38, 1453, 1, 6.00, '2026-01-12 19:31:55'),
+(39, 1454, 1, 6.00, '2026-01-12 19:32:05'),
+(40, 1455, 1, 6.00, '2026-01-12 19:32:13'),
+(41, 1456, 1, 3.00, '2026-01-12 19:32:21'),
+(42, 1457, 1, 6.00, '2026-01-12 19:33:33'),
+(43, 1458, 1, 6.00, '2026-01-12 19:33:42'),
+(44, 1459, 1, 6.00, '2026-01-12 19:33:51'),
+(45, 1460, 1, 2.00, '2026-01-12 19:34:01'),
+(46, 1461, 1, 6.00, '2026-01-12 19:34:10'),
+(47, 1462, 1, 3.00, '2026-01-12 19:34:25'),
+(48, 1463, 1, 2.00, '2026-01-12 19:34:38'),
+(49, 1464, 1, 1.00, '2026-01-12 19:34:45'),
+(50, 1465, 1, 1.00, '2026-01-12 19:34:54'),
+(51, 1466, 1, 1.00, '2026-01-12 19:35:00'),
+(52, 1467, 1, 1.00, '2026-01-12 19:35:12'),
+(53, 1468, 1, 1.00, '2026-01-12 19:35:23'),
+(54, 1469, 1, 3.00, '2026-01-12 19:35:38'),
+(55, 1470, 1, 2.00, '2026-01-12 19:35:48'),
+(56, 1471, 1, 3.00, '2026-01-12 19:35:59'),
+(57, 1472, 1, 0.00, '2026-01-13 13:29:55'),
+(58, 833, 1, 2.00, '2026-01-12 19:41:48'),
+(59, 1539, 1, 1.00, '2026-01-12 19:42:06'),
+(60, 467, 1, 2.00, '2026-01-12 19:42:29'),
+(61, 1565, 1, 2.00, '2026-01-12 19:44:42'),
+(62, 1569, 1, 2.00, '2026-01-12 19:50:33'),
+(63, 1570, 1, 30.00, '2026-01-12 19:51:25'),
+(65, 228, 51, 8.00, '2026-01-13 12:29:16'),
+(67, 71, 11, 22.00, '2026-01-13 12:33:04'),
+(69, 202, 13, 48.00, '2026-01-13 13:29:45'),
+(70, 71, 13, 34.00, '2026-01-13 13:30:27'),
+(71, 1472, 41, 2.00, '2026-01-13 13:29:55'),
+(73, 552, 19, 0.00, '2026-01-13 13:42:37');
 
 --
 -- Disparadores `insumo_stock_ubicacion`
@@ -2193,6 +2792,66 @@ CREATE TABLE `movimientos_inventario` (
   `fecha` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Volcado de datos para la tabla `movimientos_inventario`
+--
+
+INSERT INTO `movimientos_inventario` (`id`, `insumo_id`, `tipo_movimiento_id`, `cantidad`, `ubicacion_id`, `usuario_id`, `empleado_id`, `referencia_id`, `observacion`, `fecha`) VALUES
+(37, 71, 3, 22.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:02:47'),
+(38, 89, 3, 24.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:03:10'),
+(39, 202, 3, 48.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:03:35'),
+(40, 225, 3, 6.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:03:51'),
+(41, 228, 3, 4.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:04:10'),
+(42, 380, 3, 4.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:04:30'),
+(43, 767, 3, 4.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:04:47'),
+(44, 790, 3, 2.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:11:02'),
+(45, 966, 3, 30.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:11:19'),
+(46, 1053, 3, 8.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:28:33'),
+(47, 1117, 3, 6.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:28:44'),
+(48, 1117, 3, 13.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:28:52'),
+(49, 1120, 3, 22.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:29:02'),
+(50, 1197, 3, 6.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:29:12'),
+(51, 1198, 3, 17.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:29:23'),
+(52, 1280, 3, 2.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:29:32'),
+(53, 1197, 3, 3.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:29:41'),
+(54, 1281, 3, 2.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:30:06'),
+(55, 1357, 3, 16.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:30:43'),
+(56, 1358, 3, 2.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:30:51'),
+(57, 1419, 3, 5.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:30:59'),
+(58, 1422, 3, 3.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:31:07'),
+(59, 1421, 3, 53.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:31:17'),
+(60, 1431, 3, 1.00, 1, 3, NULL, NULL, 'Ajuste positivo manual', '2026-01-12 16:31:26'),
+(61, 1452, 3, 4.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:31:45'),
+(62, 1453, 3, 6.00, 1, 3, NULL, NULL, 'Ajuste positivo manual', '2026-01-12 16:31:55'),
+(63, 1454, 3, 6.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:32:05'),
+(64, 1455, 3, 6.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:32:13'),
+(65, 1456, 3, 3.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:32:21'),
+(66, 1457, 3, 6.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:33:33'),
+(67, 1458, 3, 6.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:33:42'),
+(68, 1459, 3, 6.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:33:51'),
+(69, 1460, 3, 2.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:34:01'),
+(70, 1461, 3, 6.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:34:10'),
+(71, 1462, 3, 3.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:34:25'),
+(72, 1463, 3, 2.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:34:38'),
+(73, 1464, 3, 1.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:34:45'),
+(74, 1465, 3, 1.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:34:54'),
+(75, 1466, 3, 1.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:35:00'),
+(76, 1467, 3, 1.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:35:12'),
+(77, 1468, 3, 1.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:35:23'),
+(78, 1469, 3, 3.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:35:38'),
+(79, 1470, 3, 2.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:35:48'),
+(80, 1471, 3, 3.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:35:59'),
+(81, 1472, 3, 2.00, 1, 3, NULL, NULL, 'TRASPASO INVENTORIA', '2026-01-12 16:36:07'),
+(82, 833, 3, 2.00, 1, 5, NULL, NULL, 'Ajuste', '2026-01-12 16:41:48'),
+(83, 1539, 3, 1.00, 1, 5, NULL, NULL, 'Ajuste', '2026-01-12 16:42:06'),
+(84, 467, 3, 2.00, 1, 5, NULL, NULL, 'Ajuste', '2026-01-12 16:42:29'),
+(85, 1565, 3, 2.00, 1, 5, NULL, NULL, 'Ajuste', '2026-01-12 16:44:42'),
+(86, 1569, 3, 2.00, 1, 5, NULL, NULL, 'Ajuste', '2026-01-12 16:50:33'),
+(87, 1570, 3, 30.00, 1, 5, NULL, NULL, 'Ajuste', '2026-01-12 16:51:25'),
+(89, 71, 2, 10.00, 13, 1, NULL, NULL, 'Entrega a: Nicolas Salas (App). Obs: Entrega operario. Detalle: Ubi #13 (-10)', '2026-01-13 10:30:27'),
+(90, 552, 3, 100.00, 19, 1, NULL, NULL, 'Reubicación (Edición)', '2026-01-13 10:42:26'),
+(91, 552, 2, 100.00, 19, 1, NULL, NULL, 'Entrega a: Nicolas Salas (App). Obs: Entrega operario. Detalle: Ubi #19 (-100)', '2026-01-13 10:42:37');
+
 -- --------------------------------------------------------
 
 --
@@ -2218,6 +2877,13 @@ CREATE TABLE `ordenes_compra` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `ordenes_compra`
+--
+
+INSERT INTO `ordenes_compra` (`id`, `proveedor_id`, `usuario_creador_id`, `fecha_creacion`, `estado_id`, `moneda`, `tipo_cambio`, `numero_cotizacion`, `monto_neto`, `impuesto_porcentaje`, `impuesto`, `monto_total`, `url_archivo`, `observaciones`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(11, 9, 3, '2026-01-13 09:03:55', 2, 'CLP', 1.00, '', 126891.00, 19.00, 24109.29, 151000.29, NULL, NULL, '2026-01-13 12:03:55', '2026-01-13 12:03:55', NULL);
 
 -- --------------------------------------------------------
 
@@ -2302,7 +2968,11 @@ INSERT INTO `permisos` (`id`, `codigo`, `modulo`, `descripcion`) VALUES
 (50, 'activos_exportar', 'Activos', 'Exportar Activos a Excel'),
 (51, 'bodega_ver', 'Bodega', 'Acceso al módulo de Bodega'),
 (52, 'bodega_despachar', 'Bodega', 'Registrar entregas y salidas de material'),
-(53, 'bodega_organizar', 'Bodega', 'Gestionar ubicación y entradas de material');
+(53, 'bodega_organizar', 'Bodega', 'Gestionar ubicación y entradas de material'),
+(54, 'cot_ver', 'Cotizaciones', 'Ver historial de cotizaciones'),
+(55, 'cot_crear', 'Cotizaciones', 'Crear nuevas cotizaciones'),
+(56, 'cot_aprobar', 'Cotizaciones', 'Cambiar estado a Aprobada'),
+(57, 'cot_anular', 'Cotizaciones', 'Rechazar cotizaciones');
 
 -- --------------------------------------------------------
 
@@ -2752,7 +3422,18 @@ CREATE TABLE `solicitudes_ot` (
 --
 
 INSERT INTO `solicitudes_ot` (`id`, `usuario_solicitante_id`, `activo_id`, `fecha_solicitud`, `fecha_requerida`, `estado_id`, `descripcion_trabajo`, `prioridad`, `origen_tipo`, `area_negocio`, `centro_costo_ot`, `solicitante_externo`, `created_at`, `updated_at`) VALUES
-(16, 1, 1, '2026-01-09 13:42:33', NULL, 5, 'MANTENCION PROGRAMADA (EDITADO): Mant prev', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-09 16:42:33', '2026-01-09 17:19:17');
+(18, 5, 1, '2026-01-12 09:05:15', NULL, 6, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 12:05:15', '2026-01-12 12:05:20'),
+(19, 5, 3, '2026-01-12 09:07:33', NULL, 5, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 12:07:33', '2026-01-12 12:08:52'),
+(20, 5, 1, '2026-01-12 09:14:26', NULL, 1, 'Mantenimiento preventivo OT 1671', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 12:14:26', '2026-01-12 19:57:46'),
+(21, 5, 2, '2026-01-12 11:19:31', NULL, 1, 'Mantenimiento preventivo OT 1673', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 14:19:31', '2026-01-12 19:57:26'),
+(22, 5, 4, '2026-01-12 11:25:25', NULL, 1, 'MANTENCION PROGRAMADA (EDITADO): Mantenimiento preventivo OT 1703', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 14:25:25', '2026-01-12 17:11:35'),
+(23, 5, 28, '2026-01-12 15:30:45', NULL, 1, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:30:45', '2026-01-12 18:30:45'),
+(24, 5, 29, '2026-01-12 15:31:56', NULL, 6, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:31:56', '2026-01-13 14:07:45'),
+(25, 5, 30, '2026-01-12 15:33:27', NULL, 1, 'MANTENCION PROGRAMADA: Mantenimiento preventivo ', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:33:27', '2026-01-12 18:33:27'),
+(26, 5, 31, '2026-01-12 15:34:12', NULL, 1, 'Mantenimiento preventivo', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 18:34:12', '2026-01-12 19:56:49'),
+(27, 5, 34, '2026-01-12 15:40:11', NULL, 6, 'MANTENCION PROGRAMADA: Auditoría Perú', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:40:11', '2026-01-12 20:03:18'),
+(28, 5, NULL, '2026-01-12 16:53:37', NULL, 1, 'Cambio de contador de metabisulfito OT 1710', 'MEDIA', 'Servicio', NULL, '6130', 'Froilan Urdaneta ', '2026-01-12 19:53:37', '2026-01-12 19:53:37'),
+(29, 5, 34, '2026-01-12 17:03:50', NULL, 1, 'Auditoría Perú', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 20:03:50', '2026-01-12 20:08:56');
 
 -- --------------------------------------------------------
 
@@ -2929,8 +3610,9 @@ CREATE TABLE `usuarios` (
 INSERT INTO `usuarios` (`id`, `nombre`, `apellido`, `username`, `password_hash`, `email`, `telefono`, `rol_id`, `activo`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, 'Nicolas', 'Salas', 'nsalas', '$2a$12$NLkp39h0OD0des7c12uhleid1Yts5xA9A99FtWel23h1vAOOf7LRa', 'nsalas@insuban.cl', NULL, 1, 1, '2025-12-29 18:59:17', '2026-01-07 03:11:23', NULL),
 (2, 'Froilan', 'Urdaneta', 'furdaneta', '$2a$12$NLkp39h0OD0des7c12uhleid1Yts5xA9A99FtWel23h1vAOOf7LRa', 'furdaneta@insuban.cl', NULL, 3, 1, '2025-12-29 18:59:17', '2026-01-07 03:11:42', NULL),
-(3, 'Carlos', 'Ruiz', 'cruiz', '$2a$12$NLkp39h0OD0des7c12uhleid1Yts5xA9A99FtWel23h1vAOOf7LRa', 'cruiz@insuban.cl', NULL, 5, 1, '2025-12-29 18:59:17', '2026-01-07 03:11:54', NULL),
-(4, 'Rafael', 'Morales', 'rmorales', '$2a$12$NLkp39h0OD0des7c12uhleid1Yts5xA9A99FtWel23h1vAOOf7LRa', 'rmorales@insuban.cl', NULL, 2, 1, '2025-12-29 18:59:17', '2026-01-07 03:11:49', NULL);
+(3, 'Carlos', 'Ruiz', 'cruiz', '$2a$12$NLkp39h0OD0des7c12uhleid1Yts5xA9A99FtWel23h1vAOOf7LRa', 'cruiz@insuban.cl', NULL, 5, 1, '2025-12-29 18:59:17', '2026-01-12 11:47:11', NULL),
+(4, 'Rafael', 'Morales', 'rmorales', '$2a$12$NLkp39h0OD0des7c12uhleid1Yts5xA9A99FtWel23h1vAOOf7LRa', 'rmorales@insuban.cl', NULL, 2, 1, '2025-12-29 18:59:17', '2026-01-07 03:11:49', NULL),
+(5, 'Carla', 'Tapia', 'ctapia', '$2y$10$WIVqXIUaSOseyegN9H446enRhqPHJZPc8sUSdES9ImZy2eYVaT.Ei', 'ctapia@insuban.cl', '', 1, 1, '2026-01-12 00:32:34', '2026-01-12 16:09:14', NULL);
 
 -- --------------------------------------------------------
 
@@ -2991,47 +3673,97 @@ INSERT INTO `usuario_permisos` (`id`, `usuario_id`, `permiso_id`) VALUES
 (252, 1, 51),
 (254, 1, 52),
 (253, 1, 53),
-(183, 2, 23),
-(184, 2, 24),
-(185, 2, 25),
-(186, 2, 26),
-(187, 2, 27),
-(188, 2, 28),
-(189, 2, 29),
-(190, 2, 32),
-(191, 2, 34),
-(192, 2, 35),
-(193, 2, 37),
-(194, 2, 39),
-(195, 2, 41),
-(201, 2, 43),
-(196, 2, 46),
-(200, 2, 47),
-(197, 2, 48),
-(198, 2, 49),
-(199, 2, 50),
-(109, 3, 8),
-(110, 3, 9),
-(111, 3, 16),
-(112, 3, 17),
-(113, 3, 18),
-(114, 3, 19),
-(115, 3, 20),
-(116, 3, 21),
-(117, 3, 22),
-(118, 3, 31),
-(119, 3, 33),
-(120, 3, 34),
-(121, 3, 35),
-(122, 3, 36),
-(123, 3, 38),
-(124, 3, 40),
-(125, 3, 42),
-(208, 4, 16),
-(209, 4, 22),
-(210, 4, 51),
-(211, 4, 52),
-(212, 4, 53);
+(255, 2, 23),
+(256, 2, 24),
+(257, 2, 25),
+(258, 2, 26),
+(259, 2, 27),
+(260, 2, 28),
+(261, 2, 29),
+(262, 2, 32),
+(263, 2, 34),
+(264, 2, 35),
+(265, 2, 37),
+(266, 2, 39),
+(267, 2, 41),
+(268, 2, 43),
+(269, 2, 46),
+(270, 2, 47),
+(271, 2, 48),
+(272, 2, 49),
+(273, 2, 50),
+(769, 3, 8),
+(770, 3, 9),
+(771, 3, 13),
+(772, 3, 16),
+(773, 3, 17),
+(774, 3, 18),
+(775, 3, 19),
+(776, 3, 20),
+(777, 3, 21),
+(778, 3, 22),
+(779, 3, 31),
+(780, 3, 33),
+(781, 3, 34),
+(782, 3, 35),
+(783, 3, 36),
+(784, 3, 51),
+(785, 3, 52),
+(786, 3, 53),
+(790, 3, 54),
+(788, 3, 55),
+(787, 3, 56),
+(789, 3, 57),
+(274, 4, 16),
+(275, 4, 22),
+(276, 4, 51),
+(277, 4, 52),
+(278, 4, 53),
+(791, 5, 8),
+(792, 5, 9),
+(793, 5, 13),
+(794, 5, 16),
+(795, 5, 17),
+(796, 5, 18),
+(797, 5, 19),
+(798, 5, 20),
+(799, 5, 21),
+(800, 5, 22),
+(801, 5, 23),
+(802, 5, 24),
+(803, 5, 25),
+(804, 5, 26),
+(805, 5, 27),
+(806, 5, 28),
+(807, 5, 29),
+(808, 5, 30),
+(809, 5, 31),
+(810, 5, 32),
+(811, 5, 33),
+(812, 5, 34),
+(813, 5, 35),
+(814, 5, 36),
+(815, 5, 37),
+(816, 5, 38),
+(817, 5, 39),
+(818, 5, 40),
+(819, 5, 41),
+(820, 5, 42),
+(821, 5, 43),
+(822, 5, 44),
+(823, 5, 45),
+(824, 5, 46),
+(825, 5, 47),
+(826, 5, 48),
+(827, 5, 49),
+(828, 5, 50),
+(829, 5, 51),
+(830, 5, 52),
+(831, 5, 53),
+(834, 5, 54),
+(833, 5, 55),
+(832, 5, 56),
+(835, 5, 57);
 
 --
 -- Índices para tablas volcadas
@@ -3089,6 +3821,14 @@ ALTER TABLE `comunas`
   ADD KEY `fk_comuna_region` (`region_id`);
 
 --
+-- Indices de la tabla `cotizaciones`
+--
+ALTER TABLE `cotizaciones`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_cot_usuario` (`usuario_id`),
+  ADD KEY `fk_cot_estado` (`estado_id`);
+
+--
 -- Indices de la tabla `cronograma_insumos`
 --
 ALTER TABLE `cronograma_insumos`
@@ -3105,6 +3845,14 @@ ALTER TABLE `cronograma_mantencion`
   ADD KEY `fk_crono_ot` (`solicitud_ot_id`),
   ADD KEY `crono_activo_fk` (`activo_id`),
   ADD KEY `fk_cron_insumo` (`insumo_id`);
+
+--
+-- Indices de la tabla `detalle_cotizacion`
+--
+ALTER TABLE `detalle_cotizacion`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_det_cot_id` (`cotizacion_id`),
+  ADD KEY `fk_det_cot_insumo` (`insumo_id`);
 
 --
 -- Indices de la tabla `detalle_orden_compra`
@@ -3139,6 +3887,12 @@ ALTER TABLE `entregas_personal`
   ADD KEY `usuario_operario_id` (`usuario_operario_id`),
   ADD KEY `usuario_bodeguero_id` (`usuario_bodeguero_id`),
   ADD KEY `estado_id` (`estado_id`);
+
+--
+-- Indices de la tabla `estados_cotizacion`
+--
+ALTER TABLE `estados_cotizacion`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indices de la tabla `estados_entrega`
@@ -3308,19 +4062,19 @@ ALTER TABLE `usuario_permisos`
 -- AUTO_INCREMENT de la tabla `activos`
 --
 ALTER TABLE `activos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- AUTO_INCREMENT de la tabla `activos_docs`
 --
 ALTER TABLE `activos_docs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `activos_insumos`
 --
 ALTER TABLE `activos_insumos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=135;
 
 --
 -- AUTO_INCREMENT de la tabla `areas_negocio`
@@ -3347,40 +4101,58 @@ ALTER TABLE `comunas`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=119;
 
 --
+-- AUTO_INCREMENT de la tabla `cotizaciones`
+--
+ALTER TABLE `cotizaciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT de la tabla `cronograma_insumos`
 --
 ALTER TABLE `cronograma_insumos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=419;
 
 --
 -- AUTO_INCREMENT de la tabla `cronograma_mantencion`
 --
 ALTER TABLE `cronograma_mantencion`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+
+--
+-- AUTO_INCREMENT de la tabla `detalle_cotizacion`
+--
+ALTER TABLE `detalle_cotizacion`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_orden_compra`
 --
 ALTER TABLE `detalle_orden_compra`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_solicitud`
 --
 ALTER TABLE `detalle_solicitud`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=176;
 
 --
 -- AUTO_INCREMENT de la tabla `empleados`
 --
 ALTER TABLE `empleados`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `entregas_personal`
 --
 ALTER TABLE `entregas_personal`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT de la tabla `estados_cotizacion`
+--
+ALTER TABLE `estados_cotizacion`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `estados_entrega`
@@ -3404,25 +4176,25 @@ ALTER TABLE `estados_solicitud`
 -- AUTO_INCREMENT de la tabla `insumos`
 --
 ALTER TABLE `insumos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1555;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1571;
 
 --
 -- AUTO_INCREMENT de la tabla `insumo_stock_ubicacion`
 --
 ALTER TABLE `insumo_stock_ubicacion`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=74;
 
 --
 -- AUTO_INCREMENT de la tabla `movimientos_inventario`
 --
 ALTER TABLE `movimientos_inventario`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
 
 --
 -- AUTO_INCREMENT de la tabla `ordenes_compra`
 --
 ALTER TABLE `ordenes_compra`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `paises`
@@ -3434,7 +4206,7 @@ ALTER TABLE `paises`
 -- AUTO_INCREMENT de la tabla `permisos`
 --
 ALTER TABLE `permisos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
 
 --
 -- AUTO_INCREMENT de la tabla `proveedores`
@@ -3476,7 +4248,7 @@ ALTER TABLE `sistema_logs`
 -- AUTO_INCREMENT de la tabla `solicitudes_ot`
 --
 ALTER TABLE `solicitudes_ot`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- AUTO_INCREMENT de la tabla `tipos_movimiento`
@@ -3494,19 +4266,19 @@ ALTER TABLE `tipos_venta`
 -- AUTO_INCREMENT de la tabla `ubicaciones`
 --
 ALTER TABLE `ubicaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=91;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario_permisos`
 --
 ALTER TABLE `usuario_permisos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=255;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=836;
 
 --
 -- Restricciones para tablas volcadas
@@ -3538,6 +4310,13 @@ ALTER TABLE `comunas`
   ADD CONSTRAINT `fk_comuna_region` FOREIGN KEY (`region_id`) REFERENCES `regiones` (`id`);
 
 --
+-- Filtros para la tabla `cotizaciones`
+--
+ALTER TABLE `cotizaciones`
+  ADD CONSTRAINT `fk_cot_estado` FOREIGN KEY (`estado_id`) REFERENCES `estados_cotizacion` (`id`),
+  ADD CONSTRAINT `fk_cot_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`);
+
+--
 -- Filtros para la tabla `cronograma_insumos`
 --
 ALTER TABLE `cronograma_insumos`
@@ -3551,6 +4330,13 @@ ALTER TABLE `cronograma_mantencion`
   ADD CONSTRAINT `crono_activo_fk` FOREIGN KEY (`activo_id`) REFERENCES `activos` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_cron_insumo` FOREIGN KEY (`insumo_id`) REFERENCES `insumos` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_crono_ot` FOREIGN KEY (`solicitud_ot_id`) REFERENCES `solicitudes_ot` (`id`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `detalle_cotizacion`
+--
+ALTER TABLE `detalle_cotizacion`
+  ADD CONSTRAINT `fk_det_cot_id` FOREIGN KEY (`cotizacion_id`) REFERENCES `cotizaciones` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_det_cot_insumo` FOREIGN KEY (`insumo_id`) REFERENCES `insumos` (`id`) ON DELETE SET NULL;
 
 --
 -- Filtros para la tabla `detalle_orden_compra`

@@ -9,17 +9,17 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     // Estado del formulario apegado a la DB (insuban_db)
     const [formData, setFormData] = useState({
         codigo_interno: '',
-        codigo_maquina: '', // Campo nuevo solicitado
+        codigo_maquina: '',
         nombre: '',
         tipo: '',
         marca: '',
         modelo: '',
-        anio: '',           // Campo nuevo solicitado
-        numero_serie: '',   // Existe en DB
+        anio: '',
+        numero_serie: '',
         ubicacion: '',
-        estado_activo: 'OPERATIVO', // CORREGIDO: En tu DB es 'estado_activo', no 'estado_operativo'
+        estado_activo: 'OPERATIVO',
         descripcion: '',
-        centro_costo: ''    // Se mapea a centro_costo_id en backend
+        centro_costo: ''
     });
 
     const [listaCentros, setListaCentros] = useState([]);
@@ -41,11 +41,9 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     // --- CARGA INICIAL DE DATOS ---
     useEffect(() => {
         if (show) {
-            // 1. Cargar lista de centros de costo
             api.get('/index.php/mantencion/centros-costo')
                 .then(res => { if (res.data.success) setListaCentros(res.data.data); });
 
-            // 2. Llenar formulario si es edición
             if (activo) {
                 setFormData({
                     codigo_interno: activo.codigo_interno || '',
@@ -57,14 +55,13 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     anio: activo.anio || '',
                     numero_serie: activo.numero_serie || '',
                     ubicacion: activo.ubicacion || '',
-                    estado_activo: activo.estado_activo || 'OPERATIVO', // Usamos el campo correcto de la BD
+                    estado_activo: activo.estado_activo || 'OPERATIVO',
                     descripcion: activo.descripcion || '',
                     centro_costo: activo.centro_costo_id || ''
                 });
                 cargarKit(activo.id);
                 cargarDocs(activo.id);
             } else {
-                // Limpiar si es nuevo
                 setFormData({
                     codigo_interno: '', codigo_maquina: '', nombre: '', tipo: '',
                     marca: '', modelo: '', anio: '', numero_serie: '',
@@ -86,11 +83,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const handleSubmitGeneral = async (e) => {
         e.preventDefault();
         try {
-            // Mapeamos estado_activo a lo que espera el backend si es necesario, 
-            // pero idealmente el backend debe recibir 'estado_activo' o 'estado_operativo' según tu controller.
-            // Enviamos todo el formData. Asegúrate de que tu MantencionRepository use 'estado_activo' si cambiaste la lógica,
-            // o mapealo aquí si el backend espera 'estado_operativo'.
-            // Para consistencia con tu backend actual (que usa estado_operativo en el update), lo enviamos así:
             const payload = { ...formData, estado_operativo: formData.estado_activo };
 
             if (activo) {
@@ -409,7 +401,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                         <div className="list-group">
                                             {docs && docs.map(d => (
                                                 <div key={d.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                                    <a href={`http://localhost/insuorders/public_html${d.url_archivo}`} target="_blank" rel="noreferrer" className="text-decoration-none text-dark d-flex align-items-center">
+                                                    <a href={`/api${d.url_archivo}`} target="_blank" rel="noreferrer" className="text-decoration-none text-dark d-flex align-items-center">
                                                         <i className="bi bi-file-earmark-text me-3 fs-4 text-primary"></i>
                                                         <div>
                                                             <div className="fw-bold">{d.nombre_archivo}</div>
