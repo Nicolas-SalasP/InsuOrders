@@ -82,9 +82,6 @@ const Dashboard = () => {
         }
     };
 
-    // --- SECCIONES RENDERIZADO (Resumen, Compras, Mantención) ---
-    // Son idénticas, las incluyo completas para que copies y pegues sin error.
-
     const renderResumenSuperior = () => (
         <div className="row g-3 mb-5 animate__animated animate__fadeIn">
             <div className="col-12 col-sm-6 col-lg-3">
@@ -312,12 +309,39 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* --- SECCIÓN CORREGIDA PARA NOMBRES COMPLETOS --- */}
+                {/* --- SECCIÓN CORREGIDA PARA NOMBRES COMPLETOS Y BOTÓN EXPORTAR --- */}
                 <div className="col-12 col-md-6">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 d-flex justify-content-between align-items-center border-0">
-                            <span>🚚 Últimas Entregas Realizadas</span>
-                            {empleadoFilter && <span className="badge bg-primary">Filtrado</span>}
+                            <div className="d-flex align-items-center gap-2">
+                                <span>🚚 Últimas Entregas Realizadas</span>
+                                {empleadoFilter && <span className="badge bg-primary">Filtrado</span>}
+                            </div>
+                            
+                            {/* BOTÓN EXPORTAR AGREGADO AQUÍ */}
+                            <button 
+                                className="btn btn-sm btn-outline-success d-flex align-items-center gap-2"
+                                onClick={() => {
+                                    // URL apuntando a ExportController
+                                    const url = `/index.php/exportar?modulo=dashboard_entregas&start=${fechas.start}&end=${fechas.end} 23:59:59&empleado_id=${empleadoFilter}`;
+                                    
+                                    api.get(url, {
+                                        responseType: 'blob',
+                                    })
+                                    .then((response) => {
+                                        const href = window.URL.createObjectURL(response.data);
+                                        const link = document.createElement('a');
+                                        link.href = href;
+                                        link.setAttribute('download', `Entregas_${fechas.start}.xlsx`);
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                    })
+                                    .catch(err => console.error("Error descargando excel", err));
+                                }}
+                            >
+                                <i className="bi bi-file-earmark-excel-fill"></i> Exportar
+                            </button>
                         </div>
                         <div className="card-body p-0 overflow-auto custom-scrollbar" style={{ maxHeight: '450px' }}>
                             {data.bodega?.timeline_entregas?.length > 0 ? (
@@ -339,11 +363,10 @@ const Dashboard = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* INFO ENTREGA: NOMBRE COMPLETO SIN CORTE */}
+                                                {/* INFO ENTREGA */}
                                                 <div className="flex-grow-1">
                                                     <div className="d-flex justify-content-between align-items-start mb-2">
                                                         <div>
-                                                            {/* CAMBIO AQUÍ: white-space: normal para evitar cortes */}
                                                             <h6 className="mb-0 fw-bold text-primary lh-sm" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
                                                                 {log.insumo}
                                                             </h6>
@@ -405,28 +428,28 @@ const Dashboard = () => {
                             <tbody>
                                 {personalData.map(emp => (
                                     <tr key={emp.id}>
-                                        <td className="ps-4">
-                                            <div className="fw-bold text-dark">{emp.nombre} {emp.apellido}</div>
-                                            <div className="text-muted small">{emp.email}</div>
-                                        </td>
-                                        <td className="text-center">
-                                            {emp.pendientes > 0 ? (
-                                                <span className="badge bg-warning text-dark border border-warning">
-                                                    {emp.pendientes} Pendientes
-                                                </span>
-                                            ) : (
-                                                <span className="text-muted small">-</span>
-                                            )}
-                                        </td>
-                                        <td className="text-center">
-                                            <span className="fw-bold text-primary fs-5">{emp.en_posesion}</span>
-                                        </td>
-                                        <td className="text-end pe-4">
-                                            {emp.pendientes > 0 
-                                                ? <span className="badge bg-danger">Requiere Atención</span> 
-                                                : <span className="badge bg-success">Al día</span>
-                                            }
-                                        </td>
+                                            <td className="ps-4">
+                                                <div className="fw-bold text-dark">{emp.nombre} {emp.apellido}</div>
+                                                <div className="text-muted small">{emp.email}</div>
+                                            </td>
+                                            <td className="text-center">
+                                                {emp.pendientes > 0 ? (
+                                                    <span className="badge bg-warning text-dark border border-warning">
+                                                        {emp.pendientes} Pendientes
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted small">-</span>
+                                                )}
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="fw-bold text-primary fs-5">{emp.en_posesion}</span>
+                                            </td>
+                                            <td className="text-end pe-4">
+                                                {emp.pendientes > 0 
+                                                    ? <span className="badge bg-danger">Requiere Atención</span> 
+                                                    : <span className="badge bg-success">Al día</span>
+                                                }
+                                            </td>
                                     </tr>
                                 ))}
                                 {personalData.length === 0 && (

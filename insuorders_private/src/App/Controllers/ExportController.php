@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
+use App\Repositories\DashboardRepository;
 use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
 use App\Repositories\MantencionRepository;
@@ -19,6 +20,7 @@ class ExportController
 {
     public function exportar($modulo)
     {
+        // Limpiar buffer para evitar archivos corruptos por espacios en blanco o warnings
         while (ob_get_level()) {
             ob_end_clean();
         }
@@ -67,6 +69,10 @@ class ExportController
                 case 'usuarios':
                     $this->sheetUsuarios($spreadsheet, $sheetIndex);
                     $filename = "Usuarios_" . date('Ymd_Hi') . ".xlsx";
+                    break;
+                case 'dashboard_entregas':
+                    $this->sheetDashboardEntregas($spreadsheet, $sheetIndex);
+                    $filename = "Reporte_Entregas_" . date('Ymd_Hi') . ".xlsx";
                     break;
                 case 'todo':
                     $this->sheetInventario($spreadsheet, $sheetIndex++);
@@ -232,7 +238,7 @@ class ExportController
     {
         $sheet = $this->getSheet($s, $idx);
         $sheet->setTitle('Solicitudes OT');
-        $data = (new MantencionRepository())->getAll();
+        $data = (new MantencionRepository())->getSolicitudes();
 
         $this->fillSheet(
             $sheet,
@@ -324,8 +330,7 @@ class ExportController
         $sheet->setTitle("OT #$id");
 
         $repo = new MantencionRepository();
-        $data = $repo->getAll(['id' => $id]);
-        $header = $data[0] ?? null;
+        $header = $repo->getOTHeader($id); 
         $detalles = $repo->getDetallesOT($id);
 
         if (!$header)
@@ -440,5 +445,31 @@ class ExportController
 
         foreach (range('A', 'E') as $col)
             $sheet->getColumnDimension($col)->setAutoSize(true);
+    }
+
+    private function sheetDashboardEntregas(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Entregas Realizadas');
+        $start = $_GET['start'] ?? date('Y-m-01');
+        $end = $_GET['end'] ?? date('Y-m-d 23:59:59');
+        $empleadoId = $_GET['empleado_id'] ?? null;
+        $data = (new DashboardRepository())->getEntregasParaExcel($start, $end, $empleadoId);
+        $this->fillSheet(
+            $sheet,
+            ['Fecha', 'Hora', 'Entregado Por', 'Recibido Por', 'Producto', 'SKU', 'Cantidad', 'Unidad', 'OT Ref'], 
+            $data,
+            fn($d) => [
+                $d['fecha'],
+                $d['hora'],
+                $d['quien_entrego'],
+                $d['quien_recibio'],
+                $d['que_recibio'],
+                $d['codigo_producto'],
+                $d['cuanto'],
+                $d['unidad_medida'],
+                $d['ot_referencia'] ?? 'N/A'
+            ]
+        );
     }
 }
