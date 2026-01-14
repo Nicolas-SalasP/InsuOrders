@@ -1,11 +1,9 @@
 <?php
 namespace App\Controllers;
 
-use App\Database\Database;
 use App\Services\OperarioService;
 use App\Middleware\AuthMiddleware;
 use Exception;
-use PDO;
 
 class OperarioController
 {
@@ -44,61 +42,24 @@ class OperarioController
         }
     }
 
-    public function responder($usuarioId)
+    public function responder()
     {
+        AuthMiddleware::verify(); 
+        
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"), true);
 
-        $entregaId = $data['entrega_id'] ?? null;
-        $accion = $data['accion'] ?? null; // 'ACEPTAR' o 'RECHAZAR'
-
-        if (!$entregaId || !in_array($accion, ['ACEPTAR', 'RECHAZAR'])) {
-            http_response_code(400);
-            echo json_encode(["success" => false, "error" => "Datos inválidos"]);
-            return;
-        }
-
         try {
-            $db = Database::getConnection();
-            $db->beginTransaction();
-            $stmt = $db->prepare("SELECT insumo_id, cantidad_entregada, solicitud_id FROM detalle_solicitud WHERE id = :id FOR UPDATE");
-            $stmt->execute([':id' => $entregaId]);
-            $linea = $stmt->fetch(PDO::FETCH_ASSOC);
+            $this->service->responderEntrega($data);
 
-            if (!$linea) throw new Exception("Entrega no encontrada");
+            $accion = $data['accion'] ?? '';
+            $msg = ($accion === 'RECHAZAR') 
+                ? "Entrega rechazada. Stock devuelto a bodega." 
+                : "Entrega aceptada correctamente.";
 
-            $cantidad = floatval($linea['cantidad_entregada']);
-            $insumoId = $linea['insumo_id'];
-
-            if ($accion === 'RECHAZAR') {
-                $db->prepare("UPDATE detalle_solicitud SET estado_linea = 'RECHAZADO', cantidad_entregada = 0 WHERE id = :id")
-                ->execute([':id' => $entregaId]);
-                $sqlRestock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                            VALUES (:iid, 1, :cant) 
-                            ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
-                $db->prepare($sqlRestock)->execute([
-                    ':iid' => $insumoId,
-                    ':cant' => $cantidad,
-                    ':cant_upd' => $cantidad
-                ]);
-                $db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, ubicacion_id, fecha) 
-                            VALUES (:iid, 1, :cant, :uid, 'Rechazo Operario', :ref, 1, NOW())")
-                ->execute([':iid' => $insumoId, ':cant' => $cantidad, ':uid' => $usuarioId, ':ref' => $entregaId]);
-
-                $msg = "Entrega rechazada. El stock ha vuelto a bodega.";
-
-            } else {
-                $db->prepare("UPDATE detalle_solicitud SET estado_linea = 'RECIBIDO' WHERE id = :id")
-                ->execute([':id' => $entregaId]);
-
-                $msg = "Entrega aceptada. El material ahora está en tu pañol.";
-            }
-
-            $db->commit();
             echo json_encode(["success" => true, "message" => $msg]);
 
         } catch (Exception $e) {
-            if ($db->inTransaction()) $db->rollBack();
             http_response_code(500);
             echo json_encode(["success" => false, "error" => $e->getMessage()]);
         }
@@ -132,6 +93,7 @@ class OperarioController
 
     public function devolver()
     {
+        AuthMiddleware::verify(); // Verificar sesión
         $data = json_decode(file_get_contents("php://input"), true);
         
         try {

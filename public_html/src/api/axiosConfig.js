@@ -9,7 +9,6 @@ const api = axios.create({
     }
 });
 
-// Interceptor de Request (Token)
 api.interceptors.request.use(
     (config) => {
         const storedUser = localStorage.getItem("insuorders_user");
