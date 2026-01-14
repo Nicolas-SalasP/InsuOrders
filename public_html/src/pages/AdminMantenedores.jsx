@@ -8,6 +8,7 @@ import CentroModal from '../components/CentroModal';
 import AreaModal from '../components/AreaModal';
 import SectorModal from '../components/SectorModal';
 import UbicacionModal from '../components/UbicacionModal';
+import UbicacionEnvioModal from '../components/UbicacionEnvioModal';
 
 const AdminMantenedores = () => {
     const [activeTab, setActiveTab] = useState('empleados');
@@ -19,7 +20,8 @@ const AdminMantenedores = () => {
     const [areas, setAreas] = useState([]);
     const [sectores, setSectores] = useState([]);
     const [ubicaciones, setUbicaciones] = useState([]);
-    const [usuarios, setUsuarios] = useState([]); // Para vincular usuario de sistema
+    const [ubicacionesEnvio, setUbicacionesEnvio] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
 
     // Control de Modales
     const [modales, setModales] = useState({
@@ -27,7 +29,8 @@ const AdminMantenedores = () => {
         centro: { show: false, data: null },
         area: { show: false, data: null },
         sector: { show: false, data: null },
-        ubicacion: { show: false, data: null }
+        ubicacion: { show: false, data: null },
+        ubicacionEnvio: { show: false, data: null } 
     });
 
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
@@ -37,7 +40,6 @@ const AdminMantenedores = () => {
     const cargarDatos = async () => {
         setLoading(true);
         try {
-            // Carga de datos inteligente según la pestaña activa
             if (activeTab === 'empleados') {
                 const [resE, resC, resU] = await Promise.all([
                     api.get('/index.php/mantenedores/empleados'),
@@ -72,6 +74,10 @@ const AdminMantenedores = () => {
                 if (resU.data.success) setUbicaciones(resU.data.data);
                 if (resS.data.success) setSectores(resS.data.data);
             }
+            else if (activeTab === 'lugares_envio') {
+                const res = await api.get('/index.php/mantenedores/ubicaciones-envio');
+                if (res.data.success) setUbicacionesEnvio(res.data.data);
+            }
         } catch (error) {
             console.error("Error cargando datos", error);
         } finally {
@@ -93,7 +99,6 @@ const AdminMantenedores = () => {
         }
     };
 
-    // Componente Header para las tablas
     const TableHeader = ({ title, btnAction, btnLabel }) => (
         <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="text-primary fw-bold mb-0">{title}</h5>
@@ -117,14 +122,22 @@ const AdminMantenedores = () => {
             <div className="card shadow-sm border-0">
                 <div className="card-header bg-white pt-3 px-3 pb-0 border-bottom">
                     <ul className="nav nav-tabs card-header-tabs border-0">
-                        {['empleados', 'centros', 'areas', 'sectores', 'ubicaciones'].map(tab => (
-                            <li className="nav-item" key={tab}>
+                        {/* --- LISTA DE TABS ACTUALIZADA --- */}
+                        {[
+                            {id: 'empleados', label: 'Empleados'},
+                            {id: 'centros', label: 'Centros Costo'},
+                            {id: 'areas', label: 'Áreas'},
+                            {id: 'sectores', label: 'Sectores (Bodegas)'},
+                            {id: 'ubicaciones', label: 'Estanterías'},
+                            {id: 'lugares_envio', label: 'Lugares de Envío'} // --- NUEVO ---
+                        ].map(tab => (
+                            <li className="nav-item" key={tab.id}>
                                 <button 
-                                    className={`nav-link fw-bold px-4 py-2 ${activeTab === tab ? 'active border-bottom-0 text-primary' : 'text-muted border-0'}`}
-                                    onClick={() => setActiveTab(tab)}
-                                    style={{ borderTop: activeTab === tab ? '3px solid #0d6efd' : 'none' }}
+                                    className={`nav-link fw-bold px-4 py-2 ${activeTab === tab.id ? 'active border-bottom-0 text-primary' : 'text-muted border-0'}`}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    style={{ borderTop: activeTab === tab.id ? '3px solid #0d6efd' : 'none' }}
                                 >
-                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                    {tab.label}
                                 </button>
                             </li>
                         ))}
@@ -208,10 +221,10 @@ const AdminMantenedores = () => {
                                 </div>
                             )}
 
-                            {/* --- UBICACIONES --- */}
+                            {/* --- UBICACIONES (Estanterías) --- */}
                             {activeTab === 'ubicaciones' && (
                                 <div className="animate__animated animate__fadeIn">
-                                    <TableHeader title="Ubicaciones Físicas" btnAction={() => abrirModal('ubicacion')} btnLabel="Nueva Ubicación" />
+                                    <TableHeader title="Ubicaciones Físicas (Estanterías)" btnAction={() => abrirModal('ubicacion')} btnLabel="Nueva Estantería" />
                                     <div className="table-responsive rounded border">
                                         <table className="table table-hover align-middle mb-0">
                                             <thead className="bg-light text-secondary small text-uppercase">
@@ -237,7 +250,7 @@ const AdminMantenedores = () => {
                                 </div>
                             )}
 
-                            {/* --- CENTROS Y AREAS (Mantenemos la lógica pero con el estilo nuevo) --- */}
+                            {/* --- CENTROS --- */}
                             {activeTab === 'centros' && (
                                 <div className="animate__animated animate__fadeIn">
                                     <TableHeader title="Centros de Costo" btnAction={() => abrirModal('centro')} btnLabel="Nuevo Centro" />
@@ -266,6 +279,7 @@ const AdminMantenedores = () => {
                                 </div>
                             )}
 
+                            {/* --- AREAS --- */}
                             {activeTab === 'areas' && (
                                 <div className="animate__animated animate__fadeIn">
                                     <TableHeader title="Áreas de Negocio" btnAction={() => abrirModal('area')} btnLabel="Nueva Área" />
@@ -291,6 +305,49 @@ const AdminMantenedores = () => {
                                     <AreaModal show={modales.area.show} onClose={() => cerrarModal('area')} area={modales.area.data} onSave={cargarDatos} />
                                 </div>
                             )}
+
+                            {/* ---  LUGARES DE ENVÍO --- */}
+                            {activeTab === 'lugares_envio' && (
+                                <div className="animate__animated animate__fadeIn">
+                                    <TableHeader title="Lugares de Envío (Destinos)" btnAction={() => abrirModal('ubicacionEnvio')} btnLabel="Nuevo Lugar" />
+                                    <div className="table-responsive rounded border">
+                                        <table className="table table-hover align-middle mb-0">
+                                            <thead className="bg-light text-secondary small text-uppercase">
+                                                <tr>
+                                                    <th className="ps-4">Nombre</th>
+                                                    <th>Descripción</th>
+                                                    <th className="text-center">Estado</th>
+                                                    <th className="text-end pe-4">Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {ubicacionesEnvio.map(u => (
+                                                    <tr key={u.id} className={u.activo == 0 ? 'bg-light text-muted' : ''}>
+                                                        <td className="ps-4 fw-bold text-dark">{u.nombre}</td>
+                                                        <td className="small">{u.descripcion || '-'}</td>
+                                                        <td className="text-center">
+                                                            {u.activo == 1 
+                                                                ? <span className="badge bg-success bg-opacity-10 text-success rounded-pill">Activo</span> 
+                                                                : <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">Inactivo</span>}
+                                                        </td>
+                                                        <td className="text-end pe-4">
+                                                            <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('ubicacionEnvio', u)} title="Editar"><i className="bi bi-pencil-square"></i></button>
+                                                            {u.activo == 1 && (
+                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('ubicaciones-envio', u.id)} title="Desactivar"><i className="bi bi-trash"></i></button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {ubicacionesEnvio.length === 0 && (
+                                                    <tr><td colSpan="4" className="text-center py-4 text-muted">No hay lugares de envío registrados</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <UbicacionEnvioModal show={modales.ubicacionEnvio.show} onClose={() => cerrarModal('ubicacionEnvio')} ubicacion={modales.ubicacionEnvio.data} onSave={cargarDatos} />
+                                </div>
+                            )}
+
                         </>
                     )}
                 </div>

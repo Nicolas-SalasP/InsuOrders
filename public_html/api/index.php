@@ -27,7 +27,8 @@ use App\Controllers\OperarioController;
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-function jsonResponse($code, $data) {
+function jsonResponse($code, $data)
+{
     http_response_code($code);
     header('Content-Type: application/json');
     echo json_encode($data);
@@ -39,7 +40,7 @@ try {
     if (!file_exists($initPath)) {
         throw new Exception("No se encuentra el archivo de sistema (init.php). Verifica la ruta.");
     }
-    
+
     require_once $initPath;
 
     if (!class_exists('App\Controllers\AuthController')) {
@@ -370,7 +371,7 @@ try {
             break;
 
         case 'bodega/entregar-masivo':
-            AuthMiddleware::hasPermission('bodega_organizar');  
+            AuthMiddleware::hasPermission('bodega_organizar');
             $userId = AuthMiddleware::verify();
             (new BodegaController())->entregarMasivo($userId);
             break;
@@ -520,6 +521,17 @@ try {
                 $c->getUbicaciones();
             break;
 
+        case 'mantenedores/ubicaciones-envio':
+            AuthMiddleware::verify();
+            $controller = new MantenedoresController();
+            if ($method === 'GET')
+                $controller->getUbicacionesEnvio();
+            if ($method === 'POST')
+                $controller->saveUbicacionEnvio();
+            if ($method === 'DELETE')
+                $controller->deleteUbicacionEnvio();
+            break;
+
         // --- PERSONAL ---
         case 'personal':
             AuthMiddleware::verify();
@@ -529,9 +541,10 @@ try {
         default:
             jsonResponse(404, ["error" => "Ruta no encontrada: $path"]);
             break;
-    }} catch (Exception $e) {
+    }
+} catch (Exception $e) {
     jsonResponse(500, [
-        "success" => false, 
+        "success" => false,
         "error" => "Error del Servidor: " . $e->getMessage()
     ]);
 }

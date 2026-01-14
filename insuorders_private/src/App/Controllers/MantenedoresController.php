@@ -106,4 +106,22 @@ class MantenedoresController
             echo json_encode(["success" => false, "error" => "Error: " . $e->getMessage()]);
         }
     }
+
+    // --- UBICACIONES DE ENVÍO ---
+
+    public function getUbicacionesEnvio()
+    {
+        $soloActivas = isset($_GET['type']) && $_GET['type'] === 'activas';
+        echo json_encode(["success" => true, "data" => $this->service->obtenerUbicacionesEnvio($soloActivas)]);
+    }
+
+    public function saveUbicacionEnvio()
+    {
+        $this->handleSave(fn($data) => $this->service->guardarUbicacionEnvio($data), "Ubicación de envío guardada");
+    }
+
+    public function deleteUbicacionEnvio()
+    {
+        $this->handleDelete(fn($id) => $this->service->eliminarUbicacionEnvio($id), "Ubicación de envío desactivada");
+    }
 }
