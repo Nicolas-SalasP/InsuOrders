@@ -290,4 +290,24 @@ class OperarioRepository
 
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function procesarDevolucionOT($datos)
+    {
+        $insumoId = $datos['insumo_id'];
+        $empleadoId = $datos['empleado_id'];
+        $otId = $datos['ot_id'];
+        $cantidad = $datos['cantidad'];
+
+
+        $sqlHistorial = "INSERT INTO historial_operario_insumos (empleado_id, insumo_id, cantidad, operacion, ot_ref, fecha, bodeguero_id) 
+                    VALUES (:emp, :ins, :cant, 'DEVOLUCION', :ot, NOW(), :bod)";
+
+        $this->db->prepare($sqlHistorial)->execute([
+            ':emp' => $empleadoId,
+            ':ins' => $insumoId,
+            ':cant' => $cantidad,
+            ':ot' => $otId,
+            ':bod' => $datos['bodeguero_id']
+        ]);
+    }
 }
