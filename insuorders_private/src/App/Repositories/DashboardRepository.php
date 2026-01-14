@@ -126,4 +126,37 @@ class DashboardRepository
         
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function getEntregasParaExcel($start, $end, $empleadoId = null)
+    {
+        $sql = "SELECT 
+                    DATE_FORMAT(m.fecha, '%d-%m-%Y') as fecha,
+                    DATE_FORMAT(m.fecha, '%H:%i:%s') as hora,
+                    u_bod.nombre as quien_entrego,
+                    COALESCE(e.nombre_completo, u_rec.nombre, 'Externo/Manual') as quien_recibio,
+                    COALESCE(ue.nombre, '-') as ubicacion_destino,
+                    i.nombre as que_recibio,
+                    i.codigo_sku as codigo_producto,
+                    m.cantidad as cuanto,
+                    i.unidad_medida,
+                    ds.solicitud_id as ot_referencia
+                FROM movimientos_inventario m
+                JOIN insumos i ON m.insumo_id = i.id
+                JOIN usuarios u_bod ON m.usuario_id = u_bod.id
+                LEFT JOIN empleados e ON m.empleado_id = e.id
+                LEFT JOIN usuarios u_rec ON m.empleado_id = u_rec.id
+                LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
+                LEFT JOIN ubicaciones_envio ue ON m.ubicacion_envio_id = ue.id
+                
+                WHERE m.tipo_movimiento_id = 2 
+                AND m.fecha BETWEEN '$start' AND '$end'";
+
+        if ($empleadoId) {
+            $sql .= " AND m.empleado_id = " . intval($empleadoId);
+        }
+
+        $sql .= " ORDER BY m.fecha DESC";
+
+        return $this->db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+    }
 }

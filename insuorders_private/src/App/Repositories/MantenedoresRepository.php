@@ -150,4 +150,42 @@ class MantenedoresRepository
     {
         $this->db->prepare("DELETE FROM ubicaciones WHERE id = ?")->execute([$id]);
     }
+
+    // =========================================================================
+    // UBICACIONES DE ENVÍO
+    // =========================================================================
+    public function getUbicacionesEnvio($soloActivas = false)
+    {
+        $sql = "SELECT * FROM ubicaciones_envio";
+        if ($soloActivas) {
+            $sql .= " WHERE activo = 1";
+        }
+        $sql .= " ORDER BY nombre ASC";
+        
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function saveUbicacionEnvio($data)
+    {
+        if (!empty($data['id'])) {
+            $sql = "UPDATE ubicaciones_envio SET nombre=:n, descripcion=:d, activo=:a WHERE id=:id";
+            $this->db->prepare($sql)->execute([
+                ':n'  => $data['nombre'],
+                ':d'  => $data['descripcion'] ?? null,
+                ':a'  => $data['activo'] ?? 1,
+                ':id' => $data['id']
+            ]);
+        } else {
+            $sql = "INSERT INTO ubicaciones_envio (nombre, descripcion, activo) VALUES (:n, :d, 1)";
+            $this->db->prepare($sql)->execute([
+                ':n' => $data['nombre'],
+                ':d' => $data['descripcion'] ?? null
+            ]);
+        }
+    }
+
+    public function deleteUbicacionEnvio($id)
+    {
+        $this->db->prepare("UPDATE ubicaciones_envio SET activo = 0 WHERE id = ?")->execute([$id]);
+    }
 }

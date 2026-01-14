@@ -94,4 +94,24 @@ class MantenedoresService
     {
         $this->repo->deleteUbicacion($id);
     }
+
+    // --- UBICACIONES DE ENVÍO ---
+    
+    public function obtenerUbicacionesEnvio($soloActivas = false)
+    {
+        return $this->repo->getUbicacionesEnvio($soloActivas);
+    }
+
+    public function guardarUbicacionEnvio($data)
+    {
+        if (empty($data['nombre'])) {
+            throw new Exception("El nombre de la ubicación de envío es obligatorio.");
+        }
+        $this->repo->saveUbicacionEnvio($data);
+    }
+
+    public function eliminarUbicacionEnvio($id)
+    {
+        $this->repo->deleteUbicacionEnvio($id);
+    }
 }

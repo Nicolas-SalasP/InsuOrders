@@ -1,11 +1,8 @@
 <IfModule mod_rewrite.c>
+    Options -MultiViews
     RewriteEngine On
-    
-    # 1. Habilitar el paso del encabezado Authorization
-    RewriteCond %{HTTP:Authorization} .
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-
-    # 2. Redirigir todo el tráfico a index.php (Router)
+    RewriteCond %{HTTP:Authorization} ^(.*)
+    RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [QSA,L]

@@ -95,7 +95,7 @@ class InsumoController
 
     public function update()
     {
-        $usuarioId = AuthMiddleware::verify(); 
+        $usuarioId = AuthMiddleware::verify();
 
         $id = $_POST['id'] ?? $_GET['id'] ?? null;
 
@@ -149,25 +149,35 @@ class InsumoController
         }
 
         try {
+            $ubicacionEnvioId = !empty($data['ubicacion_envio_id']) ? $data['ubicacion_envio_id'] : null;
+
             if (!empty($data['empleado_id'])) {
                 $datos = [
                     'insumo_id' => (int) $data['insumo_id'],
                     'cantidad' => abs((float) $data['cantidad']),
                     'empleado_id' => (int) $data['empleado_id'],
                     'observacion' => $data['motivo'] ?? 'Entrega operario',
-                    'bodeguero_id' => $usuarioId
+                    'bodeguero_id' => $usuarioId,
+                    'ubicacion_envio_id' => $ubicacionEnvioId
                 ];
                 $this->operarioRepo->asignarInsumo($datos);
             } else {
                 $cantidadOriginal = (float) $data['cantidad'];
+                if (isset($data['tipo_movimiento_id'])) {
+                    $tipoMovimiento = (int) $data['tipo_movimiento_id'];
+                } else {
+                    $tipoMovimiento = ($cantidadOriginal >= 0) ? 3 : 4;
+                }
+
                 $datosAjuste = [
                     'insumo_id' => (int) $data['insumo_id'],
                     'cantidad' => abs($cantidadOriginal),
-                    'tipo_movimiento_id' => ($cantidadOriginal >= 0) ? 3 : 4,
+                    'tipo_movimiento_id' => $tipoMovimiento,
                     'observacion' => $data['motivo'] ?? $data['observacion'] ?? 'Ajuste manual',
                     'usuario_id' => $usuarioId,
                     'empleado_id' => null,
-                    'ubicacion_id' => null 
+                    'ubicacion_id' => null,
+                    'ubicacion_envio_id' => $ubicacionEnvioId
                 ];
 
                 $this->service->gestionarStock($datosAjuste, $usuarioId);
