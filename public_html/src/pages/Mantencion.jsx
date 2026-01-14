@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useRef } from 'react';
 import api from '../api/axiosConfig';
 import AuthContext from '../context/AuthContext';
 import NuevaSolicitudModal from '../components/NuevaSolicitudModal';
@@ -22,11 +22,13 @@ const Mantencion = () => {
     const [otEditar, setOtEditar] = useState(null);
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     
+    // Estado para controlar qué menú desplegable está abierto (ID de la OT)
+    const [openMenuId, setOpenMenuId] = useState(null);
+
     // Modales de Confirmación
     const [confirmAnular, setConfirmAnular] = useState({ show: false, id: null });
     const [confirmFinish, setConfirmFinish] = useState({ show: false, id: null });
 
-    // --- 3. HELPER DE PERMISOS ---
     const can = (permiso) => {
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
         return auth.permisos && auth.permisos.includes(permiso);
@@ -35,6 +37,15 @@ const Mantencion = () => {
     useEffect(() => {
         cargarData();
         cargarActivos();
+        
+        // Cerrar menú al hacer clic fuera
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.dropdown-container')) {
+                setOpenMenuId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const cargarData = async () => {
@@ -52,7 +63,6 @@ const Mantencion = () => {
         } catch (e) { }
     };
 
-    // --- DESCARGAS SEGURAS (PDF INDIVIDUAL) ---
     const descargarPdfOT = async (id) => {
         try {
             setLoading(true);
@@ -71,7 +81,6 @@ const Mantencion = () => {
         }
     };
 
-    // --- DESCARGAS SEGURAS (EXCEL INDIVIDUAL) ---
     const descargarExcelOT = async (id) => {
         try {
             setLoading(true);
@@ -90,7 +99,14 @@ const Mantencion = () => {
         }
     };
 
-    // --- FILTRADO ---
+    const toggleMenu = (id) => {
+        if (openMenuId === id) {
+            setOpenMenuId(null);
+        } else {
+            setOpenMenuId(id);
+        }
+    };
+
     const solicitudesFiltradas = solicitudes.filter(s => {
         const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
         const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
@@ -103,9 +119,13 @@ const Mantencion = () => {
     });
 
     const handleNew = () => { setOtEditar(null); setShowModal(true); };
-    const handleEdit = (ot) => { setOtEditar(ot); setShowModal(true); };
-
-    // --- LÓGICA ANULACIÓN ---
+    
+    const handleEdit = (ot) => { 
+        setOpenMenuId(null); // Cerrar menú al hacer clic
+        setOtEditar(ot); 
+        setShowModal(true); 
+    };
+    
     const solicitarAnulacion = (id) => setConfirmAnular({ show: true, id: id });
 
     const confirmarAnulacion = async () => {
@@ -119,7 +139,6 @@ const Mantencion = () => {
         }
     };
 
-    // --- LÓGICA FINALIZACIÓN ---
     const solicitarFinalizar = (id) => {
         setConfirmFinish({ show: true, id: id });
     };
@@ -138,7 +157,6 @@ const Mantencion = () => {
         }
     };
 
-    // --- EXPORTAR LISTA COMPLETA ---
     const handleExportar = () => {
         setLoading(true);
         api.get('/index.php/exportar?modulo=mantencion', { responseType: 'blob' })
@@ -169,7 +187,6 @@ const Mantencion = () => {
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             
-            {/* MODALES GLOBALES */}
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
             
             <ConfirmModal 
@@ -196,9 +213,7 @@ const Mantencion = () => {
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 
-                {/* --- ENCABEZADO --- */}
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
-                    
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
                              <i className="bi bi-wrench-adjustable fs-3"></i>
@@ -207,21 +222,17 @@ const Mantencion = () => {
                     </div>
                     
                     <div className="d-flex gap-2 justify-content-center flex-wrap">
-                        
-                        {/* 4. BOTÓN EXPORTAR - Protegido con 'mant_excel' */}
                         {can('mant_excel') && (
                             <button 
                                 className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
                                 onClick={handleExportar} 
                                 disabled={loading}
-                                title="Exportar Listado"
                             >
                                 <i className="bi bi-file-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
                                 <span className="small fw-bold">Exportar</span>
                             </button>
                         )}
                         
-                        {/* 5. BOTÓN CREAR OT - Protegido con 'mant_crear' */}
                         {can('mant_crear') && (
                             <button 
                                 className="btn btn-warning shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3 fw-bold"
@@ -234,7 +245,6 @@ const Mantencion = () => {
                     </div>
                 </div>
 
-                {/* FILTROS */}
                 <div className="bg-light p-3 border-bottom">
                     <div className="row g-2">
                         <div className="col-md-2">
@@ -276,7 +286,7 @@ const Mantencion = () => {
                                     <th>Solicitante</th>
                                     <th>Fecha</th>
                                     <th>Estado</th>
-                                    <th className="text-end pe-4">Acciones</th>
+                                    <th className="text-end pe-4" style={{minWidth: '280px'}}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -291,57 +301,79 @@ const Mantencion = () => {
                                         <td>{s.solicitante_nombre} {s.solicitante_apellido}</td>
                                         <td>{new Date(s.fecha_solicitud).toLocaleDateString()}</td>
                                         <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
+                                        
+                                        {/* --- COLUMNA ACCIONES HÍBRIDA --- */}
                                         <td className="text-end pe-4">
+                                            <div className="d-flex justify-content-end align-items-center gap-2">
+                                                
+                                                {/* 1. BOTONES DE ACCIÓN (AFUERA) */}
+                                                {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
+                                                    <>
+                                                        {can('mant_finalizar') && (
+                                                            <button 
+                                                                className="btn btn-sm btn-success fw-bold d-flex align-items-center px-2 py-1" 
+                                                                onClick={() => solicitarFinalizar(s.id)}
+                                                                style={{fontSize: '0.8rem'}}
+                                                            >
+                                                                <i className="bi bi-check2-circle me-1"></i> Finalizar
+                                                            </button>
+                                                        )}
+                                                        {can('mant_anular') && (
+                                                            <button 
+                                                                className="btn btn-sm btn-outline-danger d-flex align-items-center px-2 py-1" 
+                                                                onClick={() => solicitarAnulacion(s.id)}
+                                                                style={{fontSize: '0.8rem'}}
+                                                            >
+                                                                <i className="bi bi-trash me-1"></i> Anular
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                )}
 
-                                            {/* 6. ACCIONES PROTEGIDAS POR PERMISOS */}
-                                            
-                                            {/* PDF - Protegido con 'mant_pdf' */}
-                                            {can('mant_pdf') && (
-                                                <button 
-                                                    onClick={() => descargarPdfOT(s.id)} 
-                                                    className="btn btn-sm btn-outline-dark me-1" 
-                                                    title="Ver PDF"
-                                                >
-                                                    <i className="bi bi-file-earmark-text"></i>
-                                                </button>
-                                            )}
-
-                                            {/* Excel Detalle - Protegido con 'mant_excel' */}
-                                            {can('mant_excel') && (
-                                                <button 
-                                                    onClick={() => descargarExcelOT(s.id)} 
-                                                    className="btn btn-sm btn-outline-success me-2" 
-                                                    title="Descargar Excel"
-                                                >
-                                                    <i className="bi bi-file-earmark-excel"></i>
-                                                </button>
-                                            )}
-
-                                            {/* EDITAR - Protegido con 'mant_editar' (Solo si no es Completada/Anulada) */}
-                                            {can('mant_editar') && s.estado !== 'Completada' && s.estado !== 'Anulada' && (
-                                                <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(s)} title="Editar">
-                                                    <i className="bi bi-pencil"></i>
-                                                </button>
-                                            )}
-
-                                            {/* GESTIÓN DE ESTADO */}
-                                            {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
-                                                <>
-                                                    {/* FINALIZAR - Protegido con 'mant_finalizar' */}
-                                                    {can('mant_finalizar') && (
-                                                        <button className="btn btn-sm btn-success me-2" onClick={() => solicitarFinalizar(s.id)} title="Finalizar/Cerrar">
-                                                            <i className="bi bi-check2-circle"></i>
-                                                        </button>
-                                                    )}
+                                                {/* 2. MENÚ DESPLEGABLE REACT (SIN JS DE BOOTSTRAP) */}
+                                                <div className="dropdown dropdown-container position-relative">
+                                                    <button 
+                                                        className={`btn btn-sm btn-light border ${openMenuId === s.id ? 'show' : ''}`}
+                                                        type="button" 
+                                                        onClick={() => toggleMenu(s.id)}
+                                                    >
+                                                        <i className="bi bi-three-dots-vertical"></i>
+                                                    </button>
                                                     
-                                                    {/* ANULAR - Protegido con 'mant_anular' */}
-                                                    {can('mant_anular') && (
-                                                        <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarAnulacion(s.id)} title="Anular">
-                                                            <i className="bi bi-x-circle"></i>
-                                                        </button>
+                                                    {/* Menú renderizado condicionalmente por React */}
+                                                    {openMenuId === s.id && (
+                                                        <ul className="dropdown-menu dropdown-menu-end shadow-sm border-0 show" 
+                                                            style={{ position: 'absolute', right: 0, top: '100%', zIndex: 1050, display: 'block' }}>
+                                                            
+                                                            {/* EDITAR */}
+                                                            {can('mant_editar') && s.estado !== 'Completada' && s.estado !== 'Anulada' && (
+                                                                <li>
+                                                                    <button className="dropdown-item" onClick={() => handleEdit(s)}>
+                                                                        <i className="bi bi-pencil-square text-primary me-2"></i>Editar OT
+                                                                    </button>
+                                                                </li>
+                                                            )}
+
+                                                            {/* EXPORTACIONES */}
+                                                            {can('mant_pdf') && (
+                                                                <li>
+                                                                    <button className="dropdown-item" onClick={() => { setOpenMenuId(null); descargarPdfOT(s.id); }}>
+                                                                        <i className="bi bi-file-earmark-pdf text-danger me-2"></i>Exportar PDF
+                                                                    </button>
+                                                                </li>
+                                                            )}
+                                                            {can('mant_excel') && (
+                                                                <li>
+                                                                    <button className="dropdown-item" onClick={() => { setOpenMenuId(null); descargarExcelOT(s.id); }}>
+                                                                        <i className="bi bi-file-earmark-excel text-success me-2"></i>Exportar Excel
+                                                                    </button>
+                                                                </li>
+                                                            )}
+                                                        </ul>
                                                     )}
-                                                </>
-                                            )}
+                                                </div>
+
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
