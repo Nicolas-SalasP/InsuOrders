@@ -116,12 +116,12 @@ class InsumoRepository
                 $this->db->prepare("DELETE FROM insumo_stock_ubicacion WHERE insumo_id = :id")->execute([':id' => $id]);
                 $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant)")
                     ->execute([
-                        ':iid' => $id, 
-                        ':uid' => $nuevaUbicacionId, 
+                        ':iid' => $id,
+                        ':uid' => $nuevaUbicacionId,
                         ':cant' => $stockTotal
                     ]);
                 if ($stockTotal > 0) {
-                    $uidFinal = $usuarioId ?: 1; 
+                    $uidFinal = $usuarioId ?: 1;
 
                     $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
                                         VALUES (:iid, 3, :cant, :uid, 'Reubicación (Edición)', :ubi, NOW())")
@@ -152,26 +152,25 @@ class InsumoRepository
         return true;
     }
 
-    public function registrarMovimiento($data)
+    private function registrarMovimiento($datos)
     {
         $sql = "INSERT INTO movimientos_inventario 
-            (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, empleado_id, ubicacion_id, fecha) 
-            VALUES (:iid, :tid, :cant, :uid, :obs, :emp, :ubi, NOW())";
+            (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, fecha, ubicacion_id, empleado_id, ubicacion_envio_id) 
+            VALUES (:iid, :tid, :cant, :uid, :obs, NOW(), :ubi, :emp, :env)";
 
-        $stmt = $this->db->prepare($sql);
-
-        return $stmt->execute([
-            ':iid' => $data['insumo_id'],
-            ':tid' => $data['tipo_movimiento_id'],
-            ':cant' => $data['cantidad'],
-            ':uid' => $data['usuario_id'],
-            ':obs' => $data['observacion'] ?? '',
-            ':emp' => !empty($data['empleado_id']) ? $data['empleado_id'] : null,
-            ':ubi' => !empty($data['ubicacion_id']) ? $data['ubicacion_id'] : null
+        $this->db->prepare($sql)->execute([
+            ':iid' => $datos['insumo_id'],
+            ':tid' => $datos['tipo_movimiento_id'],
+            ':cant' => $datos['cantidad'],
+            ':uid' => $datos['usuario_id'],
+            ':obs' => $datos['observacion'],
+            ':ubi' => $datos['ubicacion_id'],
+            ':emp' => $datos['empleado_id'] ?? null,
+            ':env' => $datos['ubicacion_envio_id'] ?? null
         ]);
     }
 
-    public function ajustarStock($insumoId, $cantidad, $tipoMovimiento, $usuarioId, $observacion, $empleadoId = null)
+    public function ajustarStock($insumoId, $cantidad, $tipoMovimiento, $usuarioId, $observacion, $empleadoId = null, $ubicacionEnvioId = null)
     {
         try {
             $this->db->beginTransaction();
@@ -187,32 +186,21 @@ class InsumoRepository
                 'usuario_id' => $usuarioId,
                 'observacion' => $observacion,
                 'ubicacion_id' => $ubicacionId,
-                'empleado_id' => $empleadoId
+                'empleado_id' => $empleadoId,
+                'ubicacion_envio_id' => $ubicacionEnvioId
             ]);
-
             $operador = ($tipoMovimiento == 3) ? '+' : '-';
 
             if ($operador === '+') {
                 $sqlUpd = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
                         VALUES (?, ?, ?) 
                         ON DUPLICATE KEY UPDATE cantidad = cantidad + ?";
-
-                $this->db->prepare($sqlUpd)->execute([
-                    $insumoId,
-                    $ubicacionId,
-                    $cantidad,
-                    $cantidad
-                ]);
+                $this->db->prepare($sqlUpd)->execute([$insumoId, $ubicacionId, $cantidad, $cantidad]);
             } else {
                 $sqlUpd = "UPDATE insumo_stock_ubicacion 
                         SET cantidad = GREATEST(0, cantidad - ?) 
                         WHERE insumo_id = ? AND ubicacion_id = ?";
-
-                $this->db->prepare($sqlUpd)->execute([
-                    $cantidad,
-                    $insumoId,
-                    $ubicacionId
-                ]);
+                $this->db->prepare($sqlUpd)->execute([$cantidad, $insumoId, $ubicacionId]);
             }
 
             $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT SUM(cantidad) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")

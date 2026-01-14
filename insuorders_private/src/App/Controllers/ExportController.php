@@ -451,19 +451,23 @@ class ExportController
     {
         $sheet = $this->getSheet($s, $idx);
         $sheet->setTitle('Entregas Realizadas');
+        
         $start = $_GET['start'] ?? date('Y-m-01');
         $end = $_GET['end'] ?? date('Y-m-d 23:59:59');
         $empleadoId = $_GET['empleado_id'] ?? null;
+        
         $data = (new DashboardRepository())->getEntregasParaExcel($start, $end, $empleadoId);
+        
         $this->fillSheet(
             $sheet,
-            ['Fecha', 'Hora', 'Entregado Por', 'Recibido Por', 'Producto', 'SKU', 'Cantidad', 'Unidad', 'OT Ref'], 
+            ['Fecha', 'Hora', 'Entregado Por', 'Recibido Por', 'Destino / Ubicación', 'Producto', 'SKU', 'Cantidad', 'Unidad', 'OT Ref'], 
             $data,
             fn($d) => [
                 $d['fecha'],
                 $d['hora'],
                 $d['quien_entrego'],
                 $d['quien_recibio'],
+                $d['ubicacion_destino'],
                 $d['que_recibio'],
                 $d['codigo_producto'],
                 $d['cuanto'],

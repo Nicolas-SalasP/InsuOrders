@@ -23,6 +23,8 @@ class OperarioRepository
             $cantidadRequerida = floatval($datos['cantidad']);
             $bodegueroId = $datos['bodeguero_id'];
             $empleadoId = $datos['empleado_id'];
+            $ubicacionEnvioId = !empty($datos['ubicacion_envio_id']) ? $datos['ubicacion_envio_id'] : null;
+
             $sqlStock = "SELECT id, ubicacion_id, cantidad FROM insumo_stock_ubicacion 
                         WHERE insumo_id = :iid AND cantidad > 0 
                         ORDER BY cantidad DESC";
@@ -84,8 +86,9 @@ class OperarioRepository
 
             $obsKardex = "Entrega a: $nombreReceptor. Obs: " . ($datos['observacion'] ?? 'Sin obs');
 
-            $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, empleado_id, fecha) 
-                    VALUES (:iid, 2, :cant, :uid, :obs, :ubi, :emp, NOW())";
+            $sqlMov = "INSERT INTO movimientos_inventario 
+                    (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, empleado_id, fecha, ubicacion_envio_id) 
+                    VALUES (:iid, 2, :cant, :uid, :obs, :ubi, :emp, NOW(), :env)";
 
             $this->db->prepare($sqlMov)->execute([
                 ':iid' => $insumoId,
@@ -93,7 +96,8 @@ class OperarioRepository
                 ':uid' => $bodegueroId,
                 ':obs' => substr($obsKardex, 0, 255),
                 ':ubi' => $ubicacionRef,
-                ':emp' => $empleadoId
+                ':emp' => $empleadoId,
+                ':env' => $ubicacionEnvioId
             ]);
 
             $sqlEntrega = "INSERT INTO entregas_personal 

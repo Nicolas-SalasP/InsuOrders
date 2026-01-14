@@ -134,6 +134,7 @@ class DashboardRepository
                     DATE_FORMAT(m.fecha, '%H:%i:%s') as hora,
                     u_bod.nombre as quien_entrego,
                     COALESCE(e.nombre_completo, u_rec.nombre, 'Externo/Manual') as quien_recibio,
+                    COALESCE(ue.nombre, '-') as ubicacion_destino,
                     i.nombre as que_recibio,
                     i.codigo_sku as codigo_producto,
                     m.cantidad as cuanto,
@@ -145,6 +146,7 @@ class DashboardRepository
                 LEFT JOIN empleados e ON m.empleado_id = e.id
                 LEFT JOIN usuarios u_rec ON m.empleado_id = u_rec.id
                 LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
+                LEFT JOIN ubicaciones_envio ue ON m.ubicacion_envio_id = ue.id
                 
                 WHERE m.tipo_movimiento_id = 2 
                 AND m.fecha BETWEEN '$start' AND '$end'";
