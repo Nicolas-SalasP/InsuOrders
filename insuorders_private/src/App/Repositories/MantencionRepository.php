@@ -59,8 +59,8 @@ class MantencionRepository
             throw new \Exception("El código '{$data['codigo_interno']}' ya existe.");
 
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
-        $sql = "INSERT INTO activos (codigo_interno, codigo_maquina, nombre, tipo, marca, modelo, anio, numero_serie, ubicacion, descripcion, centro_costo_id, estado_activo) 
-                VALUES (:cod, :cod_maq, :nom, :tipo, :marca, :mod, :anio, :serie, :ubi, :desc, :cc, :est)";
+        $sql = "INSERT INTO activos (codigo_interno, codigo_maquina, nombre, tipo, marca, modelo, anio, numero_serie, ubicacion, descripcion, centro_costo_id, estado_activo, imagen_url) 
+                VALUES (:cod, :cod_maq, :nom, :tipo, :marca, :mod, :anio, :serie, :ubi, :desc, :cc, :est, :img)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
@@ -75,14 +75,30 @@ class MantencionRepository
             ':ubi' => $data['ubicacion'],
             ':desc' => $data['descripcion'] ?? '',
             ':cc' => $ccId,
-            ':est' => $data['estado_activo'] ?? 'OPERATIVO'
+            ':est' => $data['estado_activo'] ?? 'OPERATIVO',
+            ':img' => $data['imagen_url'] ?? null
         ]);
-        return $this->db->lastInsertId();
+        
+        $activoId = $this->db->lastInsertId();
+        if (!empty($data['galeria']) && is_array($data['galeria'])) {
+            $sqlGal = "INSERT INTO activos_imagenes (activo_id, imagen_url, tipo) VALUES (:aid, :url, :tipo)";
+            $stmtGal = $this->db->prepare($sqlGal);
+            foreach ($data['galeria'] as $img) {
+                $stmtGal->execute([
+                    ':aid' => $activoId,
+                    ':url' => $img['url'],
+                    ':tipo' => $img['tipo'] ?? 'General'
+                ]);
+            }
+        }
+        return $activoId;
     }
 
     public function updateActivo($data)
     {
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
+        $imgSql = !empty($data['imagen_url']) ? ", imagen_url = :img" : "";
+
         $sql = "UPDATE activos SET 
                 codigo_interno=:cod, 
                 codigo_maquina=:cod_maq,
@@ -96,9 +112,10 @@ class MantencionRepository
                 descripcion=:desc, 
                 centro_costo_id=:cc,
                 estado_activo=:est
+                $imgSql 
                 WHERE id=:id";
 
-        $this->db->prepare($sql)->execute([
+        $params = [
             ':cod' => $data['codigo_interno'],
             ':cod_maq' => $data['codigo_maquina'] ?? null,
             ':nom' => $data['nombre'],
@@ -112,7 +129,23 @@ class MantencionRepository
             ':cc' => $ccId,
             ':est' => $data['estado_activo'] ?? 'OPERATIVO',
             ':id' => $data['id']
-        ]);
+        ];
+
+        if (!empty($data['imagen_url'])) {
+            $params[':img'] = $data['imagen_url'];
+        }
+        $this->db->prepare($sql)->execute($params);
+        if (!empty($data['galeria']) && is_array($data['galeria'])) {
+            $sqlGal = "INSERT INTO activos_imagenes (activo_id, imagen_url, tipo) VALUES (:aid, :url, :tipo)";
+            $stmtGal = $this->db->prepare($sqlGal);
+            foreach ($data['galeria'] as $img) {
+                $stmtGal->execute([
+                    ':aid' => $data['id'],
+                    ':url' => $img['url'],
+                    ':tipo' => $img['tipo'] ?? 'General'
+                ]);
+            }
+        }
     }
 
     public function getCentrosCosto()
@@ -557,5 +590,12 @@ class MantencionRepository
             ]);
 
         return $linea['insumo_id'];
+    }
+
+    public function getGaleriaActivo($activoId)
+    {
+        $stmt = $this->db->prepare("SELECT * FROM activos_imagenes WHERE activo_id = :id ORDER BY created_at DESC");
+        $stmt->execute([':id' => $activoId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

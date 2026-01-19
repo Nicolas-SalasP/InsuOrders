@@ -216,6 +216,11 @@ try {
             elseif ($method === 'DELETE')
                 $c->deleteDoc();
             break;
+        
+        case 'mantencion/galeria':
+            AuthMiddleware::hasPermission('activos_ver');
+            (new MantencionController())->galeria();
+            break;
 
         // --- INVENTARIO ---
         case 'insumos':

@@ -55,4 +55,22 @@ class MantencionService
 
         $this->repo->delete($id);
     }
+
+    public function obtenerGaleria($id)
+    {
+        return $this->repo->getGaleriaActivo($id);
+    }
+
+    public function crearActivo($data)
+    {
+        return $this->repo->createActivo($data);
+    }
+
+    public function editarActivo($data)
+    {
+        if (empty($data['id'])) {
+            throw new \Exception("ID de activo no proporcionado.");
+        }
+        return $this->repo->updateActivo($data);
+    }
 }
