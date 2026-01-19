@@ -2,24 +2,20 @@ import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
 import AuthContext from '../context/AuthContext';
 import MessageModal from '../components/MessageModal';
-import ModalEntregaBodega from '../components/ModalEntregaBodega'; // Entrega individual
-import ModalEntregaMasivaBodega from '../components/ModalEntregaMasivaBodega'; // Entrega masiva
-import ModalOrganizarBodega from '../components/ModalOrganizarBodega'; // Organizar ubicación
+import ModalEntregaBodega from '../components/ModalEntregaBodega';
+import ModalEntregaMasivaBodega from '../components/ModalEntregaMasivaBodega';
+import ModalOrganizarBodega from '../components/ModalOrganizarBodega';
 
 const Bodega = () => {
     const { auth } = useContext(AuthContext);
-    const [vista, setVista] = useState('salidas'); // 'salidas' | 'entradas'
+    const [vista, setVista] = useState('salidas');
     const [pendientesAgrupados, setPendientesAgrupados] = useState({});
     const [porOrganizar, setPorOrganizar] = useState([]);
     const [loading, setLoading] = useState(true);
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
-
-    // Estados de Modales
     const [entregaModal, setEntregaModal] = useState({ show: false, item: null });
     const [organizarModal, setOrganizarModal] = useState({ show: false, item: null });
     const [masivaModal, setMasivaModal] = useState({ show: false });
-
-    // Estado para selección múltiple
     const [selectedIds, setSelectedIds] = useState([]);
 
     const hasPermission = (permiso) => {
@@ -30,25 +26,25 @@ const Bodega = () => {
     useEffect(() => {
         if (hasPermission('bodega_ver')) {
             cargarDatos();
-            const interval = setInterval(cargarDatos, 15000); // Actualización automática cada 15s
+            const interval = setInterval(() => cargarDatos(true), 120000); 
             return () => clearInterval(interval);
         } else {
             setLoading(false);
         }
     }, [vista]);
 
-    const cargarDatos = () => {
-        if (vista === 'salidas') cargarPendientes();
-        else cargarPorOrganizar();
+    const cargarDatos = (isSilent = false) => {
+        if (vista === 'salidas') cargarPendientes(isSilent);
+        else cargarPorOrganizar(isSilent);
     };
 
-    const cargarPendientes = async () => {
+    const cargarPendientes = async (isSilent = false) => {
+        if (!isSilent) setLoading(true);
         try {
             const res = await api.get('/bodega/pendientes');
             if (res.data.success) {
                 const datos = Array.isArray(res.data.data) ? res.data.data : [];
                 
-                // Agrupar por OT ID para mostrar tarjetas ordenadas
                 const grupos = datos.reduce((acc, item) => {
                     const id = item.ot_id;
                     if (!acc[id]) {
@@ -68,12 +64,12 @@ const Bodega = () => {
         } catch (e) { 
             console.error(e); 
         } finally { 
-            setLoading(false); 
+            if (!isSilent) setLoading(false);
         }
     };
 
-    const cargarPorOrganizar = async () => {
-        setLoading(true);
+    const cargarPorOrganizar = async (isSilent = false) => {
+        if (!isSilent) setLoading(true);
         try {
             const res = await api.get('/bodega/por-organizar');
             if (res.data.success) {
@@ -82,7 +78,7 @@ const Bodega = () => {
         } catch (e) { 
             console.error(e); 
         } finally { 
-            setLoading(false); 
+            if (!isSilent) setLoading(false);
         }
     };
 
@@ -93,7 +89,6 @@ const Bodega = () => {
         );
     };
 
-    // Obtener los objetos completos para pasarlos al modal masivo
     const getSelectedObjects = () => {
         const allItems = Object.values(pendientesAgrupados).flatMap(g => g.items);
         return allItems.filter(item => selectedIds.includes(item.detalle_id));
@@ -111,7 +106,7 @@ const Bodega = () => {
             });
             setEntregaModal({ show: false, item: null });
             setMsg({ show: true, title: "Entregado", text: "Entrega registrada exitosamente.", type: "success" });
-            cargarPendientes();
+            cargarPendientes(true);
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error desconocido", type: "error" });
         }
@@ -127,7 +122,7 @@ const Bodega = () => {
             setMasivaModal({ show: false });
             setSelectedIds([]); 
             setMsg({ show: true, title: "Entrega Masiva", text: "Se han entregado los materiales seleccionados.", type: "success" });
-            cargarPendientes();
+            cargarPendientes(true);
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al procesar entrega masiva", type: "error" });
         }
@@ -161,7 +156,7 @@ const Bodega = () => {
                     show={organizarModal.show} 
                     insumo={organizarModal.item} 
                     onClose={() => setOrganizarModal({ show: false, item: null })} 
-                    onSave={cargarPorOrganizar} 
+                    onSave={() => cargarPorOrganizar(true)} 
                 />
             )}
 
