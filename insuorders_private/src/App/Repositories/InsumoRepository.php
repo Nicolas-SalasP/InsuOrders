@@ -34,18 +34,21 @@ class InsumoRepository
 
     public function create($data)
     {
+        if (empty($data['codigo_sku'])) {
+            $data['codigo_sku'] = $this->getNextSku();
+        }
+
         try {
             if (!$this->db->inTransaction())
                 $this->db->beginTransaction();
-
             $sql = "INSERT INTO insumos (codigo_sku, nombre, descripcion, categoria_id, stock_actual, stock_minimo, stock_critico, precio_costo, moneda, unidad_medida, imagen_url) 
                     VALUES (:sku, :nom, :desc, :cat, :stock, :min, :crit, :precio, :moneda, :unidad, :img)";
 
             $stmt = $this->db->prepare($sql);
             $stockInicial = !empty($data['stock_actual']) ? floatval($data['stock_actual']) : 0;
 
-            $stmt->execute([
-                ':sku' => !empty($data['codigo_sku']) ? $data['codigo_sku'] : null,
+            $params = [
+                ':sku' => $data['codigo_sku'],
                 ':nom' => $data['nombre'],
                 ':desc' => $data['descripcion'] ?? null,
                 ':cat' => !empty($data['categoria_id']) ? $data['categoria_id'] : null,
@@ -56,20 +59,22 @@ class InsumoRepository
                 ':moneda' => $data['moneda'] ?? 'CLP',
                 ':unidad' => $data['unidad_medida'] ?? 'UN',
                 ':img' => $data['imagen_url'] ?? null
-            ]);
+            ];
 
+            $stmt->execute($params);
             $insumoId = $this->db->lastInsertId();
             $ubicacionId = !empty($data['ubicacion_id']) ? $data['ubicacion_id'] : 1;
 
             if ($stockInicial > 0) {
                 $sqlStock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
                             VALUES (:iid, :uid, :cant)
-                            ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant";
+                            ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_dup";
 
                 $this->db->prepare($sqlStock)->execute([
                     ':iid' => $insumoId,
                     ':uid' => $ubicacionId,
-                    ':cant' => $stockInicial
+                    ':cant' => $stockInicial,
+                    ':cant_dup' => $stockInicial
                 ]);
             }
 
@@ -79,6 +84,9 @@ class InsumoRepository
         } catch (Exception $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
+            }
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                throw new Exception("El código SKU ya existe.");
             }
             throw $e;
         }
@@ -91,29 +99,44 @@ class InsumoRepository
                 $this->db->beginTransaction();
             }
             $imageSql = !empty($data['imagen_url']) ? ", imagen_url = :imagen_url" : "";
-            $sql = "UPDATE insumos SET codigo_sku=:sku, nombre=:nom, descripcion=:desc, categoria_id=:cat, stock_minimo=:min, precio_costo=:precio, moneda=:mon, unidad_medida=:uni $imageSql WHERE id=:id";
+
+            $sql = "UPDATE insumos SET 
+                    codigo_sku = :sku, 
+                    nombre = :nom, 
+                    descripcion = :desc, 
+                    categoria_id = :cat, 
+                    stock_minimo = :min, 
+                    precio_costo = :precio, 
+                    moneda = :mon, 
+                    unidad_medida = :uni 
+                    $imageSql 
+                    WHERE id = :id";
+
             $stmt = $this->db->prepare($sql);
             $params = [
                 ':sku' => $data['codigo_sku'],
                 ':nom' => $data['nombre'],
-                ':desc' => $data['descripcion'],
+                ':desc' => $data['descripcion'] ?? null,
                 ':cat' => $data['categoria_id'],
-                ':min' => $data['stock_minimo'],
-                ':precio' => $data['precio_costo'],
-                ':mon' => $data['moneda'],
-                ':uni' => $data['unidad_medida'],
+                ':min' => $data['stock_minimo'] ?? 0,
+                ':precio' => $data['precio_costo'] ?? 0,
+                ':mon' => $data['moneda'] ?? 'CLP',
+                ':uni' => $data['unidad_medida'] ?? 'UN',
                 ':id' => $id
             ];
-
-            if (!empty($data['imagen_url']))
+            if (!empty($data['imagen_url'])) {
                 $params[':imagen_url'] = $data['imagen_url'];
+            }
+
             $stmt->execute($params);
             if (!empty($data['ubicacion_id'])) {
                 $nuevaUbicacionId = $data['ubicacion_id'];
+
                 $stmtMaster = $this->db->prepare("SELECT stock_actual FROM insumos WHERE id = :id");
                 $stmtMaster->execute([':id' => $id]);
                 $stockTotal = floatval($stmtMaster->fetchColumn() ?: 0);
                 $this->db->prepare("DELETE FROM insumo_stock_ubicacion WHERE insumo_id = :id")->execute([':id' => $id]);
+
                 $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant)")
                     ->execute([
                         ':iid' => $id,
@@ -122,7 +145,6 @@ class InsumoRepository
                     ]);
                 if ($stockTotal > 0) {
                     $uidFinal = $usuarioId ?: 1;
-
                     $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
                                         VALUES (:iid, 3, :cant, :uid, 'Reubicación (Edición)', :ubi, NOW())")
                         ->execute([
@@ -136,9 +158,13 @@ class InsumoRepository
 
             $this->db->commit();
             return true;
+
         } catch (\PDOException $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
+            }
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                throw new Exception("El código SKU '{$data['codigo_sku']}' ya existe.");
             }
             throw $e;
         }
@@ -214,5 +240,20 @@ class InsumoRepository
             }
             throw $e;
         }
+    }
+
+    public function getNextSku()
+    {
+        $sql = "SELECT MAX(CAST(codigo_sku AS UNSIGNED)) as max_sku 
+                FROM insumos 
+                WHERE codigo_sku REGEXP '^[0-9]+$'";
+
+        $stmt = $this->db->query($sql);
+        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if ($result && $result['max_sku']) {
+            return number_format($result['max_sku'] + 1, 0, '', '');
+        }
+        return '990000000000001';
     }
 }

@@ -11,7 +11,7 @@ const UbicacionModal = ({ show, onClose, ubicacion, sectores, onSave }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await api.post('/index.php/mantenedores/ubicacion', form);
+            await api.post('/index.php/mantenedores/ubicaciones', form);
             onSave(); onClose();
         } catch (error) { alert("Error al guardar"); }
     };

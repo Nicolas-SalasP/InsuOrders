@@ -122,7 +122,7 @@ const MisInsumos = () => {
             <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={confirm.action} title={confirm.title} message={confirm.message} />
 
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h3 className="fw-bold text-dark mb-0"><i className="bi bi-tools me-2"></i>Mi Pañol / Insumos</h3>
+                <h3 className="fw-bold text-dark mb-0"><i className="bi bi-tools me-2"></i>Mis Insumos</h3>
                 <button className="btn btn-sm btn-outline-primary" onClick={cargarDatos}><i className="bi bi-arrow-clockwise me-1"></i>Actualizar</button>
             </div>
 

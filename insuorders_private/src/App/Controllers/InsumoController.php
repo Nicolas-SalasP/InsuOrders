@@ -205,4 +205,17 @@ class InsumoController
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
+
+    public function nextSku()
+    {
+        AuthMiddleware::verify(); 
+
+        try {
+            $sku = $this->service->getNextSku();
+            echo json_encode(['success' => true, 'sku' => $sku]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

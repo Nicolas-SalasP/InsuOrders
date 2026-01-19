@@ -238,7 +238,13 @@ try {
                 $c->delete();
             }
             break;
-
+        case 'insumos/next-sku':
+            $c = new InsumoController();
+            if ($method === 'GET') {
+                AuthMiddleware::hasPermission('inv_crear');
+                $c->nextSku();
+            }
+            break;
         case 'insumos/auxiliares':
         case 'inventario/auxiliares':
             AuthMiddleware::hasPermission('inv_ver');

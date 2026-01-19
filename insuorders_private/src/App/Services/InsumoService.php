@@ -89,6 +89,11 @@ class InsumoService
         );
     }
 
+    public function getNextSku()
+    {
+        return $this->repo->getNextSku();
+    }
+
     public function eliminarInsumo($id)
     {
         return $this->repo->delete($id);
