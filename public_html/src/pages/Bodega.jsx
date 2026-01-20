@@ -9,9 +9,19 @@ import ModalOrganizarBodega from '../components/ModalOrganizarBodega';
 const Bodega = () => {
     const { auth } = useContext(AuthContext);
     const [vista, setVista] = useState('salidas');
+    
+    // Datos
     const [pendientesAgrupados, setPendientesAgrupados] = useState({});
     const [porOrganizar, setPorOrganizar] = useState([]);
+    
+    // Filtros
+    const [busqueda, setBusqueda] = useState('');
+
+    // Estados de Carga (Anti-Parpadeo)
     const [loading, setLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Modales y UI
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [entregaModal, setEntregaModal] = useState({ show: false, item: null });
     const [organizarModal, setOrganizarModal] = useState({ show: false, item: null });
@@ -19,18 +29,27 @@ const Bodega = () => {
     const [selectedIds, setSelectedIds] = useState([]);
 
     const hasPermission = (permiso) => {
-        if (auth.rol === 'Admin' || auth.rol_id === 1) return true;
+        if (auth.rol === 'Admin' || auth.rol === 1) return true;
         return auth.permisos && auth.permisos.includes(permiso);
     };
 
+    // EFECTO: Carga de datos y Auto-Refresh
     useEffect(() => {
         if (hasPermission('bodega_ver')) {
             cargarDatos();
-            const interval = setInterval(() => cargarDatos(true), 120000); 
+            const interval = setInterval(() => {
+                cargarDatos(true);
+            }, 120000); 
+            
             return () => clearInterval(interval);
         } else {
             setLoading(false);
         }
+    }, [vista]);
+
+    // Limpiar buscador al cambiar de vista
+    useEffect(() => {
+        setBusqueda('');
     }, [vista]);
 
     const cargarDatos = (isSilent = false) => {
@@ -40,6 +59,8 @@ const Bodega = () => {
 
     const cargarPendientes = async (isSilent = false) => {
         if (!isSilent) setLoading(true);
+        else setIsRefreshing(true);
+
         try {
             const res = await api.get('/bodega/pendientes');
             if (res.data.success) {
@@ -64,12 +85,15 @@ const Bodega = () => {
         } catch (e) { 
             console.error(e); 
         } finally { 
-            if (!isSilent) setLoading(false);
+            setLoading(false);
+            setIsRefreshing(false);
         }
     };
 
     const cargarPorOrganizar = async (isSilent = false) => {
         if (!isSilent) setLoading(true);
+        else setIsRefreshing(true);
+
         try {
             const res = await api.get('/bodega/por-organizar');
             if (res.data.success) {
@@ -78,9 +102,20 @@ const Bodega = () => {
         } catch (e) { 
             console.error(e); 
         } finally { 
-            if (!isSilent) setLoading(false);
+            setLoading(false);
+            setIsRefreshing(false);
         }
     };
+
+    // --- LÓGICA DE FILTRADO PARA "ORGANIZAR" ---
+    const itemsPorOrganizarFiltrados = porOrganizar.filter(item => {
+        if (!busqueda) return true;
+        const termino = busqueda.toLowerCase();
+        return (
+            item.nombre.toLowerCase().includes(termino) || 
+            item.codigo_sku.toLowerCase().includes(termino)
+        );
+    });
 
     // --- LÓGICA DE SELECCIÓN MÚLTIPLE ---
     const handleCheckItem = (id) => {
@@ -96,7 +131,6 @@ const Bodega = () => {
 
     // --- PROCESOS ---
 
-    // 1. Entrega Individual
     const procesarEntrega = async (detalleId, cantidad, receptorId) => {
         try {
             await api.post('/bodega/entregar', {
@@ -106,13 +140,12 @@ const Bodega = () => {
             });
             setEntregaModal({ show: false, item: null });
             setMsg({ show: true, title: "Entregado", text: "Entrega registrada exitosamente.", type: "success" });
-            cargarPendientes(true);
+            cargarPendientes(true); // Recarga silenciosa
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error desconocido", type: "error" });
         }
     };
 
-    // 2. Entrega Masiva
     const procesarEntregaMasiva = async (itemsPayload, receptorId) => {
         try {
             await api.post('/bodega/entregar-masivo', {
@@ -122,7 +155,7 @@ const Bodega = () => {
             setMasivaModal({ show: false });
             setSelectedIds([]); 
             setMsg({ show: true, title: "Entrega Masiva", text: "Se han entregado los materiales seleccionados.", type: "success" });
-            cargarPendientes(true);
+            cargarPendientes(true); // Recarga silenciosa
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al procesar entrega masiva", type: "error" });
         }
@@ -168,7 +201,14 @@ const Bodega = () => {
                             <i className="bi bi-inboxes me-2"></i>Gestión de Bodega
                         </h4>
                         
-                        {/* Botón Masivo (Aparece solo si hay seleccionados) */}
+                        {/* Indicador de actualización silenciosa */}
+                        {isRefreshing && (
+                            <span className="badge bg-light text-secondary border animate__animated animate__fadeIn">
+                                <span className="spinner-border spinner-border-sm me-1" style={{width:'0.7rem', height:'0.7rem'}}></span>
+                                Actualizando...
+                            </span>
+                        )}
+
                         {vista === 'salidas' && selectedIds.length > 0 && hasPermission('bodega_despachar') && (
                             <button 
                                 className="btn btn-success btn-sm shadow-sm animate__animated animate__fadeIn"
@@ -196,10 +236,45 @@ const Bodega = () => {
                     </div>
                 </div>
 
-                <div className="card-body p-3 flex-grow-1 overflow-auto bg-light">
+                {/* BARRA DE FILTROS (SOLO VISIBLE EN VISTA 'ENTRADAS/ORGANIZAR') */}
+                {vista === 'entradas' && (
+                    <div className="bg-light px-3 pt-3 pb-2 border-bottom">
+                        <div className="row">
+                            <div className="col-md-4">
+                                <div className="input-group">
+                                    <span className="input-group-text bg-white border-end-0 text-muted">
+                                        <i className="bi bi-search"></i>
+                                    </span>
+                                    <input 
+                                        type="text" 
+                                        className="form-control border-start-0 ps-0" 
+                                        placeholder="Filtrar por SKU o Nombre..." 
+                                        value={busqueda}
+                                        onChange={(e) => setBusqueda(e.target.value)}
+                                    />
+                                    {busqueda && (
+                                        <button className="btn btn-outline-secondary border-start-0 bg-white" onClick={() => setBusqueda('')}>
+                                            <i className="bi bi-x"></i>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="col-md-8 text-end align-self-center">
+                                <small className="text-muted">
+                                    Mostrando {itemsPorOrganizarFiltrados.length} de {porOrganizar.length} ítems
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="card-body p-3 flex-grow-1 overflow-auto bg-light position-relative">
                     {loading ? (
-                        <div className="p-5 text-center"><div className="spinner-border text-primary"></div></div> 
+                        <div className="d-flex justify-content-center align-items-center h-100">
+                            <div className="spinner-border text-primary" role="status"></div>
+                        </div> 
                     ) : (
+                        // VISTA: SALIDAS (AGRUPADO POR OT)
                         vista === 'salidas' ? (
                             <div className="row g-3">
                                 {Object.keys(pendientesAgrupados).length === 0 && <div className="col-12 text-center py-5 text-muted">✅ Todo despachado</div>}
@@ -268,8 +343,8 @@ const Bodega = () => {
                                 ))}
                             </div>
                         ) : (
-                            // VISTA ENTRADAS (Organizar)
-                            <div className="card border-0">
+                            // VISTA: ENTRADAS (ORGANIZAR) - CON FILTRO
+                            <div className="card border-0 shadow-sm">
                                 <table className="table table-hover align-middle mb-0">
                                     <thead className="bg-light sticky-top">
                                         <tr>
@@ -281,24 +356,32 @@ const Bodega = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {porOrganizar.map(p => (
-                                            <tr key={p.id}>
-                                                <td className="ps-4 font-monospace">{p.codigo_sku}</td>
-                                                <td><div className="fw-bold">{p.nombre}</div></td>
-                                                <td className="text-center">{parseFloat(p.stock_actual)}</td>
-                                                <td className="text-center fw-bold text-danger">{parseFloat(p.por_organizar)}</td>
-                                                <td className="text-end pe-4">
-                                                    {hasPermission('bodega_organizar') && (
-                                                        <button 
-                                                            className="btn btn-primary btn-sm fw-bold px-3" 
-                                                            onClick={() => setOrganizarModal({ show: true, item: p })}
-                                                        >
-                                                            <i className="bi bi-arrow-down-square me-2"></i>Ubicación
-                                                        </button>
-                                                    )}
+                                        {itemsPorOrganizarFiltrados.length > 0 ? (
+                                            itemsPorOrganizarFiltrados.map(p => (
+                                                <tr key={p.id}>
+                                                    <td className="ps-4 font-monospace">{p.codigo_sku}</td>
+                                                    <td><div className="fw-bold">{p.nombre}</div></td>
+                                                    <td className="text-center">{parseFloat(p.stock_actual)}</td>
+                                                    <td className="text-center fw-bold text-danger">{parseFloat(p.por_organizar)}</td>
+                                                    <td className="text-end pe-4">
+                                                        {hasPermission('bodega_organizar') && (
+                                                            <button 
+                                                                className="btn btn-primary btn-sm fw-bold px-3" 
+                                                                onClick={() => setOrganizarModal({ show: true, item: p })}
+                                                            >
+                                                                <i className="bi bi-arrow-down-square me-2"></i>Ubicación
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="5" className="text-center py-5 text-muted">
+                                                    {busqueda ? 'No se encontraron resultados con ese filtro.' : 'No hay ítems pendientes de organizar.'}
                                                 </td>
                                             </tr>
-                                        ))}
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
