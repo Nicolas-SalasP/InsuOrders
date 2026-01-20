@@ -25,7 +25,9 @@ const Inventario = () => {
     const [busqueda, setBusqueda] = useState('');
     const [filtroCategoria, setFiltroCategoria] = useState('');
     const [filtroUbicacion, setFiltroUbicacion] = useState('');
-    const [ordenStock, setOrdenStock] = useState('');
+    
+    // CAMBIO: Estado para manejar orden. Valores: 'stock_asc', 'stock_desc', 'sku_asc', 'sku_desc', ''
+    const [orden, setOrden] = useState('');
 
     // Estados Modales
     const [showInsumoModal, setShowInsumoModal] = useState(false);
@@ -38,8 +40,6 @@ const Inventario = () => {
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, id: null, titulo: '', mensaje: '' });
 
-    // --- HELPER DE PERMISOS ---
-    // Verifica si el usuario puede realizar una acción específica
     const can = (permiso) => {
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
         return auth.permisos && auth.permisos.includes(permiso);
@@ -114,10 +114,18 @@ const Inventario = () => {
             .finally(() => setLoading(false));
     };
 
-    const toggleOrdenStock = () => {
-        if (ordenStock === '') setOrdenStock('asc');
-        else if (ordenStock === 'asc') setOrdenStock('desc');
-        else setOrdenStock('');
+    // --- NUEVA LÓGICA DE BOTONES SEPARADOS ---
+
+    const toggleSku = () => {
+        // Si ya está en ASC, pasa a DESC. Si no, empieza en ASC.
+        if (orden === 'sku_asc') setOrden('sku_desc');
+        else setOrden('sku_asc');
+    };
+
+    const toggleStock = () => {
+        // Si ya está en ASC (Menor a Mayor), pasa a DESC (Mayor a Menor). Si no, empieza en ASC.
+        if (orden === 'stock_asc') setOrden('stock_desc');
+        else setOrden('stock_asc');
     };
 
     const insumosFiltrados = insumos.filter(i => {
@@ -137,8 +145,11 @@ const Inventario = () => {
         }
         return matchTexto && matchCat && matchUbi;
     }).sort((a, b) => {
-        if (ordenStock === 'asc') return parseFloat(a.stock_actual) - parseFloat(b.stock_actual);
-        if (ordenStock === 'desc') return parseFloat(b.stock_actual) - parseFloat(a.stock_actual);
+        // Lógica actualizada para incluir SKU DESC y SKU ASC
+        if (orden === 'stock_asc') return parseFloat(a.stock_actual) - parseFloat(b.stock_actual);
+        if (orden === 'stock_desc') return parseFloat(b.stock_actual) - parseFloat(a.stock_actual);
+        if (orden === 'sku_asc') return a.codigo_sku.localeCompare(b.codigo_sku);
+        if (orden === 'sku_desc') return b.codigo_sku.localeCompare(a.codigo_sku);
         return 0;
     });
 
@@ -209,7 +220,6 @@ const Inventario = () => {
                     </div>
 
                     <div className="d-flex gap-2 justify-content-center flex-wrap">
-                        {/* BOTÓN EXPORTAR - Requiere permiso 'inv_exportar' */}
                         {can('inv_exportar') && (
                             <button
                                 className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
@@ -222,7 +232,6 @@ const Inventario = () => {
                             </button>
                         )}
                         
-                        {/* BOTÓN IMPORTAR - Requiere permiso 'inv_importar' (antes solo Admin) */}
                         {can('inv_importar') && (
                             <button
                                 className="btn btn-outline-dark shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
@@ -234,7 +243,6 @@ const Inventario = () => {
                             </button>
                         )}
 
-                        {/* BOTÓN CREAR - Requiere permiso 'inv_crear' */}
                         {can('inv_crear') && (
                             <button
                                 className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
@@ -278,13 +286,28 @@ const Inventario = () => {
                                 ))}
                             </select>
                         </div>
-                        <div className="col-md-3 d-flex gap-2">
+                        
+                        {/* --- BOTONES DE ORDENAMIENTO SEPARADOS --- */}
+                        <div className="col-md-3 d-flex gap-1">
                             <button
-                                className={`btn w-100 ${ordenStock ? 'btn-primary' : 'btn-outline-secondary'}`}
-                                onClick={toggleOrdenStock}
+                                className={`btn w-50 ${orden.includes('sku') ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                onClick={toggleSku}
+                                title="Ordenar por Código SKU"
                             >
-                                <i className={`bi bi-sort-${ordenStock === 'asc' ? 'numeric-down' : 'numeric-up-alt'} me-2`}></i>
-                                {ordenStock === 'asc' ? 'Menor Stock' : ordenStock === 'desc' ? 'Mayor Stock' : 'Stock (Orden)'}
+                                {orden === 'sku_asc' ? <i className="bi bi-sort-alpha-down me-1"></i> : 
+                                 orden === 'sku_desc' ? <i className="bi bi-sort-alpha-down-alt me-1"></i> : 
+                                 <i className="bi bi-filter me-1"></i>}
+                                SKU
+                            </button>
+                            <button
+                                className={`btn w-50 ${orden.includes('stock') ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                onClick={toggleStock}
+                                title="Ordenar por Cantidad de Stock"
+                            >
+                                {orden === 'stock_asc' ? <i className="bi bi-sort-numeric-down me-1"></i> : 
+                                 orden === 'stock_desc' ? <i className="bi bi-sort-numeric-down-alt me-1"></i> : 
+                                 <i className="bi bi-bar-chart me-1"></i>}
+                                Stock
                             </button>
                         </div>
                     </div>
@@ -352,10 +375,6 @@ const Inventario = () => {
                                                 <small className="text-muted ms-1">{item.unidad_medida}</small>
                                             </td>
                                             <td className="text-end pe-4">
-                                                
-                                                {/* GRUPO DE ACCIONES */}
-                                                
-                                                {/* Ajuste de Stock (+/-) requiere 'ajustar_stock' */}
                                                 {can('ajustar_stock') && (
                                                     <div className="btn-group me-2" role="group">
                                                         <button className="btn btn-sm btn-outline-success" onClick={() => setEntradaModal({ show: true, insumo: item })} title="Entrada Manual"><i className="bi bi-plus-lg"></i></button>
@@ -365,14 +384,12 @@ const Inventario = () => {
 
                                                 <span className="mx-1 text-muted">|</span>
                                                 
-                                                {/* Editar requiere 'inv_editar' */}
                                                 {can('inv_editar') && (
                                                     <button className="btn btn-sm btn-link text-secondary" onClick={() => handleEdit(item)} title="Editar">
                                                         <i className="bi bi-pencil"></i>
                                                     </button>
                                                 )}
 
-                                                {/* Eliminar requiere 'inv_eliminar' */}
                                                 {can('inv_eliminar') && (
                                                     <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteClick(item)} title="Eliminar">
                                                         <i className="bi bi-trash"></i>

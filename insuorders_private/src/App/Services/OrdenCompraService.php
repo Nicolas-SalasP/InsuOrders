@@ -199,4 +199,37 @@ class OrdenCompraService
 
         return $this->repo->cancelar($id);
     }
+
+    public function regenerarDocumentoPdf($id)
+    {
+        $orden = $this->repo->getOrdenCompleta($id);
+
+        if (!$orden || !$orden['cabecera']) {
+            throw new Exception("La orden de compra #$id no existe.");
+        }
+        $pdfService = new PDFService();
+        $pdfService->setOrdenData($orden['cabecera']);
+        $pdfContent = $pdfService->generarPDF($orden['detalles']);
+        $uploadDir = __DIR__ . '/../../../../public_html/uploads/ordenes/';
+        
+        if (!is_dir($uploadDir)) {
+            if (!mkdir($uploadDir, 0777, true)) {
+                throw new Exception("No se pudo crear el directorio de uploads.");
+            }
+        }
+        $fileName = 'OC_' . $id . '_' . time() . '.pdf';
+        $filePath = $uploadDir . $fileName;
+
+        if (file_put_contents($filePath, $pdfContent) === false) {
+            throw new Exception("Error al escribir el archivo PDF en el disco.");
+        }
+        $relativePath = 'uploads/ordenes/' . $fileName;
+        $updated = $this->repo->update($id, ['url_archivo' => $relativePath]);
+
+        if (!$updated) {
+            throw new Exception("El archivo se creó, pero no se pudo actualizar la base de datos.");
+        }
+
+        return $relativePath;
+    }
 }

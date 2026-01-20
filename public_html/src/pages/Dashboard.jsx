@@ -82,6 +82,24 @@ const Dashboard = () => {
         }
     };
 
+    // --- NUEVA FUNCIÓN: EXPORTAR RECEPCIONES ---
+    const handleExportarRecepciones = () => {
+        // Llama al módulo 'recepciones' que creamos en el ExportController
+        const url = `/index.php/exportar?modulo=recepciones&start=${fechas.start}&end=${fechas.end}`;
+        
+        api.get(url, { responseType: 'blob' })
+            .then((response) => {
+                const href = window.URL.createObjectURL(response.data);
+                const link = document.createElement('a');
+                link.href = href;
+                link.setAttribute('download', `Recepciones_Historico_${fechas.start}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            })
+            .catch(err => console.error("Error exportando recepciones", err));
+    };
+
     const renderResumenSuperior = () => (
         <div className="row g-3 mb-5 animate__animated animate__fadeIn">
             <div className="col-12 col-sm-6 col-lg-3">
@@ -121,7 +139,18 @@ const Dashboard = () => {
 
     const renderCompras = () => (
         <div className="mb-5 animate__animated animate__fadeIn">
-            <h5 className="text-secondary border-bottom pb-2 mb-3"><i className="bi bi-cart3 me-2"></i>Gestión de Compras</h5>
+            {/* CABECERA MODIFICADA CON BOTÓN DE EXPORTAR */}
+            <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <h5 className="text-secondary mb-0"><i className="bi bi-cart3 me-2"></i>Gestión de Compras</h5>
+                <button 
+                    className="btn btn-sm btn-outline-success shadow-sm" 
+                    onClick={handleExportarRecepciones}
+                    title="Descargar historial de recepciones en Excel"
+                >
+                    <i className="bi bi-file-earmark-excel-fill me-2"></i>Exportar Recepciones
+                </button>
+            </div>
+
             <div className="row g-4 mb-4">
                 <div className="col-12 col-lg-4">
                     <div className="card border-0 shadow-sm h-100">
@@ -309,7 +338,6 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* --- SECCIÓN CORREGIDA PARA NOMBRES COMPLETOS Y BOTÓN EXPORTAR --- */}
                 <div className="col-12 col-md-6">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 d-flex justify-content-between align-items-center border-0">
@@ -318,11 +346,9 @@ const Dashboard = () => {
                                 {empleadoFilter && <span className="badge bg-primary">Filtrado</span>}
                             </div>
                             
-                            {/* BOTÓN EXPORTAR AGREGADO AQUÍ */}
                             <button 
                                 className="btn btn-sm btn-outline-success d-flex align-items-center gap-2"
                                 onClick={() => {
-                                    // URL apuntando a ExportController
                                     const url = `/index.php/exportar?modulo=dashboard_entregas&start=${fechas.start}&end=${fechas.end} 23:59:59&empleado_id=${empleadoFilter}`;
                                     
                                     api.get(url, {
@@ -349,7 +375,6 @@ const Dashboard = () => {
                                     {data.bodega.timeline_entregas.map((log, idx) => (
                                         <li key={idx} className="list-group-item px-4 py-3 border-bottom-0 border-top">
                                             <div className="d-flex align-items-center">
-                                                {/* COLUMNA FECHA Y HORA */}
                                                 <div className="d-flex flex-column align-items-center me-4 text-center border-end pe-3" style={{minWidth: '90px'}}>
                                                     <div className="fw-bold text-dark lh-1" style={{fontSize: '1.4rem'}}>
                                                         {new Date(log.fecha_entrega).getDate()}
@@ -363,7 +388,6 @@ const Dashboard = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* INFO ENTREGA */}
                                                 <div className="flex-grow-1">
                                                     <div className="d-flex justify-content-between align-items-start mb-2">
                                                         <div>

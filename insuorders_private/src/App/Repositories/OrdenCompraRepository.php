@@ -68,14 +68,15 @@ class OrdenCompraRepository
     public function getOrdenCompleta($id)
     {
         $sqlCabecera = "SELECT oc.*, 
-                            p.nombre as proveedor, p.rut as proveedor_rut, p.contacto_vendedor,
+                            p.nombre as proveedor, p.rut as proveedor_rut, p.contacto_vendedor, p.direccion as proveedor_direccion, p.telefono as proveedor_telefono,
                             e.nombre as estado_nombre,
-                            u.nombre as creador_nombre, u.apellido as creador_apellido
+                            u.nombre as creador_nombre, u.apellido as creador_apellido, u.email as creador_email
                         FROM ordenes_compra oc
                         JOIN proveedores p ON oc.proveedor_id = p.id
                         JOIN estados_orden_compra e ON oc.estado_id = e.id
                         JOIN usuarios u ON oc.usuario_creador_id = u.id
                         WHERE oc.id = :id";
+        
         $stmt = $this->db->prepare($sqlCabecera);
         $stmt->execute([':id' => $id]);
         $cabecera = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -83,10 +84,14 @@ class OrdenCompraRepository
         if (!$cabecera)
             return null;
 
-        $sqlDetalles = "SELECT doc.*, i.nombre as insumo, i.codigo_sku
+        $sqlDetalles = "SELECT doc.*, 
+                            i.nombre as insumo, 
+                            i.codigo_sku, 
+                            i.unidad_medida
                         FROM detalle_orden_compra doc
                         JOIN insumos i ON doc.insumo_id = i.id
                         WHERE doc.orden_compra_id = :id";
+                        
         $stmtDet = $this->db->prepare($sqlDetalles);
         $stmtDet->execute([':id' => $id]);
         $detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
@@ -180,6 +185,24 @@ class OrdenCompraRepository
         $this->db->prepare("UPDATE ordenes_compra SET url_archivo = :url WHERE id = :id")->execute([':url' => $url, ':id' => $id]);
     }
 
+    public function update($id, $data)
+    {
+        if (empty($data)) return false;
+
+        $fields = [];
+        $params = [':id' => $id];
+
+        foreach ($data as $key => $value) {
+            $fields[] = "$key = :$key";
+            $params[":$key"] = $value;
+        }
+
+        $sql = "UPDATE ordenes_compra SET " . implode(', ', $fields) . " WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        
+        return $stmt->execute($params);
+    }
+
     public function recepcionarOrden($ordenId, $itemsRecibidos, $usuarioId)
     {
         try {
@@ -254,5 +277,32 @@ class OrdenCompraRepository
     {
         $sql = "UPDATE ordenes_compra SET estado_id = 5 WHERE id = :id";
         return $this->db->prepare($sql)->execute([':id' => $id]);
+    }
+
+    public function getHistorialRecepciones()
+    {
+        $sql = "SELECT 
+                    oc.id AS numero_oc,
+                    p.nombre AS proveedor,
+                    p.rut AS rut_proveedor,
+                    oc.estado_id,
+                    DATE_FORMAT(oc.updated_at, '%d/%m/%Y %H:%i') as fecha_recepcion,
+                    i.codigo_sku,
+                    i.nombre AS insumo,
+                    doc.cantidad_solicitada,
+                    doc.cantidad_recibida,
+                    doc.precio_unitario,
+                    (doc.cantidad_recibida * doc.precio_unitario) as total_linea,
+                    'No Registrado' as recepcionado_por
+                FROM ordenes_compra oc
+                JOIN proveedores p ON oc.proveedor_id = p.id
+                JOIN detalle_orden_compra doc ON oc.id = doc.orden_compra_id
+                JOIN insumos i ON doc.insumo_id = i.id
+                -- LEFT JOIN usuarios u ON oc.usuario_recepcion_id = u.id (COMENTADO PORQUE NO EXISTE LA COLUMNA)
+                WHERE doc.cantidad_recibida > 0 
+                AND oc.estado_id IN (3, 4) -- 3=Recepcionado, 4=Parcial
+                ORDER BY oc.updated_at DESC";
+
+        return $this->db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

@@ -184,4 +184,31 @@ class OrdenCompraController
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     }
+
+
+    public function regenerarPdf()
+    {
+        AuthMiddleware::verify();
+        $id = $_GET['id'] ?? null;
+        
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "ID faltante"]);
+            return;
+        }
+
+        try {
+            $url = $this->service->regenerarDocumentoPdf($id);
+
+            echo json_encode([
+                "success" => true, 
+                "message" => "PDF Regenerado correctamente", 
+                "url" => $url
+            ]);
+
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Error regenerando: " . $e->getMessage()]);
+        }
+    }
 }

@@ -291,6 +291,11 @@ try {
             AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
             (new OrdenCompraController())->downloadPdf();
             break;
+            
+        case 'compras/regenerar-pdf':
+            AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
+            (new OrdenCompraController())->regenerarPdf();
+            break;
 
         case 'compras/upload':
             AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);

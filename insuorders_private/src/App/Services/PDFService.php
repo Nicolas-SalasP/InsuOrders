@@ -17,7 +17,7 @@ class PDFService extends FPDF {
         'giro'   => 'ELABORACION Y CONSERVACION DE CARNE Y PRODUCTOS CARNICOS',
         'dir'    => 'Antillanca Norte 391, Pudahuel',
         'web'    => 'www.insuban.cl',
-        'mail'   => 'contacto@insuban.cl'
+        'mail'   => 'operaciones@insuban.cl'
     ];
 
     public function setOrdenData($orden) {

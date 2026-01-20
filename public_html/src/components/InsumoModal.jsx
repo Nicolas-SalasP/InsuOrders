@@ -21,11 +21,14 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
     const [saving, setSaving] = useState(false);
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
 
+    // NUEVO ESTADO: Controla si el SKU es automático o manual
+    const [esAutomatico, setEsAutomatico] = useState(true);
+
     useEffect(() => {
         if (show) {
             setSaving(false);
             
-            // 1. Cargar Listas Auxiliares (Categorías, Sectores, Ubicaciones)
+            // 1. Cargar Listas Auxiliares
             api.get('/index.php/inventario/auxiliares')
                 .then(res => {
                     if (res.data.success) {
@@ -42,7 +45,9 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                 ubicacion_id: insumo.ubicacion_id || ''
                             });
                             
-                            // Cargar imagen existente
+                            // En edición, desactivamos el automático para mostrar el código real
+                            setEsAutomatico(false);
+
                             if (insumo.imagen_url) {
                                 const url = insumo.imagen_url.startsWith('http') ? insumo.imagen_url : `${BASE_URL_IMAGENES}${insumo.imagen_url}`;
                                 setImagenPreview(url);
@@ -50,30 +55,19 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                 setImagenPreview(null);
                             }
 
-                            // Preseleccionar Sector según la ubicación guardada
                             if (insumo.ubicacion_id && res.data.data.ubicaciones) {
                                 const ubi = res.data.data.ubicaciones.find(u => u.id == insumo.ubicacion_id);
                                 if (ubi) setSectorSeleccionado(ubi.sector_id);
                             }
                         } else {
                             // --- MODO CREAR ---
-                            // 1. Resetear formulario
-                            setFormData({ ...initialState, codigo_sku: 'Cargando...' }); // Feedback visual
+                            setFormData({ ...initialState, codigo_sku: 'Cargando...' });
                             setSectorSeleccionado('');
                             setImagenFile(null);
                             setImagenPreview(null);
+                            setEsAutomatico(true); // Por defecto Automático al crear
 
-                            // 2. Obtener el SIGUIENTE SKU REAL desde el servidor
-                            api.get('/index.php/insumos/next-sku')
-                                .then(resSku => {
-                                    if (resSku.data.success) {
-                                        setFormData(prev => ({ ...prev, codigo_sku: resSku.data.sku }));
-                                    }
-                                })
-                                .catch(err => {
-                                    console.error("Error obteniendo SKU:", err);
-                                    setFormData(prev => ({ ...prev, codigo_sku: '' })); // Permitir escribir si falla
-                                });
+                            obtenerSiguienteSku(); // Llamada a la función auxiliar
                         }
                     }
                 })
@@ -81,7 +75,33 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
         }
     }, [show, insumo]);
 
-    // Filtrar Ubicaciones dinámicamente según el Sector seleccionado
+    // Función auxiliar para obtener el SKU del servidor
+    const obtenerSiguienteSku = () => {
+        setFormData(prev => ({ ...prev, codigo_sku: 'Generando...' }));
+        api.get('/index.php/insumos/next-sku')
+            .then(resSku => {
+                if (resSku.data.success) {
+                    setFormData(prev => ({ ...prev, codigo_sku: resSku.data.sku }));
+                }
+            })
+            .catch(err => {
+                console.error("Error obteniendo SKU:", err);
+                setFormData(prev => ({ ...prev, codigo_sku: '' }));
+            });
+    };
+
+    // Manejador del Switch Manual/Automático
+    const handleToggleAutomatico = (e) => {
+        const isAuto = e.target.checked;
+        setEsAutomatico(isAuto);
+
+        if (isAuto) {
+            obtenerSiguienteSku(); // Si activa automático, traemos el número
+        } else {
+            setFormData(prev => ({ ...prev, codigo_sku: '' })); // Si desactiva, limpiamos para que escriba
+        }
+    };
+
     useEffect(() => {
         if (sectorSeleccionado && listas.ubicaciones.length > 0) {
             setUbicacionesFiltradas(listas.ubicaciones.filter(u => u.sector_id == sectorSeleccionado));
@@ -109,22 +129,25 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
         try {
             const dataToSend = new FormData();
             
-            // Añadir campos al FormData
             Object.keys(formData).forEach(key => { 
                 if (key !== 'id') dataToSend.append(key, formData[key] ?? ''); 
             });
             
+            // Enviamos la bandera para que el backend sepa la intención
+            dataToSend.append('es_automatico', esAutomatico ? 'true' : 'false');
+            
+            // Si es automático, podemos enviar vacío el SKU para forzar generación en backend 
+            // o enviar el que ya consultamos (aquí enviamos el que tiene el form)
+
             if (imagenFile) dataToSend.append('imagen', imagenFile);
 
             const config = { headers: { 'Content-Type': 'multipart/form-data' } };
             
             if (insumo) {
-                // UPDATE
                 dataToSend.append('id', insumo.id);
                 dataToSend.append('_method', 'PUT'); 
                 await api.post('/index.php/inventario', dataToSend, config);
             } else {
-                // CREATE
                 await api.post('/index.php/inventario', dataToSend, config);
             }
             
@@ -158,17 +181,44 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                             <div className="modal-body p-4">
                                 <div className="row g-3 mb-4">
                                     
-                                    {/* SKU (Solo Lectura - Cargado desde Backend) */}
+                                    {/* CAMBIO: SECCIÓN SKU CON SWITCH */}
                                     <div className="col-md-4">
-                                        <label className="form-label small fw-bold text-secondary">SKU (Automático)</label>
+                                        <div className="d-flex justify-content-between align-items-center mb-1">
+                                            <label className="form-label small fw-bold text-secondary mb-0">Código SKU</label>
+                                            
+                                            {/* Solo mostrar switch si estamos creando nuevo */}
+                                            {!insumo && (
+                                                <div className="form-check form-switch">
+                                                    <input 
+                                                        className="form-check-input cursor-pointer" 
+                                                        type="checkbox" 
+                                                        id="autoSkuSwitch"
+                                                        checked={esAutomatico}
+                                                        onChange={handleToggleAutomatico}
+                                                        title="Activar para generación automática, desactivar para manual"
+                                                    />
+                                                    <label className="form-check-label small text-muted" htmlFor="autoSkuSwitch" style={{fontSize: '0.7rem'}}>
+                                                        {esAutomatico ? 'Auto' : 'Manual'}
+                                                    </label>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <input 
                                             type="text" 
                                             name="codigo_sku" 
-                                            className="form-control font-monospace bg-light text-primary fw-bold" 
-                                            readOnly 
+                                            className={`form-control font-monospace fw-bold ${esAutomatico ? 'bg-light text-primary' : 'bg-white text-dark border-primary'}`} 
+                                            readOnly={esAutomatico} 
                                             value={formData.codigo_sku} 
-                                            placeholder="Generando..."
+                                            onChange={handleChange}
+                                            placeholder={esAutomatico ? "Generando..." : "Ej: SERV-01"}
+                                            required={!esAutomatico} // Requerido solo si es manual
                                         />
+                                        {!esAutomatico && !insumo && (
+                                            <div className="form-text text-muted" style={{fontSize: '0.65rem'}}>
+                                                Ingrese un código alfanumérico para Servicios.
+                                            </div>
+                                        )}
                                     </div>
                                     
                                     {/* Nombre */}
@@ -240,6 +290,7 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                             <option value="LTS">LTS (Litros)</option>
                                             <option value="CAJA">Caja</option>
                                             <option value="PAR">Par</option>
+                                            <option value="GL">GL (Global/Servicio)</option>
                                         </select>
                                     </div>
                                     <div className="col-md-3">
