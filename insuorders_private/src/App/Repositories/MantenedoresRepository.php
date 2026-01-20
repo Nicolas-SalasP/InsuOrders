@@ -26,16 +26,35 @@ class MantenedoresRepository
 
     public function saveEmpleado($data)
     {
+        $params = [
+            ':rut' => $data['rut'], 
+            ':nom' => $data['nombre_completo'], 
+            ':mail' => $data['email'] ?? null,
+            ':car' => $data['cargo'] ?? null,
+            ':cc' => !empty($data['centro_costo_id']) ? $data['centro_costo_id'] : null, 
+            ':uid' => !empty($data['usuario_id']) ? $data['usuario_id'] : null,
+            ':act' => $data['activo'] ?? 1
+        ];
+
         if (!empty($data['id'])) {
-            $sql = "UPDATE empleados SET rut=:rut, nombre_completo=:nom, centro_costo_id=:cc, activo=:act WHERE id=:id";
-            $this->db->prepare($sql)->execute([
-                ':rut' => $data['rut'], ':nom' => $data['nombre_completo'], ':cc' => $data['centro_costo_id'], ':act' => $data['activo'] ?? 1, ':id' => $data['id']
-            ]);
+            $sql = "UPDATE empleados SET 
+                    rut=:rut, 
+                    nombre_completo=:nom, 
+                    email=:mail,
+                    cargo=:car,
+                    centro_costo_id=:cc, 
+                    usuario_id=:uid,
+                    activo=:act 
+                    WHERE id=:id";
+            
+            $params[':id'] = $data['id'];
+            $this->db->prepare($sql)->execute($params);
+
         } else {
-            $sql = "INSERT INTO empleados (rut, nombre_completo, centro_costo_id, activo) VALUES (:rut, :nom, :cc, :act)";
-            $this->db->prepare($sql)->execute([
-                ':rut' => $data['rut'], ':nom' => $data['nombre_completo'], ':cc' => $data['centro_costo_id'], ':act' => $data['activo'] ?? 1
-            ]);
+            $sql = "INSERT INTO empleados (rut, nombre_completo, email, cargo, centro_costo_id, usuario_id, activo) 
+                    VALUES (:rut, :nom, :mail, :car, :cc, :uid, :act)";
+            
+            $this->db->prepare($sql)->execute($params);
         }
     }
 

@@ -16,6 +16,7 @@ import Usuarios from './pages/Usuarios';
 import Cronograma from './pages/Cronograma';
 import AdminMantenedores from './pages/AdminMantenedores';
 import MisInsumos from './pages/MisInsumos';
+import MisMantenciones from './pages/MisMantenciones';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const PrivateRoute = () => {
@@ -46,18 +47,18 @@ function App() {
 
                     <Route element={<PrivateRoute />}>
                         <Route element={<Layout />}>
-                            
+
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                            
+
                             <Route path="/dashboard" element={
-                                <PermissionGuard 
+                                <PermissionGuard
                                     permiso={['dash_resumen', 'dash_compras', 'dash_mantencion', 'dash_bodega', 'dash_personal']}
                                     redirectTo="/login"
                                 >
                                     <Dashboard />
                                 </PermissionGuard>
                             } />
-                            
+
                             <Route path="/compras" element={
                                 <PermissionGuard permiso="ver_compras">
                                     <Compras />
@@ -105,7 +106,16 @@ function App() {
                                     <Activos />
                                 </PermissionGuard>
                             } />
-                            <Route path="/mis-insumos" element={<MisInsumos />} />
+                            <Route
+                                path="/mis-insumos"
+                                element={<MisInsumos />}
+                            />
+
+                            <Route path="/mis-mantenciones" element={
+                                <PermissionGuard permiso={['mant_ver', 'mant_crear', 'activos_ver']}>
+                                    <MisMantenciones />
+                                </PermissionGuard>
+                            } />
 
                             <Route path="/mantenedores" element={
                                 <PermissionGuard permiso="ver_config">

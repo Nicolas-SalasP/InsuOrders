@@ -23,6 +23,7 @@ use App\Controllers\MantenedoresController;
 use App\Controllers\ImportController;
 use App\Controllers\PersonalController;
 use App\Controllers\OperarioController;
+use App\Controllers\MisMantencionesController;
 
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
@@ -216,11 +217,17 @@ try {
             elseif ($method === 'DELETE')
                 $c->deleteDoc();
             break;
-        
+
         case 'mantencion/galeria':
             AuthMiddleware::hasPermission('activos_ver');
             (new MantencionController())->galeria();
             break;
+
+        case 'mantencion/plantilla':
+            if ($method === 'POST')
+                (new MantencionController())->guardarPlantilla();
+            break;
+
 
         // --- INVENTARIO ---
         case 'insumos':
@@ -291,7 +298,7 @@ try {
             AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
             (new OrdenCompraController())->downloadPdf();
             break;
-            
+
         case 'compras/regenerar-pdf':
             AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
             (new OrdenCompraController())->regenerarPdf();
@@ -365,6 +372,10 @@ try {
             (new UsuariosController())->actualizarPermisos();
             break;
 
+        case 'usuarios/tecnicos':
+            (new UsuariosController())->getTecnicos();
+            break;
+
         // --- BODEGA ---
         case 'bodega/entregar':
             $uid = AuthMiddleware::hasPermission('bodega_despachar');
@@ -420,6 +431,21 @@ try {
         case 'operario/devolver':
             if ($method === 'POST')
                 (new OperarioController())->devolver();
+            break;
+
+        // --- MIS MANTENCIONES ---
+        case 'mis-mantenciones':
+            if ($method === 'GET')
+                (new MisMantencionesController())->index();
+            break;
+
+        case 'mis-mantenciones/guardar':
+            if ($method === 'POST')
+                (new MisMantencionesController())->guardar();
+            break;
+        case 'mis-mantenciones/detalle':
+            if ($method === 'GET')
+                (new MisMantencionesController())->detalle();
             break;
 
         // --- DASHBOARD ---

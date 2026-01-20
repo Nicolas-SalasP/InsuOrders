@@ -78,7 +78,7 @@ class MantencionRepository
             ':est' => $data['estado_activo'] ?? 'OPERATIVO',
             ':img' => $data['imagen_url'] ?? null
         ]);
-        
+
         $activoId = $this->db->lastInsertId();
         if (!empty($data['galeria']) && is_array($data['galeria'])) {
             $sqlGal = "INSERT INTO activos_imagenes (activo_id, imagen_url, tipo) VALUES (:aid, :url, :tipo)";
@@ -262,8 +262,9 @@ class MantencionRepository
                 $this->db->beginTransaction();
 
             $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, descripcion_trabajo, 
-                origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud) 
-                VALUES (:uid, :aid, :desc, :orig, :area, :cc, :ext, 1, NOW())";
+                origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, asignado_a, estado_id, fecha_solicitud) 
+                VALUES (:uid, :aid, :desc, :orig, :area, :cc, :ext, :asig, 1, NOW())";
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':uid' => $data['usuario_id'],
@@ -272,8 +273,10 @@ class MantencionRepository
                 ':orig' => $data['origen_tipo'],
                 ':area' => $data['area_negocio'],
                 ':cc' => $data['centro_costo_ot'],
-                ':ext' => $data['solicitante_externo']
+                ':ext' => $data['solicitante_externo'],
+                ':asig' => !empty($data['asignado_a']) ? $data['asignado_a'] : null
             ]);
+
             $otId = $this->db->lastInsertId();
 
             $insumosFinales = [];
@@ -326,15 +329,22 @@ class MantencionRepository
         try {
             if (!$inTransaction)
                 $this->db->beginTransaction();
+            $sql = "UPDATE solicitudes_ot SET 
+                        activo_id = :aid, 
+                        descripcion_trabajo = :desc, 
+                        solicitante_externo = :se, 
+                        centro_costo_ot = :cc, 
+                        origen_tipo = :ot, 
+                        asignado_a = :asig 
+                    WHERE id = :id";
 
-            $sql = "UPDATE solicitudes_ot SET activo_id = :aid, descripcion_trabajo = :desc, 
-                    solicitante_externo = :se, centro_costo_ot = :cc, origen_tipo = :ot WHERE id = :id";
             $this->db->prepare($sql)->execute([
                 ':aid' => $data['activo_id'] ?: null,
                 ':desc' => $data['observacion'],
                 ':se' => $data['solicitante_externo'] ?: null,
                 ':cc' => $data['centro_costo_ot'] ?: null,
                 ':ot' => $data['origen_tipo'],
+                ':asig' => !empty($data['asignado_a']) ? $data['asignado_a'] : null,
                 ':id' => $id
             ]);
 
@@ -521,11 +531,14 @@ class MantencionRepository
 
     public function getOTHeader($id)
     {
-        $sql = "SELECT s.*, u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, 
+        $sql = "SELECT s.*, s.asignado_a, u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, 
                 CASE WHEN s.activo_id IS NOT NULL THEN a.nombre ELSE CONCAT('SERVICIO: ', COALESCE(s.area_negocio, 'General')) END as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as activo_codigo, e.nombre as estado 
-                FROM solicitudes_ot s JOIN usuarios u ON s.usuario_solicitante_id = u.id 
-                LEFT JOIN activos a ON s.activo_id = a.id JOIN estados_solicitud e ON s.estado_id = e.id WHERE s.id = :id";
+                FROM solicitudes_ot s 
+                JOIN usuarios u ON s.usuario_solicitante_id = u.id 
+                LEFT JOIN activos a ON s.activo_id = a.id 
+                JOIN estados_solicitud e ON s.estado_id = e.id 
+                WHERE s.id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -597,5 +610,11 @@ class MantencionRepository
         $stmt = $this->db->prepare("SELECT * FROM activos_imagenes WHERE activo_id = :id ORDER BY created_at DESC");
         $stmt->execute([':id' => $activoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function savePlantillaActivo($id, $jsonStr)
+    {
+        $sql = "UPDATE activos SET plantilla_json = :json WHERE id = :id";
+        $this->db->prepare($sql)->execute([':json' => $jsonStr, ':id' => $id]);
     }
 }

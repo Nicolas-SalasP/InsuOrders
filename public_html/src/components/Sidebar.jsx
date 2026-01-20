@@ -252,6 +252,13 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
+                    {(auth.rol === 'Admin' || auth.rol === 'Técnico' || auth.rol === 'Jefe Mantención') && (
+                        <NavLink to="/mis-mantenciones" className={`nav-link text-white ${location.pathname === '/mis-mantenciones' ? 'active bg-primary' : ''}`}>
+                            <i className="bi bi-clipboard-check me-2"></i>
+                            Mis Mantenciones
+                        </NavLink>
+                    )}
+
                     {(can('ver_usuarios') || can('ver_config')) && (
                         <li className="mt-3 pt-3 border-top border-secondary">
                             <div className="ps-3 mb-2 text-uppercase text-white-50 fw-bold" style={{ fontSize: '0.75rem' }}>

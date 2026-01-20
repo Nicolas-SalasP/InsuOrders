@@ -565,4 +565,177 @@ public function generarCotizacion($cotizacion)
         $this->Output('D', 'Cotizacion_' . $cotizacion['id'] . '.pdf');
         exit;
     }
+
+    // -----------------------------------------------------------
+    // REPORTE FINAL DE MANTENCIÓN (Checklist + Firma + Cierre)
+    // -----------------------------------------------------------
+    public function generarReporteFinalOT($ot, $checklist, $insumos, $firmaBase64, $comentarios) {
+        $this->orden = $ot; // Para que el Header() funcione y saque datos si los necesita
+        $this->AliasNbPages();
+        $this->AddPage();
+
+        // 1. Título Específico
+        $this->SetY(35); // Justo debajo del Header estándar
+        $this->SetFont('Arial', 'B', 14);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(0, 10, mb_convert_case('PROTOCOLO DE MANTENCIÓN FINALIZADA', MB_CASE_UPPER, "UTF-8"), 0, 1, 'C');
+        $this->Ln(5);
+
+        // 2. Resumen del Equipo y OT
+        $this->SetFillColor(240, 240, 240);
+        $this->SetFont('Arial', 'B', 10);
+        $this->Cell(0, 7, '1. IDENTIFICACION DEL TRABAJO', 1, 1, 'L', true);
+        
+        $this->SetFont('Arial', '', 9);
+        $this->SetTextColor(0);
+        
+        // Fila 1
+        $this->Cell(30, 6, 'Folio OT:', 0, 0, 'L');
+        $this->Cell(65, 6, '# ' . $ot['id'], 0, 0, 'L');
+        $this->Cell(30, 6, 'Fecha Solicitud:', 0, 0, 'L');
+        $this->Cell(65, 6, date('d/m/Y', strtotime($ot['fecha_solicitud'])), 0, 1, 'L');
+        
+        // Fila 2
+        $this->Cell(30, 6, 'Activo/Equipo:', 0, 0, 'L');
+        $this->Cell(65, 6, $this->txt($ot['activo']), 0, 0, 'L');
+        $this->Cell(30, 6, mb_convert_encoding('Código:', 'ISO-8859-1'), 0, 0, 'L');
+        $this->Cell(65, 6, $this->txt($ot['activo_codigo']), 0, 1, 'L');
+
+        // Fila 3
+        $this->Cell(30, 6, mb_convert_encoding('Técnico:', 'ISO-8859-1'), 0, 0, 'L');
+        // Asumiendo que asignado_a es un ID, aquí idealmente deberías pasar el nombre. 
+        // Si $ot ya trae el nombre del técnico (haciendo JOIN en el repo), úsalo.
+        $this->Cell(160, 6, $this->txt($ot['asignado_nombre'] ?? 'Técnico Asignado'), 0, 1, 'L');
+        
+        $this->Ln(5);
+
+        // 3. Checklist
+        $this->SetFont('Arial', 'B', 10);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(0, 7, '2. PAUTA DE MANTENCION (CHECKLIST)', 1, 1, 'L', true);
+        
+        $this->SetFont('Arial', 'B', 8);
+        $this->SetTextColor(0);
+        $this->SetFillColor(230);
+        
+        // Cabecera Tabla Checklist
+        $this->Cell(90, 6, mb_convert_encoding('Punto de Revisión / Tarea', 'ISO-8859-1'), 1, 0, 'L', true);
+        $this->Cell(30, 6, 'Estado', 1, 0, 'C', true);
+        $this->Cell(70, 6, mb_convert_encoding('Observación', 'ISO-8859-1'), 1, 1, 'L', true);
+        
+        $this->SetFont('Arial', '', 8);
+        
+        if (!empty($checklist)) {
+            foreach ($checklist as $key => $item) {
+                // Formatear valores
+                $valor = strtoupper($item['valor']);
+                if ($valor == 'SI' || $valor == 'BUENO') $this->SetTextColor(0, 128, 0); // Verde
+                elseif ($valor == 'NO' || $valor == 'MALO') $this->SetTextColor(192, 0, 0); // Rojo
+                else $this->SetTextColor(0);
+
+                // Calcular altura dinámica para la observación
+                $obs = $this->txt($item['observacion'] ?? '');
+                $keyText = $this->txt($key); // O $item['label'] si lo tienes guardado
+                
+                // Imprimir celda
+                $this->Cell(90, 6, $keyText, 1, 0, 'L');
+                $this->Cell(30, 6, $this->txt($valor), 1, 0, 'C');
+                $this->SetTextColor(0); // Reset color
+                $this->Cell(70, 6, $obs, 1, 1, 'L');
+            }
+        } else {
+            $this->Cell(190, 6, 'No se aplicó checklist digital.', 1, 1, 'C');
+        }
+        $this->Ln(5);
+
+        // 4. Insumos Utilizados (Segunda Hoja si es necesario)
+        if ($this->GetY() > 220) $this->AddPage();
+
+        $this->SetFont('Arial', 'B', 10);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(0, 7, '3. REPUESTOS E INSUMOS UTILIZADOS', 1, 1, 'L', true);
+        
+        $this->SetFont('Arial', 'B', 8);
+        $this->SetTextColor(0);
+        $this->SetFillColor(230);
+        
+        $this->Cell(30, 6, 'SKU', 1, 0, 'C', true);
+        $this->Cell(100, 6, mb_convert_encoding('Descripción', 'ISO-8859-1'), 1, 0, 'L', true);
+        $this->Cell(30, 6, 'Cant. Utilizada', 1, 0, 'C', true);
+        $this->Cell(30, 6, 'Estado', 1, 1, 'C', true);
+
+        $this->SetFont('Arial', '', 8);
+        if (!empty($insumos)) {
+            foreach ($insumos as $ins) {
+                $this->Cell(30, 6, $this->txt($ins['codigo_sku']), 1, 0, 'C');
+                $this->Cell(100, 6, $this->txt(substr($ins['nombre'], 0, 55)), 1, 0, 'L');
+                $this->Cell(30, 6, $ins['cantidad_entregada'] . ' ' . $this->txt($ins['unidad_medida']), 1, 0, 'C');
+                $this->Cell(30, 6, $this->txt($ins['estado_linea']), 1, 1, 'C');
+            }
+        } else {
+            $this->Cell(190, 6, 'No se utilizaron repuestos adicionales.', 1, 1, 'C');
+        }
+        $this->Ln(5);
+
+        // 5. Comentarios y Cierre
+        if ($this->GetY() > 200) $this->AddPage();
+
+        $this->SetFont('Arial', 'B', 10);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(0, 7, '4. OBSERVACIONES FINALES', 1, 1, 'L', true);
+        
+        $this->SetFont('Arial', '', 9);
+        $this->SetTextColor(0);
+        $this->MultiCell(0, 6, $this->txt($comentarios ?: 'Sin comentarios adicionales.'), 1, 'L');
+        
+        $this->Ln(15);
+
+        // 6. Firmas
+        $this->SetY(-60); // Pie de página fijo o flotante
+        
+        // -- FIRMA TECNICO --
+        $xTecnico = 20;
+        $yFirma = $this->GetY();
+        
+        // Imagen de firma
+        if ($firmaBase64) {
+            $imgFile = $this->saveBase64Image($firmaBase64);
+            if ($imgFile) {
+                // (archivo, x, y, w, h)
+                $this->Image($imgFile, $xTecnico + 10, $yFirma - 25, 40, 0); 
+                unlink($imgFile);
+            }
+        }
+
+        // Líneas
+        $this->Line($xTecnico, $yFirma, $xTecnico + 60, $yFirma);
+        $this->Line(130, $yFirma, 190, $yFirma);
+
+        $this->SetFont('Arial', 'B', 8);
+        $this->SetXY($xTecnico, $yFirma + 2);
+        $this->Cell(60, 4, mb_convert_encoding('FIRMA TÉCNICO RESPONSABLE', 'ISO-8859-1'), 0, 0, 'C');
+        
+        $this->SetXY(130, $yFirma + 2);
+        $this->Cell(60, 4, mb_convert_encoding('V°B° SUPERVISOR / JEFE PLANTA', 'ISO-8859-1'), 0, 0, 'C');
+        
+        $fileName = 'OT_FINAL_' . $ot['id'] . '_' . time() . '.pdf';
+        $path = __DIR__ . '/../../../../public_html/uploads/pdfs/';
+        
+        if (!is_dir($path)) mkdir($path, 0777, true);
+        
+        $this->Output('F', $path . $fileName);
+        
+        return '/uploads/pdfs/' . $fileName;
+    }
+
+    // Auxiliar para convertir base64 a archivo temporal
+    private function saveBase64Image($base64String) {
+        $split = explode(',', $base64String);
+        if (count($split) < 2) return null;
+        
+        $data = base64_decode($split[1]);
+        $tmpFile = sys_get_temp_dir() . '/firma_' . uniqid() . '.png';
+        file_put_contents($tmpFile, $data);
+        return $tmpFile;
+    }
 }
