@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 19-01-2026 a las 20:23:10
+-- Tiempo de generación: 20-01-2026 a las 21:10:10
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -44,48 +44,49 @@ CREATE TABLE `activos` (
   `estado_activo` enum('OPERATIVO','EN_MANTENCION','BAJA') DEFAULT 'OPERATIVO',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `deleted_at` timestamp NULL DEFAULT NULL
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `plantilla_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`plantilla_json`))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `activos`
 --
 
-INSERT INTO `activos` (`id`, `codigo_interno`, `codigo_maquina`, `nombre`, `tipo`, `marca`, `modelo`, `imagen_url`, `anio`, `numero_serie`, `descripcion`, `ubicacion`, `centro_costo_id`, `estado_activo`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '1028', '6988-2', 'Metradora', 'Maquinaria', 'Stridhs', 'DI-ME-804', NULL, 2002, '6988-2', '', 'Planta 1', 1, 'EN_MANTENCION', '2025-12-29 19:48:43', '2026-01-12 15:47:12', NULL),
-(2, '1027', '9016-A', 'Metradora ', 'Maquinaria', 'Stridhs', 'DI-ME-804', NULL, 2011, '9016-A', '', 'Planta 1', NULL, 'EN_MANTENCION', '2026-01-12 11:22:34', '2026-01-12 15:47:20', NULL),
-(3, '1029', '6988-1', 'Metradora', 'Maquinaria', 'Stridhs', 'DI-ME-804', NULL, 2002, '6988-1', '', 'Planta 1', NULL, 'OPERATIVO', '2026-01-12 11:30:24', '2026-01-12 15:47:27', NULL),
-(4, '1030', '1102', 'Metradora', 'Maquinaria', 'Stridhs', 'STR805', NULL, 2021, '1102', '', 'Planta 1', NULL, 'EN_MANTENCION', '2026-01-12 11:33:27', '2026-01-12 15:47:34', NULL),
-(5, 'TUBIN-01', '', 'Entubadora TSS1', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:38:15', '2026-01-12 14:46:51', NULL),
-(6, 'TUBIN-02', '', 'Entubadora TSS2', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:38:34', '2026-01-12 14:47:02', NULL),
-(7, 'TUBIN-03', '', 'Entubadora TSS3', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:46:05', '2026-01-12 14:47:13', NULL),
-(8, 'TUBIN-04', '', 'Entubadora TSS4', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:46:19', '2026-01-12 14:47:26', NULL),
-(9, 'TUBIN-05', '', 'Entubadora TSS5', '', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:46:43', '2026-01-12 14:46:43', NULL),
-(10, 'TUBIN-06', '', 'Entubadora TSS6', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:47:55', '2026-01-12 14:47:55', NULL),
-(11, 'TUBIN-07', '', 'Entubadora TSS7', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:48:26', '2026-01-12 14:48:32', NULL),
-(12, 'TUBIN-08', '', 'Entubadora TSS8', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:48:52', '2026-01-12 14:49:44', NULL),
-(13, 'TUBIN-09', '', 'Entubadora TSS9', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:49:14', '2026-01-12 14:49:52', NULL),
-(14, 'TUBIN-10', '', 'Entubadora TSS10', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:49:35', '2026-01-12 14:49:35', NULL),
-(15, 'TUBIN-11', '', 'Entubadora TSS11', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:52:10', '2026-01-12 14:52:10', NULL),
-(16, 'TUBIN-12', '', 'Entubadora TSS12', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:52:33', '2026-01-12 14:52:33', NULL),
-(17, 'TUBIN-13', '', 'Entubadora TSS13', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:52:52', '2026-01-12 14:52:52', NULL),
-(18, 'TUBIN-14', '', 'Entubadora TSS14', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:53:15', '2026-01-12 14:53:15', NULL),
-(19, 'TUBIN-15', '', 'Entubadora TSS15', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:53:30', '2026-01-12 14:53:30', NULL),
-(20, 'TUBIN-16', '', 'Entubadora TSS16', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:53:50', '2026-01-12 14:53:50', NULL),
-(21, 'TUBIN-17', '', 'Entubadora TSS17', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:54:07', '2026-01-12 14:54:07', NULL),
-(22, 'TUBIN-18', '', 'Entubadora TSS18', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:54:38', '2026-01-12 14:54:38', NULL),
-(23, 'TUBIN-19', '', 'Entubadora TSS19', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:06:24', '2026-01-12 15:06:24', NULL),
-(24, 'TUBIN-20', '', 'Entubadora TSS20', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:08:27', '2026-01-12 15:08:27', NULL),
-(25, 'CMFR-01', '', 'LT-2', '', '', '', NULL, NULL, '', '', '', 20, 'OPERATIVO', '2026-01-12 15:10:06', '2026-01-12 16:51:37', NULL),
-(26, 'CMFR-02', '', 'Mucosa', 'Maquinaria', '', '', NULL, NULL, '', '', '', 18, 'OPERATIVO', '2026-01-12 15:10:30', '2026-01-12 15:10:42', NULL),
-(27, 'CMER-03', '', 'Centrifuga', 'Maquinaria', '', '', NULL, NULL, '', '', '', 20, 'OPERATIVO', '2026-01-12 15:11:02', '2026-01-12 17:07:21', NULL),
-(28, 'MAQ-01', '', 'Extractor', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:12:04', '2026-01-12 15:12:04', NULL),
-(29, 'MAQ-02', '', 'Prensa neumática', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:12:51', '2026-01-12 15:12:51', NULL),
-(30, 'MAQ-03', '', 'Agitador de salmuera', 'Maquinaria', '', '', '/uploads/activos/ACT_696e835b75871.jpeg', NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:05', '2026-01-19 19:17:47', NULL),
-(31, 'MAQ-04', '', 'Tanque de almacenamiento de salmuera', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:25', '2026-01-12 15:13:25', NULL),
-(32, 'MAQ-05', '', 'Bomba de salmuera dosificación', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:50', '2026-01-12 15:13:50', NULL),
-(33, 'MAQ-06', '', 'Tornillo sinfín ', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:16:33', '2026-01-12 15:16:33', NULL),
-(34, 'KIT-01', '', 'Auditoría', 'Infraestructura', '', '', NULL, NULL, '', 'Kit de distintos insumos para auditoria', '', 25, 'OPERATIVO', '2026-01-12 15:17:42', '2026-01-12 15:44:17', NULL);
+INSERT INTO `activos` (`id`, `codigo_interno`, `codigo_maquina`, `nombre`, `tipo`, `marca`, `modelo`, `imagen_url`, `anio`, `numero_serie`, `descripcion`, `ubicacion`, `centro_costo_id`, `estado_activo`, `created_at`, `updated_at`, `deleted_at`, `plantilla_json`) VALUES
+(1, '1028', '6988-2', 'Metradora', 'Maquinaria', 'Stridhs', 'DI-ME-804', NULL, 2002, '6988-2', '', 'Planta 1', 1, 'EN_MANTENCION', '2025-12-29 19:48:43', '2026-01-20 19:28:03', NULL, '{\"titulo\":\"REGISTRO DE MANTENCIÓN - METRADORA GARROTXA DI-ME-804\",\"codigo_doc\":\"R. SOP03\\/1 v0.2\",\"secciones\":[{\"titulo\":\"1. Pre-requisitos de Seguridad\",\"key\":\"seguridad\",\"tipo\":\"checklist_si_no\",\"items\":[{\"key\":\"permiso\",\"label\":\"Solicitud de permiso de trabajo con prevención\"},{\"key\":\"ats\",\"label\":\"Análisis de trabajo seguro (ATS)\"},{\"key\":\"capacitacion\",\"label\":\"Capacitación del procedimiento\"},{\"key\":\"epp\",\"label\":\"Inspección de EPP\"},{\"key\":\"loto\",\"label\":\"Bloqueo de energías (LOTO)\"},{\"key\":\"limpieza\",\"label\":\"Lavado y sanitización previa\"}]},{\"titulo\":\"2. Revisión Técnica (Estado)\",\"key\":\"revision_tecnica\",\"tipo\":\"estado_observacion\",\"items\":[{\"key\":\"banda_motriz\",\"label\":\"Revisión de banda motriz\"},{\"key\":\"resorte_freno\",\"label\":\"Revisión resorte sistema de freno\"},{\"key\":\"param_electricos\",\"label\":\"Revisión parámetros eléctricos\"},{\"key\":\"rodamientos\",\"label\":\"Condición de rodamientos\"},{\"key\":\"sensores\",\"label\":\"Funcionamiento de sensores\"},{\"key\":\"componentes_gral\",\"label\":\"Componentes eléctricos generales\"}]},{\"titulo\":\"3. Repuestos Críticos\",\"key\":\"repuestos\",\"tipo\":\"repuestos_validacion\",\"items\":[{\"key\":\"rod_607\",\"label\":\"Rodamiento SKF 607 2RSR C3\",\"sku\":\"990000071991090\",\"cant\":4},{\"key\":\"rod_685\",\"label\":\"Rodamiento SKF 685 2RS FKC\",\"sku\":\"990000071992162\",\"cant\":4},{\"key\":\"correa\",\"label\":\"Correa Rueda Estiradera\",\"sku\":\"990000071992495\",\"cant\":4},{\"key\":\"freno\",\"label\":\"Freno Magnético 24V\",\"sku\":\"990000071992500\",\"cant\":6},{\"key\":\"plc\",\"label\":\"PLC 805-160\",\"sku\":\"990000071992507\",\"cant\":1}]}]}'),
+(2, '1027', '9016-A', 'Metradora ', 'Maquinaria', 'Stridhs', 'DI-ME-804', NULL, 2011, '9016-A', '', 'Planta 1', NULL, 'EN_MANTENCION', '2026-01-12 11:22:34', '2026-01-12 15:47:20', NULL, NULL),
+(3, '1029', '6988-1', 'Metradora', 'Maquinaria', 'Stridhs', 'DI-ME-804', NULL, 2002, '6988-1', '', 'Planta 1', NULL, 'OPERATIVO', '2026-01-12 11:30:24', '2026-01-12 15:47:27', NULL, NULL),
+(4, '1030', '1102', 'Metradora', 'Maquinaria', 'Stridhs', 'STR805', NULL, 2021, '1102', '', 'Planta 1', NULL, 'EN_MANTENCION', '2026-01-12 11:33:27', '2026-01-12 15:47:34', NULL, NULL),
+(5, 'TUBIN-01', '', 'Entubadora TSS1', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:38:15', '2026-01-12 14:46:51', NULL, NULL),
+(6, 'TUBIN-02', '', 'Entubadora TSS2', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:38:34', '2026-01-12 14:47:02', NULL, NULL),
+(7, 'TUBIN-03', '', 'Entubadora TSS3', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:46:05', '2026-01-12 14:47:13', NULL, NULL),
+(8, 'TUBIN-04', '', 'Entubadora TSS4', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:46:19', '2026-01-12 14:47:26', NULL, NULL),
+(9, 'TUBIN-05', '', 'Entubadora TSS5', '', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:46:43', '2026-01-12 14:46:43', NULL, NULL),
+(10, 'TUBIN-06', '', 'Entubadora TSS6', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:47:55', '2026-01-12 14:47:55', NULL, NULL),
+(11, 'TUBIN-07', '', 'Entubadora TSS7', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:48:26', '2026-01-12 14:48:32', NULL, NULL),
+(12, 'TUBIN-08', '', 'Entubadora TSS8', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:48:52', '2026-01-12 14:49:44', NULL, NULL),
+(13, 'TUBIN-09', '', 'Entubadora TSS9', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:49:14', '2026-01-12 14:49:52', NULL, NULL),
+(14, 'TUBIN-10', '', 'Entubadora TSS10', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:49:35', '2026-01-12 14:49:35', NULL, NULL),
+(15, 'TUBIN-11', '', 'Entubadora TSS11', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:52:10', '2026-01-12 14:52:10', NULL, NULL),
+(16, 'TUBIN-12', '', 'Entubadora TSS12', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:52:33', '2026-01-12 14:52:33', NULL, NULL),
+(17, 'TUBIN-13', '', 'Entubadora TSS13', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:52:52', '2026-01-12 14:52:52', NULL, NULL),
+(18, 'TUBIN-14', '', 'Entubadora TSS14', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:53:15', '2026-01-12 14:53:15', NULL, NULL),
+(19, 'TUBIN-15', '', 'Entubadora TSS15', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:53:30', '2026-01-12 14:53:30', NULL, NULL),
+(20, 'TUBIN-16', '', 'Entubadora TSS16', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:53:50', '2026-01-12 14:53:50', NULL, NULL),
+(21, 'TUBIN-17', '', 'Entubadora TSS17', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:54:07', '2026-01-12 14:54:07', NULL, NULL),
+(22, 'TUBIN-18', '', 'Entubadora TSS18', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 14:54:38', '2026-01-12 14:54:38', NULL, NULL),
+(23, 'TUBIN-19', '', 'Entubadora TSS19', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:06:24', '2026-01-12 15:06:24', NULL, NULL),
+(24, 'TUBIN-20', '', 'Entubadora TSS20', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:08:27', '2026-01-12 15:08:27', NULL, NULL),
+(25, 'CMFR-01', '', 'LT-2', '', '', '', NULL, NULL, '', '', '', 20, 'OPERATIVO', '2026-01-12 15:10:06', '2026-01-12 16:51:37', NULL, NULL),
+(26, 'CMFR-02', '', 'Mucosa', 'Maquinaria', '', '', NULL, NULL, '', '', '', 18, 'OPERATIVO', '2026-01-12 15:10:30', '2026-01-12 15:10:42', NULL, NULL),
+(27, 'CMER-03', '', 'Centrifuga', 'Maquinaria', '', '', NULL, NULL, '', '', '', 20, 'OPERATIVO', '2026-01-12 15:11:02', '2026-01-12 17:07:21', NULL, NULL),
+(28, 'MAQ-01', '', 'Extractor', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:12:04', '2026-01-12 15:12:04', NULL, NULL),
+(29, 'MAQ-02', '', 'Prensa neumática', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:12:51', '2026-01-12 15:12:51', NULL, NULL),
+(30, 'AUPS-01', 'AUPS-01-INS', 'ASmart UPS XL', 'Equipo', 'APC', 'Smart', '/uploads/activos/ACT_696e866d2b2a9.jpeg', 2020, '3r14213412341234', '', 'Bodega', 13, 'OPERATIVO', '2026-01-12 15:13:05', '2026-01-19 19:32:33', NULL, NULL),
+(31, 'MAQ-04', '', 'Tanque de almacenamiento de salmuera', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:25', '2026-01-12 15:13:25', NULL, NULL),
+(32, 'MAQ-05', '', 'Bomba de salmuera dosificación', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:50', '2026-01-12 15:13:50', NULL, NULL),
+(33, 'MAQ-06', '', 'Tornillo sinfín ', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:16:33', '2026-01-12 15:16:33', NULL, NULL),
+(34, 'KIT-01', '', 'Auditoría', 'Infraestructura', '', '', NULL, NULL, '', 'Kit de distintos insumos para auditoria', '', 25, 'OPERATIVO', '2026-01-12 15:17:42', '2026-01-12 15:44:17', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -106,7 +107,8 @@ CREATE TABLE `activos_docs` (
 --
 
 INSERT INTO `activos_docs` (`id`, `activo_id`, `nombre_archivo`, `url_archivo`, `fecha_subida`) VALUES
-(1, 1, 'Logo Atlas2.png', '/uploads/activos/DOC_1_695da9b60cddf.png', '2026-01-06 21:32:54');
+(1, 1, 'Logo Atlas2.png', '/uploads/activos/DOC_1_695da9b60cddf.png', '2026-01-06 21:32:54'),
+(3, 34, 'DOC_1_6966559a5461d.pdf', '/uploads/activos/DOC_34_696f9868951bd.pdf', '2026-01-20 11:59:52');
 
 -- --------------------------------------------------------
 
@@ -667,17 +669,17 @@ INSERT INTO `cronograma_insumos` (`id`, `cronograma_id`, `insumo_id`, `cantidad`
 (383, 8, 1471, 1.00),
 (384, 8, 1472, 1.00),
 (385, 8, 1120, 4.00),
-(408, 16, 202, 24.00),
-(409, 16, 225, 3.00),
-(410, 16, 228, 10.00),
-(411, 16, 380, 12.00),
-(412, 16, 1053, 7.00),
-(413, 16, 1117, 6.00),
-(414, 16, 1197, 10.00),
-(415, 16, 1198, 10.00),
-(416, 16, 1419, 7.00),
-(417, 16, 1421, 12.00),
-(418, 16, 1422, 1.00);
+(441, 16, 202, 24.00),
+(442, 16, 225, 3.00),
+(443, 16, 228, 10.00),
+(444, 16, 380, 12.00),
+(445, 16, 1053, 7.00),
+(446, 16, 1117, 6.00),
+(447, 16, 1197, 10.00),
+(448, 16, 1198, 10.00),
+(449, 16, 1419, 7.00),
+(450, 16, 1421, 12.00),
+(451, 16, 1422, 1.00);
 
 -- --------------------------------------------------------
 
@@ -763,8 +765,14 @@ CREATE TABLE `detalle_orden_compra` (
 --
 
 INSERT INTO `detalle_orden_compra` (`id`, `orden_compra_id`, `insumo_id`, `cantidad_solicitada`, `cantidad_recibida`, `precio_unitario`, `total_linea`) VALUES
-(11, 11, 384, 3.00, 0.00, 17497.00, 52491.00),
-(12, 11, 545, 20.00, 0.00, 3720.00, 74400.00);
+(11, 11, 384, 3.00, 3.00, 17497.00, 52491.00),
+(12, 11, 545, 20.00, 10.00, 3720.00, 74400.00),
+(13, 240000, 380, 8.00, 8.00, 100.00, 800.00),
+(14, 240000, 1197, 1.00, 0.00, 2000.00, 2000.00),
+(15, 240000, 1294, 1.00, 0.00, 600.00, 600.00),
+(16, 240000, 1295, 1.00, 0.00, 80000.00, 80000.00),
+(17, 240000, 1419, 2.00, 0.00, 56000.00, 112000.00),
+(18, 240001, 1026, 1.00, 0.00, 60000.00, 60000.00);
 
 -- --------------------------------------------------------
 
@@ -910,8 +918,8 @@ INSERT INTO `detalle_solicitud` (`id`, `solicitud_id`, `insumo_id`, `cantidad`, 
 (143, 24, 966, 8.00, 0.00, 'ANULADO', NULL),
 (144, 24, 1357, 8.00, 0.00, 'ANULADO', NULL),
 (145, 24, 1358, 1.00, 0.00, 'ANULADO', NULL),
-(146, 25, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(147, 25, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(146, 25, 1294, 1.00, 0.00, 'COMPRADO', 240000),
+(147, 25, 1295, 1.00, 0.00, 'COMPRADO', 240000),
 (148, 25, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
 (149, 27, 202, 24.00, 0.00, 'ANULADO', NULL),
 (150, 27, 225, 3.00, 0.00, 'ANULADO', NULL),
@@ -931,15 +939,39 @@ INSERT INTO `detalle_solicitud` (`id`, `solicitud_id`, `insumo_id`, `cantidad`, 
 (164, 28, 1570, 25.00, 0.00, 'PENDIENTE', NULL),
 (165, 29, 202, 24.00, 0.00, 'PENDIENTE', NULL),
 (166, 29, 225, 3.00, 0.00, 'PENDIENTE', NULL),
-(167, 29, 228, 10.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(168, 29, 380, 12.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(167, 29, 228, 10.00, 0.00, 'PENDIENTE', NULL),
+(168, 29, 380, 12.00, 0.00, 'PENDIENTE', 240000),
 (169, 29, 1053, 7.00, 0.00, 'PENDIENTE', NULL),
 (170, 29, 1117, 6.00, 0.00, 'PENDIENTE', NULL),
-(171, 29, 1197, 10.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(171, 29, 1197, 10.00, 0.00, 'REQUIERE_COMPRA', 240000),
 (172, 29, 1198, 10.00, 0.00, 'PENDIENTE', NULL),
-(173, 29, 1419, 7.00, 0.00, 'REQUIERE_COMPRA', NULL),
+(173, 29, 1419, 7.00, 0.00, 'REQUIERE_COMPRA', 240000),
 (174, 29, 1421, 12.00, 0.00, 'PENDIENTE', NULL),
-(175, 29, 1422, 1.00, 0.00, 'PENDIENTE', NULL);
+(175, 29, 1422, 1.00, 0.00, 'PENDIENTE', NULL),
+(176, 30, 1431, 1.00, 1.00, 'ENTREGADO', NULL),
+(177, 31, 89, 4.00, 0.00, 'PENDIENTE', NULL),
+(178, 31, 1452, 1.00, 0.00, 'PENDIENTE', NULL),
+(179, 31, 1453, 1.00, 0.00, 'PENDIENTE', NULL),
+(180, 31, 1454, 1.00, 0.00, 'PENDIENTE', NULL),
+(181, 31, 1455, 1.00, 0.00, 'PENDIENTE', NULL),
+(182, 31, 1456, 1.00, 0.00, 'PENDIENTE', NULL),
+(183, 31, 1457, 1.00, 0.00, 'PENDIENTE', NULL),
+(184, 31, 1458, 1.00, 0.00, 'PENDIENTE', NULL),
+(185, 31, 1459, 1.00, 0.00, 'PENDIENTE', NULL),
+(186, 31, 1460, 1.00, 0.00, 'PENDIENTE', NULL),
+(187, 31, 1461, 1.00, 0.00, 'PENDIENTE', NULL),
+(188, 31, 1462, 1.00, 0.00, 'PENDIENTE', NULL),
+(189, 31, 1463, 1.00, 0.00, 'PENDIENTE', NULL),
+(190, 31, 1464, 1.00, 0.00, 'PENDIENTE', NULL),
+(191, 31, 1465, 1.00, 0.00, 'PENDIENTE', NULL),
+(192, 31, 1466, 1.00, 0.00, 'PENDIENTE', NULL),
+(193, 31, 1467, 1.00, 0.00, 'PENDIENTE', NULL),
+(194, 31, 1468, 1.00, 0.00, 'PENDIENTE', NULL),
+(195, 31, 1469, 1.00, 0.00, 'PENDIENTE', NULL),
+(196, 31, 1470, 1.00, 0.00, 'PENDIENTE', NULL),
+(197, 31, 1471, 1.00, 0.00, 'PENDIENTE', NULL),
+(198, 31, 1472, 1.00, 0.00, 'PENDIENTE', NULL),
+(199, 32, 552, 10.00, 0.00, 'REQUIERE_COMPRA', NULL);
 
 -- --------------------------------------------------------
 
@@ -965,7 +997,7 @@ CREATE TABLE `empleados` (
 --
 
 INSERT INTO `empleados` (`id`, `nombre_completo`, `email`, `cargo`, `rut`, `centro_costo_id`, `usuario_id`, `activo`, `created_at`, `updated_at`) VALUES
-(1, 'Nicolas Salas', 'nsalas@insuban.cl', 'Usuario Sistema', '263285808', 30, 1, 1, '2026-01-07 03:56:04', '2026-01-08 15:34:08'),
+(1, 'Nicolas Salas', 'nsalas@insuban.cl', 'Tecnico', '263285808', 30, 1, 1, '2026-01-07 03:56:04', '2026-01-20 14:37:07'),
 (2, 'Froilan Urdaneta', 'furdaneta@insuban.cl', 'Usuario Sistema', NULL, NULL, 2, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04'),
 (3, 'Carlos Ruiz', 'cruiz@insuban.cl', 'Usuario Sistema', NULL, NULL, 3, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04'),
 (4, 'Rafael Morales', 'rmorales@insuban.cl', 'Usuario Sistema', NULL, NULL, 4, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04'),
@@ -1008,7 +1040,7 @@ INSERT INTO `entregas_personal` (`id`, `insumo_id`, `usuario_operario_id`, `rece
 (7, 552, 1, NULL, 1, 4, 'Entrega operario', NULL, 100.00, 0.00, '2026-01-13 10:42:37', '2026-01-14 15:36:59', NULL, 'Rechazado por operario'),
 (8, 71, NULL, 'Carla Tapia', 1, 2, 'Entrega operario', NULL, 10.00, 0.00, '2026-01-14 14:12:08', '2026-01-14 18:12:08', NULL, NULL),
 (9, 89, 1, NULL, 1, 2, 'Entrega Masiva OT #20', 20, 4.00, 0.00, '2026-01-14 15:25:21', '2026-01-14 15:36:13', NULL, NULL),
-(10, 1455, 1, NULL, 1, 1, 'Entrega Masiva OT #20', 20, 1.00, 0.00, '2026-01-14 15:25:21', NULL, NULL, NULL),
+(10, 1455, 1, NULL, 1, 2, 'Entrega Masiva OT #20', 20, 1.00, 0.00, '2026-01-14 15:25:21', '2026-01-20 11:41:35', NULL, NULL),
 (11, 552, 1, NULL, 1, 2, 'Entrega operario', NULL, 10.00, 0.00, '2026-01-14 16:32:34', '2026-01-14 16:32:41', NULL, NULL),
 (12, 552, NULL, 'Carla Tapia', 1, 2, 'Entrega operario', NULL, 50.00, 0.00, '2026-01-14 16:37:39', '2026-01-14 20:37:39', NULL, NULL),
 (13, 552, 2, NULL, 1, 1, 'Entrega operario', NULL, 10.00, 0.00, '2026-01-14 16:41:28', NULL, NULL, NULL),
@@ -1017,7 +1049,8 @@ INSERT INTO `entregas_personal` (`id`, `insumo_id`, `usuario_operario_id`, `rece
 (16, 71, 3, NULL, 1, 1, 'Entrega operario', NULL, 10.00, 0.00, '2026-01-14 16:49:16', NULL, NULL, NULL),
 (17, 1421, 2, NULL, 1, 1, 'Entrega operario', NULL, 3.00, 0.00, '2026-01-14 16:50:49', NULL, NULL, NULL),
 (18, 1421, 2, NULL, 1, 1, 'Entrega operario', NULL, 10.00, 0.00, '2026-01-14 16:59:11', NULL, NULL, NULL),
-(19, 202, NULL, 'Carla Tapia', 1, 2, 'Entrega operario', NULL, 8.00, 0.00, '2026-01-14 16:59:24', '2026-01-14 20:59:24', NULL, NULL);
+(19, 202, NULL, 'Carla Tapia', 1, 2, 'Entrega operario', NULL, 8.00, 0.00, '2026-01-14 16:59:24', '2026-01-14 20:59:24', NULL, NULL),
+(20, 1431, 1, NULL, 1, 2, 'Material para OT #30', 30, 1.00, 0.00, '2026-01-20 11:41:28', '2026-01-20 11:41:32', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1516,11 +1549,11 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (377, '990000071991400', 'CADENA DE ACOPLAMIENTO  PHC40-1 C/L', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (378, '990000071991401', 'CADENA DE ACOPLAMIENTO PHC40-1 O/L', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (379, '990000071991402', 'AISLANTE ELECTRICO ROJO PVC 19MMX 18', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
-(380, '990000071991403', 'DILUYENTE DUCO PXL 400 (1L) (DIDEVAL)', '', NULL, 4.00, 12.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2026-01-12 19:04:30', NULL),
+(380, '990000071991403', 'DILUYENTE DUCO PXL 400 (1L) (DIDEVAL)', '', NULL, 12.00, 12.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2026-01-20 12:35:45', NULL),
 (381, '990000071991404', 'BISAGRA 4X4 (SCANAVINI)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (382, '990000071991405', 'BISAGRA L38', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (383, '990000071991406', 'BISAGRA DE ACERO POLI 3\' x 3\' RUSTICA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
-(384, '990000071991407', 'GEL DECAPANTE DE ACERO(CELINOX)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
+(384, '990000071991407', 'GEL DECAPANTE DE ACERO(CELINOX)', '', NULL, 3.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2026-01-20 12:11:07', NULL),
 (385, '990000071991408', 'TYPE 275 RED(VERSACHEM)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (386, '990000071991409', 'TRABADOR DE RODAMIENTOS 50ML(WURTH)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
 (387, '990000071991410', 'CINTA AISLANTE(WURTH)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:21', '2025-12-30 16:34:21', NULL),
@@ -1681,7 +1714,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (542, '990000071991578', 'TOMA CORRIENTE TRIPLE 10 AMP', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (543, '990000071991579', 'ENCHUFE HEMBRA 10-16 AMP', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (544, '990000071991580', 'ENCHUFE MACHO 10-16 AMP', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
-(545, '990000071991581', 'Tungsteno 2% Thorio 3/32 2.4Mmx Tg332K', '', 10, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2026-01-13 12:02:50', NULL),
+(545, '990000071991581', 'Tungsteno 2% Thorio 3/32 2.4Mmx Tg332K', '', 10, 10.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2026-01-20 12:11:07', NULL),
 (546, '990000071991582', 'VARILLAS DE TUNGSTENO 3.2MMX175MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (547, '990000071991583', 'VARILLAS DE TUNGSTENO 1.6MMX175MM', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
 (548, '990000071991584', 'SIERRAS PERFORADORAS 1.5/8(41MM)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:22', '2025-12-30 16:34:22', NULL),
@@ -2570,7 +2603,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1428, '990000071992471', 'PIÑON 16 DIENTES 06 B', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1429, '990000071992472', 'PIÑON 15 DIENTES 06 B', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1430, '990000071992473', 'MONOMANDO LAVAPLATO CUELLO FLEXIBLE BLACK 6NV2000-00 NIBSA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
-(1431, '990000071992474', 'Motor Electrico Abb 1,5 Kw (2 Hp) - 2800 Rpm - B3 - 380 V Frame 90 Eje De 24 Mm', '', 34, 1.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-12 19:31:26', NULL),
+(1431, '990000071992474', 'Motor Electrico Abb 1,5 Kw (2 Hp) - 2800 Rpm - B3 - 380 V Frame 90 Eje De 24 Mm', '', 34, 0.00, 1.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2026-01-20 14:41:28', NULL),
 (1432, '990000071992475', 'PULSADOR HONGO ROJO 22MM 1NC XB4BT842 TE45048', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1433, '990000071992476', 'SELECTOR MANETA LARGA 3 POSICIONES METAL NEGRO 22MM 2NA XB4BJ33 TE46233', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
 (1434, '990000071992477', '020601 VSH4310A-03 VAL.5/3 MAN.3/8in. PAL/AIRE', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:27', '2025-12-30 16:34:27', NULL),
@@ -2706,7 +2739,8 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1565, '990000071992600', 'Termometro Bimetalico 0 120 C, 60X 70 X 6,35Mm  Bulbo Inox, Hilo 1/4 Npt', '', 2, 2.00, 5.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 19:44:27', '2026-01-12 19:44:42', NULL),
 (1569, '990000071992601', 'Termpozo Vaina Hilo Hi-1/4Npt Hembra 1/2 Npt Macho, Largo:  60Mm, Inoxidable', '', 10, 2.00, 5.00, 2.00, 0.00, 'CLP', 'UN', NULL, '2026-01-12 19:48:10', '2026-01-12 19:50:33', NULL),
 (1570, '990000071992602', 'Cable Para Sensores Pt100 3 X 0,35Mm2 Funda Fibra  Vidrio Y Malla Metalica Temp.max. -50 + 260 C', '', 2, 30.00, 5.00, 2.00, 0.00, 'CLP', 'MTS', NULL, '2026-01-12 19:48:32', '2026-01-12 19:51:25', NULL),
-(1574, '990000071992678', 'Insumo Prueba', 'eawfawfafdaffadf', 7, 100.00, 5.00, 2.00, 10000.00, 'CLP', 'UN', NULL, '2026-01-19 18:45:48', '2026-01-19 18:45:48', NULL);
+(1574, '990000071992678', 'Insumo Prueba', 'eawfawfafdaffadf', 7, 100.00, 5.00, 2.00, 10000.00, 'CLP', 'UN', NULL, '2026-01-19 18:45:48', '2026-01-19 18:45:48', NULL),
+(1575, 'SERV-01', 'Aaaaaaaaaa', '', 6, 1.00, 0.00, 2.00, 15990.00, 'CLP', 'UN', NULL, '2026-01-20 13:19:21', '2026-01-20 13:19:21', NULL);
 
 -- --------------------------------------------------------
 
@@ -2732,7 +2766,7 @@ INSERT INTO `insumo_stock_ubicacion` (`id`, `insumo_id`, `ubicacion_id`, `cantid
 (15, 202, 1, 0.00, '2026-01-13 13:29:45'),
 (16, 225, 1, 6.00, '2026-01-12 19:03:51'),
 (17, 228, 1, 4.00, '2026-01-12 19:04:10'),
-(18, 380, 1, 4.00, '2026-01-12 19:04:30'),
+(18, 380, 1, 12.00, '2026-01-20 12:35:45'),
 (19, 767, 1, 4.00, '2026-01-12 19:04:47'),
 (20, 790, 1, 2.00, '2026-01-12 19:11:03'),
 (21, 966, 1, 30.00, '2026-01-12 19:11:19'),
@@ -2748,7 +2782,7 @@ INSERT INTO `insumo_stock_ubicacion` (`id`, `insumo_id`, `ubicacion_id`, `cantid
 (33, 1419, 1, 5.00, '2026-01-12 19:30:59'),
 (34, 1422, 1, 3.00, '2026-01-12 19:31:07'),
 (35, 1421, 1, 40.00, '2026-01-14 19:59:11'),
-(36, 1431, 1, 1.00, '2026-01-12 19:31:26'),
+(36, 1431, 1, 0.00, '2026-01-20 14:41:28'),
 (37, 1452, 1, 4.00, '2026-01-12 19:31:45'),
 (38, 1453, 1, 6.00, '2026-01-12 19:31:55'),
 (39, 1454, 1, 6.00, '2026-01-12 19:32:05'),
@@ -2783,7 +2817,10 @@ INSERT INTO `insumo_stock_ubicacion` (`id`, `insumo_id`, `ubicacion_id`, `cantid
 (71, 1472, 41, 2.00, '2026-01-13 13:29:55'),
 (73, 552, 19, 0.00, '2026-01-13 13:42:37'),
 (75, 552, 1, 0.00, '2026-01-14 19:47:08'),
-(76, 1574, 88, 100.00, '2026-01-19 18:45:48');
+(76, 1574, 88, 100.00, '2026-01-19 18:45:48'),
+(77, 384, 1, 3.00, '2026-01-20 12:11:07'),
+(78, 545, 1, 10.00, '2026-01-20 12:11:07'),
+(80, 1575, 64, 1.00, '2026-01-20 13:19:21');
 
 --
 -- Disparadores `insumo_stock_ubicacion`
@@ -2905,7 +2942,11 @@ INSERT INTO `movimientos_inventario` (`id`, `insumo_id`, `tipo_movimiento_id`, `
 (105, 71, 2, 10.00, 13, 1, 3, NULL, NULL, 'Entrega a: Carlos Ruiz (App). Obs: Entrega operario', '2026-01-14 16:49:16'),
 (106, 1421, 2, 3.00, 1, 1, 2, NULL, NULL, 'Entrega a: Froilan Urdaneta (App). Obs: Entrega operario', '2026-01-14 16:50:49'),
 (107, 1421, 2, 10.00, 1, 1, 2, 6, NULL, 'Entrega a: Froilan Urdaneta (App). Obs: Entrega operario', '2026-01-14 16:59:11'),
-(108, 202, 2, 8.00, 13, 1, 5, 5, NULL, 'Entrega a: Carla Tapia (Físico). Obs: Entrega operario', '2026-01-14 16:59:24');
+(108, 202, 2, 8.00, 13, 1, 5, 5, NULL, 'Entrega a: Carla Tapia (Físico). Obs: Entrega operario', '2026-01-14 16:59:24'),
+(109, 384, 1, 3.00, 1, 1, NULL, NULL, 11, 'Recepción OC', '2026-01-20 09:11:07'),
+(110, 545, 1, 10.00, 1, 1, NULL, NULL, 11, 'Recepción OC', '2026-01-20 09:11:08'),
+(111, 380, 1, 8.00, 1, 1, NULL, NULL, 240000, 'Recepción OC', '2026-01-20 09:35:45'),
+(112, 1431, 2, 1.00, 1, 1, 1, NULL, 176, 'Entrega OT', '2026-01-20 11:41:28');
 
 -- --------------------------------------------------------
 
@@ -2938,7 +2979,32 @@ CREATE TABLE `ordenes_compra` (
 --
 
 INSERT INTO `ordenes_compra` (`id`, `proveedor_id`, `usuario_creador_id`, `fecha_creacion`, `estado_id`, `moneda`, `tipo_cambio`, `numero_cotizacion`, `monto_neto`, `impuesto_porcentaje`, `impuesto`, `monto_total`, `url_archivo`, `observaciones`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(11, 9, 3, '2026-01-13 09:03:55', 2, 'CLP', 1.00, '', 126891.00, 19.00, 24109.29, 151000.29, NULL, NULL, '2026-01-13 12:03:55', '2026-01-13 12:03:55', NULL);
+(11, 9, 3, '2026-01-13 09:03:55', 3, 'CLP', 1.00, '', 126891.00, 19.00, 24109.29, 151000.29, NULL, NULL, '2026-01-13 12:03:55', '2026-01-20 12:11:08', NULL),
+(240000, 220, 1, '2026-01-20 09:22:06', 3, 'CLP', 1.00, '', 195400.00, 19.00, 37126.00, 232526.00, NULL, NULL, '2026-01-20 12:22:06', '2026-01-20 12:35:45', NULL),
+(240001, 220, 1, '2026-01-20 09:36:45', 2, 'CLP', 1.00, '', 60000.00, 19.00, 11400.00, 71400.00, 'uploads/ordenes/OC_240001_1768914142.pdf', NULL, '2026-01-20 12:36:45', '2026-01-20 13:02:22', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `ot_checklist_respuestas`
+--
+
+CREATE TABLE `ot_checklist_respuestas` (
+  `id` int(11) NOT NULL,
+  `solicitud_ot_id` int(11) NOT NULL,
+  `seccion_key` varchar(50) DEFAULT NULL,
+  `item_key` varchar(50) DEFAULT NULL,
+  `valor` varchar(255) DEFAULT NULL,
+  `observacion` text DEFAULT NULL,
+  `fecha_respuesta` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `ot_checklist_respuestas`
+--
+
+INSERT INTO `ot_checklist_respuestas` (`id`, `solicitud_ot_id`, `seccion_key`, `item_key`, `valor`, `observacion`, `fecha_respuesta`) VALUES
+(20, 31, 'revision_tecnica', 'banda_motriz', 'bueno', NULL, '2026-01-20 14:17:20');
 
 -- --------------------------------------------------------
 
@@ -3469,26 +3535,33 @@ CREATE TABLE `solicitudes_ot` (
   `centro_costo_ot` varchar(50) DEFAULT NULL,
   `solicitante_externo` varchar(100) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `asignado_a` int(11) DEFAULT NULL,
+  `firma_tecnico` longtext DEFAULT NULL,
+  `comentarios_finales` text DEFAULT NULL,
+  `pdf_url` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `solicitudes_ot`
 --
 
-INSERT INTO `solicitudes_ot` (`id`, `usuario_solicitante_id`, `activo_id`, `fecha_solicitud`, `fecha_requerida`, `estado_id`, `descripcion_trabajo`, `prioridad`, `origen_tipo`, `area_negocio`, `centro_costo_ot`, `solicitante_externo`, `created_at`, `updated_at`) VALUES
-(18, 5, 1, '2026-01-12 09:05:15', NULL, 6, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 12:05:15', '2026-01-12 12:05:20'),
-(19, 5, 3, '2026-01-12 09:07:33', NULL, 5, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 12:07:33', '2026-01-12 12:08:52'),
-(20, 5, 1, '2026-01-12 09:14:26', NULL, 2, 'Mantenimiento preventivo OT 1671', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 12:14:26', '2026-01-14 18:25:21'),
-(21, 5, 2, '2026-01-12 11:19:31', NULL, 1, 'Mantenimiento preventivo OT 1673', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 14:19:31', '2026-01-12 19:57:26'),
-(22, 5, 4, '2026-01-12 11:25:25', NULL, 1, 'MANTENCION PROGRAMADA (EDITADO): Mantenimiento preventivo OT 1703', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 14:25:25', '2026-01-12 17:11:35'),
-(23, 5, 28, '2026-01-12 15:30:45', NULL, 1, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:30:45', '2026-01-12 18:30:45'),
-(24, 5, 29, '2026-01-12 15:31:56', NULL, 6, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:31:56', '2026-01-13 14:07:45'),
-(25, 5, 30, '2026-01-12 15:33:27', NULL, 1, 'MANTENCION PROGRAMADA: Mantenimiento preventivo ', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:33:27', '2026-01-12 18:33:27'),
-(26, 5, 31, '2026-01-12 15:34:12', NULL, 1, 'Mantenimiento preventivo', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 18:34:12', '2026-01-12 19:56:49'),
-(27, 5, 34, '2026-01-12 15:40:11', NULL, 6, 'MANTENCION PROGRAMADA: Auditoría Perú', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:40:11', '2026-01-12 20:03:18'),
-(28, 5, NULL, '2026-01-12 16:53:37', NULL, 1, 'Cambio de contador de metabisulfito OT 1710', 'MEDIA', 'Servicio', NULL, '6130', 'Froilan Urdaneta ', '2026-01-12 19:53:37', '2026-01-12 19:53:37'),
-(29, 5, 34, '2026-01-12 17:03:50', NULL, 1, 'Auditoría Perú', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 20:03:50', '2026-01-12 20:08:56');
+INSERT INTO `solicitudes_ot` (`id`, `usuario_solicitante_id`, `activo_id`, `fecha_solicitud`, `fecha_requerida`, `estado_id`, `descripcion_trabajo`, `prioridad`, `origen_tipo`, `area_negocio`, `centro_costo_ot`, `solicitante_externo`, `created_at`, `updated_at`, `asignado_a`, `firma_tecnico`, `comentarios_finales`, `pdf_url`) VALUES
+(18, 5, 1, '2026-01-12 09:05:15', NULL, 6, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 12:05:15', '2026-01-12 12:05:20', NULL, NULL, NULL, NULL),
+(19, 5, 3, '2026-01-12 09:07:33', NULL, 5, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 12:07:33', '2026-01-12 12:08:52', NULL, NULL, NULL, NULL),
+(20, 5, 1, '2026-01-12 09:14:26', NULL, 2, 'Mantenimiento preventivo OT 1671', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 12:14:26', '2026-01-14 18:25:21', NULL, NULL, NULL, NULL),
+(21, 5, 2, '2026-01-12 11:19:31', NULL, 1, 'Mantenimiento preventivo OT 1673', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 14:19:31', '2026-01-12 19:57:26', NULL, NULL, NULL, NULL),
+(22, 5, 4, '2026-01-12 11:25:25', NULL, 1, 'MANTENCION PROGRAMADA (EDITADO): Mantenimiento preventivo OT 1703', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 14:25:25', '2026-01-12 17:11:35', NULL, NULL, NULL, NULL),
+(23, 5, 28, '2026-01-12 15:30:45', NULL, 1, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:30:45', '2026-01-12 18:30:45', NULL, NULL, NULL, NULL),
+(24, 5, 29, '2026-01-12 15:31:56', NULL, 6, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:31:56', '2026-01-13 14:07:45', NULL, NULL, NULL, NULL),
+(25, 5, 30, '2026-01-12 15:33:27', NULL, 1, 'MANTENCION PROGRAMADA: Mantenimiento preventivo ', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:33:27', '2026-01-12 18:33:27', NULL, NULL, NULL, NULL),
+(26, 5, 31, '2026-01-12 15:34:12', NULL, 1, 'Mantenimiento preventivo', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 18:34:12', '2026-01-12 19:56:49', NULL, NULL, NULL, NULL),
+(27, 5, 34, '2026-01-12 15:40:11', NULL, 6, 'MANTENCION PROGRAMADA: Auditoría Perú', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:40:11', '2026-01-12 20:03:18', NULL, NULL, NULL, NULL),
+(28, 5, NULL, '2026-01-12 16:53:37', NULL, 1, 'Cambio de contador de metabisulfito OT 1710', 'MEDIA', 'Servicio', NULL, '6130', 'Froilan Urdaneta ', '2026-01-12 19:53:37', '2026-01-12 19:53:37', NULL, NULL, NULL, NULL),
+(29, 5, 34, '2026-01-12 17:03:50', NULL, 1, 'Auditoría Perú', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 20:03:50', '2026-01-20 14:58:57', 1, NULL, NULL, NULL),
+(30, 1, 30, '2026-01-20 11:41:04', NULL, 5, '', 'MEDIA', 'Interna', NULL, NULL, NULL, '2026-01-20 14:41:04', '2026-01-20 14:52:00', NULL, NULL, NULL, NULL),
+(31, 1, 1, '2026-01-20 12:01:05', NULL, 1, '', 'MEDIA', 'Interna', NULL, NULL, NULL, '2026-01-20 15:01:05', '2026-01-20 15:01:19', 1, NULL, NULL, NULL),
+(32, 1, 1, '2026-01-20 12:12:37', NULL, 1, '', 'MEDIA', 'Interna', NULL, NULL, NULL, '2026-01-20 15:12:37', '2026-01-20 15:13:05', 1, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -4041,6 +4114,13 @@ ALTER TABLE `ordenes_compra`
   ADD KEY `estado_id` (`estado_id`);
 
 --
+-- Indices de la tabla `ot_checklist_respuestas`
+--
+ALTER TABLE `ot_checklist_respuestas`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `solicitud_ot_id` (`solicitud_ot_id`);
+
+--
 -- Indices de la tabla `paises`
 --
 ALTER TABLE `paises`
@@ -4104,7 +4184,8 @@ ALTER TABLE `solicitudes_ot`
   ADD PRIMARY KEY (`id`),
   ADD KEY `usuario_solicitante_id` (`usuario_solicitante_id`),
   ADD KEY `activo_id` (`activo_id`),
-  ADD KEY `estado_id` (`estado_id`);
+  ADD KEY `estado_id` (`estado_id`),
+  ADD KEY `fk_ot_asignado` (`asignado_a`);
 
 --
 -- Indices de la tabla `tipos_movimiento`
@@ -4163,7 +4244,7 @@ ALTER TABLE `activos`
 -- AUTO_INCREMENT de la tabla `activos_docs`
 --
 ALTER TABLE `activos_docs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `activos_imagenes`
@@ -4211,7 +4292,7 @@ ALTER TABLE `cotizaciones`
 -- AUTO_INCREMENT de la tabla `cronograma_insumos`
 --
 ALTER TABLE `cronograma_insumos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=419;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=452;
 
 --
 -- AUTO_INCREMENT de la tabla `cronograma_mantencion`
@@ -4229,13 +4310,13 @@ ALTER TABLE `detalle_cotizacion`
 -- AUTO_INCREMENT de la tabla `detalle_orden_compra`
 --
 ALTER TABLE `detalle_orden_compra`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_solicitud`
 --
 ALTER TABLE `detalle_solicitud`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=176;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=200;
 
 --
 -- AUTO_INCREMENT de la tabla `empleados`
@@ -4247,7 +4328,7 @@ ALTER TABLE `empleados`
 -- AUTO_INCREMENT de la tabla `entregas_personal`
 --
 ALTER TABLE `entregas_personal`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de la tabla `estados_cotizacion`
@@ -4277,25 +4358,31 @@ ALTER TABLE `estados_solicitud`
 -- AUTO_INCREMENT de la tabla `insumos`
 --
 ALTER TABLE `insumos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1575;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1576;
 
 --
 -- AUTO_INCREMENT de la tabla `insumo_stock_ubicacion`
 --
 ALTER TABLE `insumo_stock_ubicacion`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=77;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=81;
 
 --
 -- AUTO_INCREMENT de la tabla `movimientos_inventario`
 --
 ALTER TABLE `movimientos_inventario`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=109;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=113;
 
 --
 -- AUTO_INCREMENT de la tabla `ordenes_compra`
 --
 ALTER TABLE `ordenes_compra`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=240002;
+
+--
+-- AUTO_INCREMENT de la tabla `ot_checklist_respuestas`
+--
+ALTER TABLE `ot_checklist_respuestas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de la tabla `paises`
@@ -4349,7 +4436,7 @@ ALTER TABLE `sistema_logs`
 -- AUTO_INCREMENT de la tabla `solicitudes_ot`
 --
 ALTER TABLE `solicitudes_ot`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT de la tabla `tipos_movimiento`
@@ -4514,6 +4601,12 @@ ALTER TABLE `ordenes_compra`
   ADD CONSTRAINT `ordenes_compra_ibfk_3` FOREIGN KEY (`estado_id`) REFERENCES `estados_orden_compra` (`id`);
 
 --
+-- Filtros para la tabla `ot_checklist_respuestas`
+--
+ALTER TABLE `ot_checklist_respuestas`
+  ADD CONSTRAINT `ot_checklist_respuestas_ibfk_1` FOREIGN KEY (`solicitud_ot_id`) REFERENCES `solicitudes_ot` (`id`) ON DELETE CASCADE;
+
+--
 -- Filtros para la tabla `proveedores`
 --
 ALTER TABLE `proveedores`
@@ -4542,6 +4635,7 @@ ALTER TABLE `sistema_logs`
 -- Filtros para la tabla `solicitudes_ot`
 --
 ALTER TABLE `solicitudes_ot`
+  ADD CONSTRAINT `fk_ot_asignado` FOREIGN KEY (`asignado_a`) REFERENCES `usuarios` (`id`),
   ADD CONSTRAINT `solicitudes_ot_ibfk_1` FOREIGN KEY (`usuario_solicitante_id`) REFERENCES `usuarios` (`id`),
   ADD CONSTRAINT `solicitudes_ot_ibfk_2` FOREIGN KEY (`activo_id`) REFERENCES `activos` (`id`),
   ADD CONSTRAINT `solicitudes_ot_ibfk_3` FOREIGN KEY (`estado_id`) REFERENCES `estados_solicitud` (`id`);
