@@ -128,7 +128,7 @@ class MantencionController
 
     public function storeActivo()
     {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $data = $_POST;
         
         if (empty($data['codigo_interno']) || empty($data['nombre'])) {
             http_response_code(400);
@@ -137,8 +137,33 @@ class MantencionController
         }
 
         try {
-            $this->repo->createActivo($data);
-            echo json_encode(["success" => true, "message" => "Activo creado"]);
+            if (!empty($_FILES['imagen_principal']) && $_FILES['imagen_principal']['error'] === UPLOAD_ERR_OK) {
+                $data['imagen_url'] = $this->subirImagen($_FILES['imagen_principal']);
+            }
+            $galeria = [];
+            if (!empty($_FILES['galeria_files'])) {
+                foreach ($_FILES['galeria_files']['name'] as $key => $name) {
+                    if ($_FILES['galeria_files']['error'][$key] === UPLOAD_ERR_OK) {
+                        $fileArray = [
+                            'name' => $_FILES['galeria_files']['name'][$key],
+                            'type' => $_FILES['galeria_files']['type'][$key],
+                            'tmp_name' => $_FILES['galeria_files']['tmp_name'][$key],
+                            'error' => $_FILES['galeria_files']['error'][$key],
+                            'size' => $_FILES['galeria_files']['size'][$key],
+                        ];
+                        
+                        $url = $this->subirImagen($fileArray, 'galeria');
+                        if ($url) {
+                            $tipo = $_POST['galeria_tipos'][$key] ?? 'General';
+                            $galeria[] = ['url' => $url, 'tipo' => $tipo];
+                        }
+                    }
+                }
+            }
+            $data['galeria'] = $galeria;
+            $this->service->crearActivo($data);
+            
+            echo json_encode(["success" => true, "message" => "Activo creado con imágenes"]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
@@ -147,7 +172,7 @@ class MantencionController
 
     public function editarActivo()
     {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $data = $_POST;
 
         if (empty($data['id'])) {
             http_response_code(400);
@@ -156,12 +181,60 @@ class MantencionController
         }
 
         try {
-            $this->repo->updateActivo($data);
+            if (!empty($_FILES['imagen_principal']) && $_FILES['imagen_principal']['error'] === UPLOAD_ERR_OK) {
+                $data['imagen_url'] = $this->subirImagen($_FILES['imagen_principal']);
+            }
+            $galeria = [];
+            if (!empty($_FILES['galeria_files'])) {
+                foreach ($_FILES['galeria_files']['name'] as $key => $name) {
+                    if ($_FILES['galeria_files']['error'][$key] === UPLOAD_ERR_OK) {
+                        $fileArray = [
+                            'name' => $_FILES['galeria_files']['name'][$key],
+                            'type' => $_FILES['galeria_files']['type'][$key],
+                            'tmp_name' => $_FILES['galeria_files']['tmp_name'][$key],
+                            'error' => $_FILES['galeria_files']['error'][$key],
+                            'size' => $_FILES['galeria_files']['size'][$key],
+                        ];
+                        
+                        $url = $this->subirImagen($fileArray, 'galeria');
+                        if ($url) {
+                            $tipo = $_POST['galeria_tipos'][$key] ?? 'General';
+                            $galeria[] = ['url' => $url, 'tipo' => $tipo];
+                        }
+                    }
+                }
+            }
+            $data['galeria'] = $galeria;
+            $this->service->editarActivo($data);
+            
             echo json_encode(["success" => true, "message" => "Activo actualizado"]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
+    }
+
+    public function galeria()
+    {
+        $id = $_GET['id'] ?? 0;
+        echo json_encode(["success" => true, "data" => $this->service->obtenerGaleria($id)]);
+    }
+
+
+    private function subirImagen($file, $subFolder = '') {
+        $targetDir = __DIR__ . '/../../../../public_html/uploads/activos/' . $subFolder;
+        if (!file_exists($targetDir)) {
+            mkdir($targetDir, 0777, true);
+        }
+        
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = uniqid('ACT_') . '.' . $extension;
+        $targetPath = $targetDir . '/' . $filename;
+        
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            return '/uploads/activos/' . $subFolder . ($subFolder ? '/' : '') . $filename;
+        }
+        return null;
     }
 
     // =================================================================================
@@ -299,4 +372,6 @@ class MantencionController
             echo "Error generando PDF: " . $e->getMessage();
         }
     }
+
+    
 }

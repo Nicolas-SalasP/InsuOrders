@@ -16,25 +16,18 @@ const Compras = () => {
     const [uploadModal, setUploadModal] = useState({ show: false, id: null, url: null }); 
     const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null }); 
     
-    // Modal de Mensajes (Feedback)
+    // Feedback y Confirmación
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
-
-    // Modal de Confirmación (Para anular)
     const [confirmModal, setConfirmModal] = useState({ show: false, id: null });
 
     // Estado para el Menú Flotante
-    const [actionMenu, setActionMenu] = useState({ 
-        show: false, 
-        top: 0, 
-        left: 0, 
-        id: null, 
-        url: null, 
-        estado: null 
-    });
+    const [actionMenu, setActionMenu] = useState({ show: false, top: 0, left: 0, id: null, url: null, estado: null });
 
-    // Filtros
+    // --- FILTROS ---
     const [filtroProveedor, setFiltroProveedor] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState([]); 
+    const [showEstadoDropdown, setShowEstadoDropdown] = useState(false); 
+    const estadoRef = useRef(null); 
     const [filtroFecha, setFiltroFecha] = useState('');
     
     // Autocompletado Insumos
@@ -48,21 +41,35 @@ const Compras = () => {
     const [itemsPrecargados, setItemsPrecargados] = useState([]);
     const [pendientes, setPendientes] = useState([]);
 
+    // --- EFECTO 1: Carga Inicial ---
     useEffect(() => {
         cargarOrdenes();
         cargarPendientes();
         cargarFiltrosInsumos();
-        
+    }, []);
+
+    // --- EFECTO 2: Recarga por filtro de Insumo ---
+    useEffect(() => {
+        if (filtroInsumo) cargarOrdenes();
+    }, [filtroInsumo]);
+
+    // --- EFECTO 3: Manejo de UI (Clics externos y Scroll) ---
+    useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 setMostrarSugerencias(false);
             }
-            // Cerrar menú flotante si clickeamos fuera
             if (actionMenu.show && !event.target.closest('.action-menu-trigger') && !event.target.closest('.floating-action-menu')) {
                 closeActionMenu();
             }
+            if (estadoRef.current && !estadoRef.current.contains(event.target)) {
+                setShowEstadoDropdown(false);
+            }
         };
-        const handleScroll = () => { if(actionMenu.show) closeActionMenu(); };
+
+        const handleScroll = () => { 
+            if (actionMenu.show) closeActionMenu(); 
+        };
 
         document.addEventListener("mousedown", handleClickOutside);
         window.addEventListener("scroll", handleScroll, true); 
@@ -71,12 +78,9 @@ const Compras = () => {
             document.removeEventListener("mousedown", handleClickOutside);
             window.removeEventListener("scroll", handleScroll, true);
         };
-    }, [actionMenu.show]);
+    }, [actionMenu.show, showEstadoDropdown]);
 
-    useEffect(() => {
-        cargarOrdenes();
-    }, [filtroInsumo]);
-
+    // --- LÓGICA DE SUGERENCIAS ---
     useEffect(() => {
         if (busquedaInsumo === '') {
             setSugerencias([]);
@@ -131,11 +135,10 @@ const Compras = () => {
     
     const handleNewOrder = () => { setItemsPrecargados([]); setShowModal(true); };
 
-    // --- LÓGICA DEL MENÚ FLOTANTE ---
+    // --- MENÚ FLOTANTE ---
     const handleActionMenuClick = (e, oc) => {
         e.stopPropagation();
         const rect = e.currentTarget.getBoundingClientRect();
-        
         setActionMenu({
             show: true,
             top: rect.bottom + window.scrollY + 2,
@@ -150,17 +153,14 @@ const Compras = () => {
         setActionMenu({ ...actionMenu, show: false });
     };
 
-    // --- LÓGICA DE CANCELACIÓN ---
+    // --- ANULACIÓN ---
     const solicitarAnulacion = () => {
         closeActionMenu();
-        if (actionMenu.id) {
-            setConfirmModal({ show: true, id: actionMenu.id });
-        }
+        if (actionMenu.id) setConfirmModal({ show: true, id: actionMenu.id });
     };
 
     const confirmarAnulacion = async () => {
         setConfirmModal({ show: false, id: null });
-        
         try {
             const res = await api.post('/index.php/compras/cancelar', { id: confirmModal.id });
             if (res.data.success) {
@@ -170,12 +170,7 @@ const Compras = () => {
                 setMsg({ show: true, title: 'Error', text: res.data.message || 'No se pudo anular la orden.', type: 'error' });
             }
         } catch (error) {
-            setMsg({ 
-                show: true, 
-                title: 'Error', 
-                text: error.response?.data?.message || 'Error de conexión al intentar anular.', 
-                type: 'error' 
-            });
+            setMsg({ show: true, title: 'Error', text: error.response?.data?.message || 'Error de conexión.', type: 'error' });
         }
     };
 
@@ -185,19 +180,50 @@ const Compras = () => {
         closeActionMenu();
     };
 
+    // --- REGENERAR PDF (NUEVO) ---
+    const handleRegenerarPdf = async (id) => {
+        closeActionMenu();
+        // Usamos setLoading(true) solo si queremos bloquear la pantalla, 
+        // o mejor usamos un estado local 'regenerando' para no recargar toda la tabla.
+        // Aquí usaré setLoading global para simplicidad, pero puedes optimizarlo.
+        setLoading(true); 
+        try {
+            const res = await api.get(`/index.php/compras/regenerar-pdf?id=${id}`); // Cambiado a GET si definiste la ruta así en index.php, o POST
+            if (res.data.success) {
+                setMsg({ show: true, title: "Éxito", text: "PDF regenerado correctamente.", type: "success" });
+                cargarOrdenes(); // Recargamos para que el botón de descarga apunte al nuevo archivo
+            } else {
+                setMsg({ show: true, title: "Error", text: res.data.message, type: "error" });
+            }
+        } catch (e) {
+            setMsg({ show: true, title: "Error", text: "No se pudo regenerar el PDF.", type: "error" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleDescargarPdf = async () => {
         closeActionMenu();
         const id = actionMenu.id;
         try {
             const res = await api.get(`/index.php/compras/pdf?id=${id}`, { responseType: 'blob' });
-            const url = window.URL.createObjectURL(new Blob([res.data]));
+            if (res.data.type !== 'application/pdf') {
+                throw new Error("El archivo recibido no es un PDF válido.");
+            }
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
             const link = document.createElement('a');
             link.href = url;
             link.setAttribute('download', `OC_${id}.pdf`);
             document.body.appendChild(link);
             link.click();
-            link.remove();
-        } catch (e) { alert("Error al generar PDF"); }
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        } catch (e) { 
+            console.error(e);
+            setMsg({ show: true, title: "Error", text: "No se pudo generar el PDF. Intente 'Regenerar PDF'.", type: "error" });
+        }
     };
 
     const handleDescargarExcel = async () => {
@@ -211,8 +237,13 @@ const Compras = () => {
             link.setAttribute('download', `Detalle_OC_${id}.xlsx`);
             document.body.appendChild(link);
             link.click();
-            link.remove();
-        } catch (e) { alert("Error al generar Excel del detalle"); }
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        } catch (e) { 
+            setMsg({ show: true, title: "Error", text: "Error al generar Excel del detalle", type: "error" });
+        }
     };
 
     const handleExportar = async () => {
@@ -224,13 +255,26 @@ const Compras = () => {
             link.setAttribute('download', `Reporte_Compras_${new Date().getTime()}.xlsx`);
             document.body.appendChild(link);
             link.click();
-            link.remove();
-        } catch (e) { alert("Error al exportar listado"); }
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        } catch (e) { 
+            setMsg({ show: true, title: "Error", text: "Error al exportar listado", type: "error" });
+        }
+    };
+
+    // --- FILTRADO MÚLTIPLE DE ESTADOS ---
+    const toggleEstado = (estado) => {
+        setFiltroEstado(prev => {
+            if (prev.includes(estado)) return prev.filter(e => e !== estado);
+            return [...prev, estado];
+        });
     };
 
     const limpiarFiltros = () => {
         setFiltroProveedor('');
-        setFiltroEstado('');
+        setFiltroEstado([]); 
         setFiltroFecha('');
         setFiltroInsumo('');
         setBusquedaInsumo('');
@@ -246,7 +290,7 @@ const Compras = () => {
 
     const ordenesFiltradas = ordenes.filter(oc => {
         const matchProveedor = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
-        const matchEstado = filtroEstado ? oc.estado === filtroEstado : true;
+        const matchEstado = filtroEstado.length === 0 || filtroEstado.includes(oc.estado);
         const fechaOC = oc.fecha_creacion.split(' ')[0];
         const matchFecha = filtroFecha ? fechaOC === filtroFecha : true;
         return matchProveedor && matchEstado && matchFecha;
@@ -309,16 +353,8 @@ const Compras = () => {
             {actionMenu.show && (
                 <div 
                     className="floating-action-menu shadow rounded bg-white border"
-                    style={{
-                        position: 'absolute', 
-                        top: actionMenu.top,
-                        left: actionMenu.left,
-                        zIndex: 9999, 
-                        minWidth: '180px',
-                        padding: '0.5rem 0'
-                    }}
+                    style={{ position: 'absolute', top: actionMenu.top, left: actionMenu.left, zIndex: 9999, minWidth: '180px', padding: '0.5rem 0' }}
                 >
-                    {/* SOLO MOSTRAR SI NO ESTÁ ANULADA */}
                     {actionMenu.estado !== 'Anulada' && (
                         <>
                             <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleAdjuntar}>
@@ -328,10 +364,15 @@ const Compras = () => {
                             <div className="dropdown-divider my-1"></div>
                         </>
                     )}
-                    
                     <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarPdf}>
                         <i className="bi bi-file-earmark-pdf text-danger me-2"></i> Descargar PDF
                     </button>
+                    
+                    {/* BOTÓN REGENERAR PDF */}
+                    <button className="dropdown-item py-2 px-3 d-flex align-items-center text-primary" onClick={() => handleRegenerarPdf(actionMenu.id)}>
+                        <i className="bi bi-arrow-clockwise me-2"></i> Regenerar PDF
+                    </button>
+
                     <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarExcel}>
                         <i className="bi bi-file-earmark-excel text-success me-2"></i> Descargar Excel
                     </button>
@@ -401,18 +442,41 @@ const Compras = () => {
                                 </ul>
                             )}
                         </div>
-                        <div className="col-md-2">
-                            <select className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-                                <option value="">Todos los Estados</option>
-                                <option value="Emitida">Emitida</option>
-                                <option value="Recepcion Parcial">Recepción Parcial</option>
-                                <option value="Recepcion Total">Recepción Total</option>
-                                <option value="Anulada">Anulada</option>
-                            </select>
+                        
+                        {/* --- SELECTOR DE ESTADOS MÚLTIPLES --- */}
+                        <div className="col-md-2 position-relative" ref={estadoRef}>
+                            <button 
+                                className="form-select text-start" 
+                                onClick={() => setShowEstadoDropdown(!showEstadoDropdown)}
+                            >
+                                {filtroEstado.length === 0 ? "Todos los Estados" : `${filtroEstado.length} seleccionado(s)`}
+                            </button>
+                            {showEstadoDropdown && (
+                                <div className="card position-absolute w-100 shadow-sm mt-1 p-2" style={{ zIndex: 1050 }}>
+                                    {['Emitida', 'Recepcion Parcial', 'Recepcion Total', 'Anulada'].map(estado => (
+                                        <div key={estado} className="form-check mb-1">
+                                            <input 
+                                                className="form-check-input" 
+                                                type="checkbox" 
+                                                id={`check-${estado}`}
+                                                checked={filtroEstado.includes(estado)}
+                                                onChange={() => toggleEstado(estado)}
+                                            />
+                                            <label className="form-check-label small" htmlFor={`check-${estado}`}>
+                                                {estado}
+                                            </label>
+                                        </div>
+                                    ))}
+                                    <div className="border-top pt-2 mt-2 text-center">
+                                        <button className="btn btn-link btn-sm p-0 text-decoration-none" onClick={() => { setFiltroEstado([]); setShowEstadoDropdown(false); }}>Borrar</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
+
                         <div className="col-md-2"><input type="date" className="form-control" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} /></div>
                         <div className="col-md-2 text-end">
-                            {(filtroProveedor || filtroEstado || filtroFecha || filtroInsumo) && (
+                            {(filtroProveedor || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && (
                                 <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros}><i className="bi bi-x-lg me-1"></i>Limpiar Filtros</button>
                             )}
                         </div>
@@ -459,7 +523,6 @@ const Compras = () => {
                                         
                                         <td className="text-end pe-4">
                                             <div className="d-flex justify-content-end align-items-center gap-2">
-                                                {/* Botón Ver (Siempre visible) */}
                                                 <button 
                                                     className="btn btn-sm btn-outline-primary" 
                                                     onClick={() => setVerModal({ show: true, id: oc.id })} 
@@ -468,7 +531,6 @@ const Compras = () => {
                                                     <i className="bi bi-eye"></i>
                                                 </button>
 
-                                                {/* Botón Camión (Visible si aplica) */}
                                                 {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && (
                                                     <button 
                                                         className="btn btn-sm btn-warning text-dark" 
@@ -479,7 +541,6 @@ const Compras = () => {
                                                     </button>
                                                 )}
 
-                                                {/* Botón 3 Puntos (Abre menú flotante) */}
                                                 <button 
                                                     className={`btn btn-sm btn-light border-0 action-menu-trigger ${actionMenu.id === oc.id && actionMenu.show ? 'active bg-light border' : ''}`}
                                                     type="button" 

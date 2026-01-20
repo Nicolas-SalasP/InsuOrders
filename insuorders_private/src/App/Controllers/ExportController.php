@@ -20,7 +20,6 @@ class ExportController
 {
     public function exportar($modulo)
     {
-        // Limpiar buffer para evitar archivos corruptos por espacios en blanco o warnings
         while (ob_get_level()) {
             ob_end_clean();
         }
@@ -73,6 +72,10 @@ class ExportController
                 case 'dashboard_entregas':
                     $this->sheetDashboardEntregas($spreadsheet, $sheetIndex);
                     $filename = "Reporte_Entregas_" . date('Ymd_Hi') . ".xlsx";
+                    break;
+                case 'recepciones':
+                    $this->sheetRecepciones($spreadsheet, $sheetIndex);
+                    $filename = "Recepciones_Historico_" . date('Ymd_Hi') . ".xlsx";
                     break;
                 case 'todo':
                     $this->sheetInventario($spreadsheet, $sheetIndex++);
@@ -473,6 +476,44 @@ class ExportController
                 $d['cuanto'],
                 $d['unidad_medida'],
                 $d['ot_referencia'] ?? 'N/A'
+            ]
+        );
+    }
+
+    private function sheetRecepciones(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Historial Recepciones');
+        $data = (new OrdenCompraRepository())->getHistorialRecepciones();
+
+        $this->fillSheet(
+            $sheet,
+            [
+                'N° OC', 
+                'Proveedor', 
+                'RUT', 
+                'Fecha Recepción', 
+                'SKU', 
+                'Insumo', 
+                'Cant. Solicitada', 
+                'Cant. Recibida', 
+                'Precio Unit.', 
+                'Total Línea', 
+                'Recepcionado Por'
+            ],
+            $data,
+            fn($d) => [
+                $d['numero_oc'],
+                $d['proveedor'],
+                $d['rut_proveedor'],
+                $d['fecha_recepcion'],
+                $d['codigo_sku'],
+                $d['insumo'],
+                $d['cantidad_solicitada'],
+                $d['cantidad_recibida'],
+                $d['precio_unitario'],
+                $d['total_linea'],
+                $d['recepcionado_por']
             ]
         );
     }
