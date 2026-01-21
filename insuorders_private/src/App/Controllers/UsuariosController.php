@@ -2,6 +2,7 @@
 namespace App\Controllers;
 
 use App\Repositories\UsuariosRepository;
+use App\Middleware\AuthMiddleware;
 use App\Database\Database;
 
 class UsuariosController
@@ -137,6 +138,22 @@ class UsuariosController
             $db->rollBack();
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Error al guardar: ' . $e->getMessage()]);
+        }
+    }
+
+    public function getTecnicos()
+    {
+        try {
+            AuthMiddleware::verify();
+            $data = $this->repo->getByRolNombre('Tecnico'); 
+            if (empty($data)) {
+                $data = $this->repo->getByRolNombre('Técnico');
+            }
+
+            echo json_encode(["success" => true, "data" => $data]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 }

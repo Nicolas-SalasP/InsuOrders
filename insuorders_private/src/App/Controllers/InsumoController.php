@@ -152,11 +152,13 @@ class InsumoController
             $ubicacionEnvioId = !empty($data['ubicacion_envio_id']) ? $data['ubicacion_envio_id'] : null;
 
             if (!empty($data['empleado_id'])) {
+                $obs = $data['observacion'] ?? $data['motivo'] ?? 'Entrega operario';
+                
                 $datos = [
                     'insumo_id' => (int) $data['insumo_id'],
                     'cantidad' => abs((float) $data['cantidad']),
                     'empleado_id' => (int) $data['empleado_id'],
-                    'observacion' => $data['motivo'] ?? 'Entrega operario',
+                    'observacion' => $obs,
                     'bodeguero_id' => $usuarioId,
                     'ubicacion_envio_id' => $ubicacionEnvioId
                 ];
@@ -173,7 +175,7 @@ class InsumoController
                     'insumo_id' => (int) $data['insumo_id'],
                     'cantidad' => abs($cantidadOriginal),
                     'tipo_movimiento_id' => $tipoMovimiento,
-                    'observacion' => $data['motivo'] ?? $data['observacion'] ?? 'Ajuste manual',
+                    'observacion' => $data['observacion'] ?? $data['motivo'] ?? 'Ajuste manual',
                     'usuario_id' => $usuarioId,
                     'empleado_id' => null,
                     'ubicacion_id' => null,

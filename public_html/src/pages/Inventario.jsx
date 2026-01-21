@@ -19,24 +19,16 @@ const Inventario = () => {
     const { auth } = useContext(AuthContext);
     const [insumos, setInsumos] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // Estados Filtros
     const [listas, setListas] = useState({ categorias: [], ubicaciones: [] });
     const [busqueda, setBusqueda] = useState('');
     const [filtroCategoria, setFiltroCategoria] = useState('');
     const [filtroUbicacion, setFiltroUbicacion] = useState('');
-    
-    // CAMBIO: Estado para manejar orden. Valores: 'stock_asc', 'stock_desc', 'sku_asc', 'sku_desc', ''
     const [orden, setOrden] = useState('');
-
-    // Estados Modales
     const [showInsumoModal, setShowInsumoModal] = useState(false);
     const [insumoEditar, setInsumoEditar] = useState(null);
     const [entradaModal, setEntradaModal] = useState({ show: false, insumo: null });
     const [salidaModal, setSalidaModal] = useState({ show: false, insumo: null });
     const [showImport, setShowImport] = useState(false);
-
-    // Estados Feedback
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, id: null, titulo: '', mensaje: '' });
 
@@ -114,16 +106,14 @@ const Inventario = () => {
             .finally(() => setLoading(false));
     };
 
-    // --- NUEVA LÓGICA DE BOTONES SEPARADOS ---
+    // --- LÓGICA DE ORDENAMIENTO ---
 
     const toggleSku = () => {
-        // Si ya está en ASC, pasa a DESC. Si no, empieza en ASC.
         if (orden === 'sku_asc') setOrden('sku_desc');
         else setOrden('sku_asc');
     };
 
     const toggleStock = () => {
-        // Si ya está en ASC (Menor a Mayor), pasa a DESC (Mayor a Menor). Si no, empieza en ASC.
         if (orden === 'stock_asc') setOrden('stock_desc');
         else setOrden('stock_asc');
     };
@@ -145,7 +135,6 @@ const Inventario = () => {
         }
         return matchTexto && matchCat && matchUbi;
     }).sort((a, b) => {
-        // Lógica actualizada para incluir SKU DESC y SKU ASC
         if (orden === 'stock_asc') return parseFloat(a.stock_actual) - parseFloat(b.stock_actual);
         if (orden === 'stock_desc') return parseFloat(b.stock_actual) - parseFloat(a.stock_actual);
         if (orden === 'sku_asc') return a.codigo_sku.localeCompare(b.codigo_sku);
@@ -231,7 +220,7 @@ const Inventario = () => {
                                 <span className="small fw-bold">Exportar</span>
                             </button>
                         )}
-                        
+
                         {can('inv_importar') && (
                             <button
                                 className="btn btn-outline-dark shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
@@ -254,8 +243,6 @@ const Inventario = () => {
                         )}
                     </div>
                 </div>
-
-                {/* FILTROS */}
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2">
                         <div className="col-md-3">
@@ -286,17 +273,15 @@ const Inventario = () => {
                                 ))}
                             </select>
                         </div>
-                        
-                        {/* --- BOTONES DE ORDENAMIENTO SEPARADOS --- */}
                         <div className="col-md-3 d-flex gap-1">
                             <button
                                 className={`btn w-50 ${orden.includes('sku') ? 'btn-primary' : 'btn-outline-secondary'}`}
                                 onClick={toggleSku}
                                 title="Ordenar por Código SKU"
                             >
-                                {orden === 'sku_asc' ? <i className="bi bi-sort-alpha-down me-1"></i> : 
-                                 orden === 'sku_desc' ? <i className="bi bi-sort-alpha-down-alt me-1"></i> : 
-                                 <i className="bi bi-filter me-1"></i>}
+                                {orden === 'sku_asc' ? <i className="bi bi-sort-alpha-down me-1"></i> :
+                                    orden === 'sku_desc' ? <i className="bi bi-sort-alpha-down-alt me-1"></i> :
+                                        <i className="bi bi-filter me-1"></i>}
                                 SKU
                             </button>
                             <button
@@ -304,9 +289,9 @@ const Inventario = () => {
                                 onClick={toggleStock}
                                 title="Ordenar por Cantidad de Stock"
                             >
-                                {orden === 'stock_asc' ? <i className="bi bi-sort-numeric-down me-1"></i> : 
-                                 orden === 'stock_desc' ? <i className="bi bi-sort-numeric-down-alt me-1"></i> : 
-                                 <i className="bi bi-bar-chart me-1"></i>}
+                                {orden === 'stock_asc' ? <i className="bi bi-sort-numeric-down me-1"></i> :
+                                    orden === 'stock_desc' ? <i className="bi bi-sort-numeric-down-alt me-1"></i> :
+                                        <i className="bi bi-bar-chart me-1"></i>}
                                 Stock
                             </button>
                         </div>
@@ -360,7 +345,7 @@ const Inventario = () => {
                                             <td className="ps-4 fw-bold text-secondary font-monospace">{item.codigo_sku}</td>
                                             <td>
                                                 <div className="fw-medium text-dark">{item.nombre}</div>
-                                                {parseFloat(item.stock_actual) <= parseFloat(item.stock_minimo) && (
+                                                {parseFloat(item.stock_minimo) > 0 && parseFloat(item.stock_actual) <= parseFloat(item.stock_minimo) && (
                                                     <span className="badge bg-warning text-dark mt-1">
                                                         <i className="bi bi-exclamation-triangle me-1"></i>Bajo Stock
                                                     </span>
@@ -383,7 +368,7 @@ const Inventario = () => {
                                                 )}
 
                                                 <span className="mx-1 text-muted">|</span>
-                                                
+
                                                 {can('inv_editar') && (
                                                     <button className="btn btn-sm btn-link text-secondary" onClick={() => handleEdit(item)} title="Editar">
                                                         <i className="bi bi-pencil"></i>
@@ -410,4 +395,5 @@ const Inventario = () => {
         </div>
     );
 };
+
 export default Inventario;

@@ -44,12 +44,12 @@ class OperarioService
         return $this->repo->reportarUso($data['entrega_id'], $data['cantidad']);
     }
 
-    public function devolverInsumo($data)
+    public function devolverInsumo($data, $usuarioId)
     {
-        if (empty($data['entrega_id']) || empty($data['cantidad']) || $data['cantidad'] <= 0) {
-            throw new Exception("Cantidad o ID de entrega inválidos para devolución.");
+        if (empty($data['insumo_id']) || empty($data['cantidad']) || $data['cantidad'] <= 0) {
+            throw new Exception("Cantidad o Insumo inválidos para devolución.");
         }
-        return $this->repo->devolverInsumo($data['entrega_id'], $data['cantidad']);
+        return $this->repo->devolverInsumo($usuarioId, $data['insumo_id'], $data['cantidad']);
     }
 
     public function getDashboard()

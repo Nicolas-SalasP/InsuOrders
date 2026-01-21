@@ -125,9 +125,16 @@ const Compras = () => {
 
     const generarOrdenDesdePendientes = () => {
         const items = pendientes.map(p => ({
-            id: p.id, nombre: p.nombre, sku: p.codigo_sku, unidad: p.unidad_medida,
-            cantidad: parseFloat(p.cantidad_total), precio: parseFloat(p.precio) || 0,
-            tipo: 'existente', origen_ids: p.ids_detalle_solicitud
+            id: p.id, 
+            nombre: p.nombre, 
+            sku: p.codigo_sku, 
+            unidad: p.unidad_medida,
+            cantidad: parseFloat(p.cantidad_total), 
+            precio: parseFloat(p.precio) || 0,
+            tipo: 'existente', 
+            origen_ids: p.ids_detalle_solicitud,
+            // CORRECCIÓN: Aquí pasamos la lista de OTs que viene del backend
+            ot_ids: p.lista_ots
         }));
         setItemsPrecargados(items);
         setShowModal(true);
@@ -180,18 +187,14 @@ const Compras = () => {
         closeActionMenu();
     };
 
-    // --- REGENERAR PDF (NUEVO) ---
     const handleRegenerarPdf = async (id) => {
         closeActionMenu();
-        // Usamos setLoading(true) solo si queremos bloquear la pantalla, 
-        // o mejor usamos un estado local 'regenerando' para no recargar toda la tabla.
-        // Aquí usaré setLoading global para simplicidad, pero puedes optimizarlo.
         setLoading(true); 
         try {
-            const res = await api.get(`/index.php/compras/regenerar-pdf?id=${id}`); // Cambiado a GET si definiste la ruta así en index.php, o POST
+            const res = await api.get(`/index.php/compras/regenerar-pdf?id=${id}`);
             if (res.data.success) {
                 setMsg({ show: true, title: "Éxito", text: "PDF regenerado correctamente.", type: "success" });
-                cargarOrdenes(); // Recargamos para que el botón de descarga apunte al nuevo archivo
+                cargarOrdenes();
             } else {
                 setMsg({ show: true, title: "Error", text: res.data.message, type: "error" });
             }
@@ -327,7 +330,6 @@ const Compras = () => {
             />
             <RecepcionCompraModal show={recepcionModal.show} onClose={() => setRecepcionModal({ show: false, id: null })} ordenId={recepcionModal.id} onSave={() => { cargarOrdenes(); cargarPendientes(); }} />
 
-            {/* --- MODAL DE CONFIRMACIÓN DE ANULACIÓN --- */}
             {confirmModal.show && (
                 <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }} tabIndex="-1">
                     <div className="modal-dialog modal-dialog-centered">
@@ -349,7 +351,6 @@ const Compras = () => {
                 </div>
             )}
 
-            {/* --- MENÚ FLOTANTE (FIXED) --- */}
             {actionMenu.show && (
                 <div 
                     className="floating-action-menu shadow rounded bg-white border"
@@ -367,12 +368,9 @@ const Compras = () => {
                     <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarPdf}>
                         <i className="bi bi-file-earmark-pdf text-danger me-2"></i> Descargar PDF
                     </button>
-                    
-                    {/* BOTÓN REGENERAR PDF */}
                     <button className="dropdown-item py-2 px-3 d-flex align-items-center text-primary" onClick={() => handleRegenerarPdf(actionMenu.id)}>
                         <i className="bi bi-arrow-clockwise me-2"></i> Regenerar PDF
                     </button>
-
                     <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarExcel}>
                         <i className="bi bi-file-earmark-excel text-success me-2"></i> Descargar Excel
                     </button>
@@ -408,7 +406,6 @@ const Compras = () => {
                     </div>
                 </div>
 
-                {/* FILTROS */}
                 <div className="bg-light p-3 border-bottom">
                     <div className="row g-2 align-items-center">
                         <div className="col-md-3">
@@ -443,7 +440,6 @@ const Compras = () => {
                             )}
                         </div>
                         
-                        {/* --- SELECTOR DE ESTADOS MÚLTIPLES --- */}
                         <div className="col-md-2 position-relative" ref={estadoRef}>
                             <button 
                                 className="form-select text-start" 
@@ -483,7 +479,6 @@ const Compras = () => {
                     </div>
                 </div>
 
-                {/* TABLA DE RESULTADOS */}
                 <div className="card-body p-0 flex-grow-1 overflow-auto position-relative">
                     {pendientes.length > 0 && (
                         <div className="alert alert-warning border-warning d-flex align-items-center justify-content-between m-3 shadow-sm fade show" role="alert">

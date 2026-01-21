@@ -21,7 +21,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         ubicacion: '',
         estado_activo: 'OPERATIVO',
         descripcion: '',
-        centro_costo: ''
+        centro_costo: '',
+        // NUEVOS CAMPOS DE FRECUENCIA
+        frecuencia_mantencion: '',
+        unidad_frecuencia: 'MESES'
     });
 
     const [listaCentros, setListaCentros] = useState([]);
@@ -29,9 +32,9 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     // --- ESTADOS PARA IMÁGENES ---
     const [mainImage, setMainImage] = useState(null);
     const [mainImagePreview, setMainImagePreview] = useState(null);
-    const [galleryItems, setGalleryItems] = useState([]); // Nuevas
-    const [existingGallery, setExistingGallery] = useState([]); // Existentes
-    const [zoomImage, setZoomImage] = useState(null); // Para el Lightbox
+    const [galleryItems, setGalleryItems] = useState([]); 
+    const [existingGallery, setExistingGallery] = useState([]); 
+    const [zoomImage, setZoomImage] = useState(null); 
 
     // --- ESTADOS EXISTENTES ---
     const [kitItems, setKitItems] = useState([]);
@@ -71,7 +74,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     ubicacion: activo.ubicacion || '',
                     estado_activo: activo.estado_activo || 'OPERATIVO',
                     descripcion: activo.descripcion || '',
-                    centro_costo: activo.centro_costo_id || ''
+                    centro_costo: activo.centro_costo_id || '',
+                    // CARGAR DATOS FRECUENCIA
+                    frecuencia_mantencion: activo.frecuencia_mantencion || '',
+                    unidad_frecuencia: activo.unidad_frecuencia || 'MESES'
                 });
                 
                 if (activo.imagen_url) {
@@ -88,7 +94,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 setFormData({
                     codigo_interno: '', codigo_maquina: '', nombre: '', tipo: '',
                     marca: '', modelo: '', anio: '', numero_serie: '',
-                    ubicacion: '', estado_activo: 'OPERATIVO', descripcion: '', centro_costo: ''
+                    ubicacion: '', estado_activo: 'OPERATIVO', descripcion: '', centro_costo: '',
+                    frecuencia_mantencion: '', unidad_frecuencia: 'MESES'
                 });
                 setKitItems([]);
                 setDocs([]);
@@ -100,32 +107,11 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const handleMainImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setMainImage(file);
-            setMainImagePreview(URL.createObjectURL(file));
-        }
-    };
-
-    const handleAddGalleryItem = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const newItem = { file, preview: URL.createObjectURL(file), tipo: 'General' };
-            setGalleryItems([...galleryItems, newItem]);
-        }
-        e.target.value = '';
-    };
-
-    const handleGalleryTypeChange = (index, newType) => {
-        const updatedItems = [...galleryItems];
-        updatedItems[index].tipo = newType;
-        setGalleryItems(updatedItems);
-    };
-
-    const handleRemoveGalleryItem = (index) => {
-        setGalleryItems(galleryItems.filter((_, i) => i !== index));
-    };
+    // ... (Mantén funciones handleMainImageChange, handleAddGalleryItem, etc. igual) ...
+    const handleMainImageChange = (e) => { const file = e.target.files[0]; if (file) { setMainImage(file); setMainImagePreview(URL.createObjectURL(file)); } };
+    const handleAddGalleryItem = (e) => { const file = e.target.files[0]; if (file) { const newItem = { file, preview: URL.createObjectURL(file), tipo: 'General' }; setGalleryItems([...galleryItems, newItem]); } e.target.value = ''; };
+    const handleGalleryTypeChange = (index, newType) => { const updatedItems = [...galleryItems]; updatedItems[index].tipo = newType; setGalleryItems(updatedItems); };
+    const handleRemoveGalleryItem = (index) => { setGalleryItems(galleryItems.filter((_, i) => i !== index)); };
 
     const handleSubmitGeneral = async (e) => {
         e.preventDefault();
@@ -151,6 +137,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         } finally { setSaving(false); }
     };
 
+    // ... (Mantén el resto de funciones cargarKit, etc. igual) ...
     const cargarKit = async (id) => { try { const res = await api.get(`/index.php/mantencion/kit?id=${id}`); setKitItems(res.data.data || []); } catch (e) { setKitItems([]); } };
     const agregarAlKit = async (insumo) => { if (!activo) return showMessage("Atención", "Guarda el activo primero.", "warning"); try { await api.post('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumo.id, cantidad: cantidadKit }); cargarKit(activo.id); setBusquedaInsumo(''); setCantidadKit(1); } catch (e) { showMessage("Error", "Error al agregar", "error"); } };
     const actualizarCantKit = async (insumoId, nuevaCant) => { const c = parseInt(nuevaCant); if (isNaN(c) || c < 1) return; try { await api.put('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumoId, cantidad: c }); cargarKit(activo.id); } catch (e) { } };
@@ -167,7 +154,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
             <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={handleConfirm} title={confirm.title} message={confirm.message} confirmText="Confirmar" type="danger" />
 
-            {/* --- LIGHTBOX (VISOR DE ZOOM) --- */}
             <Modal show={!!zoomImage} onHide={() => setZoomImage(null)} centered size="lg" className="bg-dark bg-opacity-75">
                 <Modal.Header closeButton className="bg-white border-0 py-2"></Modal.Header>
                 <Modal.Body className="p-0 text-center bg-white">
@@ -197,6 +183,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 {tab === 'general' && (
                                     <form onSubmit={handleSubmitGeneral}>
                                         <div className="row g-3">
+                                            {/* ... (Imagen Principal igual) ... */}
                                             <div className="col-12 mb-3">
                                                 <div className="d-flex align-items-center bg-light p-2 rounded border">
                                                     <div className="me-3 shadow-sm border rounded overflow-hidden bg-white" 
@@ -217,27 +204,46 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 </div>
                                             </div>
 
+                                            {/* ... (Campos existentes) ... */}
                                             <div className="col-md-6"><label className="form-label small fw-bold text-muted">CÓDIGO INTERNO</label><input type="text" name="codigo_interno" className="form-control fw-bold" required value={formData.codigo_interno} onChange={handleChange} /></div>
                                             <div className="col-md-6"><label className="form-label small fw-bold text-muted">CÓDIGO MÁQUINA</label><input type="text" name="codigo_maquina" className="form-control" value={formData.codigo_maquina} onChange={handleChange} /></div>
                                             <div className="col-12"><label className="form-label small fw-bold text-muted">NOMBRE ACTIVO</label><input type="text" name="nombre" className="form-control" required value={formData.nombre} onChange={handleChange} /></div>
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">MARCA</label><input type="text" name="marca" className="form-control" value={formData.marca} onChange={handleChange} /></div>
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">MODELO</label><input type="text" name="modelo" className="form-control" value={formData.modelo} onChange={handleChange} /></div>
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">AÑO</label><input type="number" name="anio" className="form-control" value={formData.anio} onChange={handleChange} /></div>
-                                            <div className="col-md-4">
-                                                <label className="form-label small fw-bold text-muted">TIPO</label>
-                                                <select name="tipo" className="form-select" value={formData.tipo} onChange={handleChange}>
-                                                    <option value="">Seleccione...</option><option value="Maquinaria">Maquinaria</option><option value="Vehículo">Vehículo</option><option value="Generador">Generador</option><option value="Equipo">Equipo</option>
-                                                </select>
+                                            
+                                            {/* NUEVA SECCIÓN: FRECUENCIA MANTENCIÓN */}
+                                            <div className="col-12 mt-3"><h6 className="text-primary small fw-bold border-bottom pb-2">PLANIFICACIÓN</h6></div>
+                                            <div className="col-md-6">
+                                                <label className="form-label small fw-bold text-muted">FRECUENCIA MANTENCIÓN</label>
+                                                <div className="input-group">
+                                                    <input type="number" name="frecuencia_mantencion" className="form-control" placeholder="Ej: 3" min="0" value={formData.frecuencia_mantencion} onChange={handleChange} />
+                                                    <select name="unidad_frecuencia" className="form-select bg-light" value={formData.unidad_frecuencia} onChange={handleChange}>
+                                                        <option value="DIAS">Días</option>
+                                                        <option value="SEMANAS">Semanas</option>
+                                                        <option value="MESES">Meses</option>
+                                                        <option value="ANIOS">Años</option>
+                                                    </select>
+                                                </div>
+                                                <div className="form-text small">Cada cuánto tiempo se debe realizar mantención. Dejar en 0 si no aplica.</div>
                                             </div>
-                                            <div className="col-md-4">
-                                                <label className="form-label small fw-bold text-muted">ESTADO</label>
+                                            <div className="col-md-6">
+                                                <label className="form-label small fw-bold text-muted">ESTADO ACTUAL</label>
                                                 <select name="estado_activo" className="form-select" value={formData.estado_activo} onChange={handleChange}>
                                                     <option value="OPERATIVO">OPERATIVO</option><option value="EN_MANTENCION">EN MANTENCIÓN</option><option value="BAJA">DE BAJA</option>
                                                 </select>
                                             </div>
-                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">UBICACIÓN</label><input type="text" name="ubicacion" className="form-control" value={formData.ubicacion} onChange={handleChange} /></div>
+
+                                            <div className="col-12 mt-3"><h6 className="text-secondary small fw-bold border-bottom pb-2">DETALLES ADICIONALES</h6></div>
+                                            <div className="col-md-4">
+                                                <label className="form-label small fw-bold text-muted">TIPO DE ACTIVO</label>
+                                                <select name="tipo" className="form-select" value={formData.tipo} onChange={handleChange}>
+                                                    <option value="">Seleccione...</option><option value="Maquinaria">Maquinaria</option><option value="Vehículo">Vehículo</option><option value="Generador">Generador</option><option value="Equipo">Equipo</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">UBICACIÓN FÍSICA</label><input type="text" name="ubicacion" className="form-control" value={formData.ubicacion} onChange={handleChange} /></div>
+                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">SERIE</label><input type="text" name="numero_serie" className="form-control" value={formData.numero_serie} onChange={handleChange} /></div>
                                             <div className="col-md-6"><label className="form-label small fw-bold text-primary">CENTRO DE COSTO</label><select name="centro_costo" className="form-select border-primary" value={formData.centro_costo} onChange={handleChange}><option value="">-- Sin Asignar --</option>{listaCentros.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo} - {cc.nombre}</option>)}</select></div>
-                                            <div className="col-md-6"><label className="form-label small fw-bold text-muted">SERIE</label><input type="text" name="numero_serie" className="form-control" value={formData.numero_serie} onChange={handleChange} /></div>
                                             <div className="col-12"><label className="form-label small fw-bold text-muted">DESCRIPCIÓN</label><textarea name="descripcion" className="form-control" rows="2" value={formData.descripcion} onChange={handleChange}></textarea></div>
                                         </div>
                                         <div className="modal-footer border-top-0 px-0 pb-0 mt-4 d-flex justify-content-end gap-2">
@@ -246,7 +252,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                         </div>
                                     </form>
                                 )}
-
+                                
+                                {/* ... (Resto de pestañas imagenes, kit, docs se mantienen igual) ... */}
                                 {tab === 'imagenes' && (
                                     <div>
                                         <div className="mb-4 bg-light p-3 rounded border">

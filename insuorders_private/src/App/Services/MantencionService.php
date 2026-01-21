@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Repositories\MantencionRepository;
 use App\Repositories\CronogramaRepository;
+use Exception;
 
 class MantencionService
 {
@@ -33,7 +34,7 @@ class MantencionService
     public function crearOT($data, $usuarioId)
     {
         if (empty($data['items'])) {
-            throw new \Exception("Debe agregar al menos un insumo.");
+            throw new Exception("Debe agregar al menos un insumo.");
         }
         return $this->repo->createOT($data);
     }
@@ -50,7 +51,7 @@ class MantencionService
     {
         $entregas = $this->repo->getEntregasOT($id);
         if (!empty($entregas)) {
-            throw new \Exception("No se puede anular una OT que ya tiene materiales entregados. Debe finalizarlas.");
+            throw new Exception("No se puede anular una OT que ya tiene materiales entregados. Debe finalizarlas.");
         }
 
         $this->repo->delete($id);
@@ -69,8 +70,23 @@ class MantencionService
     public function editarActivo($data)
     {
         if (empty($data['id'])) {
-            throw new \Exception("ID de activo no proporcionado.");
+            throw new Exception("ID de activo no proporcionado.");
         }
         return $this->repo->updateActivo($data);
+    }
+
+    public function guardarPlantilla($activoId, $plantillaData)
+    {
+        if (empty($activoId)) {
+            throw new Exception("El ID del activo es obligatorio.");
+        }
+
+        if (empty($plantillaData)) {
+            throw new Exception("La estructura de la plantilla no puede estar vacía.");
+        }
+        $jsonStr = is_array($plantillaData) ? json_encode($plantillaData, JSON_UNESCAPED_UNICODE) : $plantillaData;
+        $this->repo->savePlantillaActivo($activoId, $jsonStr);
+        
+        return true;
     }
 }

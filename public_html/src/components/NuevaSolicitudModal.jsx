@@ -9,12 +9,14 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [insumos, setInsumos] = useState([]);
     const [centrosCosto, setCentrosCosto] = useState([]);
     const [personal, setPersonal] = useState([]);
+    const [tecnicos, setTecnicos] = useState([]); // <--- NUEVO: Lista de técnicos
 
     // --- ESTADOS DEL FORMULARIO ---
     const [modo, setModo] = useState('maquina');
     const [activoId, setActivoId] = useState('');
     const [solicitanteExterno, setSolicitanteExterno] = useState('');
     const [centroCostoOT, setCentroCostoOT] = useState('');
+    const [asignadoA, setAsignadoA] = useState(''); // <--- NUEVO: Técnico asignado
     const [observacion, setObservacion] = useState('');
     const [items, setItems] = useState([]);
 
@@ -58,17 +60,20 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             setItems([]);
             setLoading(true);
 
-            const [resActivos, resInsumos, resCC, resPersonal] = await Promise.all([
+            // AGREGADO: Carga de técnicos (/usuarios/tecnicos)
+            const [resActivos, resInsumos, resCC, resPersonal, resTecnicos] = await Promise.all([
                 api.get('/index.php/mantencion/activos'),
                 api.get('/index.php/inventario'),
                 api.get('/index.php/mantencion/centros-costo'),
-                api.get('/index.php/personal')
+                api.get('/index.php/personal'),
+                api.get('/index.php/usuarios/tecnicos') // <--- NUEVO ENDPOINT
             ]);
 
             setActivos(resActivos.data.data || []);
             setInsumos(resInsumos.data.data || []);
             setCentrosCosto(resCC.data.success ? resCC.data.data : []);
             setPersonal(resPersonal.data.success ? resPersonal.data.data : []);
+            setTecnicos(resTecnicos.data.success ? resTecnicos.data.data : []);
 
             if (otEditar) {
                 cargarDatosEdicion();
@@ -90,6 +95,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setBusqueda('');
         setSolicitanteExterno('');
         setCentroCostoOT('');
+        setAsignadoA(''); // <--- RESET
         setItems([]);
     };
 
@@ -105,6 +111,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 setCentroCostoOT(otEditar.centro_costo_ot || '');
             }
             setObservacion(otEditar.descripcion_trabajo || '');
+            setAsignadoA(otEditar.asignado_a || ''); // <--- CARGAR ASIGNACIÓN PREVIA
 
             const resDetalles = await api.get(`/index.php/mantencion?detalle=true&id=${otEditar.id}`);
 
@@ -170,11 +177,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     };
 
     const agregarItem = (insumo, e) => {
-        // Prevenir comportamiento default por si acaso
         if (e) e.preventDefault();
-
-        console.log("Agregando insumo:", insumo); // Debug
-
         const yaExiste = items.some(i => String(i.id_producto) === String(insumo.id));
         if (yaExiste) {
             setMsgModal({ show: true, title: "Duplicado", message: "Este insumo ya está en la lista.", type: "warning" });
@@ -255,7 +258,8 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 solicitante_externo: modo === 'servicio' ? solicitanteExterno : null,
                 area_negocio: null,
                 centro_costo_ot: modo === 'servicio' ? centroCostoOT : null,
-                origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio'
+                origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio',
+                asignado_a: asignadoA || null // <--- NUEVO CAMPO EN PAYLOAD
             };
 
             console.log("Enviando Payload:", payload);
@@ -345,6 +349,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                 <div className="card-body">
                                     <div className="row g-3">
                                         <div className="col-md-6">
+                                            {/* SELECTOR DE MÁQUINA / SERVICIO */}
                                             {modo === 'maquina' ? (
                                                 <div className="mb-3">
                                                     <label className="form-label fw-bold small text-muted text-uppercase">Máquina / Activo</label>
@@ -384,6 +389,23 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     </div>
                                                 </div>
                                             )}
+
+                                            {/* NUEVO: ASIGNACIÓN DE TÉCNICO */}
+                                            <div className="mb-2">
+                                                <label className="form-label fw-bold small text-primary text-uppercase">Asignar Técnico (Opcional)</label>
+                                                <select 
+                                                    className="form-select border-info shadow-sm" 
+                                                    value={asignadoA} 
+                                                    onChange={e => setAsignadoA(e.target.value)}
+                                                >
+                                                    <option value="">-- Pendiente de Asignación --</option>
+                                                    {tecnicos.map(t => (
+                                                        <option key={t.id} value={t.id}>
+                                                            {t.nombre} {t.apellido} - {t.rol}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                         </div>
 
                                         <div className="col-md-6">
@@ -400,6 +422,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                 </div>
                             </div>
 
+                            {/* SECCIÓN DE INSUMOS (SIN CAMBIOS) */}
                             <div className="card border-0 shadow-sm">
                                 <div className="card-body p-0">
                                     {editable && (

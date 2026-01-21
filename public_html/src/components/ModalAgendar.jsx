@@ -8,17 +8,22 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
         descripcion: '',
         fecha_programada: initialDate || '',
         activo_id: '',
-        color: '#0d6efd',
-        icono: 'bi-tools',
-        tipo_evento: mode
+        color: mode === 'COMPRA' ? '#198754' : '#0d6efd', // Verde si es compra, Azul si es mantención
+        icono: mode === 'COMPRA' ? 'bi-cart-fill' : 'bi-tools',
+        tipo_evento: mode // 'MANTENCION' o 'COMPRA'
     });
+    
     const [items, setItems] = useState([]);
     const [activos, setActivos] = useState([]);
     const [insumos, setInsumos] = useState([]);
     const [busqueda, setBusqueda] = useState('');
 
+    // Helper para saber si estamos en modo compra
+    const isCompra = formData.tipo_evento === 'COMPRA';
+
     const listaIconos = [
         { icon: 'bi-tools', label: 'Herramienta' },
+        { icon: 'bi-cart-fill', label: 'Compra' }, // Agregado para compras
         { icon: 'bi-oil-can', label: 'Aceite' },
         { icon: 'bi-shield-check', label: 'Seguridad' },
         { icon: 'bi-lightning-charge', label: 'Energía' },
@@ -44,8 +49,8 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                 descripcion: data.descripcion,
                                 fecha_programada: data.fecha_programada,
                                 activo_id: data.activo_id,
-                                color: data.color || '#0d6efd',
-                                icono: data.icono || 'bi-tools',
+                                color: data.color || (data.tipo_evento === 'COMPRA' ? '#198754' : '#0d6efd'),
+                                icono: data.icono || (data.tipo_evento === 'COMPRA' ? 'bi-cart-fill' : 'bi-tools'),
                                 tipo_evento: data.tipo_evento
                             }));
 
@@ -64,14 +69,21 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                     .catch(e => console.error("Error cargando detalles del evento", e));
             }
             else if (eventData) {
-                setFormData({ ...formData, ...eventData });
+                // Caso: Click en fecha vacía (Nuevo)
+                setFormData({ 
+                    ...formData, 
+                    ...eventData,
+                    tipo_evento: mode,
+                    color: mode === 'COMPRA' ? '#198754' : '#0d6efd',
+                    icono: mode === 'COMPRA' ? 'bi-cart-fill' : 'bi-tools'
+                });
                 setItems(eventData.items || []);
             }
         }
-    }, [show, eventData]);
+    }, [show, eventData, mode]);
 
     const cargarKitActivo = async (activoId) => {
-        if (!activoId || readOnly) return;
+        if (!activoId || readOnly || isCompra) return; // Si es compra no cargamos kit de mantención
         try {
             const res = await api.get(`/index.php/mantencion/kit?id=${activoId}`);
             if (res.data.success && res.data.data.length > 0) {
@@ -122,7 +134,7 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
         const result = await Swal.fire({
             title: '¿Estás seguro?',
-            text: "Se eliminará el evento y se anulará la Orden de Trabajo asociada.",
+            text: "Se eliminará el evento y se anulará la Orden asociada.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -151,20 +163,36 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
             <div className="modal-dialog modal-lg shadow-lg my-4">
                 <form className="modal-content border-0 rounded-4 overflow-hidden" onSubmit={handleSubmit}>
 
-                    <div className={`p-3 text-white border-bottom border-secondary ${readOnly ? 'bg-secondary' : 'bg-dark'}`}>
+                    {/* CABECERA DINÁMICA (Mantención = Dark / Compra = Success) */}
+                    <div className={`p-3 text-white border-bottom border-secondary ${readOnly ? 'bg-secondary' : (isCompra ? 'bg-success' : 'bg-dark')}`}>
                         <div className="d-flex justify-content-between align-items-start">
                             <div>
                                 <h5 className="fw-bold mb-1 text-white">
-                                    {/* Cambiamos el título si es solo lectura */}
-                                    {readOnly ? '👁️ Detalle de Actividad (Solo Lectura)' : (eventData?.id ? 'Editar Actividad' : 'Nueva Actividad')}
+                                    {readOnly 
+                                        ? '👁️ Detalle de Actividad' 
+                                        : (eventData?.id 
+                                            ? (isCompra ? 'Editar Compra Programada' : 'Editar Mantención') 
+                                            : (isCompra ? 'Programar Compra' : 'Nueva Mantención')
+                                        )
+                                    }
                                 </h5>
-                                <div className="d-flex gap-2 flex-wrap">
-                                    <span className="badge bg-primary rounded-pill fw-normal">
+                                <div className="d-flex gap-2 flex-wrap align-items-center">
+                                    {/* Fecha */}
+                                    <span className={`badge rounded-pill fw-normal ${isCompra ? 'bg-black bg-opacity-25' : 'bg-primary'}`}>
                                         <i className="bi bi-calendar3 me-1"></i>{formData.fecha_programada}
                                     </span>
+                                    
+                                    {/* Código Activo */}
                                     {activoSelect && (
                                         <span className="badge bg-light text-dark rounded-pill fw-normal">
                                             {activoSelect.codigo_interno}
+                                        </span>
+                                    )}
+
+                                    {/* --- NUEVO: OT (Solo si existe y NO es compra) --- */}
+                                    {eventData?.solicitud_ot_id && !isCompra && (
+                                        <span className="badge bg-warning text-dark rounded-pill fw-normal border border-warning">
+                                            OT #{eventData.solicitud_ot_id}
                                         </span>
                                     )}
                                 </div>
@@ -175,13 +203,12 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
                     <div className="modal-body p-3 p-md-4 bg-white">
                         
-                        {/* AVISO DE SOLO LECTURA */}
                         {readOnly && (
                             <div className="alert alert-warning border-0 bg-warning bg-opacity-10 d-flex align-items-center mb-4">
                                 <i className="bi bi-lock-fill fs-4 me-3 text-warning"></i>
                                 <div>
                                     <strong className="text-warning-emphasis">Modo Consulta</strong>
-                                    <div className="small text-muted">Este evento ya finalizó o ocurrió en el pasado. No se pueden realizar cambios.</div>
+                                    <div className="small text-muted">Evento finalizado o pasado. No editable.</div>
                                 </div>
                             </div>
                         )}
@@ -192,20 +219,20 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                 <input type="text" className="form-control fw-semibold" required
                                     value={formData.titulo} 
                                     onChange={e => setFormData({ ...formData, titulo: e.target.value })}
-                                    placeholder="Ej: Mantenimiento Preventivo" 
+                                    placeholder={isCompra ? "Ej: Compra de Repuestos Trimestral" : "Ej: Mantenimiento Preventivo"}
                                     disabled={readOnly}
                                 />
                             </div>
 
                             <div className="col-12 col-md-5">
-                                <label className="form-label fw-bold text-dark small">ICONO</label>
+                                <label className="form-label fw-bold text-dark small">ICONO VISUAL</label>
                                 <div className={`d-flex flex-wrap gap-1 p-2 border rounded ${readOnly ? 'bg-light' : 'bg-light'}`} style={{ minHeight: '38px' }}>
                                     {listaIconos.map((obj) => (
                                         <button
                                             key={obj.icon}
                                             type="button"
                                             title={obj.label}
-                                            className={`btn btn-sm d-flex align-items-center justify-content-center ${formData.icono === obj.icon ? 'btn-primary' : 'btn-white border'}`}
+                                            className={`btn btn-sm d-flex align-items-center justify-content-center ${formData.icono === obj.icon ? (isCompra ? 'btn-success' : 'btn-primary') : 'btn-white border'}`}
                                             style={{ width: '32px', height: '32px' }}
                                             onClick={() => !readOnly && setFormData({ ...formData, icono: obj.icon })}
                                             disabled={readOnly}
@@ -217,18 +244,22 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                             </div>
 
                             <div className="col-12 col-md-6">
-                                <label className="form-label fw-bold text-dark small">ASIGNAR A MAQUINARIA</label>
-                                <select className="form-select" required value={formData.activo_id}
+                                <label className="form-label fw-bold text-dark small">
+                                    {isCompra ? 'ASOCIAR A ACTIVO (Opcional)' : 'ASIGNAR A MAQUINARIA'}
+                                </label>
+                                <select className="form-select" 
+                                    required={!isCompra} // Obligatorio solo en Mantención
+                                    value={formData.activo_id}
                                     onChange={e => { setFormData({ ...formData, activo_id: e.target.value }); cargarKitActivo(e.target.value); }}
                                     disabled={readOnly}
                                 >
-                                    <option value="">Seleccione un activo...</option>
+                                    <option value="">{isCompra ? '-- Ninguno (Compra General) --' : 'Seleccione un activo...'}</option>
                                     {activos.map(a => <option key={a.id} value={a.id}>{a.codigo_interno} - {a.nombre}</option>)}
                                 </select>
                             </div>
 
                             <div className="col-12 col-md-6">
-                                <label className="form-label fw-bold text-dark small">COLOR IDENTIFICADOR</label>
+                                <label className="form-label fw-bold text-dark small">COLOR EN CALENDARIO</label>
                                 <div className="input-group">
                                     <input type="color" className="form-control form-control-color"
                                         style={{ maxWidth: '50px' }}
@@ -246,7 +277,7 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                             </div>
 
                             <div className="col-12">
-                                <label className="form-label fw-bold text-dark small">DESCRIPCIÓN</label>
+                                <label className="form-label fw-bold text-dark small">DESCRIPCIÓN / OBSERVACIONES</label>
                                 <textarea className="form-control" rows="2"
                                     value={formData.descripcion} 
                                     onChange={e => setFormData({ ...formData, descripcion: e.target.value })}
@@ -257,12 +288,11 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
                             <div className="col-12 mt-3">
                                 <div className="p-3 rounded border bg-light">
-                                    <label className="fw-bold text-dark small mb-2 d-block">
-                                        <i className="bi bi-box-seam-fill me-2 text-primary"></i>
-                                        INSUMOS REQUERIDOS
+                                    <label className={`fw-bold small mb-2 d-block ${isCompra ? 'text-success' : 'text-primary'}`}>
+                                        <i className={`bi ${isCompra ? 'bi-cart-plus-fill' : 'bi-box-seam-fill'} me-2`}></i>
+                                        {isCompra ? 'LISTA DE PRODUCTOS A COMPRAR' : 'INSUMOS REQUERIDOS (KIT)'}
                                     </label>
 
-                                    {/* OCULTAR BUSCADOR SI ES READONLY */}
                                     {!readOnly && (
                                         <div className="position-relative">
                                             <div className="input-group mb-2">
@@ -290,10 +320,9 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                             <thead className="table-light small">
                                                 <tr>
                                                     <th className="ps-2">SKU</th>
-                                                    <th>Repuesto</th>
+                                                    <th>Ítem</th>
                                                     <th className="text-center">Cant.</th>
-                                                    <th>Estado</th>
-                                                    {/* Ocultar columna eliminar si es readOnly */}
+                                                    <th>Stock Actual</th>
                                                     {!readOnly && <th></th>}
                                                 </tr>
                                             </thead>
@@ -313,11 +342,10 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                                         </td>
                                                         <td>
                                                             {item.stock_actual >= item.cantidad ?
-                                                                <span className="text-success fw-bold"><i className="bi bi-check-circle me-1"></i>OK</span> :
-                                                                <span className="badge bg-danger">Requiere Compra</span>
+                                                                <span className="text-success fw-bold"><i className="bi bi-check-circle me-1"></i>{item.stock_actual}</span> :
+                                                                <span className="badge bg-danger">Stock: {item.stock_actual}</span>
                                                             }
                                                         </td>
-                                                        {/* Botón eliminar oculto en readOnly */}
                                                         {!readOnly && (
                                                             <td className="text-end pe-2">
                                                                 <button type="button" className="btn btn-link text-danger p-0" onClick={() => setItems(items.filter((_, i) => i !== idx))}>
@@ -329,7 +357,9 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                                 ))}
                                                 {items.length === 0 && (
                                                     <tr>
-                                                        <td colSpan={readOnly ? 4 : 5} className="text-center py-3 text-muted fst-italic">Sin insumos asignados.</td>
+                                                        <td colSpan={readOnly ? 4 : 5} className="text-center py-3 text-muted fst-italic">
+                                                            {isCompra ? 'Agregue productos a la lista de compra.' : 'Sin insumos asignados.'}
+                                                        </td>
                                                     </tr>
                                                 )}
                                             </tbody>
@@ -342,10 +372,9 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
                     <div className="modal-footer border-0 p-3 bg-light d-flex justify-content-between align-items-center">
                         <div>
-                            {/* Ocultar botón eliminar si es readOnly */}
                             {!readOnly && eventData?.id && (
                                 <button type="button" className="btn btn-outline-danger btn-sm fw-bold rounded-pill px-3" onClick={handleDelete}>
-                                    <i className="bi bi-trash me-1"></i>ELIMINAR TAREA
+                                    <i className="bi bi-trash me-1"></i>ELIMINAR
                                 </button>
                             )}
                         </div>
@@ -353,10 +382,9 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                             <button type="button" className="btn btn-outline-secondary rounded-pill px-4" onClick={onClose}>
                                 {readOnly ? 'Cerrar' : 'Cancelar'}
                             </button>
-                            {/* Ocultar botón guardar si es readOnly */}
                             {!readOnly && (
-                                <button type="submit" className="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
-                                    Guardar Actividad
+                                <button type="submit" className={`btn rounded-pill px-4 fw-bold shadow-sm ${isCompra ? 'btn-success' : 'btn-primary'}`}>
+                                    {isCompra ? 'Programar Compra' : 'Guardar Actividad'}
                                 </button>
                             )}
                         </div>

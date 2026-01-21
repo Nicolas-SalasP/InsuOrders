@@ -333,7 +333,7 @@ class ExportController
         $sheet->setTitle("OT #$id");
 
         $repo = new MantencionRepository();
-        $header = $repo->getOTHeader($id); 
+        $header = $repo->getOTHeader($id);
         $detalles = $repo->getDetallesOT($id);
 
         if (!$header)
@@ -463,23 +463,49 @@ class ExportController
         
         $this->fillSheet(
             $sheet,
-            ['Fecha', 'Hora', 'Entregado Por', 'Recibido Por', 'Destino / Ubicación', 'Producto', 'SKU', 'Cantidad', 'Unidad', 'OT Ref'], 
+            [
+                'Fecha', 
+                'Hora', 
+                'Entregado Por', 
+                'Recibido Por', 
+                'Destino / Ubicación', 
+                'Observación',
+                'Producto', 
+                'SKU', 
+                'Cantidad', 
+                'Unidad', 
+                'OT Ref'
+            ], 
             $data,
-            fn($d) => [
-                $d['fecha'],
-                $d['hora'],
-                $d['quien_entrego'],
-                $d['quien_recibio'],
-                $d['ubicacion_destino'],
-                $d['que_recibio'],
-                $d['codigo_producto'],
-                $d['cuanto'],
-                $d['unidad_medida'],
-                $d['ot_referencia'] ?? 'N/A'
-            ]
+            function($d) {
+                $obsRaw = $d['observacion'] ?? '';
+                $comentarioLimpio = $obsRaw;
+
+                if (strpos($obsRaw, 'Obs: ') !== false) {
+                    $parts = explode('Obs: ', $obsRaw, 2);
+                    $comentarioLimpio = trim($parts[1]);
+                }
+                
+                if ($comentarioLimpio === 'Sin obs') {
+                    $comentarioLimpio = '';
+                }
+
+                return [
+                    $d['fecha'],
+                    $d['hora'],
+                    $d['quien_entrego'],
+                    $d['quien_recibio'],
+                    $d['ubicacion_destino'],
+                    $comentarioLimpio,
+                    $d['que_recibio'],
+                    $d['codigo_producto'],
+                    $d['cuanto'],
+                    $d['unidad_medida'],
+                    $d['ot_referencia'] ?? 'N/A'
+                ];
+            }
         );
     }
-
     private function sheetRecepciones(Spreadsheet $s, $idx)
     {
         $sheet = $this->getSheet($s, $idx);
@@ -489,16 +515,16 @@ class ExportController
         $this->fillSheet(
             $sheet,
             [
-                'N° OC', 
-                'Proveedor', 
-                'RUT', 
-                'Fecha Recepción', 
-                'SKU', 
-                'Insumo', 
-                'Cant. Solicitada', 
-                'Cant. Recibida', 
-                'Precio Unit.', 
-                'Total Línea', 
+                'N° OC',
+                'Proveedor',
+                'RUT',
+                'Fecha Recepción',
+                'SKU',
+                'Insumo',
+                'Cant. Solicitada',
+                'Cant. Recibida',
+                'Precio Unit.',
+                'Total Línea',
                 'Recepcionado Por'
             ],
             $data,

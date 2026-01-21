@@ -120,7 +120,8 @@ class OrdenCompraRepository
                     ds.insumo_id as id, i.nombre, i.codigo_sku, i.unidad_medida,
                     GREATEST(0, SUM(ds.cantidad) - i.stock_actual) as cantidad_total,
                     i.precio_costo as precio,
-                    GROUP_CONCAT(ds.id SEPARATOR ',') as ids_detalle_solicitud
+                    GROUP_CONCAT(ds.id SEPARATOR ',') as ids_detalle_solicitud,
+                    GROUP_CONCAT(DISTINCT s.id ORDER BY s.id ASC SEPARATOR ', ') as lista_ots
                 FROM detalle_solicitud ds
                 JOIN solicitudes_ot s ON ds.solicitud_id = s.id
                 JOIN insumos i ON ds.insumo_id = i.id
@@ -128,6 +129,7 @@ class OrdenCompraRepository
                 AND s.estado_id IN (1, 2, 4)
                 GROUP BY ds.insumo_id
                 HAVING cantidad_total > 0";
+                
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 

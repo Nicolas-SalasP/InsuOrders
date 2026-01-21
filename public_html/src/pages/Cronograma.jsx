@@ -15,10 +15,7 @@ const Cronograma = () => {
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [modoModal, setModoModal] = useState('MANTENCION');
-    
-    // NUEVO ESTADO: Controla si el modal se abre solo para mirar
     const [isReadOnly, setIsReadOnly] = useState(false);
-
     const calendarRef = useRef(null);
     const { can } = usePermission();
 
@@ -36,10 +33,9 @@ const Cronograma = () => {
                     start: evt.fecha_programada,
                     backgroundColor: evt.color || (evt.tipo_evento === 'COMPRA' ? '#198754' : '#0d6efd'),
                     borderColor: 'transparent',
-                    extendedProps: { 
+                    extendedProps: {
                         ...evt,
-                        // CORRECCIÓN ESTADO NULL: Si viene null, asignamos 'PENDIENTE' o 'SIN ESTADO'
-                        estado: evt.estado || 'PENDIENTE' 
+                        estado: evt.estado || 'PENDIENTE'
                     }
                 }));
                 setEvents(formattedEvents);
@@ -53,14 +49,20 @@ const Cronograma = () => {
         const props = eventInfo.event.extendedProps;
         const isCompra = props.tipo_evento === 'COMPRA';
         const isClosed = (props.ot_estado == 5 || props.ot_estado == 6);
+        const otId = props.solicitud_ot_id;
 
         return (
-            <div className={`d-flex align-items-center px-2 py-1 overflow-hidden ${isClosed ? 'opacity-75' : ''}`} style={{ fontSize: '0.85rem' }}>
+            <div className={`d-flex align-items-center px-2 py-1 overflow-hidden w-100 ${isClosed ? 'opacity-75' : ''}`} style={{ fontSize: '0.85rem' }}>
                 <i className={`bi ${props.icono || (isCompra ? 'bi-cart-fill' : 'bi-tools')} me-2`}></i>
+                {!isCompra && otId && (
+                    <span className="badge bg-black bg-opacity-25 me-2 py-0 px-1 font-monospace" style={{ fontSize: '0.75rem' }}>
+                        #{otId}
+                    </span>
+                )}
+
                 <span className={`fw-semibold text-truncate ${isClosed ? 'text-decoration-line-through' : ''}`}>
                     {eventInfo.event.title}
                 </span>
-                {props.solicitud_ot_id && <i className="bi bi-link-45deg ms-1 opacity-75"></i>}
             </div>
         );
     };
@@ -70,7 +72,7 @@ const Cronograma = () => {
         calendarApi.unselect();
 
         const fechaSeleccionada = selectInfo.startStr.split('T')[0];
-        
+
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -84,7 +86,7 @@ const Cronograma = () => {
 
         setSelectedDate(fechaSeleccionada);
         setSelectedEvent(null);
-        setIsReadOnly(false); // Al crear nuevo, nunca es readOnly
+        setIsReadOnly(false);
 
         const puedeMantencion = can('cron_mant_crear');
         const puedeCompra = can('cron_compra_crear');
@@ -139,33 +141,26 @@ const Cronograma = () => {
 
     const handleEventClick = (clickInfo) => {
         const props = clickInfo.event.extendedProps;
-        
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
         const hoyStr = `${year}-${month}-${day}`;
-
-        // Condiciones de bloqueo
         const esPasado = props.fecha_programada < hoyStr;
-        const esFinalizada = props.ot_estado == 5 || props.ot_estado == 6; 
-        
+        const esFinalizada = props.ot_estado == 5 || props.ot_estado == 6;
         const sinPermisoMant = props.tipo_evento === 'MANTENCION' && !can('cron_mant_editar');
         const sinPermisoComp = props.tipo_evento === 'COMPRA' && !can('cron_compra_editar');
-
-        // Determinar si es Solo Lectura
         const soloLectura = (sinPermisoMant || sinPermisoComp || esPasado || esFinalizada);
 
-        // ABRIMOS EL MODAL SIEMPRE, PERO PASAMOS EL FLAG
         setSelectedEvent(props);
         setModoModal(props.tipo_evento);
-        setIsReadOnly(soloLectura); // <--- ESTA ES LA CLAVE
+        setIsReadOnly(soloLectura);
         setShowModal(true);
     };
 
     return (
         <div className="container-fluid py-4 fade-in">
-             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
                 <div>
                     <h3 className="fw-bold text-dark mb-1">
                         <i className="bi bi-calendar-check text-primary me-2"></i>
@@ -173,7 +168,7 @@ const Cronograma = () => {
                     </h3>
                     <p className="text-muted mb-0 small">Gestión unificada de activos y abastecimiento.</p>
                 </div>
-                
+
                 <div className="d-flex gap-2 mt-3 mt-md-0">
                     <span className="badge rounded-pill bg-primary bg-opacity-10 text-primary px-3 py-2 border border-primary border-opacity-25">
                         <i className="bi bi-tools me-2"></i> Mantenciones
@@ -217,7 +212,7 @@ const Cronograma = () => {
                     initialDate={selectedDate}
                     eventData={selectedEvent}
                     mode={modoModal}
-                    readOnly={isReadOnly} // <--- PASAMOS LA PROP
+                    readOnly={isReadOnly}
                 />
             )}
         </div>

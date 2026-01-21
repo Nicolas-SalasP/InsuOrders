@@ -4,6 +4,8 @@ namespace App\Controllers;
 use App\Services\MantencionService;
 use App\Services\PDFService;
 use App\Repositories\MantencionRepository;
+use App\Middleware\AuthMiddleware;
+use Exception;
 
 class MantencionController
 {
@@ -40,7 +42,7 @@ class MantencionController
         $data = json_decode(file_get_contents("php://input"), true);
 
         try {
-            if (!$usuarioId) throw new \Exception("Usuario no identificado");
+            if (!$usuarioId) throw new Exception("Usuario no identificado");
 
             $id = $this->service->crearOT([
                 'usuario_id' => $usuarioId,
@@ -54,7 +56,7 @@ class MantencionController
             ], $usuarioId);
 
             echo json_encode(["success" => true, "message" => "Solicitud #$id creada correctamente"]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -75,7 +77,7 @@ class MantencionController
             $this->service->editarOT($id, $data);
             
             echo json_encode(["success" => true, "message" => "OT Actualizada y Sincronizada correctamente"]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => "Error al actualizar: " . $e->getMessage()]);
         }
@@ -102,7 +104,7 @@ class MantencionController
             try {
                 $this->repo->finalizar($id);
                 echo json_encode(["success" => true, "message" => "Orden finalizada"]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 http_response_code(500);
                 echo json_encode(["success" => false, "message" => $e->getMessage()]);
             }
@@ -164,7 +166,7 @@ class MantencionController
             $this->service->crearActivo($data);
             
             echo json_encode(["success" => true, "message" => "Activo creado con imágenes"]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -208,7 +210,7 @@ class MantencionController
             $this->service->editarActivo($data);
             
             echo json_encode(["success" => true, "message" => "Activo actualizado"]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -253,7 +255,7 @@ class MantencionController
         try {
             $this->repo->addInsumoToKit($d['activo_id'], $d['insumo_id'], $d['cantidad']);
             echo json_encode(["success" => true]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -265,7 +267,7 @@ class MantencionController
         try {
             $this->repo->updateKitQuantity($d['activo_id'], $d['insumo_id'], $d['cantidad']);
             echo json_encode(["success" => true]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -277,10 +279,10 @@ class MantencionController
         $insumoId = $_GET['insumo_id'] ?? null;
 
         try {
-            if (!$activoId || !$insumoId) throw new \Exception("Faltan IDs");
+            if (!$activoId || !$insumoId) throw new Exception("Faltan IDs");
             $this->repo->removeInsumoFromKit($activoId, $insumoId);
             echo json_encode(["success" => true]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -322,7 +324,7 @@ class MantencionController
             try {
                 $this->repo->addDoc($activoId, $nombre, $url);
                 echo json_encode(["success" => true, "url" => $url]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 http_response_code(500);
                 echo json_encode(["success" => false, "message" => "Error DB: " . $e->getMessage()]);
             }
@@ -338,7 +340,7 @@ class MantencionController
         try {
             $this->repo->deleteDoc($id);
             echo json_encode(["success" => true]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -367,11 +369,30 @@ class MantencionController
                 echo $pdf->generarPdfOT($ot, $detalles);
             }
             exit;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo "Error generando PDF: " . $e->getMessage();
         }
     }
 
-    
+    public function guardarPlantilla()
+    {
+        try {
+            AuthMiddleware::verify();
+            
+            $input = json_decode(file_get_contents("php://input"), true);
+            $id = $input['activo_id'] ?? null;
+            $plantilla = $input['plantilla'] ?? null;
+            $this->service->guardarPlantilla($id, $plantilla);
+
+            echo json_encode([
+                "success" => true, 
+                "message" => "Plantilla actualizada correctamente"
+            ]);
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
 }
