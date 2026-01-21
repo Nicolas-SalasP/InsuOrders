@@ -2,6 +2,7 @@
 namespace App\Repositories;
 
 use App\Database\Database;
+use Exception;
 use PDO;
 
 class MantencionRepository
@@ -51,16 +52,25 @@ class MantencionRepository
         return $data;
     }
 
+    public function getActivoById($id)
+    {
+        $sql = "SELECT * FROM activos WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     public function createActivo($data)
     {
         $check = $this->db->prepare("SELECT id FROM activos WHERE codigo_interno=:cod");
         $check->execute([':cod' => $data['codigo_interno']]);
         if ($check->fetch())
-            throw new \Exception("El código '{$data['codigo_interno']}' ya existe.");
+            throw new Exception("El código '{$data['codigo_interno']}' ya existe.");
 
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
-        $sql = "INSERT INTO activos (codigo_interno, codigo_maquina, nombre, tipo, marca, modelo, anio, numero_serie, ubicacion, descripcion, centro_costo_id, estado_activo, imagen_url) 
-                VALUES (:cod, :cod_maq, :nom, :tipo, :marca, :mod, :anio, :serie, :ubi, :desc, :cc, :est, :img)";
+        
+        $sql = "INSERT INTO activos (codigo_interno, codigo_maquina, nombre, tipo, marca, modelo, anio, numero_serie, ubicacion, descripcion, centro_costo_id, estado_activo, imagen_url, frecuencia_mantencion, unidad_frecuencia) 
+                VALUES (:cod, :cod_maq, :nom, :tipo, :marca, :mod, :anio, :serie, :ubi, :desc, :cc, :est, :img, :frec, :uni)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
@@ -76,10 +86,13 @@ class MantencionRepository
             ':desc' => $data['descripcion'] ?? '',
             ':cc' => $ccId,
             ':est' => $data['estado_activo'] ?? 'OPERATIVO',
-            ':img' => $data['imagen_url'] ?? null
+            ':img' => $data['imagen_url'] ?? null,
+            ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null, 
+            ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null     
         ]);
-
+        
         $activoId = $this->db->lastInsertId();
+        
         if (!empty($data['galeria']) && is_array($data['galeria'])) {
             $sqlGal = "INSERT INTO activos_imagenes (activo_id, imagen_url, tipo) VALUES (:aid, :url, :tipo)";
             $stmtGal = $this->db->prepare($sqlGal);
@@ -111,7 +124,9 @@ class MantencionRepository
                 ubicacion=:ubi, 
                 descripcion=:desc, 
                 centro_costo_id=:cc,
-                estado_activo=:est
+                estado_activo=:est,
+                frecuencia_mantencion=:frec,
+                unidad_frecuencia=:uni
                 $imgSql 
                 WHERE id=:id";
 
@@ -128,13 +143,17 @@ class MantencionRepository
             ':desc' => $data['descripcion'] ?? '',
             ':cc' => $ccId,
             ':est' => $data['estado_activo'] ?? 'OPERATIVO',
+            ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null,
+            ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null,
             ':id' => $data['id']
         ];
 
         if (!empty($data['imagen_url'])) {
             $params[':img'] = $data['imagen_url'];
         }
+        
         $this->db->prepare($sql)->execute($params);
+        
         if (!empty($data['galeria']) && is_array($data['galeria'])) {
             $sqlGal = "INSERT INTO activos_imagenes (activo_id, imagen_url, tipo) VALUES (:aid, :url, :tipo)";
             $stmtGal = $this->db->prepare($sqlGal);
@@ -316,7 +335,7 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->commit();
             return $otId;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if (!$inTransaction)
                 $this->db->rollBack();
             throw $e;
@@ -406,7 +425,7 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if (!$inTransaction)
                 $this->db->rollBack();
             throw $e;
@@ -430,7 +449,7 @@ class MantencionRepository
 
             if (!$inTransaction)
                 $this->db->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if (!$inTransaction)
                 $this->db->rollBack();
             throw $e;
@@ -448,7 +467,7 @@ class MantencionRepository
                 ->execute([':id' => $id]);
             if (!$inTransaction)
                 $this->db->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if (!$inTransaction)
                 $this->db->rollBack();
             throw $e;
@@ -492,11 +511,11 @@ class MantencionRepository
             $stmt->execute([':id' => $detalleId]);
             $linea = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$linea)
-                throw new \Exception("Línea no encontrada");
+                throw new Exception("Línea no encontrada");
 
             $pendiente = floatval($linea['cantidad']) - floatval($linea['cantidad_entregada']);
             if ($cantidadEntregar > ($pendiente + 0.001))
-                throw new \Exception("Exceso de entrega.");
+                throw new Exception("Exceso de entrega.");
 
             $stmtStock = $this->db->prepare("SELECT ubicacion_id, cantidad FROM insumo_stock_ubicacion WHERE insumo_id = :id AND cantidad > 0 ORDER BY cantidad DESC");
             $stmtStock->execute([':id' => $linea['insumo_id']]);
@@ -504,7 +523,7 @@ class MantencionRepository
 
             $cantidadRestantePorDescontar = $cantidadEntregar;
             if (empty($ubicaciones))
-                throw new \Exception("No hay stock físico disponible en ninguna ubicación.");
+                throw new Exception("No hay stock físico disponible en ninguna ubicación.");
 
             foreach ($ubicaciones as $ubi) {
                 if ($cantidadRestantePorDescontar <= 0)
@@ -521,7 +540,7 @@ class MantencionRepository
             }
 
             if ($cantidadRestantePorDescontar > 0)
-                throw new \Exception("Stock insuficiente para cubrir la entrega total.");
+                throw new Exception("Stock insuficiente para cubrir la entrega total.");
 
             $nuevaEntregada = floatval($linea['cantidad_entregada']) + $cantidadEntregar;
             $nuevoEstado = ($nuevaEntregada >= floatval($linea['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
@@ -534,7 +553,7 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if (!$inTransaction)
                 $this->db->rollBack();
             throw $e;
@@ -575,10 +594,10 @@ class MantencionRepository
         $linea = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$linea)
-            throw new \Exception("Línea de detalle no encontrada");
+            throw new Exception("Línea de detalle no encontrada");
 
         if ($cantidadDevolver > $linea['cantidad_entregada']) {
-            throw new \Exception("No puedes devolver más de lo que se ha entregado.");
+            throw new Exception("No puedes devolver más de lo que se ha entregado.");
         }
 
         $nuevaEntregada = floatval($linea['cantidad_entregada']) - floatval($cantidadDevolver);

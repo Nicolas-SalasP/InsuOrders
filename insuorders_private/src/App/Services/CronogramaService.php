@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Repositories\CronogramaRepository;
 use App\Repositories\MantencionRepository;
 use App\Database\Database;
+use Exception;
 
 class CronogramaService
 {
@@ -32,21 +33,22 @@ class CronogramaService
     {
         $hoy = date('Y-m-d');
         if ($evento['fecha_programada'] < $hoy) {
-            throw new \Exception("No es posible editar ni eliminar eventos de fechas pasadas.");
+            throw new Exception("No es posible editar ni eliminar eventos de fechas pasadas.");
         }
 
         if (!empty($evento['solicitud_ot_id'])) {
             $ot = $this->mantencionRepo->getOTHeader($evento['solicitud_ot_id']);
             if ($ot && in_array($ot['estado_id'], [5, 6])) {
-                throw new \Exception("La OT asociada ya se encuentra Finalizada o Anulada. Solo lectura.");
+                throw new Exception("La OT asociada ya se encuentra Finalizada o Anulada. Solo lectura.");
             }
         }
     }
 
-    public function crear($data, $usuarioId)
+    public function crear($data, $usuarioId, $generarFuturo = true)
     {
         try {
-            $this->db->beginTransaction();
+            $inTransaction = $this->db->inTransaction();
+            if (!$inTransaction) $this->db->beginTransaction();
 
             $otData = [
                 'usuario_id' => $usuarioId,
@@ -68,10 +70,45 @@ class CronogramaService
                 $this->repo->addInsumos($id, $data['items']);
             }
 
-            $this->db->commit();
+            if ($generarFuturo && !empty($data['activo_id']) && $data['tipo_evento'] === 'MANTENCION') {
+                $activo = $this->mantencionRepo->getActivoById($data['activo_id']);
+                
+                if ($activo && !empty($activo['frecuencia_mantencion']) && $activo['frecuencia_mantencion'] > 0) {
+                    $frecuencia = (int)$activo['frecuencia_mantencion'];
+                    $unidad = strtoupper($activo['unidad_frecuencia']);
+                    
+                    try {
+                        $fechaInicial = new \DateTime($data['fecha_programada']);
+                        $fechaLimite = (clone $fechaInicial)->modify('+1 year');
+                        $fechaIterativa = clone $fechaInicial;
+
+                        while (true) {
+                            switch ($unidad) {
+                                case 'DIAS': $fechaIterativa->modify("+$frecuencia days"); break;
+                                case 'SEMANAS': $fechaIterativa->modify("+$frecuencia weeks"); break;
+                                case 'MESES': $fechaIterativa->modify("+$frecuencia months"); break;
+                                case 'ANIOS': $fechaIterativa->modify("+$frecuencia years"); break;
+                                default: break 2;
+                            }
+
+                            if ($fechaIterativa > $fechaLimite) {
+                                break;
+                            }
+
+                            $dataFutura = $data;
+                            $dataFutura['fecha_programada'] = $fechaIterativa->format('Y-m-d');
+                            $this->crear($dataFutura, $usuarioId, false);
+                        }
+
+                    } catch (Exception $e) {
+                    }
+                }
+            }
+
+            if (!$inTransaction) $this->db->commit();
             return $id;
-        } catch (\Exception $e) {
-            $this->db->rollBack();
+        } catch (Exception $e) {
+            if (!$inTransaction) $this->db->rollBack();
             throw $e;
         }
     }
@@ -82,7 +119,7 @@ class CronogramaService
             $this->db->beginTransaction();
 
             $eventoActual = $this->repo->findById($id);
-            if (!$eventoActual) throw new \Exception("Evento no encontrado");
+            if (!$eventoActual) throw new Exception("Evento no encontrado");
 
             $this->validarEdicion($eventoActual);
 
@@ -150,7 +187,7 @@ class CronogramaService
 
             $this->db->commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->db->rollBack();
             throw $e;
         }
@@ -162,7 +199,7 @@ class CronogramaService
             $this->db->beginTransaction();
             $evento = $this->repo->findById($id);
 
-            if (!$evento) throw new \Exception("Evento no existe");
+            if (!$evento) throw new Exception("Evento no existe");
             $this->validarEdicion($evento);
 
             if (!empty($evento['solicitud_ot_id'])) {
@@ -172,7 +209,7 @@ class CronogramaService
             $this->repo->delete($id);
             $this->db->commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->db->rollBack();
             throw $e;
         }
