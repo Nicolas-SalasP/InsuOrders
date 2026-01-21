@@ -9,19 +9,11 @@ import ModalOrganizarBodega from '../components/ModalOrganizarBodega';
 const Bodega = () => {
     const { auth } = useContext(AuthContext);
     const [vista, setVista] = useState('salidas');
-    
-    // Datos
     const [pendientesAgrupados, setPendientesAgrupados] = useState({});
     const [porOrganizar, setPorOrganizar] = useState([]);
-    
-    // Filtros
     const [busqueda, setBusqueda] = useState('');
-
-    // Estados de Carga (Anti-Parpadeo)
     const [loading, setLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
-
-    // Modales y UI
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [entregaModal, setEntregaModal] = useState({ show: false, item: null });
     const [organizarModal, setOrganizarModal] = useState({ show: false, item: null });
@@ -33,7 +25,6 @@ const Bodega = () => {
         return auth.permisos && auth.permisos.includes(permiso);
     };
 
-    // EFECTO: Carga de datos y Auto-Refresh
     useEffect(() => {
         if (hasPermission('bodega_ver')) {
             cargarDatos();
@@ -47,7 +38,6 @@ const Bodega = () => {
         }
     }, [vista]);
 
-    // Limpiar buscador al cambiar de vista
     useEffect(() => {
         setBusqueda('');
     }, [vista]);
@@ -107,7 +97,6 @@ const Bodega = () => {
         }
     };
 
-    // --- LÓGICA DE FILTRADO PARA "ORGANIZAR" ---
     const itemsPorOrganizarFiltrados = porOrganizar.filter(item => {
         if (!busqueda) return true;
         const termino = busqueda.toLowerCase();
@@ -117,7 +106,6 @@ const Bodega = () => {
         );
     });
 
-    // --- LÓGICA DE SELECCIÓN MÚLTIPLE ---
     const handleCheckItem = (id) => {
         setSelectedIds(prev => 
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
@@ -140,7 +128,7 @@ const Bodega = () => {
             });
             setEntregaModal({ show: false, item: null });
             setMsg({ show: true, title: "Entregado", text: "Entrega registrada exitosamente.", type: "success" });
-            cargarPendientes(true); // Recarga silenciosa
+            cargarPendientes(true);
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error desconocido", type: "error" });
         }
@@ -155,7 +143,7 @@ const Bodega = () => {
             setMasivaModal({ show: false });
             setSelectedIds([]); 
             setMsg({ show: true, title: "Entrega Masiva", text: "Se han entregado los materiales seleccionados.", type: "success" });
-            cargarPendientes(true); // Recarga silenciosa
+            cargarPendientes(true);
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al procesar entrega masiva", type: "error" });
         }
@@ -169,7 +157,6 @@ const Bodega = () => {
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
 
-            {/* MODALES */}
             <ModalEntregaBodega 
                 show={entregaModal.show} 
                 item={entregaModal.item} 
@@ -192,8 +179,6 @@ const Bodega = () => {
                     onSave={() => cargarPorOrganizar(true)} 
                 />
             )}
-
-            {/* CONTENIDO PRINCIPAL */}
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
                     <div className="d-flex align-items-center gap-2">
@@ -201,7 +186,6 @@ const Bodega = () => {
                             <i className="bi bi-inboxes me-2"></i>Gestión de Bodega
                         </h4>
                         
-                        {/* Indicador de actualización silenciosa */}
                         {isRefreshing && (
                             <span className="badge bg-light text-secondary border animate__animated animate__fadeIn">
                                 <span className="spinner-border spinner-border-sm me-1" style={{width:'0.7rem', height:'0.7rem'}}></span>
@@ -235,8 +219,6 @@ const Bodega = () => {
                         </button>
                     </div>
                 </div>
-
-                {/* BARRA DE FILTROS (SOLO VISIBLE EN VISTA 'ENTRADAS/ORGANIZAR') */}
                 {vista === 'entradas' && (
                     <div className="bg-light px-3 pt-3 pb-2 border-bottom">
                         <div className="row">
@@ -250,7 +232,7 @@ const Bodega = () => {
                                         className="form-control border-start-0 ps-0" 
                                         placeholder="Filtrar por SKU o Nombre..." 
                                         value={busqueda}
-                                        onChange={(e) => setBusqueda(e.target.value)}
+                                        onChange={(e) => setBusqueda(e.target.value)} 
                                     />
                                     {busqueda && (
                                         <button className="btn btn-outline-secondary border-start-0 bg-white" onClick={() => setBusqueda('')}>
@@ -274,7 +256,6 @@ const Bodega = () => {
                             <div className="spinner-border text-primary" role="status"></div>
                         </div> 
                     ) : (
-                        // VISTA: SALIDAS (AGRUPADO POR OT)
                         vista === 'salidas' ? (
                             <div className="row g-3">
                                 {Object.keys(pendientesAgrupados).length === 0 && <div className="col-12 text-center py-5 text-muted">✅ Todo despachado</div>}
@@ -297,6 +278,7 @@ const Bodega = () => {
                                                             <th style={{width: '40px'}} className="text-center">#</th> 
                                                             <th className="ps-2">Insumo</th>
                                                             <th>SKU</th>
+                                                            <th>Ubicación</th>
                                                             <th className="text-center">Stock Bodega</th>
                                                             <th className="text-center text-danger">Pendiente</th>
                                                             <th className="text-end pe-4">Acción</th>
@@ -317,6 +299,11 @@ const Bodega = () => {
                                                                 </td>
                                                                 <td className="ps-2 fw-bold">{p.insumo}</td>
                                                                 <td className="text-muted small">{p.codigo_sku}</td>
+                                                                <td className="small text-muted">
+                                                                    <i className="bi bi-geo-alt me-1"></i>
+                                                                    {p.ubicacion || 'General'}
+                                                                </td>
+
                                                                 <td className="text-center text-muted small">{parseFloat(p.stock_actual)}</td>
                                                                 <td className="text-center fw-bold text-danger fs-5">
                                                                     {parseFloat(p.cantidad_pendiente)} 
@@ -343,7 +330,7 @@ const Bodega = () => {
                                 ))}
                             </div>
                         ) : (
-                            // VISTA: ENTRADAS (ORGANIZAR) - CON FILTRO
+                            // VISTA: ENTRADAS
                             <div className="card border-0 shadow-sm">
                                 <table className="table table-hover align-middle mb-0">
                                     <thead className="bg-light sticky-top">

@@ -6,7 +6,7 @@ use Exception;
 
 class MisMantencionesService
 {
-    private $repository;
+    public $repository;
 
     public function __construct()
     {
@@ -40,7 +40,16 @@ class MisMantencionesService
         return $this->repository->guardarChecklist($otId, $respuestas);
     }
 
-    // --- NUEVOS ---
+    public function ejecutarDescuentos($otId, $userId)
+    {
+        $insumosRequeridos = $this->repository->getInsumosPorOt($otId, $userId);
+        foreach ($insumosRequeridos as $item) {
+            $cantidadNecesaria = floatval($item['cantidad']);
+            if ($cantidadNecesaria > 0) {
+                $this->repository->descontarStockUsuario($userId, $item['insumo_id'], $cantidadNecesaria);
+            }
+        }
+    }
 
     public function guardarCierre($otId, $firma, $comentarios)
     {
@@ -52,7 +61,6 @@ class MisMantencionesService
         return $this->repository->guardarUrlPdf($otId, $url);
     }
     
-    // Getters para el PDF
     public function getDatosReporte($otId)
     {
         return [
@@ -61,10 +69,10 @@ class MisMantencionesService
         ];
     }
 
-    public function getDetalleCompletoOt($otId)
+    public function getDetalleCompletoOt($otId, $userId)
     {
         return [
-            'insumos' => $this->repository->getInsumosPorOt($otId),
+            'insumos' => $this->repository->getInsumosPorOt($otId, $userId),
             'respuestas' => $this->repository->getRespuestasPorOt($otId)
         ];
     }

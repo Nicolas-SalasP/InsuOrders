@@ -459,13 +459,25 @@ class MantencionRepository
     {
         $sql = "SELECT ds.id as detalle_id, ds.cantidad, ds.cantidad_entregada, (ds.cantidad - ds.cantidad_entregada) as cantidad_pendiente, 
                 s.fecha_solicitud, i.id as insumo_id, i.nombre as insumo, i.codigo_sku, i.unidad_medida, i.stock_actual, 
-                s.id as ot_id, u.nombre as solicitante, u.apellido as solicitante_apellido, a.nombre as maquina 
-                FROM detalle_solicitud ds JOIN solicitudes_ot s ON ds.solicitud_id = s.id 
-                JOIN insumos i ON ds.insumo_id = i.id JOIN usuarios u ON s.usuario_solicitante_id = u.id 
+                s.id as ot_id, u.nombre as solicitante, u.apellido as solicitante_apellido, a.nombre as maquina,
+                
+                (SELECT CONCAT(IFNULL(sec.nombre, 'General'), ' - ', ubi.nombre) 
+                FROM insumo_stock_ubicacion isu 
+                JOIN ubicaciones ubi ON isu.ubicacion_id = ubi.id 
+                LEFT JOIN sectores sec ON ubi.sector_id = sec.id 
+                WHERE isu.insumo_id = i.id AND isu.cantidad > 0 
+                ORDER BY isu.cantidad DESC LIMIT 1) as ubicacion
+
+                FROM detalle_solicitud ds 
+                JOIN solicitudes_ot s ON ds.solicitud_id = s.id 
+                JOIN insumos i ON ds.insumo_id = i.id 
+                JOIN usuarios u ON s.usuario_solicitante_id = u.id 
                 LEFT JOIN activos a ON s.activo_id = a.id 
                 WHERE ds.estado_linea IN ('PENDIENTE', 'EN_BODEGA', 'RESERVADO', 'PARCIAL') 
                 AND (ds.cantidad - ds.cantidad_entregada) > 0.001 
-                AND s.estado_id IN (1, 2, 4) ORDER BY s.fecha_solicitud ASC";
+                AND s.estado_id IN (1, 2, 4) 
+                ORDER BY s.fecha_solicitud ASC";
+
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 

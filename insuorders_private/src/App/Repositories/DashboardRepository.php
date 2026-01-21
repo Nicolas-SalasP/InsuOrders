@@ -135,6 +135,7 @@ class DashboardRepository
                     u_bod.nombre as quien_entrego,
                     COALESCE(e.nombre_completo, u_rec.nombre, 'Externo/Manual') as quien_recibio,
                     COALESCE(ue.nombre, '-') as ubicacion_destino,
+                    m.observacion,
                     i.nombre as que_recibio,
                     i.codigo_sku as codigo_producto,
                     m.cantidad as cuanto,

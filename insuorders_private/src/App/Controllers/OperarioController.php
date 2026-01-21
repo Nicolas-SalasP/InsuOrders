@@ -93,11 +93,11 @@ class OperarioController
 
     public function devolver()
     {
-        AuthMiddleware::verify(); // Verificar sesión
+        $usuarioId = AuthMiddleware::verify();
         $data = json_decode(file_get_contents("php://input"), true);
         
         try {
-            $this->service->devolverInsumo($data);
+            $this->service->devolverInsumo($data, $usuarioId);
             echo json_encode(["success" => true, "message" => "Insumo devuelto a bodega correctamente."]);
         } catch (Exception $e) {
             http_response_code(500);

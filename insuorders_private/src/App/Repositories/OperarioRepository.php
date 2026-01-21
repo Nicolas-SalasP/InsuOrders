@@ -26,8 +26,8 @@ class OperarioRepository
             $ubicacionEnvioId = !empty($datos['ubicacion_envio_id']) ? $datos['ubicacion_envio_id'] : null;
 
             $sqlStock = "SELECT id, ubicacion_id, cantidad FROM insumo_stock_ubicacion 
-                        WHERE insumo_id = :iid AND cantidad > 0 
-                        ORDER BY cantidad DESC";
+                    WHERE insumo_id = :iid AND cantidad > 0 
+                    ORDER BY cantidad DESC";
             $stmtStock = $this->db->prepare($sqlStock);
             $stmtStock->execute([':iid' => $insumoId]);
             $ubicaciones = $stmtStock->fetchAll(PDO::FETCH_ASSOC);
@@ -87,8 +87,8 @@ class OperarioRepository
             $obsKardex = "Entrega a: $nombreReceptor. Obs: " . ($datos['observacion'] ?? 'Sin obs');
 
             $sqlMov = "INSERT INTO movimientos_inventario 
-                    (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, empleado_id, fecha, ubicacion_envio_id) 
-                    VALUES (:iid, 2, :cant, :uid, :obs, :ubi, :emp, NOW(), :env)";
+                (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, empleado_id, fecha, ubicacion_envio_id) 
+                VALUES (:iid, 2, :cant, :uid, :obs, :ubi, :emp, NOW(), :env)";
 
             $this->db->prepare($sqlMov)->execute([
                 ':iid' => $insumoId,
@@ -101,8 +101,8 @@ class OperarioRepository
             ]);
 
             $sqlEntrega = "INSERT INTO entregas_personal 
-                (insumo_id, usuario_operario_id, receptor_externo, usuario_bodeguero_id, cantidad_entregada, cantidad_utilizada, estado_id, observacion, fecha_entrega, fecha_aceptacion) 
-                VALUES (:iid, :u_op, :ext, :u_bod, :cant, 0, :est, :obs, NOW(), :fecha_ac)";
+            (insumo_id, usuario_operario_id, receptor_externo, usuario_bodeguero_id, cantidad_entregada, cantidad_utilizada, estado_id, observacion, fecha_entrega, fecha_aceptacion) 
+            VALUES (:iid, :u_op, :ext, :u_bod, :cant, 0, :est, :obs, NOW(), :fecha_ac)";
 
             $this->db->prepare($sqlEntrega)->execute([
                 ':iid' => $insumoId,
@@ -149,8 +149,8 @@ class OperarioRepository
             }
 
             $sqlEntrega = "INSERT INTO entregas_personal 
-                (insumo_id, usuario_operario_id, receptor_externo, usuario_bodeguero_id, cantidad_entregada, cantidad_utilizada, estado_id, observacion, fecha_entrega, fecha_aceptacion, referencia_ot_id) 
-                VALUES (:iid, :u_op, :ext, :u_bod, :cant, 0, :est, :obs, NOW(), :fecha_ac, :otid)";
+            (insumo_id, usuario_operario_id, receptor_externo, usuario_bodeguero_id, cantidad_entregada, cantidad_utilizada, estado_id, observacion, fecha_entrega, fecha_aceptacion, referencia_ot_id) 
+            VALUES (:iid, :u_op, :ext, :u_bod, :cant, 0, :est, :obs, NOW(), :fecha_ac, :otid)";
 
             $this->db->prepare($sqlEntrega)->execute([
                 ':iid' => $datos['insumo_id'],
@@ -173,26 +173,26 @@ class OperarioRepository
     public function getMisInsumosCorrecto($usuarioId)
     {
         $sqlPendientes = "SELECT e.id, e.cantidad_entregada, e.fecha_entrega, e.observacion,
-                                i.nombre as insumo, i.codigo_sku, i.unidad_medida, 
-                                u.nombre as bodeguero_nombre, e.referencia_ot_id as ot_id
-                            FROM entregas_personal e
-                            JOIN insumos i ON e.insumo_id = i.id
-                            JOIN usuarios u ON e.usuario_bodeguero_id = u.id
-                            WHERE e.usuario_operario_id = :uid AND e.estado_id = 1
-                            ORDER BY e.fecha_entrega DESC";
+                            i.nombre as insumo, i.codigo_sku, i.unidad_medida, 
+                            u.nombre as bodeguero_nombre, e.referencia_ot_id as ot_id
+                        FROM entregas_personal e
+                        JOIN insumos i ON e.insumo_id = i.id
+                        JOIN usuarios u ON e.usuario_bodeguero_id = u.id
+                        WHERE e.usuario_operario_id = :uid AND e.estado_id = 1
+                        ORDER BY e.fecha_entrega DESC";
 
         $stmt1 = $this->db->prepare($sqlPendientes);
         $stmt1->execute([':uid' => $usuarioId]);
 
         $sqlInventario = "SELECT e.id, e.cantidad_entregada, e.cantidad_utilizada, 
-                                (e.cantidad_entregada - e.cantidad_utilizada) as saldo_actual,
-                                i.nombre as insumo, i.codigo_sku, i.unidad_medida,
-                                e.referencia_ot_id as ot_id, e.insumo_id
-                            FROM entregas_personal e
-                            JOIN insumos i ON e.insumo_id = i.id
-                            WHERE e.usuario_operario_id = :uid AND e.estado_id = 2
-                            AND (e.cantidad_entregada - e.cantidad_utilizada) > 0.001
-                            ORDER BY e.referencia_ot_id DESC, i.nombre ASC";
+                            (e.cantidad_entregada - e.cantidad_utilizada) as saldo_actual,
+                            i.nombre as insumo, i.codigo_sku, i.unidad_medida,
+                            e.referencia_ot_id as ot_id, e.insumo_id
+                        FROM entregas_personal e
+                        JOIN insumos i ON e.insumo_id = i.id
+                        WHERE e.usuario_operario_id = :uid AND e.estado_id = 2
+                        AND (e.cantidad_entregada - e.cantidad_utilizada) > 0.001
+                        ORDER BY e.referencia_ot_id DESC, i.nombre ASC";
 
         $stmt2 = $this->db->prepare($sqlInventario);
         $stmt2->execute([':uid' => $usuarioId]);
@@ -221,19 +221,18 @@ class OperarioRepository
                 $bodegaId = 1;
 
                 $sqlUpd = "UPDATE entregas_personal 
-                        SET estado_id = :est, fecha_aceptacion = NOW(), observacion_rechazo = :obs,
-                            cantidad_utilizada = 0 
-                        WHERE id = :id";
+                    SET estado_id = :est, fecha_aceptacion = NOW(), observacion_rechazo = :obs,
+                        cantidad_utilizada = 0 
+                    WHERE id = :id";
                 $this->db->prepare($sqlUpd)->execute([
                     ':est' => $nuevoEstado,
                     ':obs' => $observacion ?? 'Rechazado por operario',
                     ':id' => $entregaId
                 ]);
 
-                // Devolver stock
                 $sqlRestock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                            VALUES (:iid, :uid, :cant) 
-                            ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
+                        VALUES (:iid, :uid, :cant) 
+                        ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
 
                 $this->db->prepare($sqlRestock)->execute([
                     ':iid' => $entrega['insumo_id'],
@@ -242,9 +241,8 @@ class OperarioRepository
                     ':cant_upd' => $cantidad
                 ]);
 
-                // Log devolución
                 $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
-                        VALUES (:iid, 1, :cant, :uid, 'Devuelto por Rechazo', :ubi, NOW())";
+                    VALUES (:iid, 1, :cant, :uid, 'Devuelto por Rechazo', :ubi, NOW())";
                 $this->db->prepare($sqlMov)->execute([
                     ':iid' => $entrega['insumo_id'],
                     ':cant' => $cantidad,
@@ -268,45 +266,67 @@ class OperarioRepository
         }
     }
 
-    public function devolverInsumo($entregaId, $cantidad)
+    public function devolverInsumo($usuarioId, $insumoId, $cantidad)
     {
         try {
             $this->db->beginTransaction();
+            $sqlTotal = "SELECT SUM(cantidad_entregada - cantidad_utilizada) as total 
+                        FROM entregas_personal 
+                        WHERE usuario_operario_id = :uid AND insumo_id = :iid AND estado_id = 2";
+            $stmt = $this->db->prepare($sqlTotal);
+            $stmt->execute([':uid' => $usuarioId, ':iid' => $insumoId]);
+            $total = $stmt->fetchColumn();
 
-            $stmt = $this->db->prepare("SELECT * FROM entregas_personal WHERE id = :id FOR UPDATE");
-            $stmt->execute([':id' => $entregaId]);
-            $entrega = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$entrega)
-                throw new Exception("Entrega no encontrada");
-
-            $saldo = floatval($entrega['cantidad_entregada']) - floatval($entrega['cantidad_utilizada']);
-            if ($cantidad > ($saldo + 0.001)) {
-                throw new Exception("No puedes devolver más de lo que tienes ($saldo).");
+            if ($total < $cantidad) {
+                throw new Exception("No tienes suficiente stock para devolver. Tienes: " . floatval($total));
             }
 
-            $nuevaEntregada = floatval($entrega['cantidad_entregada']) - $cantidad;
-            $nuevoEstado = ($nuevaEntregada - floatval($entrega['cantidad_utilizada']) <= 0.001) ? 3 : 2;
+            $sqlEntregas = "SELECT id, cantidad_entregada, cantidad_utilizada 
+                        FROM entregas_personal 
+                        WHERE usuario_operario_id = :uid AND insumo_id = :iid AND estado_id = 2 
+                        AND (cantidad_entregada - cantidad_utilizada) > 0 
+                        ORDER BY fecha_entrega ASC";
 
-            $this->db->prepare("UPDATE entregas_personal SET cantidad_entregada = :newCant, estado_id = :est WHERE id = :id")
-                ->execute([':newCant' => $nuevaEntregada, ':est' => $nuevoEstado, ':id' => $entregaId]);
+            $stmt = $this->db->prepare($sqlEntregas);
+            $stmt->execute([':uid' => $usuarioId, ':iid' => $insumoId]);
+            $entregas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            $pendiente = floatval($cantidad);
             $bodegaId = 1;
-            $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                                VALUES (:iid, :uid, :cant) 
-                                ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant")
-                ->execute([':iid' => $entrega['insumo_id'], ':uid' => $bodegaId, ':cant' => $cantidad]);
 
-            $obs = "Devolución voluntaria. OT: " . ($entrega['referencia_ot_id'] ?? 'N/A');
-            $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
-                                VALUES (:iid, 1, :cant, :uid, :obs, :ubi, NOW())")
-                ->execute([
-                    ':iid' => $entrega['insumo_id'],
-                    ':cant' => $cantidad,
-                    ':uid' => $entrega['usuario_operario_id'] ?? $entrega['usuario_bodeguero_id'],
-                    ':obs' => $obs,
-                    ':ubi' => $bodegaId
-                ]);
+            foreach ($entregas as $entrega) {
+                if ($pendiente <= 0)
+                    break;
+
+                $saldoEntrega = floatval($entrega['cantidad_entregada']) - floatval($entrega['cantidad_utilizada']);
+                $aDevolver = min($pendiente, $saldoEntrega);
+                $nuevaEntregada = floatval($entrega['cantidad_entregada']) - $aDevolver;
+                $nuevoEstado = ($nuevaEntregada - floatval($entrega['cantidad_utilizada']) <= 0.001) ? 3 : 2;
+                $upd = $this->db->prepare("UPDATE entregas_personal SET cantidad_entregada = :newCant, estado_id = :est WHERE id = :id");
+                $upd->execute([':newCant' => $nuevaEntregada, ':est' => $nuevoEstado, ':id' => $entrega['id']]);
+
+                $pendiente -= $aDevolver;
+            }
+            $sqlRestock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
+                        VALUES (:iid, :uid, :cant) 
+                        ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
+            $this->db->prepare($sqlRestock)->execute([
+                ':iid' => $insumoId,
+                ':uid' => $bodegaId,
+                ':cant' => $cantidad,
+                ':cant_upd' => $cantidad
+            ]);
+            $obs = "Devolución voluntaria de operario";
+            $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
+                    VALUES (:iid, 1, :cant, :uid, :obs, :ubi, NOW())";
+
+            $this->db->prepare($sqlMov)->execute([
+                ':iid' => $insumoId,
+                ':cant' => $cantidad,
+                ':uid' => $usuarioId,
+                ':obs' => $obs,
+                ':ubi' => $bodegaId
+            ]);
 
             $this->db->commit();
             return true;
@@ -339,8 +359,8 @@ class OperarioRepository
             $estadoFinal = ($nuevoTotal >= floatval($item['cantidad_entregada'])) ? 3 : 2;
 
             $sql = "UPDATE entregas_personal 
-                    SET cantidad_utilizada = :uso, estado_id = :est, fecha_uso = NOW() 
-                    WHERE id = :id";
+                SET cantidad_utilizada = :uso, estado_id = :est, fecha_uso = NOW() 
+                WHERE id = :id";
 
             $this->db->prepare($sql)->execute([
                 ':uso' => $nuevoTotal,
@@ -360,17 +380,17 @@ class OperarioRepository
     public function getDashboardSupervision()
     {
         $sql = "SELECT e.id, e.nombre_completo as nombre, e.email,
-                    (SELECT COUNT(*) FROM entregas_personal ep WHERE ep.usuario_operario_id = e.usuario_id AND ep.estado_id = 1) as pendientes,
-                    (SELECT COUNT(*) FROM entregas_personal ep WHERE ep.usuario_operario_id = e.usuario_id AND ep.estado_id = 2) as en_posesion
-                FROM empleados e
-                WHERE e.activo = 1";
+                (SELECT COUNT(*) FROM entregas_personal ep WHERE ep.usuario_operario_id = e.usuario_id AND ep.estado_id = 1) as pendientes,
+                (SELECT COUNT(*) FROM entregas_personal ep WHERE ep.usuario_operario_id = e.usuario_id AND ep.estado_id = 2) as en_posesion
+            FROM empleados e
+            WHERE e.activo = 1";
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function procesarDevolucionOT($datos)
     {
         $sqlHistorial = "INSERT INTO historial_operario_insumos (empleado_id, insumo_id, cantidad, operacion, ot_ref, fecha, bodeguero_id) 
-                        VALUES (:emp, :ins, :cant, 'DEVOLUCION', :ot, NOW(), :bod)";
+                    VALUES (:emp, :ins, :cant, 'DEVOLUCION', :ot, NOW(), :bod)";
 
         $this->db->prepare($sqlHistorial)->execute([
             ':emp' => $datos['empleado_id'],
