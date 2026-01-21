@@ -2,9 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { useContext } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import AuthContext from './context/AuthContext';
+import 'bootstrap/dist/css/bootstrap.min.css';
+
+// Páginas
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Proveedores from './pages/Proveedores';
 import Layout from './components/Layout';
 import Inventario from './pages/Inventario';
 import Compras from './pages/Compras';
@@ -17,7 +19,7 @@ import Cronograma from './pages/Cronograma';
 import AdminMantenedores from './pages/AdminMantenedores';
 import MisInsumos from './pages/MisInsumos';
 import MisMantenciones from './pages/MisMantenciones';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import Proveedores from './pages/Proveedores';
 
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
@@ -27,7 +29,9 @@ const PrivateRoute = () => {
 
 const PermissionGuard = ({ children, permiso, redirectTo = "/dashboard" }) => {
     const { auth } = useContext(AuthContext);
+    
     if (auth.rol === 'Admin' || auth.rol === 1) return children;
+
     if (Array.isArray(permiso)) {
         const tieneAlguno = permiso.some(p => auth.permisos && auth.permisos.includes(p));
         if (tieneAlguno) return children;
@@ -35,6 +39,7 @@ const PermissionGuard = ({ children, permiso, redirectTo = "/dashboard" }) => {
     else if (permiso && auth.permisos && auth.permisos.includes(permiso)) {
         return children;
     }
+
     return <Navigate to={redirectTo} replace />;
 };
 
@@ -51,7 +56,7 @@ function App() {
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
                             <Route path="/dashboard" element={
-                                <PermissionGuard
+                                <PermissionGuard 
                                     permiso={['dash_resumen', 'dash_compras', 'dash_mantencion', 'dash_bodega', 'dash_personal']}
                                     redirectTo="/login"
                                 >
@@ -60,11 +65,11 @@ function App() {
                             } />
 
                             <Route path="/compras" element={
-                                <PermissionGuard permiso="ver_compras">
+                                <PermissionGuard permiso="compras_ver">
                                     <Compras />
                                 </PermissionGuard>
                             } />
-
+                            
                             <Route path="/cotizaciones" element={
                                 <PermissionGuard permiso="cot_ver">
                                     <Cotizaciones />
@@ -72,7 +77,7 @@ function App() {
                             } />
 
                             <Route path="/proveedores" element={
-                                <PermissionGuard permiso="ver_proveedores">
+                                <PermissionGuard permiso="prov_ver">
                                     <Proveedores />
                                 </PermissionGuard>
                             } />
@@ -106,13 +111,15 @@ function App() {
                                     <Activos />
                                 </PermissionGuard>
                             } />
-                            <Route
-                                path="/mis-insumos"
-                                element={<MisInsumos />}
-                            />
+
+                            <Route path="/mis-insumos" element={
+                                <PermissionGuard permiso="ope_ver">
+                                    <MisInsumos />
+                                </PermissionGuard>
+                            } />
 
                             <Route path="/mis-mantenciones" element={
-                                <PermissionGuard permiso={['mant_ver', 'mant_crear', 'activos_ver']}>
+                                <PermissionGuard permiso="ope_ver">
                                     <MisMantenciones />
                                 </PermissionGuard>
                             } />

@@ -271,50 +271,52 @@ try {
 
         // --- COMPRAS ---
         case 'compras':
-            $uid = AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
-            $c = new OrdenCompraController();
-            if ($method === 'GET')
-                $c->index();
-            elseif ($method === 'POST')
-                $c->store($uid);
+            if ($method === 'GET') {
+                AuthMiddleware::verify('compras_ver');
+                (new OrdenCompraController())->index();
+            } elseif ($method === 'POST') {
+                $uid = AuthMiddleware::verify('compras_crear');
+                (new OrdenCompraController())->store($uid);
+            }
             break;
 
         case 'compras/filtros':
-            AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
+            AuthMiddleware::verify('compras_ver');
             (new OrdenCompraController())->filtros();
             break;
 
         case 'compras/pendientes':
-            AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
+            AuthMiddleware::verify('compras_crear');
             (new OrdenCompraController())->pendientes();
             break;
 
         case 'compras/detalle':
-            AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
+            AuthMiddleware::verify('compras_detalle');
             (new OrdenCompraController())->show();
             break;
 
         case 'compras/pdf':
-            AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
+            AuthMiddleware::verify('compras_pdf');
             (new OrdenCompraController())->downloadPdf();
             break;
 
         case 'compras/regenerar-pdf':
-            AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
+            AuthMiddleware::verify('compras_regenerar_pdf');
             (new OrdenCompraController())->regenerarPdf();
             break;
 
         case 'compras/upload':
-            AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
+            AuthMiddleware::verify('compras_adjuntar');
             (new OrdenCompraController())->uploadFile();
             break;
 
         case 'compras/recepcionar':
-            $uid = AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
+            $uid = AuthMiddleware::verify('compras_recepcionar');
             (new OrdenCompraController())->recepcionar($uid);
             break;
+
         case 'compras/cancelar':
-            AuthMiddleware::verify(['Encargado Compras', 'Admin', 'Bodega']);
+            AuthMiddleware::verify('compras_anular');
             (new OrdenCompraController())->cancelarOrden();
             break;
 
