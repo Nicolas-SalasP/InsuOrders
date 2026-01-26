@@ -228,6 +228,11 @@ try {
                 (new MantencionController())->guardarPlantilla();
             break;
 
+        case 'mantencion/detalle':
+            AuthMiddleware::verify(['mant_ver', 'ope_ver']);
+            (new MantencionController())->detalles();
+            break;
+
 
         // --- INVENTARIO ---
         case 'insumos':

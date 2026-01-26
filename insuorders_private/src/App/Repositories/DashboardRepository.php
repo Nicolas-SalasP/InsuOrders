@@ -13,6 +13,20 @@ class DashboardRepository
         $this->db = Database::getConnection();
     }
 
+    private function safeQuery($sql)
+    {
+        try {
+            $stmt = $this->db->query($sql);
+            if ($stmt) {
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            return [];
+        } catch (\Exception $e) {
+            // Opcional: error_log($e->getMessage());
+            return [];
+        }
+    }
+
     public function getGeneralKPIs($start, $end)
     {
         return [
@@ -26,17 +40,20 @@ class DashboardRepository
 
     public function getComprasAnalytics($start, $end)
     {
+        // 1. Tendencia
         $sqlTendencia = "SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') as mes, SUM(monto_total) as total 
                         FROM ordenes_compra 
                         WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'
                         GROUP BY mes ORDER BY mes ASC";
 
+        // 2. Top Proveedores
         $sqlTopProv = "SELECT p.nombre, SUM(oc.monto_total) as total
                     FROM ordenes_compra oc
                     JOIN proveedores p ON oc.proveedor_id = p.id
                     WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
                     GROUP BY p.id ORDER BY total DESC LIMIT 5";
 
+        // 3. Top Inversión
         $sqlTopInsumos = "SELECT i.nombre, SUM(doc.total_linea) as total_gasto
                         FROM detalle_orden_compra doc
                         JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
@@ -44,10 +61,37 @@ class DashboardRepository
                         WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
                         GROUP BY i.id ORDER BY total_gasto DESC LIMIT 5";
 
+        // 4. Top Cantidad
+        $sqlTopInsumosQty = "SELECT i.nombre, SUM(doc.cantidad_solicitada) as total_cantidad
+                        FROM detalle_orden_compra doc
+                        JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
+                        JOIN insumos i ON doc.insumo_id = i.id
+                        WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
+                        GROUP BY i.id ORDER BY total_cantidad DESC LIMIT 5";
+
+        // 5. Gasto por Categoría 
+        $sqlCategorias = "SELECT c.nombre, SUM(doc.total_linea) as value
+                        FROM detalle_orden_compra doc
+                        JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
+                        JOIN insumos i ON doc.insumo_id = i.id
+                        LEFT JOIN categorias c ON i.categoria_id = c.id
+                        WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
+                        GROUP BY c.id ORDER BY value DESC";
+
+        // 6. Últimas Órdenes
+        $sqlUltimas = "SELECT oc.id, p.nombre as proveedor, oc.fecha_creacion, oc.monto_total, oc.estado_id
+                    FROM ordenes_compra oc
+                    JOIN proveedores p ON oc.proveedor_id = p.id
+                    WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
+                    ORDER BY oc.fecha_creacion DESC LIMIT 5";
+
         return [
-            'tendencia_gasto' => $this->db->query($sqlTendencia)->fetchAll(PDO::FETCH_ASSOC),
-            'top_proveedores' => $this->db->query($sqlTopProv)->fetchAll(PDO::FETCH_ASSOC),
-            'top_insumos_comprados' => $this->db->query($sqlTopInsumos)->fetchAll(PDO::FETCH_ASSOC)
+            'tendencia_gasto' => $this->safeQuery($sqlTendencia),
+            'top_proveedores' => $this->safeQuery($sqlTopProv),
+            'top_insumos_comprados' => $this->safeQuery($sqlTopInsumos),
+            'top_insumos_cantidad' => $this->safeQuery($sqlTopInsumosQty),
+            'gasto_por_categoria' => $this->safeQuery($sqlCategorias),
+            'ultimas_ordenes' => $this->safeQuery($sqlUltimas)
         ];
     }
 
@@ -69,8 +113,8 @@ class DashboardRepository
         $devoluciones = $this->db->query("SELECT COUNT(*) FROM movimientos_inventario WHERE tipo_movimiento_id = 5 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn();
 
         return [
-            'top_maquinas' => $this->db->query($sqlTopMaq)->fetchAll(PDO::FETCH_ASSOC),
-            'insumos_mas_usados' => $this->db->query($sqlInsumosUso)->fetchAll(PDO::FETCH_ASSOC),
+            'top_maquinas' => $this->safeQuery($sqlTopMaq),
+            'insumos_mas_usados' => $this->safeQuery($sqlInsumosUso),
             'ratio_devolucion' => ['entregas' => (int) $entregas, 'devoluciones' => (int) $devoluciones]
         ];
     }
@@ -111,9 +155,9 @@ class DashboardRepository
         $sqlTimeline .= " ORDER BY m.fecha DESC LIMIT 20";
 
         return [
-            'top_receptores' => $this->db->query($sqlTopReceptores)->fetchAll(PDO::FETCH_ASSOC),
-            'timeline_entregas' => $this->db->query($sqlTimeline)->fetchAll(PDO::FETCH_ASSOC),
-            'lista_empleados' => $this->db->query("SELECT id, nombre_completo FROM empleados WHERE activo = 1 ORDER BY nombre_completo ASC")->fetchAll(PDO::FETCH_ASSOC)
+            'top_receptores' => $this->safeQuery($sqlTopReceptores),
+            'timeline_entregas' => $this->safeQuery($sqlTimeline),
+            'lista_empleados' => $this->safeQuery("SELECT id, nombre_completo FROM empleados WHERE activo = 1 ORDER BY nombre_completo ASC")
         ];
     }
 
@@ -123,8 +167,7 @@ class DashboardRepository
                 FROM sistema_logs l 
                 LEFT JOIN usuarios u ON l.usuario_id = u.id 
                 ORDER BY l.fecha DESC LIMIT 50";
-        
-        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        return $this->safeQuery($sql);
     }
 
     public function getEntregasParaExcel($start, $end, $empleadoId = null)
@@ -148,16 +191,13 @@ class DashboardRepository
                 LEFT JOIN usuarios u_rec ON m.empleado_id = u_rec.id
                 LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
                 LEFT JOIN ubicaciones_envio ue ON m.ubicacion_envio_id = ue.id
-                
-                WHERE m.tipo_movimiento_id = 2 
-                AND m.fecha BETWEEN '$start' AND '$end'";
+                WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN '$start' AND '$end'";
 
         if ($empleadoId) {
             $sql .= " AND m.empleado_id = " . intval($empleadoId);
         }
-
         $sql .= " ORDER BY m.fecha DESC";
 
-        return $this->db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->safeQuery($sql);
     }
 }
