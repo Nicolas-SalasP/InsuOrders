@@ -1,66 +1,151 @@
-import { useEffect, useState, useContext, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import api from '../api/axiosConfig';
-import AuthContext from '../context/AuthContext';
+import { usePermission } from '../hooks/usePermission';
 import NuevaSolicitudModal from '../components/NuevaSolicitudModal';
+import DetalleSolicitudModal from '../components/DetalleSolicitudModal';
 import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
 
 const Mantencion = () => {
-    const { auth } = useContext(AuthContext);
+    const { can } = usePermission();
     const [solicitudes, setSolicitudes] = useState([]);
-    const [activos, setActivos] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Estados de Filtros
-    const [filtroOT, setFiltroOT] = useState('');
-    const [filtroMaquina, setFiltroMaquina] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState('');
-    const [filtroFecha, setFiltroFecha] = useState('');
-
-    // Estados UI Modales
     const [showModal, setShowModal] = useState(false);
     const [otEditar, setOtEditar] = useState(null);
-    const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
+    const [detalleModal, setDetalleModal] = useState({ show: false, id: null });
     
-    // Estado para controlar qué menú desplegable está abierto (ID de la OT)
-    const [openMenuId, setOpenMenuId] = useState(null);
-
-    // Modales de Confirmación
+    const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirmAnular, setConfirmAnular] = useState({ show: false, id: null });
     const [confirmFinish, setConfirmFinish] = useState({ show: false, id: null });
 
-    const can = (permiso) => {
-        if (auth.rol === 'Admin' || auth.rol === 1) return true;
-        return auth.permisos && auth.permisos.includes(permiso);
-    };
+    const [openMenuId, setOpenMenuId] = useState(null);
+
+    const [filtroOT, setFiltroOT] = useState('');
+    const [filtroMaquina, setFiltroMaquina] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState(''); 
+    const [filtroFecha, setFiltroFecha] = useState('');
+
+    const [filtroInsumo, setFiltroInsumo] = useState('');
+    const [busquedaInsumo, setBusquedaInsumo] = useState('');
+    const [listaInsumos, setListaInsumos] = useState([]);
+    const [sugerencias, setSugerencias] = useState([]);
+    const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+    const wrapperRef = useRef(null);
 
     useEffect(() => {
-        cargarData();
-        cargarActivos();
+        cargarListaInsumos();
         
-        // Cerrar menú al hacer clic fuera
-        const handleClickOutside = (event) => {
+        const handleClickOutsideMenu = (event) => {
             if (!event.target.closest('.dropdown-container')) {
                 setOpenMenuId(null);
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('mousedown', handleClickOutsideMenu);
+        return () => document.removeEventListener('mousedown', handleClickOutsideMenu);
+
     }, []);
 
-    const cargarData = async () => {
-        setLoading(true);
+    useEffect(() => {
+        cargarSolicitudes();
+    }, [filtroInsumo]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setMostrarSugerencias(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        if (busquedaInsumo === '') {
+            setSugerencias([]);
+            if (!filtroInsumo) setMostrarSugerencias(false);
+        } else {
+            const matches = listaInsumos.filter(item => {
+                const term = busquedaInsumo.toLowerCase();
+                return item.nombre.toLowerCase().includes(term) ||
+                       item.codigo_sku.toLowerCase().includes(term);
+            });
+            setSugerencias(matches);
+        }
+    }, [busquedaInsumo, listaInsumos]);
+
+    const cargarListaInsumos = async () => {
         try {
-            const res = await api.get('/index.php/mantencion');
-            if (res.data.success) setSolicitudes(res.data.data);
-        } catch (e) { console.error(e); } finally { setLoading(false); }
+            const res = await api.get('/index.php/compras/filtros'); 
+            if (res.data.success) setListaInsumos(res.data.data);
+        } catch (e) { console.error(e); }
     };
 
-    const cargarActivos = async () => {
+    const cargarSolicitudes = async () => {
+        setLoading(true);
         try {
-            const res = await api.get('/index.php/mantencion/activos');
-            if (res.data.success) setActivos(res.data.data);
-        } catch (e) { }
+            const params = new URLSearchParams();
+            if (filtroInsumo) params.append('insumo_id', filtroInsumo);
+            
+            const res = await api.get(`/index.php/mantencion?${params.toString()}`);
+            if (res.data.success) {
+                setSolicitudes(res.data.data);
+            }
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: "No se pudieron cargar las solicitudes.", type: "error" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleNew = () => { setOtEditar(null); setShowModal(true); };
+    
+    const handleEdit = (ot) => { 
+        setOpenMenuId(null); 
+        setOtEditar(ot); 
+        setShowModal(true); 
+    };
+
+    const solicitarAnulacion = (id) => {
+        setOpenMenuId(null);
+        setConfirmAnular({ show: true, id: id });
+    };
+
+    const confirmarAnulacion = async () => {
+        setConfirmAnular({ ...confirmAnular, show: false });
+        try {
+            await api.delete(`/index.php/mantencion?id=${confirmAnular.id}`);
+            cargarSolicitudes();
+            setMsg({ show: true, title: "Anulada", text: "OT Anulada correctamente.", type: "success" });
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: "No se pudo anular.", type: "error" });
+        }
+    };
+
+    const solicitarFinalizar = (id) => {
+        setConfirmFinish({ show: true, id: id });
+    };
+
+    const ejecutarFinalizar = async () => {
+        setConfirmFinish({ show: false, id: null });
+        setLoading(true);
+        try {
+            await api.post('/index.php/mantencion/finalizar', { id: confirmFinish.id });
+            setMsg({ show: true, title: "Finalizada", text: "OT Completada.", type: "success" });
+            cargarSolicitudes();
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: error.response?.data?.message || "Error al finalizar.", type: "error" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleMenu = (id) => {
+        if (openMenuId === id) {
+            setOpenMenuId(null);
+        } else {
+            setOpenMenuId(id);
+        }
     };
 
     const descargarPdfOT = async (id) => {
@@ -99,12 +184,19 @@ const Mantencion = () => {
         }
     };
 
-    const toggleMenu = (id) => {
-        if (openMenuId === id) {
-            setOpenMenuId(null);
-        } else {
-            setOpenMenuId(id);
-        }
+    const handleExportar = () => {
+        setLoading(true);
+        api.get('/index.php/exportar?modulo=mantencion', { responseType: 'blob' })
+            .then((res) => {
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Mantencion_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+            })
+            .catch(() => setMsg({ show: true, title: "Error", text: "Error al exportar", type: "error" }))
+            .finally(() => setLoading(false));
     };
 
     const solicitudesFiltradas = solicitudes.filter(s => {
@@ -118,62 +210,21 @@ const Mantencion = () => {
         return matchOT && matchMaquina && matchEstado && matchFecha;
     });
 
-    const handleNew = () => { setOtEditar(null); setShowModal(true); };
-    
-    const handleEdit = (ot) => { 
-        setOpenMenuId(null); // Cerrar menú al hacer clic
-        setOtEditar(ot); 
-        setShowModal(true); 
-    };
-    
-    const solicitarAnulacion = (id) => setConfirmAnular({ show: true, id: id });
-
-    const confirmarAnulacion = async () => {
-        setConfirmAnular({ ...confirmAnular, show: false });
-        try {
-            await api.delete(`/index.php/mantencion?id=${confirmAnular.id}`);
-            cargarData();
-            setMsg({ show: true, title: "Anulada", text: "OT Anulada correctamente.", type: "success" });
-        } catch (error) {
-            setMsg({ show: true, title: "Error", text: "No se pudo anular.", type: "error" });
-        }
+    const seleccionarInsumo = (item) => {
+        setFiltroInsumo(item.id);
+        setBusquedaInsumo(item.nombre);
+        setMostrarSugerencias(false);
     };
 
-    const solicitarFinalizar = (id) => {
-        setConfirmFinish({ show: true, id: id });
-    };
-
-    const ejecutarFinalizar = async () => {
-        setConfirmFinish({ show: false, id: null });
-        setLoading(true);
-        try {
-            const res = await api.post('/index.php/mantencion/finalizar', { id: confirmFinish.id });
-            setMsg({ show: true, title: "Finalizada", text: "OT Completada. Insumos pendientes cancelados.", type: "success" });
-            cargarData();
-        } catch (error) {
-            setMsg({ show: true, title: "Error", text: error.response?.data?.message || "Error al finalizar.", type: "error" });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleExportar = () => {
-        setLoading(true);
-        api.get('/index.php/exportar?modulo=mantencion', { responseType: 'blob' })
-            .then((res) => {
-                const url = window.URL.createObjectURL(new Blob([res.data]));
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', `Mantencion_${new Date().toISOString().slice(0, 10)}.xlsx`);
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-            })
-            .catch((error) => {
-                console.error(error);
-                setMsg({ show: true, title: "Error", text: "Error al exportar o sesión expirada.", type: "error" });
-            })
-            .finally(() => setLoading(false));
+    const limpiarFiltros = () => {
+        setFiltroOT('');
+        setFiltroMaquina('');
+        setFiltroEstado('');
+        setFiltroFecha('');
+        setFiltroInsumo('');
+        setBusquedaInsumo('');
+        setMostrarSugerencias(false);
+        cargarSolicitudes();
     };
 
     const getBadge = (estado) => {
@@ -186,7 +237,6 @@ const Mantencion = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
-            
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
             
             <ConfirmModal 
@@ -209,52 +259,86 @@ const Mantencion = () => {
                 type="success" 
             />
 
-            <NuevaSolicitudModal show={showModal} onClose={() => setShowModal(false)} onSave={cargarData} otEditar={otEditar} />
+            <NuevaSolicitudModal show={showModal} onClose={() => setShowModal(false)} onSave={cargarSolicitudes} otEditar={otEditar} />
+            
+            <DetalleSolicitudModal 
+                show={detalleModal.show} 
+                onClose={() => setDetalleModal({ show: false, id: null })} 
+                solicitudId={detalleModal.id} 
+                onSave={cargarSolicitudes} 
+            />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
-                             <i className="bi bi-wrench-adjustable fs-3"></i>
+                            <i className="bi bi-wrench-adjustable fs-3"></i>
                         </div>
                         <h4 className="mb-0 fw-bold text-dark">Mantención</h4>
                     </div>
-                    
                     <div className="d-flex gap-2 justify-content-center flex-wrap">
                         {can('mant_excel') && (
-                            <button 
-                                className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
-                                onClick={handleExportar} 
-                                disabled={loading}
-                            >
-                                <i className="bi bi-file-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
-                                <span className="small fw-bold">Exportar</span>
+                            <button className="btn btn-outline-success shadow-sm d-flex align-items-center" onClick={handleExportar} disabled={loading}>
+                                <i className="bi bi-file-earmark-excel fs-5 me-2"></i>Exportar
                             </button>
                         )}
-                        
                         {can('mant_crear') && (
-                            <button 
-                                className="btn btn-warning shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3 fw-bold"
-                                onClick={handleNew}
-                            >
-                                <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
-                                <span className="small">Crear OT</span>
+                            <button className="btn btn-warning shadow-sm d-flex align-items-center fw-bold" onClick={handleNew}>
+                                <i className="bi bi-plus-lg fs-5 me-2"></i>Crear OT
                             </button>
                         )}
                     </div>
                 </div>
 
-                <div className="bg-light p-3 border-bottom">
-                    <div className="row g-2">
+                <div className="p-3 bg-light border-bottom">
+                    <div className="row g-2 align-items-center">
+                        
                         <div className="col-md-2">
                             <input type="text" className="form-control" placeholder="# OT" value={filtroOT} onChange={e => setFiltroOT(e.target.value)} />
                         </div>
+
                         <div className="col-md-3">
                             <input type="text" className="form-control" placeholder="Buscar Máquina..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
                         </div>
+
+                        <div className="col-md-3 position-relative" ref={wrapperRef}>
+                            <div className="input-group">
+                                <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-primary'}`}>
+                                    <i className="bi bi-box-seam"></i>
+                                </span>
+                                <input 
+                                    type="text" 
+                                    className="form-control border-start-0 ps-0" 
+                                    placeholder="Filtrar por insumo..." 
+                                    value={busquedaInsumo}
+                                    onChange={(e) => { 
+                                        setBusquedaInsumo(e.target.value); 
+                                        setMostrarSugerencias(true); 
+                                        if (e.target.value === '') setFiltroInsumo(''); 
+                                    }}
+                                    onFocus={() => setMostrarSugerencias(true)} 
+                                />
+                                {filtroInsumo && (
+                                    <button className="btn btn-outline-secondary border-start-0" type="button" onClick={() => { setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarSolicitudes(); }}>
+                                        <i className="bi bi-x"></i>
+                                    </button>
+                                )}
+                            </div>
+                            {mostrarSugerencias && busquedaInsumo && (
+                                <ul className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 1050, maxHeight: '250px', overflowY: 'auto' }}>
+                                    {sugerencias.length > 0 ? sugerencias.map(item => (
+                                        <li key={item.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => seleccionarInsumo(item)} style={{ cursor: 'pointer' }}>
+                                            <div className="fw-bold text-dark small">{item.nombre}</div>
+                                            <small className="text-muted" style={{ fontSize: '0.75rem' }}>SKU: {item.codigo_sku}</small>
+                                        </li>
+                                    )) : <li className="list-group-item text-muted small">No se encontraron insumos.</li>}
+                                </ul>
+                            )}
+                        </div>
+
                         <div className="col-md-2">
-                            <select className="form-select" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+                            <select className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
                                 <option value="">Estado: Todos</option>
                                 <option value="Pendiente">Pendiente</option>
                                 <option value="En Proceso">En Proceso</option>
@@ -262,23 +346,26 @@ const Mantencion = () => {
                                 <option value="Anulada">Anulada</option>
                             </select>
                         </div>
-                        <div className="col-md-3">
-                            <input type="date" className="form-control" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} />
-                        </div>
+
                         <div className="col-md-2 text-end">
-                            {(filtroOT || filtroMaquina || filtroEstado || filtroFecha) && (
-                                <button className="btn btn-outline-secondary w-100" onClick={() => { setFiltroOT(''); setFiltroMaquina(''); setFiltroEstado(''); setFiltroFecha(''); }}>
-                                    <i className="bi bi-x-lg"></i> Limpiar
+                            {(filtroOT || filtroMaquina || filtroEstado || filtroFecha || filtroInsumo) && (
+                                <button className="btn btn-outline-secondary w-100" onClick={limpiarFiltros}>
+                                    <i className="bi bi-x-lg me-1"></i> Limpiar
                                 </button>
                             )}
                         </div>
                     </div>
                 </div>
 
-                <div className="card-body p-0 flex-grow-1 overflow-auto">
-                    {loading ? <div className="p-5 text-center">Cargando...</div> : (
-                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '900px' }}>
-                            <thead className="bg-light sticky-top">
+                <div className="flex-grow-1 overflow-auto">
+                    {loading ? (
+                        <div className="d-flex flex-column justify-content-center align-items-center h-100">
+                            <div className="spinner-border text-primary mb-2" role="status"></div>
+                            <span className="text-muted">Cargando solicitudes...</span>
+                        </div>
+                    ) : (
+                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '1000px' }}>
+                            <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
                                 <tr>
                                     <th className="ps-4">OT #</th>
                                     <th>Máquina / Activo</th>
@@ -286,11 +373,11 @@ const Mantencion = () => {
                                     <th>Solicitante</th>
                                     <th>Fecha</th>
                                     <th>Estado</th>
-                                    <th className="text-end pe-4" style={{minWidth: '280px'}}>Acciones</th>
+                                    <th className="text-end pe-4" style={{minWidth: '200px'}}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {solicitudesFiltradas.map(s => (
+                                {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => (
                                     <tr key={s.id} className={s.estado === 'Anulada' ? 'bg-light text-muted' : ''}>
                                         <td className="ps-4 fw-bold">#{s.id}</td>
                                         <td>
@@ -302,35 +389,23 @@ const Mantencion = () => {
                                         <td>{new Date(s.fecha_solicitud).toLocaleDateString()}</td>
                                         <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
                                         
-                                        {/* --- COLUMNA ACCIONES HÍBRIDA --- */}
                                         <td className="text-end pe-4">
                                             <div className="d-flex justify-content-end align-items-center gap-2">
                                                 
-                                                {/* 1. BOTONES DE ACCIÓN (AFUERA) */}
                                                 {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
                                                     <>
                                                         {can('mant_finalizar') && (
                                                             <button 
-                                                                className="btn btn-sm btn-success fw-bold d-flex align-items-center px-2 py-1" 
+                                                                className="btn btn-sm btn-success fw-bold px-2 py-1" 
                                                                 onClick={() => solicitarFinalizar(s.id)}
-                                                                style={{fontSize: '0.8rem'}}
+                                                                title="Finalizar Trabajo"
                                                             >
-                                                                <i className="bi bi-check2-circle me-1"></i> Finalizar
-                                                            </button>
-                                                        )}
-                                                        {can('mant_anular') && (
-                                                            <button 
-                                                                className="btn btn-sm btn-outline-danger d-flex align-items-center px-2 py-1" 
-                                                                onClick={() => solicitarAnulacion(s.id)}
-                                                                style={{fontSize: '0.8rem'}}
-                                                            >
-                                                                <i className="bi bi-trash me-1"></i> Anular
+                                                                <i className="bi bi-check2-circle"></i>
                                                             </button>
                                                         )}
                                                     </>
                                                 )}
 
-                                                {/* 2. MENÚ DESPLEGABLE REACT (SIN JS DE BOOTSTRAP) */}
                                                 <div className="dropdown dropdown-container position-relative">
                                                     <button 
                                                         className={`btn btn-sm btn-light border ${openMenuId === s.id ? 'show' : ''}`}
@@ -340,12 +415,16 @@ const Mantencion = () => {
                                                         <i className="bi bi-three-dots-vertical"></i>
                                                     </button>
                                                     
-                                                    {/* Menú renderizado condicionalmente por React */}
                                                     {openMenuId === s.id && (
                                                         <ul className="dropdown-menu dropdown-menu-end shadow-sm border-0 show" 
                                                             style={{ position: 'absolute', right: 0, top: '100%', zIndex: 1050, display: 'block' }}>
                                                             
-                                                            {/* EDITAR */}
+                                                            <li>
+                                                                <button className="dropdown-item" onClick={() => { setOpenMenuId(null); setDetalleModal({ show: true, id: s.id }); }}>
+                                                                    <i className="bi bi-eye text-info me-2"></i>Ver Detalle
+                                                                </button>
+                                                            </li>
+
                                                             {can('mant_editar') && s.estado !== 'Completada' && s.estado !== 'Anulada' && (
                                                                 <li>
                                                                     <button className="dropdown-item" onClick={() => handleEdit(s)}>
@@ -354,7 +433,6 @@ const Mantencion = () => {
                                                                 </li>
                                                             )}
 
-                                                            {/* EXPORTACIONES */}
                                                             {can('mant_pdf') && (
                                                                 <li>
                                                                     <button className="dropdown-item" onClick={() => { setOpenMenuId(null); descargarPdfOT(s.id); }}>
@@ -362,6 +440,7 @@ const Mantencion = () => {
                                                                     </button>
                                                                 </li>
                                                             )}
+                                                            
                                                             {can('mant_excel') && (
                                                                 <li>
                                                                     <button className="dropdown-item" onClick={() => { setOpenMenuId(null); descargarExcelOT(s.id); }}>
@@ -369,15 +448,24 @@ const Mantencion = () => {
                                                                     </button>
                                                                 </li>
                                                             )}
+
+                                                            {can('mant_anular') && s.estado !== 'Completada' && s.estado !== 'Anulada' && (
+                                                                <li>
+                                                                    <hr className="dropdown-divider"/>
+                                                                    <button className="dropdown-item text-danger" onClick={() => solicitarAnulacion(s.id)}>
+                                                                        <i className="bi bi-trash me-2"></i>Anular OT
+                                                                    </button>
+                                                                </li>
+                                                            )}
                                                         </ul>
                                                     )}
                                                 </div>
-
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
-                                {solicitudesFiltradas.length === 0 && <tr><td colSpan="7" className="text-center py-5 text-muted">Sin resultados.</td></tr>}
+                                )) : (
+                                    <tr><td colSpan="7" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
+                                )}
                             </tbody>
                         </table>
                     )}

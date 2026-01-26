@@ -68,7 +68,7 @@ class MantencionRepository
             throw new Exception("El código '{$data['codigo_interno']}' ya existe.");
 
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
-        
+
         $sql = "INSERT INTO activos (codigo_interno, codigo_maquina, nombre, tipo, marca, modelo, anio, numero_serie, ubicacion, descripcion, centro_costo_id, estado_activo, imagen_url, frecuencia_mantencion, unidad_frecuencia) 
                 VALUES (:cod, :cod_maq, :nom, :tipo, :marca, :mod, :anio, :serie, :ubi, :desc, :cc, :est, :img, :frec, :uni)";
 
@@ -87,12 +87,12 @@ class MantencionRepository
             ':cc' => $ccId,
             ':est' => $data['estado_activo'] ?? 'OPERATIVO',
             ':img' => $data['imagen_url'] ?? null,
-            ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null, 
-            ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null     
+            ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null,
+            ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null
         ]);
-        
+
         $activoId = $this->db->lastInsertId();
-        
+
         if (!empty($data['galeria']) && is_array($data['galeria'])) {
             $sqlGal = "INSERT INTO activos_imagenes (activo_id, imagen_url, tipo) VALUES (:aid, :url, :tipo)";
             $stmtGal = $this->db->prepare($sqlGal);
@@ -151,9 +151,9 @@ class MantencionRepository
         if (!empty($data['imagen_url'])) {
             $params[':img'] = $data['imagen_url'];
         }
-        
+
         $this->db->prepare($sql)->execute($params);
-        
+
         if (!empty($data['galeria']) && is_array($data['galeria'])) {
             $sqlGal = "INSERT INTO activos_imagenes (activo_id, imagen_url, tipo) VALUES (:aid, :url, :tipo)";
             $stmtGal = $this->db->prepare($sqlGal);
@@ -246,13 +246,36 @@ class MantencionRepository
 
     public function getSolicitudes()
     {
-        $sql = "SELECT s.*, COALESCE(a.nombre, 'SERVICIO GENERAL') as activo, 
-                COALESCE(a.codigo_interno, 'N/A') as activo_codigo, u.nombre as solicitante_nombre, 
-                u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id 
-                FROM solicitudes_ot s LEFT JOIN activos a ON s.activo_id = a.id 
+        $insumoId = $_GET['insumo_id'] ?? null;
+
+        $sql = "SELECT DISTINCT s.*, 
+                COALESCE(a.nombre, 'SERVICIO GENERAL') as activo, 
+                COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
+                u.nombre as solicitante_nombre, 
+                u.apellido as solicitante_apellido, 
+                e.nombre as estado, 
+                e.id as estado_id 
+                FROM solicitudes_ot s 
+                LEFT JOIN activos a ON s.activo_id = a.id 
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id 
-                JOIN estados_solicitud e ON s.estado_id = e.id ORDER BY s.id DESC";
-        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+                JOIN estados_solicitud e ON s.estado_id = e.id ";
+
+        if ($insumoId) {
+            $sql .= " JOIN detalle_solicitud ds ON s.id = ds.solicitud_id 
+                    WHERE ds.insumo_id = :iid ";
+        }
+
+        $sql .= " ORDER BY s.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+
+        if ($insumoId) {
+            $stmt->execute([':iid' => $insumoId]);
+        } else {
+            $stmt->execute();
+        }
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getDetallesOT($id)
