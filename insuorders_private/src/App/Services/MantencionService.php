@@ -28,14 +28,22 @@ class MantencionService
             return null;
 
         $items = $this->repo->getDetallesOT($id);
-        return array_merge($header, ['items' => $items]);
+        
+        // AGREGADO: Obtener el estado de la cuadrilla (asignaciones)
+        // Esto permite ver quién ha firmado y quién falta
+        $asignaciones = $this->repo->getAsignadosOT($id);
+
+        return array_merge($header, [
+            'items' => $items,
+            'asignaciones' => $asignaciones
+        ]);
     }
 
     public function crearOT($data, $usuarioId)
     {
         if (empty($data['items'])) {
             throw new Exception("Debe agregar al menos un insumo.");
-        }
+        } 
         return $this->repo->createOT($data);
     }
 
@@ -45,6 +53,11 @@ class MantencionService
         $this->cronogramaRepo->syncByOT($id, $data);
 
         return $resultado;
+    }
+
+    public function finalizarTarea($otId, $usuarioId, $notas = '')
+    {
+        return $this->repo->finalizarTareaTecnico($otId, $usuarioId, $notas);
     }
 
     public function anularOT($id)
