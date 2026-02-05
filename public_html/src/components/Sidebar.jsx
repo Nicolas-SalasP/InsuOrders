@@ -18,7 +18,8 @@ const Sidebar = ({ onClose }) => {
 
     // Helper para verificar permisos
     const can = (permisoRequerido) => {
-        if (auth.rol === 'Admin' || auth.rol === 1) return true;
+        // Admin (ID 1 o Rol Admin) siempre tiene acceso
+        if (auth.rol === 'Admin' || auth.rol_id === 1) return true;
         return auth.permisos && auth.permisos.includes(permisoRequerido);
     };
 
@@ -79,14 +80,13 @@ const Sidebar = ({ onClose }) => {
             </NavLink>
         );
 
-        if (can('ver_compras') && notificaciones.compras.mensajes.length > 0) {
+        if (can('compras_ver') && notificaciones.compras.mensajes.length > 0) {
             notificaciones.compras.mensajes.forEach((msg, idx) => {
                 hasItems = true;
                 items.push(<Item key={`comp-${idx}`} icon="bi-cart-plus" color="danger" title={msg.titulo} text={msg.texto} to={msg.ruta} />);
             });
         }
 
-        // CORREGIDO: permiso 'bodega_ver'
         if (can('bodega_ver') && notificaciones.bodega.mensajes.length > 0) {
             notificaciones.bodega.mensajes.forEach((msg, idx) => {
                 hasItems = true;
@@ -110,7 +110,7 @@ const Sidebar = ({ onClose }) => {
 
     const totalUsuario = () => {
         let t = 0;
-        if (can('ver_compras')) t += notificaciones.compras.count;
+        if (can('compras_ver')) t += notificaciones.compras.count;
         if (can('bodega_ver')) t += notificaciones.bodega.count;
         if (can('mant_ver')) t += notificaciones.mantencion.count;
         return t;
@@ -169,7 +169,7 @@ const Sidebar = ({ onClose }) => {
                 </div>
             </div>
 
-            <div className="overflow-auto custom-scrollbar">
+            <div className="overflow-auto custom-scrollbar flex-grow-1" style={{ minHeight: 0 }}>
                 <ul className="nav nav-pills flex-column mb-auto gap-1">
 
                     {canViewDashboard() && (
@@ -197,7 +197,7 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
-                    {can('ver_compras') && (
+                    {can('compras_ver') && (
                         <li>
                             <NavLink to="/compras" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''} d-flex justify-content-between`}>
                                 <span><i className="bi bi-cart3 me-2"></i> Compras</span>
@@ -213,7 +213,7 @@ const Sidebar = ({ onClose }) => {
                         </li>
                     )}
 
-                    {can('ver_proveedores') && (
+                    {can('prov_ver') && (
                         <li>
                             <NavLink to="/proveedores" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
                                 <i className="bi bi-people me-2"></i> Proveedores
@@ -244,19 +244,20 @@ const Sidebar = ({ onClose }) => {
                             </NavLink>
                         </li>
                     )}
-                    {(auth.rol === 4 || auth.rol === 1 || auth.rol === 'Admin' || auth.rol === 'Técnico Mantención' || can('ope_ver')) && (
-                        <li className="nav-item">
-                            <NavLink to="/mis-insumos" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
-                                <i className="bi bi-tools me-2"></i> Mis Insumos
-                            </NavLink>
-                        </li>
-                    )}
 
-                    {(auth.rol === 'Admin' || auth.rol === 'Técnico' || auth.rol === 'Jefe Mantención') && (
-                        <NavLink to="/mis-mantenciones" className={`nav-link text-white ${location.pathname === '/mis-mantenciones' ? 'active bg-primary' : ''}`}>
-                            <i className="bi bi-clipboard-check me-2"></i>
-                            Mis Mantenciones
-                        </NavLink>
+                    {can('ope_ver') && (
+                        <>
+                            <li className="nav-item">
+                                <NavLink to="/mis-insumos" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
+                                    <i className="bi bi-tools me-2"></i> Mis Insumos
+                                </NavLink>
+                            </li>
+                            <li className="nav-item">
+                                <NavLink to="/mis-mantenciones" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active' : ''}`}>
+                                    <i className="bi bi-clipboard-check me-2"></i> Mis Mantenciones
+                                </NavLink>
+                            </li>
+                        </>
                     )}
 
                     {(can('ver_usuarios') || can('ver_config')) && (

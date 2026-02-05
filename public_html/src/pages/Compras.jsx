@@ -5,17 +5,19 @@ import DetalleOrdenModal from '../components/DetalleOrdenModal';
 import SubirArchivoModal from '../components/SubirArchivoModal';
 import RecepcionCompraModal from '../components/RecepcionCompraModal';
 import MessageModal from '../components/MessageModal';
+import { usePermission } from '../hooks/usePermission';
 
 const Compras = () => {
+    const { can } = usePermission();
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Modales Principales
-    const [showModal, setShowModal] = useState(false); 
-    const [verModal, setVerModal] = useState({ show: false, id: null }); 
-    const [uploadModal, setUploadModal] = useState({ show: false, id: null, url: null }); 
-    const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null }); 
-    
+    const [showModal, setShowModal] = useState(false);
+    const [verModal, setVerModal] = useState({ show: false, id: null });
+    const [uploadModal, setUploadModal] = useState({ show: false, id: null, url: null });
+    const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null });
+
     // Feedback y Confirmación
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirmModal, setConfirmModal] = useState({ show: false, id: null });
@@ -25,18 +27,18 @@ const Compras = () => {
 
     // --- FILTROS ---
     const [filtroProveedor, setFiltroProveedor] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState([]); 
-    const [showEstadoDropdown, setShowEstadoDropdown] = useState(false); 
-    const estadoRef = useRef(null); 
+    const [filtroEstado, setFiltroEstado] = useState([]);
+    const [showEstadoDropdown, setShowEstadoDropdown] = useState(false);
+    const estadoRef = useRef(null);
     const [filtroFecha, setFiltroFecha] = useState('');
-    
+
     // Autocompletado Insumos
-    const [filtroInsumo, setFiltroInsumo] = useState(''); 
-    const [busquedaInsumo, setBusquedaInsumo] = useState(''); 
-    const [listaInsumos, setListaInsumos] = useState([]); 
-    const [sugerencias, setSugerencias] = useState([]); 
+    const [filtroInsumo, setFiltroInsumo] = useState('');
+    const [busquedaInsumo, setBusquedaInsumo] = useState('');
+    const [listaInsumos, setListaInsumos] = useState([]);
+    const [sugerencias, setSugerencias] = useState([]);
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
-    const wrapperRef = useRef(null); 
+    const wrapperRef = useRef(null);
 
     const [itemsPrecargados, setItemsPrecargados] = useState([]);
     const [pendientes, setPendientes] = useState([]);
@@ -67,13 +69,13 @@ const Compras = () => {
             }
         };
 
-        const handleScroll = () => { 
-            if (actionMenu.show) closeActionMenu(); 
+        const handleScroll = () => {
+            if (actionMenu.show) closeActionMenu();
         };
 
         document.addEventListener("mousedown", handleClickOutside);
-        window.addEventListener("scroll", handleScroll, true); 
-        
+        window.addEventListener("scroll", handleScroll, true);
+
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
             window.removeEventListener("scroll", handleScroll, true);
@@ -84,12 +86,12 @@ const Compras = () => {
     useEffect(() => {
         if (busquedaInsumo === '') {
             setSugerencias([]);
-            if (!filtroInsumo) setMostrarSugerencias(false); 
+            if (!filtroInsumo) setMostrarSugerencias(false);
         } else {
             const matches = listaInsumos.filter(item => {
                 const term = busquedaInsumo.toLowerCase();
-                return item.nombre.toLowerCase().includes(term) || 
-                       item.codigo_sku.toLowerCase().includes(term);
+                return item.nombre.toLowerCase().includes(term) ||
+                    item.codigo_sku.toLowerCase().includes(term);
             });
             setSugerencias(matches);
         }
@@ -125,21 +127,20 @@ const Compras = () => {
 
     const generarOrdenDesdePendientes = () => {
         const items = pendientes.map(p => ({
-            id: p.id, 
-            nombre: p.nombre, 
-            sku: p.codigo_sku, 
+            id: p.id,
+            nombre: p.nombre,
+            sku: p.codigo_sku,
             unidad: p.unidad_medida,
-            cantidad: parseFloat(p.cantidad_total), 
+            cantidad: parseFloat(p.cantidad_total),
             precio: parseFloat(p.precio) || 0,
-            tipo: 'existente', 
+            tipo: 'existente',
             origen_ids: p.ids_detalle_solicitud,
-            // CORRECCIÓN: Aquí pasamos la lista de OTs que viene del backend
             ot_ids: p.lista_ots
         }));
         setItemsPrecargados(items);
         setShowModal(true);
     };
-    
+
     const handleNewOrder = () => { setItemsPrecargados([]); setShowModal(true); };
 
     // --- MENÚ FLOTANTE ---
@@ -149,7 +150,7 @@ const Compras = () => {
         setActionMenu({
             show: true,
             top: rect.bottom + window.scrollY + 2,
-            left: rect.right - 180, 
+            left: rect.right - 180,
             id: oc.id,
             url: oc.url_archivo,
             estado: oc.estado
@@ -172,7 +173,7 @@ const Compras = () => {
             const res = await api.post('/index.php/compras/cancelar', { id: confirmModal.id });
             if (res.data.success) {
                 setMsg({ show: true, title: 'Orden Anulada', text: 'La orden ha sido cancelada correctamente.', type: 'success' });
-                cargarOrdenes(); 
+                cargarOrdenes();
             } else {
                 setMsg({ show: true, title: 'Error', text: res.data.message || 'No se pudo anular la orden.', type: 'error' });
             }
@@ -189,7 +190,7 @@ const Compras = () => {
 
     const handleRegenerarPdf = async (id) => {
         closeActionMenu();
-        setLoading(true); 
+        setLoading(true);
         try {
             const res = await api.get(`/index.php/compras/regenerar-pdf?id=${id}`);
             if (res.data.success) {
@@ -223,7 +224,7 @@ const Compras = () => {
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
             }, 100);
-        } catch (e) { 
+        } catch (e) {
             console.error(e);
             setMsg({ show: true, title: "Error", text: "No se pudo generar el PDF. Intente 'Regenerar PDF'.", type: "error" });
         }
@@ -244,7 +245,7 @@ const Compras = () => {
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
             }, 100);
-        } catch (e) { 
+        } catch (e) {
             setMsg({ show: true, title: "Error", text: "Error al generar Excel del detalle", type: "error" });
         }
     };
@@ -262,7 +263,7 @@ const Compras = () => {
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
             }, 100);
-        } catch (e) { 
+        } catch (e) {
             setMsg({ show: true, title: "Error", text: "Error al exportar listado", type: "error" });
         }
     };
@@ -277,7 +278,7 @@ const Compras = () => {
 
     const limpiarFiltros = () => {
         setFiltroProveedor('');
-        setFiltroEstado([]); 
+        setFiltroEstado([]);
         setFiltroFecha('');
         setFiltroInsumo('');
         setBusquedaInsumo('');
@@ -286,9 +287,9 @@ const Compras = () => {
     };
 
     const seleccionarInsumo = (item) => {
-        setFiltroInsumo(item.id); 
-        setBusquedaInsumo(item.nombre); 
-        setMostrarSugerencias(false); 
+        setFiltroInsumo(item.id);
+        setBusquedaInsumo(item.nombre);
+        setMostrarSugerencias(false);
     };
 
     const ordenesFiltradas = ordenes.filter(oc => {
@@ -314,19 +315,19 @@ const Compras = () => {
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
 
             <NuevaOrdenModal show={showModal} onClose={() => setShowModal(false)} onSave={() => { cargarOrdenes(); cargarPendientes(); }} itemsIniciales={itemsPrecargados} />
-            <DetalleOrdenModal 
-                show={verModal.show} 
-                onHide={() => setVerModal({ show: false, id: null })} 
-                ordenId={verModal.id} 
-                onDownloadPdf={() => { setVerModal({ show: false }); handleDescargarPdf(); }} 
+            <DetalleOrdenModal
+                show={verModal.show}
+                onHide={() => setVerModal({ show: false, id: null })}
+                ordenId={verModal.id}
+                onDownloadPdf={() => { setVerModal({ show: false }); handleDescargarPdf(); }}
                 onExportExcel={() => { setVerModal({ show: false }); handleDescargarExcel(); }}
             />
-            <SubirArchivoModal 
-                show={uploadModal.show} 
-                onClose={() => setUploadModal({ show: false, id: null, url: null })} 
-                ordenId={uploadModal.id} 
-                currentUrl={uploadModal.url} 
-                onSave={cargarOrdenes} 
+            <SubirArchivoModal
+                show={uploadModal.show}
+                onClose={() => setUploadModal({ show: false, id: null, url: null })}
+                ordenId={uploadModal.id}
+                currentUrl={uploadModal.url}
+                onSave={cargarOrdenes}
             />
             <RecepcionCompraModal show={recepcionModal.show} onClose={() => setRecepcionModal({ show: false, id: null })} ordenId={recepcionModal.id} onSave={() => { cargarOrdenes(); cargarPendientes(); }} />
 
@@ -352,11 +353,11 @@ const Compras = () => {
             )}
 
             {actionMenu.show && (
-                <div 
+                <div
                     className="floating-action-menu shadow rounded bg-white border"
                     style={{ position: 'absolute', top: actionMenu.top, left: actionMenu.left, zIndex: 9999, minWidth: '180px', padding: '0.5rem 0' }}
                 >
-                    {actionMenu.estado !== 'Anulada' && (
+                    {actionMenu.estado !== 'Anulada' && can('compras_adjuntar') && (
                         <>
                             <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleAdjuntar}>
                                 <i className={`bi ${actionMenu.url ? "bi-paperclip text-success" : "bi-upload"} me-2`}></i>
@@ -365,17 +366,26 @@ const Compras = () => {
                             <div className="dropdown-divider my-1"></div>
                         </>
                     )}
-                    <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarPdf}>
-                        <i className="bi bi-file-earmark-pdf text-danger me-2"></i> Descargar PDF
-                    </button>
-                    <button className="dropdown-item py-2 px-3 d-flex align-items-center text-primary" onClick={() => handleRegenerarPdf(actionMenu.id)}>
-                        <i className="bi bi-arrow-clockwise me-2"></i> Regenerar PDF
-                    </button>
-                    <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarExcel}>
-                        <i className="bi bi-file-earmark-excel text-success me-2"></i> Descargar Excel
-                    </button>
-                    
-                    {actionMenu.estado === 'Emitida' && (
+
+                    {can('compras_pdf') && (
+                        <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarPdf}>
+                            <i className="bi bi-file-earmark-pdf text-danger me-2"></i> Descargar PDF
+                        </button>
+                    )}
+
+                    {can('compras_regenerar_pdf') && (
+                        <button className="dropdown-item py-2 px-3 d-flex align-items-center text-primary" onClick={() => handleRegenerarPdf(actionMenu.id)}>
+                            <i className="bi bi-arrow-clockwise me-2"></i> Regenerar PDF
+                        </button>
+                    )}
+
+                    {can('compras_exportar_detalle') && (
+                        <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarExcel}>
+                            <i className="bi bi-file-earmark-excel text-success me-2"></i> Descargar Excel
+                        </button>
+                    )}
+
+                    {actionMenu.estado === 'Emitida' && can('compras_anular') && (
                         <>
                             <div className="dropdown-divider my-1"></div>
                             <button className="dropdown-item py-2 px-3 d-flex align-items-center text-danger fw-bold" onClick={solicitarAnulacion}>
@@ -390,19 +400,23 @@ const Compras = () => {
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
-                             <i className="bi bi-cart3 fs-3"></i>
+                            <i className="bi bi-cart3 fs-3"></i>
                         </div>
                         <h4 className="mb-0 fw-bold text-dark">Gestión de Compras</h4>
                     </div>
                     <div className="d-flex gap-2 justify-content-center flex-wrap">
-                        <button className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3" onClick={handleExportar} disabled={loading}>
-                            <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
-                            <span className="small fw-bold">Exportar</span>
-                        </button>
-                        <button className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3" onClick={handleNewOrder}>
-                            <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
-                            <span className="small fw-bold">Nueva Orden</span>
-                        </button>
+                        {can('compras_exportar') && (
+                            <button className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3" onClick={handleExportar} disabled={loading}>
+                                <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
+                                <span className="small fw-bold">Exportar</span>
+                            </button>
+                        )}
+                        {can('compras_crear') && (
+                            <button className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3" onClick={handleNewOrder}>
+                                <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
+                                <span className="small fw-bold">Nueva Orden</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -420,7 +434,7 @@ const Compras = () => {
                                     <i className="bi bi-box-seam"></i>
                                 </span>
                                 <input type="text" className="form-control border-start-0 ps-0" placeholder="Filtrar por insumo..." value={busquedaInsumo}
-                                    onChange={(e) => { setBusquedaInsumo(e.target.value); setMostrarSugerencias(true); if(e.target.value === '') setFiltroInsumo(''); }}
+                                    onChange={(e) => { setBusquedaInsumo(e.target.value); setMostrarSugerencias(true); if (e.target.value === '') setFiltroInsumo(''); }}
                                     onFocus={() => setMostrarSugerencias(true)} />
                                 {filtroInsumo && (
                                     <button className="btn btn-outline-secondary border-start-0" type="button" onClick={() => { setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes(); }}>
@@ -433,16 +447,16 @@ const Compras = () => {
                                     {sugerencias.length > 0 ? sugerencias.map(item => (
                                         <li key={item.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => seleccionarInsumo(item)} style={{ cursor: 'pointer' }}>
                                             <div className="fw-bold text-dark small">{item.nombre}</div>
-                                            <small className="text-muted" style={{fontSize: '0.75rem'}}>SKU: {item.codigo_sku}</small>
+                                            <small className="text-muted" style={{ fontSize: '0.75rem' }}>SKU: {item.codigo_sku}</small>
                                         </li>
                                     )) : <li className="list-group-item text-muted small">No se encontraron insumos.</li>}
                                 </ul>
                             )}
                         </div>
-                        
+
                         <div className="col-md-2 position-relative" ref={estadoRef}>
-                            <button 
-                                className="form-select text-start" 
+                            <button
+                                className="form-select text-start"
                                 onClick={() => setShowEstadoDropdown(!showEstadoDropdown)}
                             >
                                 {filtroEstado.length === 0 ? "Todos los Estados" : `${filtroEstado.length} seleccionado(s)`}
@@ -451,9 +465,9 @@ const Compras = () => {
                                 <div className="card position-absolute w-100 shadow-sm mt-1 p-2" style={{ zIndex: 1050 }}>
                                     {['Emitida', 'Recepcion Parcial', 'Recepcion Total', 'Anulada'].map(estado => (
                                         <div key={estado} className="form-check mb-1">
-                                            <input 
-                                                className="form-check-input" 
-                                                type="checkbox" 
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
                                                 id={`check-${estado}`}
                                                 checked={filtroEstado.includes(estado)}
                                                 onChange={() => toggleEstado(estado)}
@@ -480,7 +494,7 @@ const Compras = () => {
                 </div>
 
                 <div className="card-body p-0 flex-grow-1 overflow-auto position-relative">
-                    {pendientes.length > 0 && (
+                    {pendientes.length > 0 && can('compras_crear_insumos') && (
                         <div className="alert alert-warning border-warning d-flex align-items-center justify-content-between m-3 shadow-sm fade show" role="alert">
                             <div className="d-flex align-items-center">
                                 <div className="bg-warning text-white rounded-circle p-2 me-3 d-flex justify-content-center align-items-center" style={{ width: 40, height: 40 }}><i className="bi bi-bell-fill"></i></div>
@@ -497,6 +511,7 @@ const Compras = () => {
                                     <th className="ps-4">N° Orden</th>
                                     <th>Proveedor</th>
                                     <th>Fecha</th>
+                                    <th>Destino</th>
                                     <th>Monto Total</th>
                                     <th>Estado</th>
                                     <th className="text-end pe-4">Acciones</th>
@@ -511,42 +526,57 @@ const Compras = () => {
                                             <small className="text-muted">{oc.proveedor_rut}</small>
                                         </td>
                                         <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
+                                        
+                                        <td>
+                                            {oc.destino ? (
+                                                <span className="badge bg-light text-dark border fw-normal">
+                                                    {oc.destino}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted small">-</span>
+                                            )}
+                                        </td>
+
                                         <td className="fw-bold text-dark">
                                             ${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}
                                         </td>
                                         <td><span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span></td>
-                                        
+
                                         <td className="text-end pe-4">
                                             <div className="d-flex justify-content-end align-items-center gap-2">
-                                                <button 
-                                                    className="btn btn-sm btn-outline-primary" 
-                                                    onClick={() => setVerModal({ show: true, id: oc.id })} 
-                                                    title="Ver Detalle"
-                                                >
-                                                    <i className="bi bi-eye"></i>
-                                                </button>
+                                                {can('compras_detalle') && (
+                                                    <button
+                                                        className="btn btn-sm btn-outline-primary"
+                                                        onClick={() => setVerModal({ show: true, id: oc.id })}
+                                                        title="Ver Detalle"
+                                                    >
+                                                        <i className="bi bi-eye"></i>
+                                                    </button>
+                                                )}
 
-                                                {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && (
-                                                    <button 
-                                                        className="btn btn-sm btn-warning text-dark" 
-                                                        onClick={() => setRecepcionModal({ show: true, id: oc.id })} 
+                                                {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && can('compras_recepcionar') && (
+                                                    <button
+                                                        className="btn btn-sm btn-warning text-dark"
+                                                        onClick={() => setRecepcionModal({ show: true, id: oc.id })}
                                                         title="Recepcionar"
                                                     >
                                                         <i className="bi bi-truck"></i>
                                                     </button>
                                                 )}
 
-                                                <button 
-                                                    className={`btn btn-sm btn-light border-0 action-menu-trigger ${actionMenu.id === oc.id && actionMenu.show ? 'active bg-light border' : ''}`}
-                                                    type="button" 
-                                                    onClick={(e) => handleActionMenuClick(e, oc)}
-                                                >
-                                                    <i className="bi bi-three-dots-vertical fs-5"></i>
-                                                </button>
+                                                {(can('compras_adjuntar') || can('compras_pdf') || can('compras_regenerar_pdf') || can('compras_exportar_detalle') || can('compras_anular')) && (
+                                                    <button
+                                                        className={`btn btn-sm btn-light border-0 action-menu-trigger ${actionMenu.id === oc.id && actionMenu.show ? 'active bg-light border' : ''}`}
+                                                        type="button"
+                                                        onClick={(e) => handleActionMenuClick(e, oc)}
+                                                    >
+                                                        <i className="bi bi-three-dots-vertical fs-5"></i>
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
-                                )) : <tr><td colSpan="6" className="text-center py-5 text-muted">No se encontraron órdenes con esos filtros</td></tr>}
+                                )) : <tr><td colSpan="7" className="text-center py-5 text-muted">No se encontraron órdenes con esos filtros</td></tr>}
                             </tbody>
                         </table>
                     )}

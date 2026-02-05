@@ -19,7 +19,8 @@ class OrdenCompraRepository
                     oc.id, oc.fecha_creacion, oc.monto_total, oc.url_archivo,
                     p.nombre as proveedor, p.rut as proveedor_rut,
                     e.nombre as estado, e.id as estado_id,
-                    u.nombre as creador
+                    u.nombre as creador,
+                    oc.destino 
                 FROM ordenes_compra oc
                 JOIN proveedores p ON oc.proveedor_id = p.id
                 JOIN estados_orden_compra e ON oc.estado_id = e.id
@@ -67,7 +68,7 @@ class OrdenCompraRepository
 
     public function getOrdenCompleta($id)
     {
-        $sqlCabecera = "SELECT oc.*, 
+        $sqlCabecera = "SELECT oc.*, oc.destino,
                             p.nombre as proveedor, p.rut as proveedor_rut, p.contacto_vendedor, p.direccion as proveedor_direccion, p.telefono as proveedor_telefono,
                             e.nombre as estado_nombre,
                             u.nombre as creador_nombre, u.apellido as creador_apellido, u.email as creador_email
@@ -152,8 +153,9 @@ class OrdenCompraRepository
 
     public function create($cabecera)
     {
-        $sql = "INSERT INTO ordenes_compra (proveedor_id, usuario_creador_id, estado_id, monto_neto, impuesto, monto_total, moneda, tipo_cambio, numero_cotizacion, impuesto_porcentaje, fecha_creacion) 
-                VALUES (:prov, :user, 2, :neto, :imp, :total, :moneda, :tc, :cotiz, :iva_pct, NOW())";
+        $sql = "INSERT INTO ordenes_compra (proveedor_id, usuario_creador_id, estado_id, monto_neto, impuesto, monto_total, moneda, tipo_cambio, numero_cotizacion, impuesto_porcentaje, fecha_creacion, destino) 
+                VALUES (:prov, :user, 2, :neto, :imp, :total, :moneda, :tc, :cotiz, :iva_pct, NOW(), :dest)";
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':prov' => $cabecera['proveedor_id'],
@@ -164,7 +166,8 @@ class OrdenCompraRepository
             ':moneda' => $cabecera['moneda'],
             ':tc' => $cabecera['tipo_cambio'],
             ':cotiz' => $cabecera['numero_cotizacion'] ?? null,
-            ':iva_pct' => $cabecera['impuesto_porcentaje']
+            ':iva_pct' => $cabecera['impuesto_porcentaje'],
+            ':dest' => $cabecera['destino'] ?? null
         ]);
         return $this->db->lastInsertId();
     }

@@ -6,15 +6,12 @@ import {
     LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
 
-// --- COMPONENTE CORREGIDO PARA ETIQUETAS DEL EJE Y ---
+// --- COMPONENTE AUXILIAR PARA ETIQUETAS EJE Y ---
 const CustomYAxisTick = ({ x, y, payload }) => {
     if (!payload || !payload.value) return null;
-    
     const text = payload.value.toString();
     const words = text.split(' ');
     let lines = [];
-
-    // Divide texto largo
     if (text.length > 15 && words.length >= 2) {
         const mid = Math.ceil(words.length / 2);
         lines.push(words.slice(0, mid).join(' '));
@@ -22,19 +19,19 @@ const CustomYAxisTick = ({ x, y, payload }) => {
     } else {
         lines.push(text);
     }
-
     return (
         <g transform={`translate(${x},${y})`}>
             <text x={-5} y={0} dy={0} textAnchor="end" fill="#000" fontSize="11px" fontWeight="500">
                 {lines.map((line, index) => (
-                    <tspan x={-5} dy={index === 0 ? "0.35em" : "1.2em"} key={index}>
-                        {line}
-                    </tspan>
+                    <tspan x={-5} dy={index === 0 ? "0.35em" : "1.2em"} key={index}>{line}</tspan>
                 ))}
             </text>
         </g>
     );
 };
+
+// Colores para el gráfico circular
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 const Dashboard = () => {
     const { auth } = useContext(AuthContext);
@@ -82,11 +79,8 @@ const Dashboard = () => {
         }
     };
 
-    // --- NUEVA FUNCIÓN: EXPORTAR RECEPCIONES ---
     const handleExportarRecepciones = () => {
-        // Llama al módulo 'recepciones' que creamos en el ExportController
         const url = `/index.php/exportar?modulo=recepciones&start=${fechas.start}&end=${fechas.end}`;
-        
         api.get(url, { responseType: 'blob' })
             .then((response) => {
                 const href = window.URL.createObjectURL(response.data);
@@ -100,6 +94,7 @@ const Dashboard = () => {
             .catch(err => console.error("Error exportando recepciones", err));
     };
 
+    // --- SECCIÓN: KPIs SUPERIORES ---
     const renderResumenSuperior = () => (
         <div className="row g-3 mb-5 animate__animated animate__fadeIn">
             <div className="col-12 col-sm-6 col-lg-3">
@@ -137,21 +132,18 @@ const Dashboard = () => {
         </div>
     );
 
+    // --- SECCIÓN: GESTIÓN DE COMPRAS ---
     const renderCompras = () => (
         <div className="mb-5 animate__animated animate__fadeIn">
-            {/* CABECERA MODIFICADA CON BOTÓN DE EXPORTAR */}
             <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h5 className="text-secondary mb-0"><i className="bi bi-cart3 me-2"></i>Gestión de Compras</h5>
-                <button 
-                    className="btn btn-sm btn-outline-success shadow-sm" 
-                    onClick={handleExportarRecepciones}
-                    title="Descargar historial de recepciones en Excel"
-                >
+                <button className="btn btn-sm btn-outline-success shadow-sm" onClick={handleExportarRecepciones} title="Descargar historial de recepciones">
                     <i className="bi bi-file-earmark-excel-fill me-2"></i>Exportar Recepciones
                 </button>
             </div>
 
             <div className="row g-4 mb-4">
+                {/* 1. KPI Gasto */}
                 <div className="col-12 col-lg-4">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body text-center d-flex flex-column justify-content-center">
@@ -160,6 +152,7 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
+                {/* 2. Tendencia */}
                 <div className="col-12 col-lg-8">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">📉 Tendencia de Gasto</div>
@@ -177,6 +170,7 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
+                {/* 3. Top Proveedores */}
                  <div className="col-12 col-lg-6">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">🏆 Top Proveedores</div>
@@ -193,6 +187,7 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
+                {/* 4. Top Inversión */}
                 <div className="col-12 col-lg-6">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">📦 Top Productos (Inversión)</div>
@@ -209,10 +204,86 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
+                {/* 5. Top Cantidad */}
+                <div className="col-12 col-lg-6">
+                    <div className="card border-0 shadow-sm h-100">
+                        <div className="card-header bg-white fw-bold py-3 border-0">📊 Top Productos (Más Comprados)</div>
+                        <div className="card-body" style={{ height: '350px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={data.compras?.top_insumos_cantidad || []}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="nombre" style={{fontSize: '10px'}} interval={0} angle={-15} textAnchor="end" height={60} />
+                                    <YAxis style={{ fontSize: '11px' }} />
+                                    <Tooltip formatter={(v) => `${parseInt(v).toLocaleString()} un.`} />
+                                    <Bar dataKey="total_cantidad" fill="#ffc107" name="Unidades Compradas" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+                {/* 6. Inversión por Categoría (Pie Chart) */}
+                <div className="col-12 col-lg-6">
+                    <div className="card border-0 shadow-sm h-100">
+                        <div className="card-header bg-white fw-bold py-3 border-0">🍰 Inversión por Categoría</div>
+                        <div className="card-body" style={{ height: '350px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={data.compras?.gasto_por_categoria || []}
+                                        cx="50%" cy="50%"
+                                        innerRadius={60} outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                        nameKey="nombre"
+                                    >
+                                        {(data.compras?.gasto_por_categoria || []).map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(v) => `$${parseInt(v).toLocaleString()}`} />
+                                    <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{fontSize: '11px'}} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+                {/* 7. Tabla Últimas Órdenes */}
+                <div className="col-12">
+                    <div className="card border-0 shadow-sm">
+                        <div className="card-header bg-white fw-bold py-3 border-0">📑 Últimas Órdenes Generadas</div>
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0">
+                                <thead className="table-light text-secondary small text-uppercase">
+                                    <tr>
+                                        <th className="ps-4">N° OC</th>
+                                        <th>Proveedor</th>
+                                        <th>Fecha</th>
+                                        <th className="text-end pe-4">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.compras?.ultimas_ordenes?.length > 0 ? (
+                                        data.compras.ultimas_ordenes.map(oc => (
+                                            <tr key={oc.id}>
+                                                <td className="ps-4 fw-bold text-primary">#{oc.id}</td>
+                                                <td>{oc.proveedor}</td>
+                                                <td className="small text-muted">{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
+                                                <td className="text-end pe-4 fw-bold text-dark">${parseInt(oc.monto_total).toLocaleString()}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr><td colSpan="4" className="text-center py-3 text-muted">Sin movimientos recientes</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
 
+    // --- SECCIÓN: MANTENCIÓN ---
     const renderMantencion = () => (
         <div className="mb-5 animate__animated animate__fadeIn">
             <h5 className="text-secondary border-bottom pb-2 mb-3"><i className="bi bi-wrench me-2"></i>Gestión de Mantención</h5>
@@ -296,6 +367,7 @@ const Dashboard = () => {
         </div>
     );
 
+    // --- SECCIÓN: BODEGA ---
     const renderBodega = () => (
         <div className="mb-5 animate__animated animate__fadeIn">
             <h5 className="text-secondary border-bottom pb-2 mb-3"><i className="bi bi-box-seam me-2"></i>Gestión de Bodega</h5>
@@ -350,10 +422,7 @@ const Dashboard = () => {
                                 className="btn btn-sm btn-outline-success d-flex align-items-center gap-2"
                                 onClick={() => {
                                     const url = `/index.php/exportar?modulo=dashboard_entregas&start=${fechas.start}&end=${fechas.end} 23:59:59&empleado_id=${empleadoFilter}`;
-                                    
-                                    api.get(url, {
-                                        responseType: 'blob',
-                                    })
+                                    api.get(url, { responseType: 'blob' })
                                     .then((response) => {
                                         const href = window.URL.createObjectURL(response.data);
                                         const link = document.createElement('a');
@@ -372,54 +441,78 @@ const Dashboard = () => {
                         <div className="card-body p-0 overflow-auto custom-scrollbar" style={{ maxHeight: '450px' }}>
                             {data.bodega?.timeline_entregas?.length > 0 ? (
                                 <ul className="list-group list-group-flush">
-                                    {data.bodega.timeline_entregas.map((log, idx) => (
-                                        <li key={idx} className="list-group-item px-4 py-3 border-bottom-0 border-top">
-                                            <div className="d-flex align-items-center">
-                                                <div className="d-flex flex-column align-items-center me-4 text-center border-end pe-3" style={{minWidth: '90px'}}>
-                                                    <div className="fw-bold text-dark lh-1" style={{fontSize: '1.4rem'}}>
-                                                        {new Date(log.fecha_entrega).getDate()}
-                                                    </div>
-                                                    <div className="text-uppercase text-muted small fw-bold mb-1" style={{fontSize: '0.7rem'}}>
-                                                        {new Date(log.fecha_entrega).toLocaleDateString('es-ES', { month: 'short' })}
-                                                    </div>
-                                                    <div className="badge bg-light text-secondary border rounded-pill px-2 py-1" style={{fontSize: '0.75rem'}}>
-                                                        <i className="bi bi-clock me-1"></i>
-                                                        {new Date(log.fecha_entrega).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                                                    </div>
-                                                </div>
+                                    {data.bodega.timeline_entregas.map((log, idx) => {
+                                        const isEntrada = log.tipo_movimiento_id == 3;
+                                        const badgeClass = isEntrada 
+                                            ? "badge bg-success bg-opacity-10 text-success border border-success ms-2 text-nowrap"
+                                            : "badge bg-danger bg-opacity-10 text-danger border border-danger ms-2 text-nowrap";
+                                        const signo = isEntrada ? '+' : '-';
+                                        
+                                        let motivo = log.observacion || '';
+                                        if (motivo.includes('Obs: ')) motivo = motivo.split('Obs: ')[1];
+                                        if (motivo === 'Sin obs') motivo = '';
 
-                                                <div className="flex-grow-1">
-                                                    <div className="d-flex justify-content-between align-items-start mb-2">
-                                                        <div>
-                                                            <h6 className="mb-0 fw-bold text-primary lh-sm" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                                                                {log.insumo}
-                                                            </h6>
-                                                            {log.ot_id && (
-                                                                <span className="badge bg-info bg-opacity-10 text-info border border-info px-2 py-0 mt-1" style={{fontSize: '0.7rem'}}>
-                                                                    OT #{log.ot_id}
-                                                                </span>
-                                                            )}
+                                        return (
+                                            <li key={idx} className="list-group-item px-4 py-3 border-bottom-0 border-top">
+                                                <div className="d-flex align-items-center">
+                                                    <div className="d-flex flex-column align-items-center me-4 text-center border-end pe-3" style={{minWidth: '90px'}}>
+                                                        <div className="fw-bold text-dark lh-1" style={{fontSize: '1.4rem'}}>
+                                                            {new Date(log.fecha_entrega).getDate()}
                                                         </div>
-                                                        <span className="badge bg-success bg-opacity-10 text-success border border-success ms-2 text-nowrap">
-                                                            - {parseFloat(log.cantidad)} {log.unidad_medida}
-                                                        </span>
+                                                        <div className="text-uppercase text-muted small fw-bold mb-1" style={{fontSize: '0.7rem'}}>
+                                                            {new Date(log.fecha_entrega).toLocaleDateString('es-ES', { month: 'short' })}
+                                                        </div>
+                                                        <div className="badge bg-light text-secondary border rounded-pill px-2 py-1" style={{fontSize: '0.75rem'}}>
+                                                            <i className="bi bi-clock me-1"></i>
+                                                            {new Date(log.fecha_entrega).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
                                                     </div>
 
-                                                    <div className="d-flex align-items-center bg-light rounded p-2 mt-2 border border-light">
-                                                        <div className="bg-white rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm me-2" style={{width:'32px', height:'32px', minWidth: '32px'}}>
-                                                            <i className="bi bi-person-fill text-secondary fs-6"></i>
-                                                        </div>
-                                                        <div className="d-flex flex-column lh-1 overflow-hidden">
-                                                            <span className="text-muted mb-1" style={{fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Recibido por</span>
-                                                            <span className="fw-bold text-dark text-truncate" title={log.retirado_por || 'Desconocido'}>
-                                                                {log.retirado_por || 'Sin Información'}
+                                                    <div className="flex-grow-1">
+                                                        <div className="d-flex justify-content-between align-items-start mb-2">
+                                                            <div>
+                                                                <h6 className="mb-0 fw-bold text-primary lh-sm" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                                                    {log.insumo}
+                                                                </h6>
+                                                                {motivo && (
+                                                                    <div className="text-muted small fst-italic mt-1">
+                                                                        <i className="bi bi-chat-left-text me-1"></i>"{motivo}"
+                                                                    </div>
+                                                                )}
+                                                                {log.ot_id && (
+                                                                    <span className="badge bg-info bg-opacity-10 text-info border border-info px-2 py-0 mt-1" style={{fontSize: '0.7rem'}}>
+                                                                        OT #{log.ot_id}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className={badgeClass}>
+                                                                {signo} {parseFloat(log.cantidad)} {log.unidad_medida}
                                                             </span>
                                                         </div>
+
+                                                        <div className="d-flex align-items-center bg-light rounded p-2 mt-2 border border-light">
+                                                            <div className="bg-white rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm me-2" style={{width:'32px', height:'32px', minWidth: '32px'}}>
+                                                                <i className={`bi ${isEntrada ? 'bi-box-arrow-in-down text-success' : 'bi-person-fill text-secondary'} fs-6`}></i>
+                                                            </div>
+                                                            <div className="d-flex flex-column lh-1 overflow-hidden">
+                                                                <span className="text-muted mb-1" style={{fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
+                                                                    {isEntrada ? 'Realizado por' : 'Recibido por'}
+                                                                </span>
+                                                                <span className="fw-bold text-dark text-truncate" title={log.retirado_por || 'Desconocido'}>
+                                                                    {log.retirado_por || 'Sin Información'}
+                                                                </span>
+                                                                {!isEntrada && log.ubicacion_destino && (
+                                                                    <small className="text-primary mt-1">
+                                                                        <i className="bi bi-geo-alt-fill me-1"></i>{log.ubicacion_destino}
+                                                                    </small>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </li>
-                                    ))}
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             ) : (
                                 <div className="text-center py-5 text-muted">Sin movimientos registrados.</div>
@@ -431,6 +524,7 @@ const Dashboard = () => {
         </div>
     );
 
+    // --- SECCIÓN: PERSONAL ---
     const renderPersonal = () => (
         <div className="mb-5 animate__animated animate__fadeIn">
             <h5 className="text-secondary border-bottom pb-2 mb-3"><i className="bi bi-people me-2"></i>Supervisión de Personal</h5>

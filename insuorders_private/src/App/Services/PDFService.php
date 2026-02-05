@@ -290,7 +290,94 @@ class PDFService extends FPDF {
         return $this->Output('S');
     }
 
-    // --- NUEVO MÉTODO PARA GENERAR EL PDF DE LA OT ---
+    public function generarPdfEntrega($ot, $entregas) {
+        // Configurar datos para que el Header() funcione
+        $this->orden = $ot; 
+        $this->AliasNbPages();
+        $this->AddPage();
+
+        // Título Específico
+        $this->SetY(35);
+        $this->SetFont('Arial', 'B', 14);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(0, 10, mb_convert_encoding('VALE DE ENTREGA DE MATERIALES', 'ISO-8859-1'), 0, 1, 'C');
+        $this->Ln(5);
+
+        // Datos de la Entrega
+        $this->SetFillColor(240);
+        $this->SetFont('Arial', 'B', 10);
+        $this->SetTextColor(0);
+        $this->Cell(0, 7, ' DETALLE DE RECEPCION', 1, 1, 'L', true);
+        
+        $this->SetFont('Arial', '', 9);
+        $this->Ln(2);
+
+        // Fila 1
+        $this->Cell(30, 6, 'OT Asociada:', 0, 0);
+        $this->Cell(60, 6, '# ' . $ot['id'], 0, 0);
+        $this->Cell(30, 6, 'Fecha:', 0, 0);
+        $this->Cell(60, 6, date('d/m/Y H:i'), 0, 1);
+
+        // Fila 2
+        $this->Cell(30, 6, 'Solicitante:', 0, 0);
+        $this->Cell(60, 6, $this->txt($ot['solicitante_nombre'] . ' ' . $ot['solicitante_apellido']), 0, 0);
+        $this->Cell(30, 6, mb_convert_encoding('Máquina:', 'ISO-8859-1'), 0, 0);
+        $this->Cell(60, 6, $this->txt($ot['activo'] ?? 'General'), 0, 1);
+        $this->Ln(5);
+
+        // Tabla de Items Entregados
+        $this->SetFont('Arial', 'B', 9);
+        $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->SetTextColor(255);
+
+        $w = [30, 90, 30, 40];
+        $h = ['SKU', 'DESCRIPCION', 'CANTIDAD', 'UNIDAD'];
+
+        foreach ($h as $i => $val) {
+            $this->Cell($w[$i], 7, $val, 0, 0, 'C', true);
+        }
+        $this->Ln();
+
+        $this->SetFont('Arial', '', 9);
+        $this->SetTextColor(0);
+        $fill = false;
+
+        if (empty($entregas)) {
+            $this->Cell(190, 10, 'No hay items en esta entrega.', 1, 1, 'C');
+        } else {
+            foreach ($entregas as $row) {
+                $this->SetFillColor(245);
+                
+                $desc = $this->txt($row['nombre'] ?? $row['insumo']);
+                if (strlen($desc) > 50) $desc = substr($desc, 0, 47) . '...';
+
+                $cant = floatval($row['cantidad_entregada'] ?? $row['cantidad']);
+
+                $this->Cell($w[0], 7, $row['codigo_sku'], 0, 0, 'C', $fill);
+                $this->Cell($w[1], 7, $desc, 0, 0, 'L', $fill);
+                $this->Cell($w[2], 7, $cant, 0, 0, 'C', $fill);
+                $this->Cell($w[3], 7, $this->txt($row['unidad_medida']), 0, 1, 'C', $fill);
+
+                $fill = !$fill;
+            }
+        }
+
+        $this->Ln(25);
+        $this->SetY(-50);
+        $this->SetFont('Arial', 'B', 8);
+        $this->Line(20, $this->GetY(), 80, $this->GetY());
+        $this->Line(130, $this->GetY(), 190, $this->GetY());
+
+        $this->SetXY(20, $this->GetY() + 2);
+        $this->Cell(60, 4, 'ENTREGADO POR (BODEGA)', 0, 0, 'C');
+        
+        $this->SetXY(130, $this->GetY());
+        $this->Cell(60, 4, 'RECIBIDO CONFORME (TECNICO)', 0, 0, 'C');
+
+        return $this->Output('S');
+    }
+
+    // ---  MÉTODO PARA GENERAR EL PDF DE LA OT ---
     public function generarPdfOT($ot, $detalles) {
         $this->AliasNbPages();
         $this->AddPage();
@@ -738,4 +825,6 @@ public function generarCotizacion($cotizacion)
         file_put_contents($tmpFile, $data);
         return $tmpFile;
     }
+
+    
 }

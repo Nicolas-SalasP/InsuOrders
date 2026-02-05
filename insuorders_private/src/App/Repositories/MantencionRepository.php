@@ -68,7 +68,7 @@ class MantencionRepository
             throw new Exception("El código '{$data['codigo_interno']}' ya existe.");
 
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
-        
+
         $sql = "INSERT INTO activos (codigo_interno, codigo_maquina, nombre, tipo, marca, modelo, anio, numero_serie, ubicacion, descripcion, centro_costo_id, estado_activo, imagen_url, frecuencia_mantencion, unidad_frecuencia) 
                 VALUES (:cod, :cod_maq, :nom, :tipo, :marca, :mod, :anio, :serie, :ubi, :desc, :cc, :est, :img, :frec, :uni)";
 
@@ -87,12 +87,12 @@ class MantencionRepository
             ':cc' => $ccId,
             ':est' => $data['estado_activo'] ?? 'OPERATIVO',
             ':img' => $data['imagen_url'] ?? null,
-            ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null, 
-            ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null     
+            ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null,
+            ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null
         ]);
-        
+
         $activoId = $this->db->lastInsertId();
-        
+
         if (!empty($data['galeria']) && is_array($data['galeria'])) {
             $sqlGal = "INSERT INTO activos_imagenes (activo_id, imagen_url, tipo) VALUES (:aid, :url, :tipo)";
             $stmtGal = $this->db->prepare($sqlGal);
@@ -151,9 +151,9 @@ class MantencionRepository
         if (!empty($data['imagen_url'])) {
             $params[':img'] = $data['imagen_url'];
         }
-        
+
         $this->db->prepare($sql)->execute($params);
-        
+
         if (!empty($data['galeria']) && is_array($data['galeria'])) {
             $sqlGal = "INSERT INTO activos_imagenes (activo_id, imagen_url, tipo) VALUES (:aid, :url, :tipo)";
             $stmtGal = $this->db->prepare($sqlGal);
@@ -246,14 +246,77 @@ class MantencionRepository
 
     public function getSolicitudes()
     {
-        $sql = "SELECT s.*, COALESCE(a.nombre, 'SERVICIO GENERAL') as activo, 
-                COALESCE(a.codigo_interno, 'N/A') as activo_codigo, u.nombre as solicitante_nombre, 
-                u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id 
-                FROM solicitudes_ot s LEFT JOIN activos a ON s.activo_id = a.id 
+        $insumoId = $_GET['insumo_id'] ?? null;
+
+        $sql = "SELECT DISTINCT s.*, 
+                COALESCE(a.nombre, 'SERVICIO GENERAL') as activo, 
+                COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
+                u.nombre as solicitante_nombre, 
+                u.apellido as solicitante_apellido, 
+                e.nombre as estado, 
+                e.id as estado_id,
+                (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') 
+                FROM ot_asignaciones oa 
+                JOIN usuarios usr ON oa.usuario_id = usr.id 
+                WHERE oa.solicitud_id = s.id) as asignados_nombres,
+                (SELECT GROUP_CONCAT(oa.usuario_id) 
+                FROM ot_asignaciones oa 
+                WHERE oa.solicitud_id = s.id) as asignados_ids
+
+                FROM solicitudes_ot s 
+                LEFT JOIN activos a ON s.activo_id = a.id 
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id 
-                JOIN estados_solicitud e ON s.estado_id = e.id ORDER BY s.id DESC";
-        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+                JOIN estados_solicitud e ON s.estado_id = e.id ";
+
+        if ($insumoId) {
+            $sql .= " JOIN detalle_solicitud ds ON s.id = ds.solicitud_id WHERE ds.insumo_id = :iid ";
+        }
+        $sql .= " ORDER BY s.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if ($insumoId)
+            $stmt->execute([':iid' => $insumoId]);
+        else
+            $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function getAsignadosOT($otId)
+    {
+        $sql = "SELECT oa.usuario_id, u.nombre, u.apellido, u.email, oa.completado, oa.tarea_rol 
+                FROM ot_asignaciones oa
+                JOIN usuarios u ON oa.usuario_id = u.id
+                WHERE oa.solicitud_id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $otId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
+    public function syncAsignaciones($otId, $asignadosIds)
+    {
+        $stmt = $this->db->prepare("SELECT usuario_id FROM ot_asignaciones WHERE solicitud_id = :id");
+        $stmt->execute([':id' => $otId]);
+        $actuales = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $nuevos = array_diff($asignadosIds, $actuales);
+        $borrar = array_diff($actuales, $asignadosIds);
+
+        if (!empty($borrar)) {
+            $placeholders = implode(',', array_fill(0, count($borrar), '?'));
+            $sqlDelete = "DELETE FROM ot_asignaciones WHERE solicitud_id = ? AND usuario_id IN ($placeholders)";
+            $this->db->prepare($sqlDelete)->execute(array_merge([$otId], array_values($borrar)));
+        }
+
+        if (!empty($nuevos)) {
+            $sqlInsert = "INSERT INTO ot_asignaciones (solicitud_id, usuario_id) VALUES (?, ?)";
+            $stmtInsert = $this->db->prepare($sqlInsert);
+            foreach ($nuevos as $uid) {
+                $stmtInsert->execute([$otId, $uid]);
+            }
+        }
+    }
+
 
     public function getDetallesOT($id)
     {
@@ -281,8 +344,8 @@ class MantencionRepository
                 $this->db->beginTransaction();
 
             $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, descripcion_trabajo, 
-                origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, asignado_a, estado_id, fecha_solicitud) 
-                VALUES (:uid, :aid, :desc, :orig, :area, :cc, :ext, :asig, 1, NOW())";
+                origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud) 
+                VALUES (:uid, :aid, :desc, :orig, :area, :cc, :ext, 1, NOW())";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
@@ -292,11 +355,14 @@ class MantencionRepository
                 ':orig' => $data['origen_tipo'],
                 ':area' => $data['area_negocio'],
                 ':cc' => $data['centro_costo_ot'],
-                ':ext' => $data['solicitante_externo'],
-                ':asig' => !empty($data['asignado_a']) ? $data['asignado_a'] : null
+                ':ext' => $data['solicitante_externo']
             ]);
 
             $otId = $this->db->lastInsertId();
+
+            if (!empty($data['asignados']) && is_array($data['asignados'])) {
+                $this->syncAsignaciones($otId, $data['asignados']);
+            }
 
             $insumosFinales = [];
             if (!empty($data['items']) && is_array($data['items']) && count($data['items']) > 0) {
@@ -348,13 +414,13 @@ class MantencionRepository
         try {
             if (!$inTransaction)
                 $this->db->beginTransaction();
+
             $sql = "UPDATE solicitudes_ot SET 
                         activo_id = :aid, 
                         descripcion_trabajo = :desc, 
                         solicitante_externo = :se, 
                         centro_costo_ot = :cc, 
-                        origen_tipo = :ot, 
-                        asignado_a = :asig 
+                        origen_tipo = :ot
                     WHERE id = :id";
 
             $this->db->prepare($sql)->execute([
@@ -363,9 +429,12 @@ class MantencionRepository
                 ':se' => $data['solicitante_externo'] ?: null,
                 ':cc' => $data['centro_costo_ot'] ?: null,
                 ':ot' => $data['origen_tipo'],
-                ':asig' => !empty($data['asignado_a']) ? $data['asignado_a'] : null,
                 ':id' => $id
             ]);
+
+            if (isset($data['asignados']) && is_array($data['asignados'])) {
+                $this->syncAsignaciones($id, $data['asignados']);
+            }
 
             if (isset($data['items'])) {
                 $stmtCurrent = $this->db->prepare("SELECT id FROM detalle_solicitud WHERE solicitud_id = :sid");
@@ -647,5 +716,43 @@ class MantencionRepository
     {
         $sql = "UPDATE activos SET plantilla_json = :json WHERE id = :id";
         $this->db->prepare($sql)->execute([':json' => $jsonStr, ':id' => $id]);
+    }
+
+    public function finalizarTareaTecnico($otId, $usuarioId, $notas = '')
+    {
+        $sql = "UPDATE ot_asignaciones 
+                SET completado = 1, fecha_completado = NOW(), notas_cierre = :notas
+                WHERE solicitud_id = :otId AND usuario_id = :uid";
+
+        $this->db->prepare($sql)->execute([
+            ':notas' => $notas,
+            ':otId' => $otId,
+            ':uid' => $usuarioId
+        ]);
+
+        $sqlCheck = "SELECT COUNT(*) as pendientes 
+                    FROM ot_asignaciones 
+                    WHERE solicitud_id = :otId AND completado = 0";
+
+        $stmt = $this->db->prepare($sqlCheck);
+        $stmt->execute([':otId' => $otId]);
+        $pendientes = $stmt->fetchColumn();
+
+        if ($pendientes == 0) {
+            $sqlUpdate = "UPDATE solicitudes_ot 
+                        SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), 
+                            fecha_cierre = NOW() 
+                        WHERE id = :id";
+            $this->db->prepare($sqlUpdate)->execute([':id' => $otId]);
+
+            return ['status' => 'closed', 'message' => '¡Excelente! Todos los técnicos han terminado. La OT se ha cerrado completamente.'];
+        } else {
+            $sqlUpdate = "UPDATE solicitudes_ot 
+                        SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'En Proceso') 
+                        WHERE id = :id";
+            $this->db->prepare($sqlUpdate)->execute([':id' => $otId]);
+
+            return ['status' => 'partial', 'message' => 'Tu parte ha sido registrada. La OT espera a los demás técnicos para cerrarse.'];
+        }
     }
 }

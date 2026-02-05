@@ -97,20 +97,27 @@ class MantencionController
 
     public function finalizar()
     {
-        $data = json_decode(file_get_contents("php://input"), true);
-        $id = $data['id'] ?? null;
-        
-        if ($id) {
-            try {
-                $this->repo->finalizar($id);
-                echo json_encode(["success" => true, "message" => "Orden finalizada"]);
-            } catch (Exception $e) {
-                http_response_code(500);
-                echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        try {
+            $data = json_decode(file_get_contents("php://input"), true);
+            $otId = $data['id'] ?? null;
+            $notas = $data['notas'] ?? '';
+            
+            if (!$otId) {
+                http_response_code(400);
+                echo json_encode(["success" => false, "message" => "Falta ID de la Orden"]);
+                return;
             }
-        } else {
-            http_response_code(400);
-            echo json_encode(["success" => false, "message" => "Falta ID"]);
+            $usuarioId = AuthMiddleware::verify(); 
+            $resultado = $this->service->finalizarTarea($otId, $usuarioId, $notas);
+            echo json_encode([
+                "success" => true, 
+                "message" => $resultado['message'],
+                "data" => $resultado
+            ]);
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 

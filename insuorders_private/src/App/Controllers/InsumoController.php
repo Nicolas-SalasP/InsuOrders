@@ -111,6 +111,7 @@ class InsumoController
             'descripcion' => $_POST['descripcion'] ?? '',
             'categoria_id' => !empty($_POST['categoria_id']) ? $_POST['categoria_id'] : null,
             'ubicacion_id' => !empty($_POST['ubicacion_id']) ? $_POST['ubicacion_id'] : null,
+            'stock_distribucion' => $_POST['stock_distribucion'] ?? null,
             'stock_actual' => $this->limpiarDato($_POST['stock_actual'] ?? 0, 'float') ?? 0,
             'stock_minimo' => $this->limpiarDato($_POST['stock_minimo'] ?? 0, 'float') ?? 0,
             'precio_costo' => $this->limpiarDato($_POST['precio_costo'] ?? 0, 'float') ?? 0,

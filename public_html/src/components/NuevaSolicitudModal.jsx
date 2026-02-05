@@ -8,17 +8,21 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [activos, setActivos] = useState([]);
     const [insumos, setInsumos] = useState([]);
     const [centrosCosto, setCentrosCosto] = useState([]);
-    const [personal, setPersonal] = useState([]);
-    const [tecnicos, setTecnicos] = useState([]); // <--- NUEVO: Lista de técnicos
+    const [personal, setPersonal] = useState([]); // Todos (para solicitante)
+    const [tecnicos, setTecnicos] = useState([]); // Solo Técnicos (para asignar)
 
     // --- ESTADOS DEL FORMULARIO ---
     const [modo, setModo] = useState('maquina');
     const [activoId, setActivoId] = useState('');
     const [solicitanteExterno, setSolicitanteExterno] = useState('');
     const [centroCostoOT, setCentroCostoOT] = useState('');
-    const [asignadoA, setAsignadoA] = useState(''); // <--- NUEVO: Técnico asignado
     const [observacion, setObservacion] = useState('');
     const [items, setItems] = useState([]);
+    
+    // --- ESTADO MULTI-ASIGNACIÓN ---
+    const [asignados, setAsignados] = useState([]); 
+    const [showDropdownAsignados, setShowDropdownAsignados] = useState(false);
+    const dropdownRef = useRef(null);
 
     // --- UI / BÚSQUEDA ---
     const [busqueda, setBusqueda] = useState('');
@@ -30,7 +34,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
     const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', action: null });
 
-    // --- DETERMINAR SI ES EDITABLE ---
     const esEditable = (estado) => {
         if (!otEditar) return true;
         const estadosBloqueados = ['Anulada', 'Completada', 'Cerrada'];
@@ -39,41 +42,64 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
     const editable = esEditable(otEditar?.estado);
 
-    // --- CARGA INICIAL ---
     useEffect(() => {
         if (show) cargarDatosMaestros();
     }, [show, otEditar]);
 
-    // Click outside para cerrar lista
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 setMostrarLista(false);
             }
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowDropdownAsignados(false);
+            }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [wrapperRef]);
+    }, [wrapperRef, dropdownRef]);
 
     const cargarDatosMaestros = async () => {
         try {
             setItems([]);
             setLoading(true);
 
-            // AGREGADO: Carga de técnicos (/usuarios/tecnicos)
-            const [resActivos, resInsumos, resCC, resPersonal, resTecnicos] = await Promise.all([
+            const [resActivos, resInsumos, resCC, resPersonal] = await Promise.all([
                 api.get('/index.php/mantencion/activos'),
                 api.get('/index.php/inventario'),
                 api.get('/index.php/mantencion/centros-costo'),
-                api.get('/index.php/personal'),
-                api.get('/index.php/usuarios/tecnicos') // <--- NUEVO ENDPOINT
+                api.get('/index.php/personal') 
             ]);
 
             setActivos(resActivos.data.data || []);
             setInsumos(resInsumos.data.data || []);
             setCentrosCosto(resCC.data.success ? resCC.data.data : []);
-            setPersonal(resPersonal.data.success ? resPersonal.data.data : []);
-            setTecnicos(resTecnicos.data.success ? resTecnicos.data.data : []);
+            
+            const listaEmpleados = resPersonal.data.success ? resPersonal.data.data : [];
+            setPersonal(listaEmpleados); 
+            const soloTecnicos = listaEmpleados.filter(e => {
+                if (!e.usuario_id) return false;
+                if (!e.cargo || e.cargo.trim() === '') return false;
+                const cargoNorm = e.cargo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                const keywords = [
+                    'tecn',      // Técnico, Tecnologo
+                    'mant',      // Mantención, Mantenimiento
+                    'mecan',     // Mecánico
+                    'elec',      // Eléctrico, Electricista
+                    'sold',      // Soldador
+                    'instru',    // Instrumentista
+                    'oper',      // Operario
+                    'ayud',      // Ayudante
+                    'capataz',   
+                    'lider',     
+                    'jefe'       
+                ];
+
+                return keywords.some(k => cargoNorm.includes(k));
+            });
+            
+            console.log("Técnicos filtrados (Estricto):", soloTecnicos);
+            setTecnicos(soloTecnicos);
 
             if (otEditar) {
                 cargarDatosEdicion();
@@ -82,7 +108,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             }
         } catch (e) {
             console.error("Error cargando maestros:", e);
-            setMsgModal({ show: true, title: "Error de Conexión", message: "No se pudieron cargar los datos del sistema.", type: "error" });
+            setMsgModal({ show: true, title: "Error", message: "No se pudieron cargar los datos.", type: "error" });
         } finally {
             setLoading(false);
         }
@@ -95,7 +121,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setBusqueda('');
         setSolicitanteExterno('');
         setCentroCostoOT('');
-        setAsignadoA(''); // <--- RESET
+        setAsignados([]); 
         setItems([]);
     };
 
@@ -111,13 +137,17 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 setCentroCostoOT(otEditar.centro_costo_ot || '');
             }
             setObservacion(otEditar.descripcion_trabajo || '');
-            setAsignadoA(otEditar.asignado_a || ''); // <--- CARGAR ASIGNACIÓN PREVIA
+            if (otEditar.asignados_ids) {
+                const ids = String(otEditar.asignados_ids).split(',').map(Number);
+                setAsignados(ids);
+            } else {
+                setAsignados([]);
+            }
 
             const resDetalles = await api.get(`/index.php/mantencion?detalle=true&id=${otEditar.id}`);
 
             if (resDetalles.data.success) {
                 const listaItems = resDetalles.data.data.items || [];
-
                 const itemsMapeados = listaItems.map(d => ({
                     id_producto: d.insumo_id || d.id,
                     id_linea: d.detalle_id || d.id,
@@ -137,6 +167,33 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         } catch (error) {
             console.error("Error cargando detalle OT:", error);
         }
+    };
+
+    const toggleTecnico = (empleado) => {
+        const uid = empleado.usuario_id ? parseInt(empleado.usuario_id) : parseInt(empleado.id);
+
+        setAsignados(prev => {
+            if (prev.includes(uid)) return prev.filter(id => id !== uid);
+            return [...prev, uid];
+        });
+    };
+
+    const getNombresAsignados = () => {
+        if (asignados.length === 0) return "Sin asignar";
+        
+        const nombres = tecnicos
+            .filter(t => {
+                const uid = t.usuario_id ? parseInt(t.usuario_id) : parseInt(t.id);
+                return asignados.includes(uid);
+            })
+            .map(t => {
+                const nombreFull = t.nombre_completo || t.nombre || '';
+                const partes = nombreFull.split(' ');
+                if (partes.length >= 2) return `${partes[0]} ${partes[2] || partes[1]}`; 
+                return nombreFull;
+            });
+            
+        return nombres.join(', ');
     };
 
     const handleActivoChange = async (e) => {
@@ -170,7 +227,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                     setItems([]);
                 }
             } catch (e) {
-                console.log("No hay kit o error al cargar kit", e);
                 setItems([]);
             }
         }
@@ -259,14 +315,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 area_negocio: null,
                 centro_costo_ot: modo === 'servicio' ? centroCostoOT : null,
                 origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio',
-                asignado_a: asignadoA || null // <--- NUEVO CAMPO EN PAYLOAD
+                asignados: asignados
             };
-
-            console.log("Enviando Payload:", payload);
 
             if (otEditar) {
                 await api.put(`/index.php/mantencion?id=${otEditar.id}`, payload);
-                setMsgModal({ show: true, title: "Actualizado", message: "OT actualizada.", type: "success" });
+                setMsgModal({ show: true, title: "Actualizado", message: "OT actualizada correctamente.", type: "success" });
             } else {
                 await api.post('/index.php/mantencion', payload);
                 setMsgModal({ show: true, title: "Creado", message: "OT generada exitosamente.", type: "success" });
@@ -315,7 +369,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 confirmText="Sí, Proceder"
             />
 
-            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }}>
+            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto', zIndex: 1050 }}>
                 <div className="modal-dialog modal-xl">
                     <div className="modal-content shadow-lg border-0">
 
@@ -372,8 +426,8 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                         <select className="form-select" value={solicitanteExterno} onChange={e => setSolicitanteExterno(e.target.value)} disabled={!!otEditar}>
                                                             <option value="">Seleccione Solicitante...</option>
                                                             {personal.map(p => (
-                                                                <option key={p.id} value={`${p.nombre} ${p.apellido}`}>
-                                                                    {p.nombre} {p.apellido}
+                                                                <option key={p.id} value={p.nombre_completo}>
+                                                                    {p.nombre_completo}
                                                                 </option>
                                                             ))}
                                                         </select>
@@ -390,21 +444,47 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 </div>
                                             )}
 
-                                            {/* NUEVO: ASIGNACIÓN DE TÉCNICO */}
-                                            <div className="mb-2">
-                                                <label className="form-label fw-bold small text-primary text-uppercase">Asignar Técnico (Opcional)</label>
-                                                <select 
-                                                    className="form-select border-info shadow-sm" 
-                                                    value={asignadoA} 
-                                                    onChange={e => setAsignadoA(e.target.value)}
-                                                >
-                                                    <option value="">-- Pendiente de Asignación --</option>
-                                                    {tecnicos.map(t => (
-                                                        <option key={t.id} value={t.id}>
-                                                            {t.nombre} {t.apellido} - {t.rol}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                            {/* ASIGNACIÓN MÚLTIPLE DE TÉCNICOS */}
+                                            <div className="mb-2" ref={dropdownRef}>
+                                                <label className="form-label fw-bold small text-primary text-uppercase">Asignar Técnicos (Multi-Selección)</label>
+                                                <div className="dropdown w-100">
+                                                    <button 
+                                                        className="form-select text-start d-flex justify-content-between align-items-center border-info shadow-sm" 
+                                                        type="button"
+                                                        onClick={() => setShowDropdownAsignados(!showDropdownAsignados)}
+                                                        disabled={!editable}
+                                                    >
+                                                        <span className="text-truncate" style={{maxWidth: '90%'}}>
+                                                            {getNombresAsignados()}
+                                                        </span>
+                                                        <i className="bi bi-chevron-down small"></i>
+                                                    </button>
+                                                    
+                                                    {showDropdownAsignados && (
+                                                        <div className="dropdown-menu show w-100 p-2 shadow border-info" style={{maxHeight: '250px', overflowY: 'auto'}}>
+                                                            {tecnicos.length > 0 ? tecnicos.map(t => {
+                                                                const uid = t.usuario_id ? parseInt(t.usuario_id) : parseInt(t.id);
+                                                                return (
+                                                                    <div key={uid} className="form-check py-1 px-3 hover-bg-light rounded cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleTecnico(t); }}>
+                                                                        <input 
+                                                                            className="form-check-input cursor-pointer" 
+                                                                            type="checkbox" 
+                                                                            id={`tec-${uid}`}
+                                                                            checked={asignados.includes(uid)}
+                                                                            onChange={() => {}} 
+                                                                        />
+                                                                        <label className="form-check-label w-100 cursor-pointer user-select-none" htmlFor={`tec-${uid}`}>
+                                                                            {t.nombre_completo} <small className="text-muted ms-1">({t.cargo})</small>
+                                                                        </label>
+                                                                    </div>
+                                                                );
+                                                            }) : <div className="text-muted small p-2 text-center">No se encontraron técnicos con cargo válido.</div>}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="form-text small text-end">
+                                                    {asignados.length} técnico(s) asignado(s).
+                                                </div>
                                             </div>
                                         </div>
 
