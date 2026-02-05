@@ -24,6 +24,7 @@ use App\Controllers\ImportController;
 use App\Controllers\PersonalController;
 use App\Controllers\OperarioController;
 use App\Controllers\MisMantencionesController;
+use App\Controllers\CategoriaController;
 
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
@@ -585,6 +586,24 @@ try {
         case 'personal':
             AuthMiddleware::verify();
             (new PersonalController())->index();
+            break;
+
+        // --- CATEGORÍAS DE INSUMOS ---
+        case 'categorias':
+            $c = new CategoriaController();
+            if ($method === 'GET') {
+                AuthMiddleware::verify('ver_categorias');
+                $c->index();
+            } elseif ($method === 'POST') {
+                AuthMiddleware::verify('crear_categorias');
+                $c->store();
+            } elseif ($method === 'PUT') {
+                AuthMiddleware::verify('editar_categorias');
+                $c->update();
+            } elseif ($method === 'DELETE') {
+                AuthMiddleware::verify('eliminar_categorias');
+                $c->delete();
+            }
             break;
 
         default:
