@@ -511,6 +511,7 @@ const Compras = () => {
                                     <th className="ps-4">N° Orden</th>
                                     <th>Proveedor</th>
                                     <th>Fecha</th>
+                                    <th>Destino</th>
                                     <th>Monto Total</th>
                                     <th>Estado</th>
                                     <th className="text-end pe-4">Acciones</th>
@@ -525,6 +526,17 @@ const Compras = () => {
                                             <small className="text-muted">{oc.proveedor_rut}</small>
                                         </td>
                                         <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
+                                        
+                                        <td>
+                                            {oc.destino ? (
+                                                <span className="badge bg-light text-dark border fw-normal">
+                                                    {oc.destino}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted small">-</span>
+                                            )}
+                                        </td>
+
                                         <td className="fw-bold text-dark">
                                             ${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}
                                         </td>
@@ -564,7 +576,7 @@ const Compras = () => {
                                             </div>
                                         </td>
                                     </tr>
-                                )) : <tr><td colSpan="6" className="text-center py-5 text-muted">No se encontraron órdenes con esos filtros</td></tr>}
+                                )) : <tr><td colSpan="7" className="text-center py-5 text-muted">No se encontraron órdenes con esos filtros</td></tr>}
                             </tbody>
                         </table>
                     )}

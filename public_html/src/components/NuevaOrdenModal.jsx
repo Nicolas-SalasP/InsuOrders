@@ -9,6 +9,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
     // Cabecera Orden
     const [proveedorId, setProveedorId] = useState('');
+    const [destino, setDestino] = useState(''); // <--- NUEVO ESTADO
     const [moneda, setMoneda] = useState('CLP');
     const [tipoCambio, setTipoCambio] = useState(1);
     const [numeroCotizacion, setNumeroCotizacion] = useState('');
@@ -46,6 +47,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
             // Resetear formulario
             setProveedorId('');
+            setDestino(''); // <--- RESETEAR DESTINO
             setMoneda('CLP');
             setTipoCambio(1);
             setNumeroCotizacion('');
@@ -138,6 +140,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
         try {
             await api.post('/index.php/compras', {
                 proveedor_id: proveedorId,
+                destino: destino, // <--- ENVIAR DESTINO
                 moneda,
                 tipo_cambio: tipoCambio,
                 numero_cotizacion: numeroCotizacion,
@@ -181,7 +184,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                         <div className="card border-0 shadow-sm mb-4">
                             <div className="card-body p-4">
                                 <div className="row g-3">
-                                    <div className="col-md-4">
+                                    <div className="col-md-6">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Proveedor</label>
                                         <select className={`form-select ${!proveedorId && error ? 'is-invalid' : ''}`}
                                             value={proveedorId} onChange={e => { setProveedorId(e.target.value); setError(''); }}>
@@ -189,12 +192,26 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.rut})</option>)}
                                         </select>
                                     </div>
-                                    <div className="col-md-2">
+                                    
+                                    {/* --- NUEVO CAMPO DESTINO --- */}
+                                    <div className="col-md-6">
+                                        <label className="form-label fw-bold small text-uppercase text-muted">Destino / Uso Interno</label>
+                                        <input 
+                                            type="text" 
+                                            className="form-control" 
+                                            placeholder="Ej: Stock Crítico / Proyecto X (Visible solo internamente)"
+                                            value={destino} 
+                                            onChange={e => setDestino(e.target.value)} 
+                                        />
+                                    </div>
+                                    {/* --------------------------- */}
+
+                                    <div className="col-md-3">
                                         <label className="form-label fw-bold small text-uppercase text-muted">N° Cotización</label>
                                         <input type="text" className="form-control" placeholder="Ej: COT-100"
                                             value={numeroCotizacion} onChange={e => setNumeroCotizacion(e.target.value)} />
                                     </div>
-                                    <div className="col-md-2">
+                                    <div className="col-md-3">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Moneda</label>
                                         <select className="form-select" value={moneda} onChange={e => { setMoneda(e.target.value); if (e.target.value === 'CLP') setTipoCambio(1); }}>
                                             <option value="CLP">CLP</option>
@@ -203,14 +220,14 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             <option value="EUR">EUR</option>
                                         </select>
                                     </div>
-                                    <div className="col-md-2">
+                                    <div className="col-md-3">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Tipo Cambio</label>
                                         <input type="number" className="form-control"
                                             value={tipoCambio} onChange={e => setTipoCambio(e.target.value)}
                                             disabled={moneda === 'CLP'}
                                         />
                                     </div>
-                                    <div className="col-md-2">
+                                    <div className="col-md-3">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Impuesto %</label>
                                         <div className="input-group">
                                             <input
@@ -315,7 +332,6 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                                     <div className="d-flex align-items-center gap-2">
                                                         <small className="text-muted font-monospace">{item.sku !== 'NUEVO' ? item.sku : ''}</small>
                                                         
-                                                        {/* --- CAMBIO: Badge de OT mejorado --- */}
                                                         {item.ids_detalle_solicitud && (
                                                             <span className="badge bg-warning text-dark border border-warning" title="Proviene de Solicitud de Mantención">
                                                                 <i className="bi bi-link-45deg me-1"></i>

@@ -125,7 +125,8 @@ class OrdenCompraService
                 'moneda' => $data['moneda'] ?? 'CLP',
                 'tipo_cambio' => $data['tipo_cambio'] ?? 1,
                 'numero_cotizacion' => $data['numero_cotizacion'] ?? null,
-                'impuesto_porcentaje' => $porcIVA
+                'impuesto_porcentaje' => $porcIVA,
+                'destino' => $data['destino'] ?? null
             ];
 
             $ordenId = $this->repo->create($datosCabecera);
