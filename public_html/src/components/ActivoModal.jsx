@@ -22,19 +22,18 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         estado_activo: 'OPERATIVO',
         descripcion: '',
         centro_costo: '',
-        // NUEVOS CAMPOS DE FRECUENCIA
         frecuencia_mantencion: '',
         unidad_frecuencia: 'MESES'
     });
 
     const [listaCentros, setListaCentros] = useState([]);
-    
+
     // --- ESTADOS PARA IMÁGENES ---
     const [mainImage, setMainImage] = useState(null);
     const [mainImagePreview, setMainImagePreview] = useState(null);
-    const [galleryItems, setGalleryItems] = useState([]); 
-    const [existingGallery, setExistingGallery] = useState([]); 
-    const [zoomImage, setZoomImage] = useState(null); 
+    const [galleryItems, setGalleryItems] = useState([]);
+    const [existingGallery, setExistingGallery] = useState([]);
+    const [zoomImage, setZoomImage] = useState(null);
 
     // --- ESTADOS EXISTENTES ---
     const [kitItems, setKitItems] = useState([]);
@@ -75,11 +74,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     estado_activo: activo.estado_activo || 'OPERATIVO',
                     descripcion: activo.descripcion || '',
                     centro_costo: activo.centro_costo_id || '',
-                    // CARGAR DATOS FRECUENCIA
                     frecuencia_mantencion: activo.frecuencia_mantencion || '',
                     unidad_frecuencia: activo.unidad_frecuencia || 'MESES'
                 });
-                
+
                 if (activo.imagen_url) {
                     const url = activo.imagen_url.startsWith('http') ? activo.imagen_url : `${BASE_URL}${activo.imagen_url}`;
                     setMainImagePreview(url);
@@ -106,8 +104,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     }, [show, activo]);
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-    // ... (Mantén funciones handleMainImageChange, handleAddGalleryItem, etc. igual) ...
     const handleMainImageChange = (e) => { const file = e.target.files[0]; if (file) { setMainImage(file); setMainImagePreview(URL.createObjectURL(file)); } };
     const handleAddGalleryItem = (e) => { const file = e.target.files[0]; if (file) { const newItem = { file, preview: URL.createObjectURL(file), tipo: 'General' }; setGalleryItems([...galleryItems, newItem]); } e.target.value = ''; };
     const handleGalleryTypeChange = (index, newType) => { const updatedItems = [...galleryItems]; updatedItems[index].tipo = newType; setGalleryItems(updatedItems); };
@@ -129,7 +125,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             const config = { headers: { 'Content-Type': 'multipart/form-data' } };
             const url = activo ? '/index.php/mantencion/editar-activo' : '/index.php/mantencion/crear-activo';
             await api.post(url, dataToSend, config);
-            
+
             showMessage("Éxito", "Activo guardado correctamente", "success");
             setTimeout(() => { onSave(); onClose(); }, 1000);
         } catch (error) {
@@ -137,7 +133,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         } finally { setSaving(false); }
     };
 
-    // ... (Mantén el resto de funciones cargarKit, etc. igual) ...
     const cargarKit = async (id) => { try { const res = await api.get(`/index.php/mantencion/kit?id=${id}`); setKitItems(res.data.data || []); } catch (e) { setKitItems([]); } };
     const agregarAlKit = async (insumo) => { if (!activo) return showMessage("Atención", "Guarda el activo primero.", "warning"); try { await api.post('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumo.id, cantidad: cantidadKit }); cargarKit(activo.id); setBusquedaInsumo(''); setCantidadKit(1); } catch (e) { showMessage("Error", "Error al agregar", "error"); } };
     const actualizarCantKit = async (insumoId, nuevaCant) => { const c = parseInt(nuevaCant); if (isNaN(c) || c < 1) return; try { await api.put('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumoId, cantidad: c }); cargarKit(activo.id); } catch (e) { } };
@@ -183,12 +178,11 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 {tab === 'general' && (
                                     <form onSubmit={handleSubmitGeneral}>
                                         <div className="row g-3">
-                                            {/* ... (Imagen Principal igual) ... */}
                                             <div className="col-12 mb-3">
                                                 <div className="d-flex align-items-center bg-light p-2 rounded border">
-                                                    <div className="me-3 shadow-sm border rounded overflow-hidden bg-white" 
-                                                         style={{ width: '85px', height: '85px', cursor: mainImagePreview ? 'zoom-in' : 'default' }}
-                                                         onClick={() => mainImagePreview && setZoomImage(mainImagePreview)}>
+                                                    <div className="me-3 shadow-sm border rounded overflow-hidden bg-white"
+                                                        style={{ width: '85px', height: '85px', cursor: mainImagePreview ? 'zoom-in' : 'default' }}
+                                                        onClick={() => mainImagePreview && setZoomImage(mainImagePreview)}>
                                                         {mainImagePreview ? (
                                                             <img src={mainImagePreview} alt="Port" className="w-100 h-100 object-fit-cover" />
                                                         ) : (
@@ -204,15 +198,13 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 </div>
                                             </div>
 
-                                            {/* ... (Campos existentes) ... */}
                                             <div className="col-md-6"><label className="form-label small fw-bold text-muted">CÓDIGO INTERNO</label><input type="text" name="codigo_interno" className="form-control fw-bold" required value={formData.codigo_interno} onChange={handleChange} /></div>
                                             <div className="col-md-6"><label className="form-label small fw-bold text-muted">CÓDIGO MÁQUINA</label><input type="text" name="codigo_maquina" className="form-control" value={formData.codigo_maquina} onChange={handleChange} /></div>
                                             <div className="col-12"><label className="form-label small fw-bold text-muted">NOMBRE ACTIVO</label><input type="text" name="nombre" className="form-control" required value={formData.nombre} onChange={handleChange} /></div>
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">MARCA</label><input type="text" name="marca" className="form-control" value={formData.marca} onChange={handleChange} /></div>
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">MODELO</label><input type="text" name="modelo" className="form-control" value={formData.modelo} onChange={handleChange} /></div>
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">AÑO</label><input type="number" name="anio" className="form-control" value={formData.anio} onChange={handleChange} /></div>
-                                            
-                                            {/* NUEVA SECCIÓN: FRECUENCIA MANTENCIÓN */}
+
                                             <div className="col-12 mt-3"><h6 className="text-primary small fw-bold border-bottom pb-2">PLANIFICACIÓN</h6></div>
                                             <div className="col-md-6">
                                                 <label className="form-label small fw-bold text-muted">FRECUENCIA MANTENCIÓN</label>
@@ -252,8 +244,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                         </div>
                                     </form>
                                 )}
-                                
-                                {/* ... (Resto de pestañas imagenes, kit, docs se mantienen igual) ... */}
+
                                 {tab === 'imagenes' && (
                                     <div>
                                         <div className="mb-4 bg-light p-3 rounded border">
@@ -269,8 +260,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                         <div className="col-md-6" key={index}>
                                                             <div className="card p-2 border-success bg-success bg-opacity-10 shadow-sm">
                                                                 <div className="d-flex align-items-center">
-                                                                    <img src={item.preview} alt="N" style={{ width: '55px', height: '55px', objectFit: 'cover', cursor: 'zoom-in' }} 
-                                                                         className="me-2 rounded border" onClick={() => setZoomImage(item.preview)} />
+                                                                    <img src={item.preview} alt="N" style={{ width: '55px', height: '55px', objectFit: 'cover', cursor: 'zoom-in' }}
+                                                                        className="me-2 rounded border" onClick={() => setZoomImage(item.preview)} />
                                                                     <select className="form-select form-select-sm" value={item.tipo} onChange={(e) => handleGalleryTypeChange(index, e.target.value)}>
                                                                         <option value="General">General</option><option value="Frente">Frente</option><option value="Atrás">Atrás</option><option value="Motor">Motor</option><option value="Interior">Interior</option>
                                                                     </select>
@@ -289,8 +280,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             <div className="row g-2">
                                                 {existingGallery.map((img) => (
                                                     <div key={img.id} className="col-6 col-md-3">
-                                                        <div className="card h-100 border-0 shadow-sm overflow-hidden" 
-                                                             style={{ cursor: 'zoom-in' }} onClick={() => setZoomImage(`${BASE_URL}${img.imagen_url}`)}>
+                                                        <div className="card h-100 border-0 shadow-sm overflow-hidden"
+                                                            style={{ cursor: 'zoom-in' }} onClick={() => setZoomImage(`${BASE_URL}${img.imagen_url}`)}>
                                                             <img src={`${BASE_URL}${img.imagen_url}`} className="card-img-top" alt={img.tipo} style={{ height: '110px', objectFit: 'cover' }} />
                                                             <div className="card-footer p-1 bg-white text-center"><small className="text-muted fw-bold" style={{ fontSize: '0.7rem' }}>{img.tipo}</small></div>
                                                         </div>
@@ -311,7 +302,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             </div>
                                             {busquedaInsumo && (
                                                 <div className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                                                    {insumos.filter(i => i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase())).slice(0, 8).map(i => (
+                                                    {insumos.filter(i =>
+                                                        i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase()) ||
+                                                        (i.codigo_sku && i.codigo_sku.toLowerCase().includes(busquedaInsumo.toLowerCase()))
+                                                    ).slice(0, 8).map(i => (
                                                         <button key={i.id} className="list-group-item list-group-item-action d-flex justify-content-between" onClick={() => agregarAlKit(i)}><span>{i.nombre}</span><small className="text-muted">{i.codigo_sku}</small></button>
                                                     ))}
                                                 </div>
