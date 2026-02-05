@@ -133,19 +133,29 @@ class DashboardRepository
 
         $sqlTimeline = "SELECT m.fecha as fecha_entrega, 
                             i.nombre as insumo, 
-                            m.cantidad, 
-                            COALESCE(e.nombre_completo, u.nombre, u_sol.nombre, 'Externo/Manual') as retirado_por, 
+                            m.cantidad,
+                            CASE 
+                                WHEN m.tipo_movimiento_id = 3 THEN u_resp.nombre 
+                                ELSE COALESCE(e.nombre_completo, u.nombre, u_sol.nombre, 'Externo/Manual') 
+                            END as retirado_por, 
+                            
                             ds.solicitud_id as ot_id, 
-                            i.unidad_medida
+                            i.unidad_medida,
+                            m.tipo_movimiento_id,
+                            m.observacion,
+                            ue.nombre as ubicacion_destino
                         FROM movimientos_inventario m
                         JOIN insumos i ON m.insumo_id = i.id
+                        LEFT JOIN usuarios u_resp ON m.usuario_id = u_resp.id 
+                        
                         LEFT JOIN empleados e ON m.empleado_id = e.id
                         LEFT JOIN usuarios u ON m.empleado_id = u.id
                         LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
                         LEFT JOIN solicitudes_ot sot ON ds.solicitud_id = sot.id
                         LEFT JOIN usuarios u_sol ON sot.usuario_solicitante_id = u_sol.id
+                        LEFT JOIN ubicaciones_envio ue ON m.ubicacion_envio_id = ue.id
                         
-                        WHERE m.tipo_movimiento_id = 2 
+                        WHERE m.tipo_movimiento_id IN (2, 3) 
                         AND m.fecha BETWEEN '$start' AND '$end'";
 
         if ($empleadoId) {
@@ -155,9 +165,9 @@ class DashboardRepository
         $sqlTimeline .= " ORDER BY m.fecha DESC LIMIT 20";
 
         return [
-            'top_receptores' => $this->safeQuery($sqlTopReceptores),
-            'timeline_entregas' => $this->safeQuery($sqlTimeline),
-            'lista_empleados' => $this->safeQuery("SELECT id, nombre_completo FROM empleados WHERE activo = 1 ORDER BY nombre_completo ASC")
+            'top_receptores' => $this->db->query($sqlTopReceptores)->fetchAll(PDO::FETCH_ASSOC),
+            'timeline_entregas' => $this->db->query($sqlTimeline)->fetchAll(PDO::FETCH_ASSOC),
+            'lista_empleados' => $this->db->query("SELECT id, nombre_completo FROM empleados WHERE activo = 1 ORDER BY nombre_completo ASC")->fetchAll(PDO::FETCH_ASSOC)
         ];
     }
 
@@ -183,7 +193,8 @@ class DashboardRepository
                     i.codigo_sku as codigo_producto,
                     m.cantidad as cuanto,
                     i.unidad_medida,
-                    ds.solicitud_id as ot_referencia
+                    ds.solicitud_id as ot_referencia,
+                    m.tipo_movimiento_id
                 FROM movimientos_inventario m
                 JOIN insumos i ON m.insumo_id = i.id
                 JOIN usuarios u_bod ON m.usuario_id = u_bod.id
@@ -191,13 +202,16 @@ class DashboardRepository
                 LEFT JOIN usuarios u_rec ON m.empleado_id = u_rec.id
                 LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
                 LEFT JOIN ubicaciones_envio ue ON m.ubicacion_envio_id = ue.id
-                WHERE m.tipo_movimiento_id = 2 AND m.fecha BETWEEN '$start' AND '$end'";
+                
+                WHERE m.tipo_movimiento_id IN (2, 3) 
+                AND m.fecha BETWEEN '$start' AND '$end'";
 
         if ($empleadoId) {
             $sql .= " AND m.empleado_id = " . intval($empleadoId);
         }
+
         $sql .= " ORDER BY m.fecha DESC";
 
-        return $this->safeQuery($sql);
+        return $this->db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

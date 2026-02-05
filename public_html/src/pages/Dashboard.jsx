@@ -417,6 +417,7 @@ const Dashboard = () => {
                                 <span>🚚 Últimas Entregas Realizadas</span>
                                 {empleadoFilter && <span className="badge bg-primary">Filtrado</span>}
                             </div>
+                            
                             <button 
                                 className="btn btn-sm btn-outline-success d-flex align-items-center gap-2"
                                 onClick={() => {
@@ -440,46 +441,78 @@ const Dashboard = () => {
                         <div className="card-body p-0 overflow-auto custom-scrollbar" style={{ maxHeight: '450px' }}>
                             {data.bodega?.timeline_entregas?.length > 0 ? (
                                 <ul className="list-group list-group-flush">
-                                    {data.bodega.timeline_entregas.map((log, idx) => (
-                                        <li key={idx} className="list-group-item px-4 py-3 border-bottom-0 border-top">
-                                            <div className="d-flex align-items-center">
-                                                <div className="d-flex flex-column align-items-center me-4 text-center border-end pe-3" style={{minWidth: '90px'}}>
-                                                    <div className="fw-bold text-dark lh-1" style={{fontSize: '1.4rem'}}>
-                                                        {new Date(log.fecha_entrega).getDate()}
+                                    {data.bodega.timeline_entregas.map((log, idx) => {
+                                        const isEntrada = log.tipo_movimiento_id == 3;
+                                        const badgeClass = isEntrada 
+                                            ? "badge bg-success bg-opacity-10 text-success border border-success ms-2 text-nowrap"
+                                            : "badge bg-danger bg-opacity-10 text-danger border border-danger ms-2 text-nowrap";
+                                        const signo = isEntrada ? '+' : '-';
+                                        
+                                        let motivo = log.observacion || '';
+                                        if (motivo.includes('Obs: ')) motivo = motivo.split('Obs: ')[1];
+                                        if (motivo === 'Sin obs') motivo = '';
+
+                                        return (
+                                            <li key={idx} className="list-group-item px-4 py-3 border-bottom-0 border-top">
+                                                <div className="d-flex align-items-center">
+                                                    <div className="d-flex flex-column align-items-center me-4 text-center border-end pe-3" style={{minWidth: '90px'}}>
+                                                        <div className="fw-bold text-dark lh-1" style={{fontSize: '1.4rem'}}>
+                                                            {new Date(log.fecha_entrega).getDate()}
+                                                        </div>
+                                                        <div className="text-uppercase text-muted small fw-bold mb-1" style={{fontSize: '0.7rem'}}>
+                                                            {new Date(log.fecha_entrega).toLocaleDateString('es-ES', { month: 'short' })}
+                                                        </div>
+                                                        <div className="badge bg-light text-secondary border rounded-pill px-2 py-1" style={{fontSize: '0.75rem'}}>
+                                                            <i className="bi bi-clock me-1"></i>
+                                                            {new Date(log.fecha_entrega).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-uppercase text-muted small fw-bold mb-1" style={{fontSize: '0.7rem'}}>
-                                                        {new Date(log.fecha_entrega).toLocaleDateString('es-ES', { month: 'short' })}
-                                                    </div>
-                                                    <div className="badge bg-light text-secondary border rounded-pill px-2 py-1" style={{fontSize: '0.75rem'}}>
-                                                        <i className="bi bi-clock me-1"></i>
-                                                        {new Date(log.fecha_entrega).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+
+                                                    <div className="flex-grow-1">
+                                                        <div className="d-flex justify-content-between align-items-start mb-2">
+                                                            <div>
+                                                                <h6 className="mb-0 fw-bold text-primary lh-sm" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                                                    {log.insumo}
+                                                                </h6>
+                                                                {motivo && (
+                                                                    <div className="text-muted small fst-italic mt-1">
+                                                                        <i className="bi bi-chat-left-text me-1"></i>"{motivo}"
+                                                                    </div>
+                                                                )}
+                                                                {log.ot_id && (
+                                                                    <span className="badge bg-info bg-opacity-10 text-info border border-info px-2 py-0 mt-1" style={{fontSize: '0.7rem'}}>
+                                                                        OT #{log.ot_id}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className={badgeClass}>
+                                                                {signo} {parseFloat(log.cantidad)} {log.unidad_medida}
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="d-flex align-items-center bg-light rounded p-2 mt-2 border border-light">
+                                                            <div className="bg-white rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm me-2" style={{width:'32px', height:'32px', minWidth: '32px'}}>
+                                                                <i className={`bi ${isEntrada ? 'bi-box-arrow-in-down text-success' : 'bi-person-fill text-secondary'} fs-6`}></i>
+                                                            </div>
+                                                            <div className="d-flex flex-column lh-1 overflow-hidden">
+                                                                <span className="text-muted mb-1" style={{fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
+                                                                    {isEntrada ? 'Realizado por' : 'Recibido por'}
+                                                                </span>
+                                                                <span className="fw-bold text-dark text-truncate" title={log.retirado_por || 'Desconocido'}>
+                                                                    {log.retirado_por || 'Sin Información'}
+                                                                </span>
+                                                                {!isEntrada && log.ubicacion_destino && (
+                                                                    <small className="text-primary mt-1">
+                                                                        <i className="bi bi-geo-alt-fill me-1"></i>{log.ubicacion_destino}
+                                                                    </small>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex-grow-1">
-                                                    <div className="d-flex justify-content-between align-items-start mb-2">
-                                                        <div>
-                                                            <h6 className="mb-0 fw-bold text-primary lh-sm" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{log.insumo}</h6>
-                                                            {log.ot_id && (
-                                                                <span className="badge bg-info bg-opacity-10 text-info border border-info px-2 py-0 mt-1" style={{fontSize: '0.7rem'}}>OT #{log.ot_id}</span>
-                                                            )}
-                                                        </div>
-                                                        <span className="badge bg-success bg-opacity-10 text-success border border-success ms-2 text-nowrap">
-                                                            - {parseFloat(log.cantidad)} {log.unidad_medida}
-                                                        </span>
-                                                    </div>
-                                                    <div className="d-flex align-items-center bg-light rounded p-2 mt-2 border border-light">
-                                                        <div className="bg-white rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm me-2" style={{width:'32px', height:'32px', minWidth: '32px'}}>
-                                                            <i className="bi bi-person-fill text-secondary fs-6"></i>
-                                                        </div>
-                                                        <div className="d-flex flex-column lh-1 overflow-hidden">
-                                                            <span className="text-muted mb-1" style={{fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Recibido por</span>
-                                                            <span className="fw-bold text-dark text-truncate" title={log.retirado_por || 'Desconocido'}>{log.retirado_por || 'Sin Información'}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    ))}
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             ) : (
                                 <div className="text-center py-5 text-muted">Sin movimientos registrados.</div>
@@ -519,7 +552,9 @@ const Dashboard = () => {
                                             </td>
                                             <td className="text-center">
                                                 {emp.pendientes > 0 ? (
-                                                    <span className="badge bg-warning text-dark border border-warning">{emp.pendientes} Pendientes</span>
+                                                    <span className="badge bg-warning text-dark border border-warning">
+                                                        {emp.pendientes} Pendientes
+                                                    </span>
                                                 ) : (
                                                     <span className="text-muted small">-</span>
                                                 )}

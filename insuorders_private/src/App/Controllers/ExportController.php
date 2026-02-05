@@ -453,7 +453,7 @@ class ExportController
     private function sheetDashboardEntregas(Spreadsheet $s, $idx)
     {
         $sheet = $this->getSheet($s, $idx);
-        $sheet->setTitle('Entregas Realizadas');
+        $sheet->setTitle('Movimientos Realizados');
         
         $start = $_GET['start'] ?? date('Y-m-01');
         $end = $_GET['end'] ?? date('Y-m-d 23:59:59');
@@ -466,9 +466,10 @@ class ExportController
             [
                 'Fecha', 
                 'Hora', 
-                'Entregado Por', 
-                'Recibido Por', 
-                'Destino / Ubicación', 
+                'Tipo',
+                'Responsable',
+                'Receptor / Destino', 
+                'Ubicación Envío', 
                 'Observación',
                 'Producto', 
                 'SKU', 
@@ -490,9 +491,12 @@ class ExportController
                     $comentarioLimpio = '';
                 }
 
+                $tipoMov = ($d['tipo_movimiento_id'] == 3) ? 'ENTRADA (+)' : 'SALIDA (-)';
+
                 return [
                     $d['fecha'],
                     $d['hora'],
+                    $tipoMov,
                     $d['quien_entrego'],
                     $d['quien_recibio'],
                     $d['ubicacion_destino'],
@@ -501,7 +505,7 @@ class ExportController
                     $d['codigo_producto'],
                     $d['cuanto'],
                     $d['unidad_medida'],
-                    $d['ot_referencia'] ?? 'N/A'
+                    $d['ot_referencia'] ?? '-'
                 ];
             }
         );
