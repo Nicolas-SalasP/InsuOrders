@@ -1,114 +1,157 @@
 import { useState, useEffect } from 'react';
+import { Modal, Button, Form, Row, Col } from 'react-bootstrap'; // Usamos componentes de Bootstrap para limpieza
 import api from '../api/axiosConfig';
-import MessageModal from './MessageModal'; 
+import MessageModal from './MessageModal';
 
 const BASE_URL_IMAGENES = '/api';
 
 const InsumoModal = ({ show, onClose, onSave, insumo }) => {
+    // Estado inicial limpio
     const initialState = {
         codigo_sku: '', nombre: '', descripcion: '',
-        categoria_id: '', ubicacion_id: '',
+        categoria_id: '',
+        // ubicacion_id se elimina de aquí porque ahora es múltiple
         stock_actual: 0, stock_minimo: 5,
         precio_costo: 0, moneda: 'CLP', unidad_medida: 'UN'
     };
 
     const [formData, setFormData] = useState(initialState);
+    
+    // Estados para Múltiples Ubicaciones
+    const [stockLocations, setStockLocations] = useState([{ ubicacion_id: '', cantidad: 0 }]);
+    
+    // Estados de UI y Datos
     const [imagenFile, setImagenFile] = useState(null);
     const [imagenPreview, setImagenPreview] = useState(null);
     const [listas, setListas] = useState({ categorias: [], sectores: [], ubicaciones: [] });
-    const [sectorSeleccionado, setSectorSeleccionado] = useState('');
-    const [ubicacionesFiltradas, setUbicacionesFiltradas] = useState([]);
     const [saving, setSaving] = useState(false);
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
-
-    // NUEVO ESTADO: Controla si el SKU es automático o manual
+    
+    // Estado SKU Automático
     const [esAutomatico, setEsAutomatico] = useState(true);
 
+    // Cargar listas y datos al abrir
     useEffect(() => {
         if (show) {
             setSaving(false);
-            
-            // 1. Cargar Listas Auxiliares
-            api.get('/index.php/inventario/auxiliares')
-                .then(res => {
-                    if (res.data.success) {
-                        setListas(res.data.data);
-                        
-                        if (insumo) {
-                            // --- MODO EDICIÓN ---
-                            setFormData({
-                                ...insumo,
-                                stock_actual: parseInt(insumo.stock_actual) || 0,
-                                stock_minimo: parseInt(insumo.stock_minimo) || 0,
-                                precio_costo: parseInt(insumo.precio_costo) || 0,
-                                categoria_id: insumo.categoria_id || '',
-                                ubicacion_id: insumo.ubicacion_id || ''
-                            });
-                            
-                            // En edición, desactivamos el automático para mostrar el código real
-                            setEsAutomatico(false);
-
-                            if (insumo.imagen_url) {
-                                const url = insumo.imagen_url.startsWith('http') ? insumo.imagen_url : `${BASE_URL_IMAGENES}${insumo.imagen_url}`;
-                                setImagenPreview(url);
-                            } else {
-                                setImagenPreview(null);
-                            }
-
-                            if (insumo.ubicacion_id && res.data.data.ubicaciones) {
-                                const ubi = res.data.data.ubicaciones.find(u => u.id == insumo.ubicacion_id);
-                                if (ubi) setSectorSeleccionado(ubi.sector_id);
-                            }
-                        } else {
-                            // --- MODO CREAR ---
-                            setFormData({ ...initialState, codigo_sku: 'Cargando...' });
-                            setSectorSeleccionado('');
-                            setImagenFile(null);
-                            setImagenPreview(null);
-                            setEsAutomatico(true); // Por defecto Automático al crear
-
-                            obtenerSiguienteSku(); // Llamada a la función auxiliar
-                        }
-                    }
-                })
-                .catch(e => console.error(e));
+            cargarAuxiliares();
         }
-    }, [show, insumo]);
+    }, [show, insumo]); // Dependencia 'insumo' para recargar si cambia la selección
 
-    // Función auxiliar para obtener el SKU del servidor
-    const obtenerSiguienteSku = () => {
-        setFormData(prev => ({ ...prev, codigo_sku: 'Generando...' }));
-        api.get('/index.php/insumos/next-sku')
-            .then(resSku => {
-                if (resSku.data.success) {
-                    setFormData(prev => ({ ...prev, codigo_sku: resSku.data.sku }));
-                }
-            })
-            .catch(err => {
-                console.error("Error obteniendo SKU:", err);
-                setFormData(prev => ({ ...prev, codigo_sku: '' }));
+    const cargarAuxiliares = async () => {
+        try {
+            const res = await api.get('/index.php/inventario/auxiliares'); // Tu ruta original
+            if (res.data.success) {
+                // CORRECCIÓN DEL ERROR: Aseguramos que siempre sean arrays
+                const data = res.data.data;
+                setListas({
+                    categorias: data.categorias || [],
+                    sectores: data.sectores || [],
+                    ubicaciones: data.ubicaciones || []
+                });
+
+                procesarDatosEdicion(data);
+            }
+        } catch (error) {
+            console.error("Error cargando auxiliares:", error);
+            setMsgModal({ show: true, title: "Error", message: "No se pudieron cargar las listas.", type: "error" });
+        }
+    };
+
+    const procesarDatosEdicion = (datosListas) => {
+        if (insumo) {
+            // --- MODO EDICIÓN ---
+            setFormData({
+                id: insumo.id,
+                codigo_sku: insumo.codigo_sku || '',
+                nombre: insumo.nombre || '',
+                descripcion: insumo.descripcion || '',
+                categoria_id: insumo.categoria_id || '',
+                stock_actual: parseFloat(insumo.stock_actual) || 0,
+                stock_minimo: parseFloat(insumo.stock_minimo) || 0,
+                precio_costo: parseFloat(insumo.precio_costo) || 0,
+                moneda: insumo.moneda || 'CLP',
+                unidad_medida: insumo.unidad_medida || 'UN'
             });
-    };
 
-    // Manejador del Switch Manual/Automático
-    const handleToggleAutomatico = (e) => {
-        const isAuto = e.target.checked;
-        setEsAutomatico(isAuto);
+            // Lógica de Imagen
+            if (insumo.imagen_url) {
+                const url = insumo.imagen_url.startsWith('http') ? insumo.imagen_url : `${BASE_URL_IMAGENES}${insumo.imagen_url}`;
+                setImagenPreview(url);
+            } else {
+                setImagenPreview(null);
+            }
 
-        if (isAuto) {
-            obtenerSiguienteSku(); // Si activa automático, traemos el número
+            // Desactivar automático al editar
+            setEsAutomatico(false);
+
+            // --- CARGAR UBICACIONES MÚLTIPLES ---
+            if (insumo.stocks_json) {
+                try {
+                    // El backend devuelve JSON, parseamos si es string o usamos directo si es objeto
+                    const parsedStocks = typeof insumo.stocks_json === 'string' 
+                        ? JSON.parse(insumo.stocks_json) 
+                        : insumo.stocks_json;
+                    
+                    if (Array.isArray(parsedStocks) && parsedStocks.length > 0) {
+                        setStockLocations(parsedStocks);
+                    } else {
+                         // Fallback si el array está vacío pero hay stock
+                        setStockLocations([{ ubicacion_id: insumo.ubicacion_defecto_id || '', cantidad: insumo.stock_actual || 0 }]);
+                    }
+                } catch (e) {
+                    setStockLocations([{ ubicacion_id: '', cantidad: 0 }]);
+                }
+            } else {
+                // Compatibilidad con datos antiguos (si no viene stocks_json)
+                // Usamos la ubicacion_id antigua si existe en el objeto insumo
+                const ubicacionAntigua = insumo.ubicacion_id || ''; 
+                setStockLocations([{ ubicacion_id: ubicacionAntigua, cantidad: insumo.stock_actual || 0 }]);
+            }
+
         } else {
-            setFormData(prev => ({ ...prev, codigo_sku: '' })); // Si desactiva, limpiamos para que escriba
+            // --- MODO CREAR ---
+            setFormData(initialState);
+            setImagenFile(null);
+            setImagenPreview(null);
+            setStockLocations([{ ubicacion_id: '', cantidad: 0 }]);
+            setEsAutomatico(true);
+            obtenerSiguienteSku();
         }
     };
 
-    useEffect(() => {
-        if (sectorSeleccionado && listas.ubicaciones.length > 0) {
-            setUbicacionesFiltradas(listas.ubicaciones.filter(u => u.sector_id == sectorSeleccionado));
-        } else {
-            setUbicacionesFiltradas([]);
+    const obtenerSiguienteSku = async () => {
+        setFormData(prev => ({ ...prev, codigo_sku: 'Generando...' }));
+        try {
+            const res = await api.get('/index.php/insumos/next-sku');
+            if (res.data.success) {
+                setFormData(prev => ({ ...prev, codigo_sku: res.data.sku }));
+            }
+        } catch (err) {
+            setFormData(prev => ({ ...prev, codigo_sku: '' }));
         }
-    }, [sectorSeleccionado, listas.ubicaciones]);
+    };
+
+    // --- MANEJO DE UBICACIONES DINÁMICAS ---
+    const handleLocationChange = (index, field, value) => {
+        const newLocations = [...stockLocations];
+        newLocations[index][field] = value;
+        setStockLocations(newLocations);
+    };
+
+    const addLocationRow = () => {
+        setStockLocations([...stockLocations, { ubicacion_id: '', cantidad: 0 }]);
+    };
+
+    const removeLocationRow = (index) => {
+        const newLocations = stockLocations.filter((_, i) => i !== index);
+        setStockLocations(newLocations);
+    };
+
+    // Calculamos el total visual sumando las filas
+    const totalStockCalculado = stockLocations.reduce((acc, curr) => acc + (parseFloat(curr.cantidad) || 0), 0);
+
+    // ----------------------------------------
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -123,194 +166,247 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
         }
     };
 
+    const handleToggleAutomatico = (e) => {
+        const isAuto = e.target.checked;
+        setEsAutomatico(isAuto);
+        if (isAuto) obtenerSiguienteSku();
+        else setFormData(prev => ({ ...prev, codigo_sku: '' }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const ubiIds = stockLocations.map(s => s.ubicacion_id).filter(id => id);
+        const uniqueIds = new Set(ubiIds);
+        if (ubiIds.length !== uniqueIds.size) {
+            setMsgModal({ show: true, title: "Atención", message: "No puedes seleccionar la misma ubicación dos veces.", type: "warning" });
+            return;
+        }
+
         setSaving(true);
         try {
             const dataToSend = new FormData();
             
-            Object.keys(formData).forEach(key => { 
-                if (key !== 'id') dataToSend.append(key, formData[key] ?? ''); 
+            Object.keys(formData).forEach(key => {
+                if (key !== 'id' && formData[key] !== null) {
+                    dataToSend.append(key, formData[key]);
+                }
             });
-            
-            // Enviamos la bandera para que el backend sepa la intención
-            dataToSend.append('es_automatico', esAutomatico ? 'true' : 'false');
-            
-            // Si es automático, podemos enviar vacío el SKU para forzar generación en backend 
-            // o enviar el que ya consultamos (aquí enviamos el que tiene el form)
+
+            dataToSend.append('stock_actual', totalStockCalculado);
+            dataToSend.append('stock_distribucion', JSON.stringify(stockLocations));
+
+            if (stockLocations.length > 0 && stockLocations[0].ubicacion_id) {
+                dataToSend.append('ubicacion_id', stockLocations[0].ubicacion_id);
+            }
 
             if (imagenFile) dataToSend.append('imagen', imagenFile);
 
+            const url = '/index.php/insumos'; 
             const config = { headers: { 'Content-Type': 'multipart/form-data' } };
-            
+
             if (insumo) {
                 dataToSend.append('id', insumo.id);
                 dataToSend.append('_method', 'PUT'); 
-                await api.post('/index.php/inventario', dataToSend, config);
-            } else {
-                await api.post('/index.php/inventario', dataToSend, config);
             }
+            await api.post(url, dataToSend, config);
             
             onSave();
             onClose();
         } catch (error) {
-            setMsgModal({ show: true, title: "Error", message: error.response?.data?.message || error.message, type: "error" });
+            console.error(error);
+            const msg = error.response?.data?.message || "Error al guardar el insumo.";
+            setMsgModal({ show: true, title: "Error", message: msg, type: "error" });
         } finally {
             setSaving(false);
         }
+    };
+
+    // Helper para mostrar nombre de ubicación completo (Sector - Ubicación)
+    const getUbicacionLabel = (ubi) => {
+        return ubi.sector_nombre ? `${ubi.sector_nombre} - ${ubi.nombre}` : ubi.nombre;
     };
 
     if (!show) return null;
 
     return (
         <>
-            <MessageModal show={msgModal.show} onClose={() => setMsgModal({...msgModal, show: false})} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
+            <MessageModal 
+                show={msgModal.show} 
+                onClose={() => setMsgModal({...msgModal, show: false})} 
+                title={msgModal.title} 
+                message={msgModal.message} 
+                type={msgModal.type} 
+            />
             
-            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto', zIndex: 1050 }}>
+            {/* Modal Overlay Manual con estilos de Bootstrap */}
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }} tabIndex="-1">
                 <div className="modal-dialog modal-lg modal-dialog-centered">
-                    <div className="modal-content border-0 shadow-lg">
+                    <div className="modal-content shadow">
                         
                         <div className="modal-header bg-primary text-white">
-                            <h5 className="modal-title fw-bold">
+                            <h5 className="modal-title">
                                 {insumo ? <><i className="bi bi-pencil-square me-2"></i>Editar Insumo</> : <><i className="bi bi-plus-circle me-2"></i>Nuevo Insumo</>}
                             </h5>
-                            <button className="btn-close btn-close-white" onClick={onClose} disabled={saving}></button>
+                            <button type="button" className="btn-close btn-close-white" onClick={onClose} disabled={saving}></button>
                         </div>
                         
-                        <form onSubmit={handleSubmit}>
-                            <div className="modal-body p-4">
-                                <div className="row g-3 mb-4">
-                                    
-                                    {/* CAMBIO: SECCIÓN SKU CON SWITCH */}
-                                    <div className="col-md-4">
+                        <div className="modal-body">
+                            <Form onSubmit={handleSubmit}>
+                                <Row className="g-3">
+                                    {/* SKU y Nombre */}
+                                    <Col md={4}>
                                         <div className="d-flex justify-content-between align-items-center mb-1">
-                                            <label className="form-label small fw-bold text-secondary mb-0">Código SKU</label>
-                                            
-                                            {/* Solo mostrar switch si estamos creando nuevo */}
+                                            <Form.Label className="small fw-bold mb-0">Código SKU</Form.Label>
                                             {!insumo && (
-                                                <div className="form-check form-switch">
-                                                    <input 
-                                                        className="form-check-input cursor-pointer" 
-                                                        type="checkbox" 
-                                                        id="autoSkuSwitch"
-                                                        checked={esAutomatico}
-                                                        onChange={handleToggleAutomatico}
-                                                        title="Activar para generación automática, desactivar para manual"
-                                                    />
-                                                    <label className="form-check-label small text-muted" htmlFor="autoSkuSwitch" style={{fontSize: '0.7rem'}}>
-                                                        {esAutomatico ? 'Auto' : 'Manual'}
-                                                    </label>
-                                                </div>
+                                                <Form.Check 
+                                                    type="switch"
+                                                    id="autoSkuSwitch"
+                                                    label={esAutomatico ? "Auto" : "Manual"}
+                                                    checked={esAutomatico}
+                                                    onChange={handleToggleAutomatico}
+                                                    className="small"
+                                                    style={{fontSize: '0.8rem'}}
+                                                />
                                             )}
                                         </div>
-
-                                        <input 
+                                        <Form.Control 
                                             type="text" 
                                             name="codigo_sku" 
-                                            className={`form-control font-monospace fw-bold ${esAutomatico ? 'bg-light text-primary' : 'bg-white text-dark border-primary'}`} 
-                                            readOnly={esAutomatico} 
                                             value={formData.codigo_sku} 
                                             onChange={handleChange}
-                                            placeholder={esAutomatico ? "Generando..." : "Ej: SERV-01"}
-                                            required={!esAutomatico} // Requerido solo si es manual
+                                            readOnly={esAutomatico}
+                                            className={`font-monospace fw-bold ${esAutomatico ? 'bg-light text-primary' : ''}`}
+                                            required={!esAutomatico}
+                                            placeholder={esAutomatico ? "Generando..." : "Ej: SKU-001"}
                                         />
-                                        {!esAutomatico && !insumo && (
-                                            <div className="form-text text-muted" style={{fontSize: '0.65rem'}}>
-                                                Ingrese un código alfanumérico para Servicios.
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Nombre */}
-                                    <div className="col-md-8">
-                                        <label className="form-label small fw-bold text-secondary">Nombre <span className="text-danger">*</span></label>
-                                        <input type="text" name="nombre" className="form-control" required value={formData.nombre} onChange={handleChange} autoFocus />
-                                    </div>
-                                    
-                                    {/* Descripción */}
-                                    <div className="col-md-8">
-                                        <label className="form-label small text-muted">Descripción</label>
-                                        <textarea name="descripcion" className="form-control" rows="3" value={formData.descripcion} onChange={handleChange}></textarea>
-                                    </div>
-                                    
-                                    {/* Imagen */}
-                                    <div className="col-md-4">
-                                        <label className="form-label small fw-bold text-secondary">Imagen</label>
-                                        <input type="file" className="form-control" accept="image/*" onChange={handleImageChange} />
-                                        {imagenPreview && (
-                                            <div className="mt-2 text-center border rounded p-1 bg-light">
-                                                <img src={imagenPreview} style={{ maxHeight: '80px', objectFit: 'contain' }} alt="Preview" />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                    </Col>
+                                    <Col md={8}>
+                                        <Form.Label className="small fw-bold">Nombre <span className="text-danger">*</span></Form.Label>
+                                        <Form.Control type="text" name="nombre" value={formData.nombre} onChange={handleChange} required />
+                                    </Col>
 
-                                {/* Sección Ubicación */}
-                                <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold small text-uppercase">Ubicación y Categoría</h6>
-                                <div className="row g-3 mb-4">
-                                    <div className="col-md-4">
-                                        <label className="form-label small fw-bold">Categoría <span className="text-danger">*</span></label>
-                                        <select name="categoria_id" className="form-select" required value={formData.categoria_id} onChange={handleChange}>
+                                    {/* Categoría y Unidad */}
+                                    <Col md={6}>
+                                        <Form.Label className="small fw-bold">Categoría <span className="text-danger">*</span></Form.Label>
+                                        <Form.Select name="categoria_id" value={formData.categoria_id} onChange={handleChange} required>
                                             <option value="">Seleccione...</option>
-                                            {listas.categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label small fw-bold">Sector (Bodega)</label>
-                                        <select className="form-select" value={sectorSeleccionado} onChange={(e) => { setSectorSeleccionado(e.target.value); setFormData({ ...formData, ubicacion_id: '' }); }}>
-                                            <option value="">Seleccione...</option>
-                                            {listas.sectores && listas.sectores.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label small fw-bold">Estantería / Ubicación</label>
-                                        <select name="ubicacion_id" className="form-select" value={formData.ubicacion_id} onChange={handleChange} disabled={!sectorSeleccionado}>
-                                            <option value="">Seleccione...</option>
-                                            {ubicacionesFiltradas.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
+                                            {listas.categorias?.map(c => (
+                                                <option key={c.id} value={c.id}>{c.nombre}</option>
+                                            ))}
+                                        </Form.Select>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Label className="small fw-bold">Unidad Medida</Form.Label>
+                                        <Form.Select name="unidad_medida" value={formData.unidad_medida} onChange={handleChange}>
+                                            <option value="UN">Unidad (UN)</option>
+                                            <option value="KG">Kilogramos (KG)</option>
+                                            <option value="LT">Litros (LT)</option>
+                                            <option value="MT">Metros (MT)</option>
+                                            <option value="CAJA">Caja</option>
+                                            <option value="GL">Global</option>
+                                        </Form.Select>
+                                    </Col>
 
-                                {/* Sección Valores */}
-                                <h6 className="text-primary border-bottom pb-2 mb-3 fw-bold small text-uppercase">Inventario y Costos</h6>
-                                <div className="row g-3">
-                                    <div className="col-md-3">
-                                        <label className="form-label small fw-bold">Costo Unit.</label>
+                                    {/* --- SECCIÓN MULTI-UBICACIÓN --- */}
+                                    <Col xs={12}>
+                                        <div className="p-3 bg-light border rounded">
+                                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                                <h6 className="text-primary fw-bold mb-0"><i className="bi bi-box-seam"></i> Distribución de Stock</h6>
+                                                <span className="badge bg-secondary">Total: {totalStockCalculado}</span>
+                                            </div>
+                                            
+                                            {stockLocations.map((item, index) => (
+                                                <Row key={index} className="mb-2 align-items-end g-2">
+                                                    <Col md={8}>
+                                                        <Form.Label className="small text-muted mb-0">Ubicación</Form.Label>
+                                                        <Form.Select 
+                                                            value={item.ubicacion_id}
+                                                            onChange={(e) => handleLocationChange(index, 'ubicacion_id', e.target.value)}
+                                                            required
+                                                            size="sm"
+                                                        >
+                                                            <option value="">Seleccione ubicación...</option>
+                                                            {listas.ubicaciones?.map(u => (
+                                                                <option key={u.id} value={u.id}>
+                                                                    {getUbicacionLabel(u)}
+                                                                </option>
+                                                            ))}
+                                                        </Form.Select>
+                                                    </Col>
+                                                    <Col md={3}>
+                                                        <Form.Label className="small text-muted mb-0">Cantidad</Form.Label>
+                                                        <Form.Control 
+                                                            type="number" 
+                                                            min="0" 
+                                                            step="0.01"
+                                                            value={item.cantidad}
+                                                            onChange={(e) => handleLocationChange(index, 'cantidad', e.target.value)}
+                                                            required
+                                                            size="sm"
+                                                        />
+                                                    </Col>
+                                                    <Col md={1}>
+                                                        {stockLocations.length > 1 && (
+                                                            <Button variant="outline-danger" size="sm" onClick={() => removeLocationRow(index)}>
+                                                                <i className="bi bi-trash"></i>
+                                                            </Button>
+                                                        )}
+                                                    </Col>
+                                                </Row>
+                                            ))}
+                                            
+                                            <Button variant="link" size="sm" className="p-0 mt-2 text-decoration-none" onClick={addLocationRow}>
+                                                <i className="bi bi-plus-circle"></i> Agregar otra ubicación
+                                            </Button>
+                                        </div>
+                                    </Col>
+                                    {/* ------------------------------- */}
+
+                                    {/* Costos y Alertas */}
+                                    <Col md={4}>
+                                        <Form.Label className="small fw-bold">Costo Unit.</Form.Label>
                                         <div className="input-group">
                                             <span className="input-group-text">$</span>
-                                            <input type="number" name="precio_costo" className="form-control" step="1" min="0" value={parseInt(formData.precio_costo) || 0} onChange={handleChange} />
+                                            <Form.Control type="number" name="precio_costo" value={formData.precio_costo} onChange={handleChange} />
                                         </div>
-                                    </div>
-                                    <div className="col-md-3">
-                                        <label className="form-label small fw-bold">Unidad Medida</label>
-                                        <select name="unidad_medida" className="form-select" value={formData.unidad_medida} onChange={handleChange}>
-                                            <option value="UN">UN (Unidad)</option>
-                                            <option value="KG">KG (Kilos)</option>
-                                            <option value="MTS">MTS (Metros)</option>
-                                            <option value="LTS">LTS (Litros)</option>
-                                            <option value="CAJA">Caja</option>
-                                            <option value="PAR">Par</option>
-                                            <option value="GL">GL (Global/Servicio)</option>
-                                        </select>
-                                    </div>
-                                    <div className="col-md-3">
-                                        <label className="form-label small fw-bold text-success">Stock Inicial</label>
-                                        <input type="number" name="stock_actual" className="form-control fw-bold" step="1" min="0" value={parseInt(formData.stock_actual) || 0} onChange={handleChange} disabled={!!insumo} /> 
-                                    </div>
-                                    <div className="col-md-3">
-                                        <label className="form-label small fw-bold text-danger">Stock Mínimo</label>
-                                        <input type="number" name="stock_minimo" className="form-control" step="1" min="0" value={parseInt(formData.stock_minimo) || 0} onChange={handleChange} />
-                                    </div>
+                                    </Col>
+                                    <Col md={4}>
+                                        <Form.Label className="small fw-bold">Moneda</Form.Label>
+                                        <Form.Select name="moneda" value={formData.moneda} onChange={handleChange}>
+                                            <option value="CLP">CLP</option>
+                                            <option value="USD">USD</option>
+                                        </Form.Select>
+                                    </Col>
+                                    <Col md={4}>
+                                        <Form.Label className="small fw-bold text-danger">Stock Mínimo</Form.Label>
+                                        <Form.Control type="number" name="stock_minimo" value={formData.stock_minimo} onChange={handleChange} />
+                                    </Col>
+
+                                    {/* Descripción e Imagen */}
+                                    <Col xs={12}>
+                                        <Form.Label className="small text-muted">Descripción</Form.Label>
+                                        <Form.Control as="textarea" rows={2} name="descripcion" value={formData.descripcion} onChange={handleChange} />
+                                    </Col>
+                                    
+                                    <Col xs={12}>
+                                        <Form.Label className="small fw-bold">Imagen</Form.Label>
+                                        <Form.Control type="file" accept="image/*" onChange={handleImageChange} />
+                                        {imagenPreview && (
+                                            <div className="mt-2 text-center border rounded p-1 bg-light">
+                                                <img src={imagenPreview} style={{ maxHeight: '100px', objectFit: 'contain' }} alt="Preview" />
+                                            </div>
+                                        )}
+                                    </Col>
+                                </Row>
+
+                                <div className="modal-footer border-0 mt-3 p-0">
+                                    <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+                                    <Button variant="primary" type="submit" disabled={saving}>
+                                        {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Guardando...</> : <><i className="bi bi-save me-2"></i>Guardar</>}
+                                    </Button>
                                 </div>
-                            </div>
-                            
-                            <div className="modal-footer bg-light border-0">
-                                <button type="button" className="btn btn-secondary text-white" onClick={onClose} disabled={saving}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary px-4 fw-bold shadow-sm" disabled={saving}>
-                                    {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Guardando...</> : <><i className="bi bi-save me-2"></i>Guardar Insumo</>}
-                                </button>
-                            </div>
-                        </form>
+                            </Form>
+                        </div>
                     </div>
                 </div>
             </div>

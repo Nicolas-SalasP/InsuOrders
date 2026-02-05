@@ -17,10 +17,43 @@ class InsumoRepository
     public function getAll()
     {
         $sql = "SELECT i.*, c.nombre as categoria_nombre,
-                    (SELECT CONCAT(IFNULL(s.nombre, 'General'), ' - ', u.nombre) FROM insumo_stock_ubicacion isu JOIN ubicaciones u ON isu.ubicacion_id = u.id LEFT JOIN sectores s ON u.sector_id = s.id WHERE isu.insumo_id = i.id ORDER BY isu.cantidad DESC LIMIT 1) as ubicacion_defecto,
-                    (SELECT GROUP_CONCAT(CONCAT(IFNULL(s.nombre, 'General'), ' - ', u.nombre, ' (', REPLACE(FORMAT(isu.cantidad, 2), '.00', ''), ')') SEPARATOR '||') FROM insumo_stock_ubicacion isu JOIN ubicaciones u ON isu.ubicacion_id = u.id LEFT JOIN sectores s ON u.sector_id = s.id WHERE isu.insumo_id = i.id AND isu.cantidad > 0) as ubicaciones_multiples
-                FROM insumos i LEFT JOIN categorias_insumo c ON i.categoria_id = c.id ORDER BY i.nombre ASC";
-        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+                    (SELECT CONCAT(IFNULL(s.nombre, 'General'), ' - ', u.nombre) 
+                    FROM insumo_stock_ubicacion isu 
+                    JOIN ubicaciones u ON isu.ubicacion_id = u.id 
+                    LEFT JOIN sectores s ON u.sector_id = s.id 
+                    WHERE isu.insumo_id = i.id 
+                    ORDER BY isu.cantidad DESC LIMIT 1) as ubicacion_defecto,
+                    
+                    (SELECT GROUP_CONCAT(CONCAT(IFNULL(s.nombre, 'General'), ' - ', u.nombre, ' (', REPLACE(FORMAT(isu.cantidad, 2), '.00', ''), ')') SEPARATOR '||') 
+                    FROM insumo_stock_ubicacion isu 
+                    JOIN ubicaciones u ON isu.ubicacion_id = u.id 
+                    LEFT JOIN sectores s ON u.sector_id = s.id 
+                    WHERE isu.insumo_id = i.id AND isu.cantidad > 0) as ubicaciones_multiples
+                FROM insumos i 
+                LEFT JOIN categorias_insumo c ON i.categoria_id = c.id 
+                ORDER BY i.nombre ASC";
+
+        $insumos = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+        $sqlStocks = "SELECT insumo_id, ubicacion_id, cantidad 
+                    FROM insumo_stock_ubicacion 
+                    WHERE cantidad > 0";
+        $allStocks = $this->db->query($sqlStocks)->fetchAll(PDO::FETCH_ASSOC);
+
+        $stocksMap = [];
+        foreach ($allStocks as $stock) {
+            $stocksMap[$stock['insumo_id']][] = [
+                'ubicacion_id' => $stock['ubicacion_id'],
+                'cantidad' => $stock['cantidad']
+            ];
+        }
+
+        foreach ($insumos as &$insumo) {
+            $id = $insumo['id'];
+            $insumo['stocks_json'] = isset($stocksMap[$id]) ? $stocksMap[$id] : [];
+        }
+
+        return $insumos;
     }
 
     public function getAuxiliares()
@@ -129,12 +162,35 @@ class InsumoRepository
             }
 
             $stmt->execute($params);
-            if (!empty($data['ubicacion_id'])) {
+
+            if (!empty($data['stock_distribucion']) && is_array($data['stock_distribucion'])) {
+                $this->db->prepare("DELETE FROM insumo_stock_ubicacion WHERE insumo_id = :id")->execute([':id' => $id]);
+                $stmtInsert = $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant)");
+
+                $nuevoStockTotal = 0;
+                foreach ($data['stock_distribucion'] as $dist) {
+                    $cant = floatval($dist['cantidad']);
+                    $ubiId = intval($dist['ubicacion_id']);
+
+                    if ($cant > 0 && $ubiId > 0) {
+                        $stmtInsert->execute([
+                            ':iid' => $id,
+                            ':uid' => $ubiId,
+                            ':cant' => $cant
+                        ]);
+                        $nuevoStockTotal += $cant;
+                    }
+                }
+                $this->db->prepare("UPDATE insumos SET stock_actual = :stock WHERE id = :id")
+                    ->execute([':stock' => $nuevoStockTotal, ':id' => $id]);
+
+            } elseif (!empty($data['ubicacion_id'])) {
                 $nuevaUbicacionId = $data['ubicacion_id'];
 
                 $stmtMaster = $this->db->prepare("SELECT stock_actual FROM insumos WHERE id = :id");
                 $stmtMaster->execute([':id' => $id]);
                 $stockTotal = floatval($stmtMaster->fetchColumn() ?: 0);
+
                 $this->db->prepare("DELETE FROM insumo_stock_ubicacion WHERE insumo_id = :id")->execute([':id' => $id]);
 
                 $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant)")
@@ -143,6 +199,7 @@ class InsumoRepository
                         ':uid' => $nuevaUbicacionId,
                         ':cant' => $stockTotal
                     ]);
+
                 if ($stockTotal > 0) {
                     $uidFinal = $usuarioId ?: 1;
                     $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
@@ -256,4 +313,5 @@ class InsumoRepository
         }
         return '990000000000001';
     }
+
 }

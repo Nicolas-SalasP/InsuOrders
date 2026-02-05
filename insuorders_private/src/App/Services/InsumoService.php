@@ -65,6 +65,13 @@ class InsumoService
 
         $data = $this->sanearDatos($data);
 
+        if (isset($data['stock_distribucion']) && is_string($data['stock_distribucion'])) {
+            $decoded = json_decode($data['stock_distribucion'], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $data['stock_distribucion'] = $decoded;
+            }
+        }
+
         if (isset($data['codigo_sku']) && strlen($data['codigo_sku']) < 3) {
             throw new Exception("El SKU es muy corto.");
         }
