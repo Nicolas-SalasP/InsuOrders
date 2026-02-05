@@ -26,15 +26,17 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
             setUbicacionId(''); 
             setSaving(false);
 
-            Promise.all([
-                api.get('/index.php/personal'),
-                api.get('/index.php/mantenedores/ubicaciones-envio?type=activas')
-            ])
-            .then(([resPersonal, resUbicaciones]) => {
-                if (resPersonal.data.success) setPersonal(resPersonal.data.data);
-                if (resUbicaciones.data.success) setUbicaciones(resUbicaciones.data.data);
-            })
-            .catch(e => console.error("Error cargando datos:", e));
+            api.get('/index.php/personal')
+                .then(res => {
+                    if (res.data.success) setPersonal(res.data.data);
+                })
+                .catch(e => console.error("Error cargando personal:", e));
+
+            api.get('/index.php/mantenedores/ubicaciones-envio?type=activas')
+                .then(res => {
+                    if (res.data.success) setUbicaciones(res.data.data);
+                })
+                .catch(e => console.error("Error cargando ubicaciones:", e));
         }
     }, [show]);
 
@@ -49,13 +51,13 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
     }, [wrapperRef]);
 
     const personalFiltrado = personal.filter(p => 
-        (p.nombre || '').toLowerCase().includes(busqueda.toLowerCase()) || 
+        (p.nombre_completo || '').toLowerCase().includes(busqueda.toLowerCase()) || 
         (p.rut || '').toLowerCase().includes(busqueda.toLowerCase())
     );
 
     const handleSeleccionarPersonal = (p) => {
         setPersonalId(p.id);
-        setNombreSeleccionado(p.nombre);
+        setNombreSeleccionado(p.nombre_completo);
         setMostrarLista(false);
         setBusqueda('');
     };
@@ -102,8 +104,6 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                         
                         <form onSubmit={handleSubmit}>
                             <div className="modal-body p-4">
-                                
-                                {/* Info Insumo */}
                                 <div className="alert alert-light border d-flex align-items-center mb-4">
                                     <div className="bg-white p-2 rounded shadow-sm me-3 border">
                                         <i className="bi bi-box-seam fs-3 text-danger"></i>
@@ -117,7 +117,6 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                     </div>
                                 </div>
 
-                                {/* Campo Cantidad */}
                                 <div className="mb-3">
                                     <label className="form-label fw-bold text-secondary small text-uppercase">Cantidad a Retirar</label>
                                     <input 
@@ -132,7 +131,6 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                     />
                                 </div>
 
-                                {/* Campo Personal (Autocomplete) */}
                                 <div className="mb-3 position-relative" ref={wrapperRef}>
                                     <label className="form-label fw-bold text-secondary small text-uppercase">Retirado Por</label>
                                     {nombreSeleccionado ? (
@@ -161,7 +159,7 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                                     {personalFiltrado.length > 0 ? (
                                                         personalFiltrado.map(p => (
                                                             <li key={p.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarPersonal(p)}>
-                                                                <div className="fw-bold text-dark">{p.nombre}</div>
+                                                                <div className="fw-bold text-dark">{p.nombre_completo}</div>
                                                                 <small className="text-muted">{p.rut}</small>
                                                             </li>
                                                         ))
@@ -174,7 +172,6 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                     )}
                                 </div>
 
-                                {/* NUEVO CAMPO: Ubicación de Destino */}
                                 <div className="mb-3">
                                     <label className="form-label fw-bold text-secondary small text-uppercase">Destino / Ubicación <span className="text-danger">*</span></label>
                                     <div className="input-group">
@@ -194,7 +191,6 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                     {ubicaciones.length === 0 && <div className="form-text text-warning small"><i className="bi bi-exclamation-triangle"></i> No hay ubicaciones configuradas. Avise al administrador.</div>}
                                 </div>
 
-                                {/* Campo Observación */}
                                 <div className="mb-3">
                                     <label className="form-label fw-bold text-secondary small text-uppercase">Observación (Opcional)</label>
                                     <textarea 
