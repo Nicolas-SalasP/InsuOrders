@@ -82,23 +82,15 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 if (!e.cargo || e.cargo.trim() === '') return false;
                 const cargoNorm = e.cargo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
                 const keywords = [
-                    'tecn',      // Técnico, Tecnologo
-                    'mant',      // Mantención, Mantenimiento
+                    'tecn',      // Técnico
                     'mecan',     // Mecánico
                     'elec',      // Eléctrico, Electricista
                     'sold',      // Soldador
-                    'instru',    // Instrumentista
-                    'oper',      // Operario
-                    'ayud',      // Ayudante
-                    'capataz',   
-                    'lider',     
-                    'jefe'       
+                    'ayud'      // Ayudante       
                 ];
 
                 return keywords.some(k => cargoNorm.includes(k));
             });
-            
-            console.log("Técnicos filtrados (Estricto):", soloTecnicos);
             setTecnicos(soloTecnicos);
 
             if (otEditar) {

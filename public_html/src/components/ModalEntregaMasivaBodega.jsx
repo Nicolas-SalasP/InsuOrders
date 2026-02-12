@@ -53,13 +53,13 @@ const ModalEntregaMasivaBodega = ({ show, onClose, onConfirm, selectedItems }) =
 
     // Lógica de filtrado
     const personalFiltrado = personal.filter(p => 
-        (p.nombre || '').toLowerCase().includes(busqueda.toLowerCase()) || 
+        (p.nombre_completo || '').toLowerCase().includes(busqueda.toLowerCase()) || 
         (p.rut || '').toLowerCase().includes(busqueda.toLowerCase())
     );
 
     const handleSeleccionarPersonal = (p) => {
         setPersonalId(p.id);
-        setNombreSeleccionado(p.nombre);
+        setNombreSeleccionado(p.nombre_completo);
         setMostrarLista(false);
         setBusqueda('');
     };
@@ -135,7 +135,7 @@ const ModalEntregaMasivaBodega = ({ show, onClose, onConfirm, selectedItems }) =
                                     <ul className="list-group position-absolute w-100 shadow mt-1 bg-white" style={{ zIndex: 1050, maxHeight: '200px', overflowY: 'auto' }}>
                                         {personalFiltrado.map(p => (
                                             <li key={p.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarPersonal(p)}>
-                                                <div className="fw-bold">{p.nombre}</div>
+                                                <div className="fw-bold">{p.nombre_completo}</div>
                                                 <small className="text-muted">{p.rut}</small>
                                             </li>
                                         ))}
