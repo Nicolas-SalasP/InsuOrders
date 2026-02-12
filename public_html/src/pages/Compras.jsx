@@ -9,6 +9,17 @@ import { usePermission } from '../hooks/usePermission';
 
 const Compras = () => {
     const { can } = usePermission();
+    if (!can('compras_ver')) {
+        return (
+            <div className="container h-100 d-flex align-items-center justify-content-center">
+                <div className="text-center p-5 shadow-sm rounded bg-white">
+                    <i className="bi bi-shield-lock text-danger display-1"></i>
+                    <h3 className="mt-3 fw-bold">Acceso Restringido</h3>
+                    <p className="text-muted">No tienes permiso para gestionar compras.</p>
+                </div>
+            </div>
+        );
+    }
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -123,7 +134,11 @@ const Compras = () => {
         try {
             const res = await api.get('/index.php/compras/pendientes');
             if (res.data.success) setPendientes(res.data.data);
-        } catch (e) { }
+        } catch (e) {
+            if (e.response?.status === 403) {
+                console.warn("Usuario no tiene permiso para ver pendientes de compra.");
+            }
+        }
     };
 
     const generarOrdenDesdePendientes = () => {
