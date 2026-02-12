@@ -50,7 +50,6 @@ class MantencionService
 
     public function crearOT($data, $usuarioId)
     {
-        // Validación de negocio: Una OT debe tener items o ser sobre un activo específico
         if (empty($data['items']) && empty($data['activo_id'])) {
             throw new Exception("Debe seleccionar un activo o agregar insumos manuales.");
         }
@@ -59,7 +58,6 @@ class MantencionService
 
     public function editarOT($id, $data)
     {
-        // Actualiza la OT y sincroniza el cronograma si aplica
         $resultado = $this->repo->updateOT($id, $data);
         $this->cronogramaRepo->syncByOT($id, $data);
         return $resultado;
@@ -72,7 +70,6 @@ class MantencionService
 
     public function anularOT($id)
     {
-        // Regla de negocio: No se puede anular si ya se entregaron materiales
         $entregas = $this->repo->getEntregasOT($id);
         if (!empty($entregas)) {
             throw new Exception("No se puede anular una OT que ya tiene materiales entregados. Debe finalizarlas o devolver los materiales.");
@@ -96,15 +93,12 @@ class MantencionService
 
     public function crearActivo($data, $files)
     {
-        // 1. Manejo de Imagen Principal
         if (!empty($files['imagen_principal']) && $files['imagen_principal']['error'] === UPLOAD_ERR_OK) {
             $data['imagen_url'] = $this->subirArchivo($files['imagen_principal']);
         }
 
-        // 2. Manejo de Galería
         $data['galeria'] = $this->procesarGaleriaUpload($files, $data);
 
-        // 3. Persistencia
         return $this->repo->createActivo($data);
     }
 
@@ -114,12 +108,10 @@ class MantencionService
             throw new Exception("ID de activo no proporcionado.");
         }
 
-        // 1. Manejo de Imagen Principal
         if (!empty($files['imagen_principal']) && $files['imagen_principal']['error'] === UPLOAD_ERR_OK) {
             $data['imagen_url'] = $this->subirArchivo($files['imagen_principal']);
         }
 
-        // 2. Manejo de Galería
         $nuevasImagenes = $this->procesarGaleriaUpload($files, $data);
         $data['galeria'] = $nuevasImagenes;
 
@@ -128,23 +120,19 @@ class MantencionService
 
     public function eliminarActivo($id)
     {
-        // 1. Validación de Integridad Referencial
         $tieneHistorial = $this->repo->contarOrdenesAsociadas($id);
         if ($tieneHistorial > 0) {
             throw new Exception("No se puede eliminar: El activo tiene $tieneHistorial Órdenes de Trabajo asociadas.");
         }
 
-        // 2. Recolectar archivos para borrar físico
         $archivosParaBorrar = $this->repo->obtenerRutasArchivosActivo($id);
 
-        // 3. Borrado Transaccional DB
         $eliminado = $this->repo->eliminarActivoCompleto($id);
 
         if (!$eliminado) {
             throw new Exception("El activo no pudo ser eliminado o ya no existe.");
         }
 
-        // 4. Borrado Físico
         foreach ($archivosParaBorrar as $ruta) {
             $this->borrarArchivoFisico($ruta);
         }
@@ -301,18 +289,11 @@ class MantencionService
     // 7. GESTIÓN DE BODEGA E INVENTARIO (FUNCIONALIDADES COMPLETAS DEL REPO)
     // =================================================================================
 
-    /**
-     * Obtiene la lista de líneas de OT que tienen materiales pendientes de entrega.
-     * Útil para el dashboard de bodega.
-     */
     public function listarPendientesEntrega()
     {
         return $this->repo->getPendientesEntrega();
     }
 
-    /**
-     * Ejecuta la entrega física de material, descontando stock y generando movimientos.
-     */
     public function realizarEntregaMaterial($detalleId, $usuarioId, $cantidad, $receptorId)
     {
         if ($cantidad <= 0) {
@@ -321,9 +302,6 @@ class MantencionService
         return $this->repo->entregarMaterial($detalleId, $usuarioId, $cantidad, $receptorId);
     }
 
-    /**
-     * Permite devolver material sobrante de una OT a la bodega.
-     */
     public function realizarDevolucionMaterial($detalleId, $cantidad, $bodegueroId)
     {
         if ($cantidad <= 0) {
@@ -332,13 +310,8 @@ class MantencionService
         return $this->repo->devolverMaterial($detalleId, $cantidad, $bodegueroId);
     }
 
-    /**
-     * Cierre Administrativo de la OT.
-     * Libera el stock reservado que no se usó y marca la OT como cerrada definitivamente.
-     */
     public function cierreAdministrativoOT($id)
     {
-        // Se puede agregar validación extra aquí, por ejemplo, que solo administradores lo hagan
         $this->repo->finalizar($id);
     }
 
@@ -355,7 +328,6 @@ class MantencionService
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
         $filename = uniqid('ACT_') . '.' . $extension;
 
-        // Construcción correcta de ruta
         $pathRel = $subFolder ? $subFolder . '/' . $filename : $filename;
         $targetPath = $this->uploadBaseDir . $pathRel;
 

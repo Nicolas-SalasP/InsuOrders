@@ -14,6 +14,11 @@ class MantencionRepository
         $this->db = Database::getConnection();
     }
 
+    public function getDb()
+    {
+        return $this->db;
+    }
+
     // =================================================================================
     // 1. GESTIÓN DE ACTIVOS
     // =================================================================================
@@ -165,7 +170,7 @@ class MantencionRepository
         try {
             $this->db->beginTransaction();
             $this->db->prepare("DELETE FROM kit_repuestos WHERE activo_id = ?")->execute([$activoId]);
-            $this->db->prepare("DELETE FROM activos_insumos WHERE activo_id = ?")->execute([$activoId]); // Por seguridad ambos nombres
+            $this->db->prepare("DELETE FROM activos_insumos WHERE activo_id = ?")->execute([$activoId]);
             $this->db->prepare("DELETE FROM activos_imagenes WHERE activo_id = ?")->execute([$activoId]);
             $this->db->prepare("DELETE FROM activos_docs WHERE activo_id = ?")->execute([$activoId]);
             $stmtDel = $this->db->prepare("DELETE FROM activos WHERE id = ?");
@@ -267,9 +272,14 @@ class MantencionRepository
     // =================================================================================
     public function getSolicitudes()
     {
-        $sql = "SELECT DISTINCT s.*, COALESCE(a.nombre, 'SERVICIO GENERAL') as activo, COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
+        $sql = "SELECT DISTINCT s.*, 
+                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(s.area_negocio, 'General'))) as activo, 
+                COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id,
-                (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') FROM ot_asignaciones oa JOIN usuarios usr ON oa.usuario_id = usr.id WHERE oa.solicitud_id = s.id) as asignados_nombres,
+                (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') 
+                FROM ot_asignaciones oa 
+                JOIN usuarios usr ON oa.usuario_id = usr.id 
+                WHERE oa.solicitud_id = s.id) as asignados_nombres,
                 (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids
                 FROM solicitudes_ot s 
                 LEFT JOIN activos a ON s.activo_id = a.id 
@@ -344,7 +354,7 @@ class MantencionRepository
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':uid' => $data['usuario_id'],
-                ':aid' => $data['activo_id'],
+                ':aid' => !empty($data['activo_id']) ? $data['activo_id'] : null,
                 ':desc' => $data['observacion'],
                 ':orig' => $data['origen_tipo'],
                 ':area' => $data['area_negocio'],
@@ -357,7 +367,6 @@ class MantencionRepository
                 $this->syncAsignaciones($otId, $data['asignados']);
             }
 
-            // Lógica de items iniciales
             $insumosFinales = [];
             if (!empty($data['items']) && count($data['items']) > 0) {
                 $insumosFinales = $data['items'];
@@ -396,12 +405,11 @@ class MantencionRepository
     {
         $inTransaction = $this->db->inTransaction();
         try {
-            if (!$inTransaction)
-                $this->db->beginTransaction();
+            if (!$inTransaction) $this->db->beginTransaction();
 
             $sql = "UPDATE solicitudes_ot SET activo_id=:aid, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot WHERE id=:id";
             $this->db->prepare($sql)->execute([
-                ':aid' => $data['activo_id'] ?: null,
+                ':aid' => !empty($data['activo_id']) ? $data['activo_id'] : null,
                 ':desc' => $data['observacion'],
                 ':se' => $data['solicitante_externo'] ?: null,
                 ':cc' => $data['centro_costo_ot'] ?: null,
@@ -413,21 +421,20 @@ class MantencionRepository
                 $this->syncAsignaciones($id, $data['asignados']);
             }
 
-            // Sincronización de items (Delta)
             if (isset($data['items'])) {
-                $stmtCurrent = $this->db->prepare("SELECT id FROM detalle_solicitud WHERE solicitud_id = :sid");
+                $stmtCurrent = $this->db->prepare("SELECT id, estado_linea FROM detalle_solicitud WHERE solicitud_id = :sid");
                 $stmtCurrent->execute([':sid' => $id]);
-                $idsEnBD = $stmtCurrent->fetchAll(PDO::FETCH_COLUMN);
-
+                $itemsEnBD = $stmtCurrent->fetchAll(PDO::FETCH_ASSOC);
+                
+                $estadosPorId = array_column($itemsEnBD, 'estado_linea', 'id');
                 $idsRecibidos = [];
-                foreach ($data['items'] as $item)
-                    if (!empty($item['id_linea']))
-                        $idsRecibidos[] = $item['id_linea'];
-
-                $idsParaBorrar = array_diff($idsEnBD, $idsRecibidos);
-                if (!empty($idsParaBorrar)) {
-                    $placeholders = implode(',', array_fill(0, count($idsParaBorrar), '?'));
-                    $this->db->prepare("DELETE FROM detalle_solicitud WHERE id IN ($placeholders)")->execute(array_values($idsParaBorrar));
+                foreach ($data['items'] as $item) if (!empty($item['id_linea'])) $idsRecibidos[] = $item['id_linea'];
+                foreach ($itemsEnBD as $itemBD) {
+                    if (!in_array($itemBD['id'], $idsRecibidos)) {
+                        if (in_array($itemBD['estado_linea'], ['PENDIENTE', 'REQUIERE_COMPRA'])) {
+                            $this->db->prepare("DELETE FROM detalle_solicitud WHERE id = ?")->execute([$itemBD['id']]);
+                        }
+                    }
                 }
 
                 $stmtUpdate = $this->db->prepare("UPDATE detalle_solicitud SET cantidad = :cant, estado_linea = :st WHERE id = :id_linea");
@@ -435,31 +442,31 @@ class MantencionRepository
                 $stmtStock = $this->db->prepare("SELECT stock_actual FROM insumos WHERE id = ?");
 
                 foreach ($data['items'] as $item) {
-                    $cant = $item['cantidad'];
+                    $cant = floatval($item['cantidad']);
                     if (!empty($item['id_linea'])) {
-                        // Update existing line
-                        $iid = $this->db->query("SELECT insumo_id FROM detalle_solicitud WHERE id = {$item['id_linea']}")->fetchColumn();
-                        $stmtStock->execute([$iid]);
-                        $st = $stmtStock->fetchColumn() ?: 0;
-                        $nuevoEst = ($st >= $cant) ? 'PENDIENTE' : 'REQUIERE_COMPRA';
-                        $stmtUpdate->execute([':cant' => $cant, ':st' => $nuevoEst, ':id_linea' => $item['id_linea']]);
+                        $idLinea = $item['id_linea'];
+                        $estadoActual = $estadosPorId[$idLinea];
+                        if (in_array($estadoActual, ['PENDIENTE', 'REQUIERE_COMPRA'])) {
+                            $iid = $this->db->query("SELECT insumo_id FROM detalle_solicitud WHERE id = $idLinea")->fetchColumn();
+                            $stmtStock->execute([$iid]);
+                            $stock = $stmtStock->fetchColumn() ?: 0;
+                            $nuevoEst = ($stock >= $cant) ? 'PENDIENTE' : 'REQUIERE_COMPRA';
+                            $stmtUpdate->execute([':cant' => $cant, ':st' => $nuevoEst, ':id_linea' => $idLinea]);
+                        }
                     } else {
-                        // Insert new line
                         $iid = $item['insumo_id'] ?? $item['id'];
                         $stmtStock->execute([$iid]);
-                        $st = $stmtStock->fetchColumn() ?: 0;
-                        $est = ($st >= $cant) ? 'PENDIENTE' : 'REQUIERE_COMPRA';
+                        $stock = $stmtStock->fetchColumn() ?: 0;
+                        $est = ($stock >= $cant) ? 'PENDIENTE' : 'REQUIERE_COMPRA';
                         $stmtInsert->execute([':sid' => $id, ':iid' => $iid, ':cant' => $cant, ':estado' => $est]);
                     }
                 }
             }
 
-            if (!$inTransaction)
-                $this->db->commit();
+            if (!$inTransaction) $this->db->commit();
             return true;
         } catch (Exception $e) {
-            if (!$inTransaction)
-                $this->db->rollBack();
+            if (!$inTransaction) $this->db->rollBack();
             throw $e;
         }
     }
@@ -485,13 +492,12 @@ class MantencionRepository
     }
 
     public function finalizar($id)
-    { // Cierre Administrativo con ajustes de stock reservados
+    {
         $inTransaction = $this->db->inTransaction();
         try {
             if (!$inTransaction)
                 $this->db->beginTransaction();
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")->execute([':id' => $id]);
-            // Devolver stock reservado no usado
             $this->db->prepare("UPDATE insumos i JOIN detalle_solicitud ds ON i.id = ds.insumo_id SET i.stock_actual = i.stock_actual + (ds.cantidad - ds.cantidad_entregada) WHERE ds.solicitud_id = :id AND ds.estado_linea = 'RESERVADO'")->execute([':id' => $id]);
             $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'CANCELADO' WHERE solicitud_id = :id AND estado_linea NOT IN ('ENTREGADO', 'FINALIZADO')")->execute([':id' => $id]);
             if (!$inTransaction)
@@ -504,7 +510,7 @@ class MantencionRepository
     }
 
     public function delete($id)
-    { // Anulación
+    {
         $inTransaction = $this->db->inTransaction();
         try {
             if (!$inTransaction)
@@ -528,12 +534,15 @@ class MantencionRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- MÉTODOS DE BODEGA / ENTREGA (Restaurados) ---
+    // --- MÉTODOS DE BODEGA / ENTREGA ---
     public function getPendientesEntrega()
     {
         $sql = "SELECT ds.id as detalle_id, ds.cantidad, ds.cantidad_entregada, (ds.cantidad - ds.cantidad_entregada) as cantidad_pendiente, 
                 s.fecha_solicitud, i.id as insumo_id, i.nombre as insumo, i.codigo_sku, i.unidad_medida, i.stock_actual, 
-                s.id as ot_id, u.nombre as solicitante, u.apellido as solicitante_apellido, a.nombre as maquina,
+                s.id as ot_id, u.nombre as solicitante, u.apellido as solicitante_apellido, 
+                
+                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(s.area_negocio, 'General'))) as maquina,
+
                 (SELECT CONCAT(IFNULL(sec.nombre, 'General'), ' - ', ubi.nombre) FROM insumo_stock_ubicacion isu JOIN ubicaciones ubi ON isu.ubicacion_id = ubi.id LEFT JOIN sectores sec ON ubi.sector_id = sec.id WHERE isu.insumo_id = i.id AND isu.cantidad > 0 ORDER BY isu.cantidad DESC LIMIT 1) as ubicacion
                 FROM detalle_solicitud ds JOIN solicitudes_ot s ON ds.solicitud_id = s.id JOIN insumos i ON ds.insumo_id = i.id JOIN usuarios u ON s.usuario_solicitante_id = u.id LEFT JOIN activos a ON s.activo_id = a.id 
                 WHERE ds.estado_linea IN ('PENDIENTE', 'EN_BODEGA', 'RESERVADO', 'PARCIAL') AND (ds.cantidad - ds.cantidad_entregada) > 0.001 AND s.estado_id IN (1, 2, 4) ORDER BY s.fecha_solicitud ASC";

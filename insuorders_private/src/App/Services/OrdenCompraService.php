@@ -7,6 +7,7 @@ use App\Repositories\ProveedorRepository;
 use App\Services\PDFService;
 use App\Database\Database;
 use Exception;
+
 class OrdenCompraService
 {
     private $repo;
@@ -14,12 +15,19 @@ class OrdenCompraService
     private $proveedorRepo;
     private $db;
 
+    private $uploadBaseDir;
+    private $publicUrlBase;
+
     public function __construct()
     {
         $this->repo = new OrdenCompraRepository();
         $this->insumoRepo = new InsumoRepository();
         $this->proveedorRepo = new ProveedorRepository();
         $this->db = Database::getConnection();
+
+        // Rutas estandarizadas
+        $this->uploadBaseDir = __DIR__ . '/../../../../public_html/uploads/ordenes/';
+        $this->publicUrlBase = 'uploads/ordenes/';
     }
 
     public function listarOrdenes($filtros)
@@ -34,12 +42,9 @@ class OrdenCompraService
 
     public function obtenerDatosFiltros()
     {
-        $insumos = $this->repo->getInsumosHistorial();
-        $proveedores = $this->proveedorRepo->getAll();
-
         return [
-            'insumos' => $insumos,
-            'proveedores' => $proveedores
+            'insumos' => $this->repo->getInsumosHistorial(),
+            'proveedores' => $this->proveedorRepo->getAll()
         ];
     }
 
@@ -62,18 +67,11 @@ class OrdenCompraService
             $montoNeto = 0;
             $idsSolicitudes = [];
 
-            if (!empty($data['ids_solicitudes'])) {
-                if (is_array($data['ids_solicitudes'])) {
-                    $idsSolicitudes = array_merge($idsSolicitudes, $data['ids_solicitudes']);
-                } else {
-                    $idsSolicitudes = array_merge($idsSolicitudes, explode(',', $data['ids_solicitudes']));
-                }
-            }
-            if (!empty($data['ids_solicitudes_seleccionadas'])) {
-                if (is_array($data['ids_solicitudes_seleccionadas'])) {
-                    $idsSolicitudes = array_merge($idsSolicitudes, $data['ids_solicitudes_seleccionadas']);
-                } else {
-                    $idsSolicitudes = array_merge($idsSolicitudes, explode(',', $data['ids_solicitudes_seleccionadas']));
+            $fuentes = ['ids_solicitudes', 'ids_solicitudes_seleccionadas'];
+            foreach ($fuentes as $key) {
+                if (!empty($data[$key])) {
+                    $vals = is_array($data[$key]) ? $data[$key] : explode(',', $data[$key]);
+                    $idsSolicitudes = array_merge($idsSolicitudes, $vals);
                 }
             }
 
@@ -94,12 +92,8 @@ class OrdenCompraService
                 }
 
                 if (!empty($item['ids_detalle_solicitud'])) {
-                    if (is_array($item['ids_detalle_solicitud'])) {
-                        $idsSolicitudes = array_merge($idsSolicitudes, $item['ids_detalle_solicitud']);
-                    } else {
-                        $ids = explode(',', $item['ids_detalle_solicitud']);
-                        $idsSolicitudes = array_merge($idsSolicitudes, $ids);
-                    }
+                    $ids = is_array($item['ids_detalle_solicitud']) ? $item['ids_detalle_solicitud'] : explode(',', $item['ids_detalle_solicitud']);
+                    $idsSolicitudes = array_merge($idsSolicitudes, $ids);
                 }
 
                 $subtotal = $item['cantidad'] * $item['precio'];
@@ -158,6 +152,9 @@ class OrdenCompraService
     public function generarPDF($ordenId)
     {
         $data = $this->repo->getOrdenCompleta($ordenId);
+        if (!$data || !$data['cabecera'])
+            throw new Exception("Orden no encontrada");
+
         $pdf = new PDFService();
         $pdf->setOrdenData($data['cabecera']);
         return $pdf->generarPDF($data['detalles']);
@@ -165,35 +162,30 @@ class OrdenCompraService
 
     public function subirArchivo($id, $file)
     {
-        $uploadDir = realpath(__DIR__ . '/../../../../public_html/api') . '/uploads/ordenes/';
-
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
+        if (!is_dir($this->uploadBaseDir)) {
+            mkdir($this->uploadBaseDir, 0777, true);
         }
 
         $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
         $fileName = "OC_" . $id . "_" . time() . "." . $ext;
-        $targetPath = $uploadDir . $fileName;
+        $targetPath = $this->uploadBaseDir . $fileName;
 
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            $urlPath = "uploads/ordenes/" . $fileName;
+            $urlPath = $this->publicUrlBase . $fileName;
             $this->repo->updateArchivo($id, $urlPath);
             return "/" . $urlPath;
         } else {
-            throw new Exception("No se pudo mover el archivo. Carpeta: " . $uploadDir);
+            throw new Exception("No se pudo mover el archivo al servidor.");
         }
     }
 
     public function cancelarOrden($id)
     {
         $orden = $this->repo->getById($id);
-
-        if (!$orden) {
+        if (!$orden)
             throw new Exception("Orden no encontrada.");
-        }
 
         $estadoActual = $orden['cabecera']['estado_id'];
-
         if ($estadoActual >= 3) {
             throw new Exception("No se puede cancelar la orden porque ya tiene recepciones o está finalizada.");
         }
@@ -204,32 +196,28 @@ class OrdenCompraService
     public function regenerarDocumentoPdf($id)
     {
         $orden = $this->repo->getOrdenCompleta($id);
-
-        if (!$orden || !$orden['cabecera']) {
+        if (!$orden || !$orden['cabecera'])
             throw new Exception("La orden de compra #$id no existe.");
-        }
+
         $pdfService = new PDFService();
         $pdfService->setOrdenData($orden['cabecera']);
         $pdfContent = $pdfService->generarPDF($orden['detalles']);
-        $uploadDir = __DIR__ . '/../../../../public_html/uploads/ordenes/';
-        
-        if (!is_dir($uploadDir)) {
-            if (!mkdir($uploadDir, 0777, true)) {
+
+        if (!is_dir($this->uploadBaseDir)) {
+            if (!mkdir($this->uploadBaseDir, 0777, true)) {
                 throw new Exception("No se pudo crear el directorio de uploads.");
             }
         }
+
         $fileName = 'OC_' . $id . '_' . time() . '.pdf';
-        $filePath = $uploadDir . $fileName;
+        $filePath = $this->uploadBaseDir . $fileName;
 
         if (file_put_contents($filePath, $pdfContent) === false) {
             throw new Exception("Error al escribir el archivo PDF en el disco.");
         }
-        $relativePath = 'uploads/ordenes/' . $fileName;
-        $updated = $this->repo->update($id, ['url_archivo' => $relativePath]);
 
-        if (!$updated) {
-            throw new Exception("El archivo se creó, pero no se pudo actualizar la base de datos.");
-        }
+        $relativePath = $this->publicUrlBase . $fileName;
+        $this->repo->update($id, ['url_archivo' => $relativePath]);
 
         return $relativePath;
     }

@@ -3,6 +3,7 @@ namespace App\Repositories;
 
 use App\Database\Database;
 use PDO;
+use Exception;
 
 class OrdenCompraRepository
 {
@@ -36,8 +37,24 @@ class OrdenCompraRepository
         }
 
         if (!empty($filtros['search'])) {
-            $sql .= " AND (oc.id LIKE :s OR p.nombre LIKE :s)";
+            $sql .= " AND (oc.id LIKE :s OR p.nombre LIKE :s OR oc.destino LIKE :s)";
             $params[':s'] = "%" . $filtros['search'] . "%";
+        }
+
+        if (!empty($filtros['destino'])) {
+            $sql .= " AND oc.destino LIKE :dest";
+            $params[':dest'] = "%" . $filtros['destino'] . "%";
+        }
+
+        if (!empty($filtros['estado'])) {
+            if (is_array($filtros['estado'])) {
+                $estadosStr = implode("','", array_map(function ($s) {
+                    return htmlspecialchars($s); }, $filtros['estado']));
+                $sql .= " AND e.nombre IN ('$estadosStr')";
+            } else {
+                $sql .= " AND e.nombre = :estado";
+                $params[':estado'] = $filtros['estado'];
+            }
         }
 
         if (!empty($filtros['fecha_inicio'])) {
@@ -77,7 +94,7 @@ class OrdenCompraRepository
                         JOIN estados_orden_compra e ON oc.estado_id = e.id
                         JOIN usuarios u ON oc.usuario_creador_id = u.id
                         WHERE oc.id = :id";
-        
+
         $stmt = $this->db->prepare($sqlCabecera);
         $stmt->execute([':id' => $id]);
         $cabecera = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -92,7 +109,7 @@ class OrdenCompraRepository
                         FROM detalle_orden_compra doc
                         JOIN insumos i ON doc.insumo_id = i.id
                         WHERE doc.orden_compra_id = :id";
-                        
+
         $stmtDet = $this->db->prepare($sqlDetalles);
         $stmtDet->execute([':id' => $id]);
         $detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
@@ -107,12 +124,6 @@ class OrdenCompraRepository
     public function getById($id)
     {
         return $this->getOrdenCompleta($id);
-    }
-
-    public function getDetalle($id)
-    {
-        $res = $this->getOrdenCompleta($id);
-        return $res ? $res['detalles'] : [];
     }
 
     public function getPendientesMantencion()
@@ -130,7 +141,7 @@ class OrdenCompraRepository
                 AND s.estado_id IN (1, 2, 4)
                 GROUP BY ds.insumo_id
                 HAVING cantidad_total > 0";
-                
+
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -155,7 +166,7 @@ class OrdenCompraRepository
     {
         $sql = "INSERT INTO ordenes_compra (proveedor_id, usuario_creador_id, estado_id, monto_neto, impuesto, monto_total, moneda, tipo_cambio, numero_cotizacion, impuesto_porcentaje, fecha_creacion, destino) 
                 VALUES (:prov, :user, 2, :neto, :imp, :total, :moneda, :tc, :cotiz, :iva_pct, NOW(), :dest)";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':prov' => $cabecera['proveedor_id'],
@@ -192,7 +203,8 @@ class OrdenCompraRepository
 
     public function update($id, $data)
     {
-        if (empty($data)) return false;
+        if (empty($data))
+            return false;
 
         $fields = [];
         $params = [':id' => $id];
@@ -203,9 +215,7 @@ class OrdenCompraRepository
         }
 
         $sql = "UPDATE ordenes_compra SET " . implode(', ', $fields) . " WHERE id = :id";
-        $stmt = $this->db->prepare($sql);
-        
-        return $stmt->execute($params);
+        return $this->db->prepare($sql)->execute($params);
     }
 
     public function recepcionarOrden($ordenId, $itemsRecibidos, $usuarioId)
@@ -218,7 +228,7 @@ class OrdenCompraRepository
             $estadoActual = $stmt->fetchColumn();
 
             if ($estadoActual == 4 || $estadoActual == 5)
-                throw new \Exception("Orden cerrada o anulada.");
+                throw new Exception("No se puede recepcionar: La orden está cerrada o anulada.");
 
             $ubicacionRecepcionId = 1;
 
@@ -228,12 +238,12 @@ class OrdenCompraRepository
                 if ($cantidad <= 0)
                     continue;
 
-                $stmtDet = $this->db->prepare("SELECT insumo_id, cantidad_solicitada, cantidad_recibida FROM detalle_orden_compra WHERE id = :id");
+                $stmtDet = $this->db->prepare("SELECT insumo_id, cantidad_solicitada, cantidad_recibida FROM detalle_orden_compra WHERE id = :id FOR UPDATE");
                 $stmtDet->execute([':id' => $detalleId]);
                 $linea = $stmtDet->fetch(PDO::FETCH_ASSOC);
 
                 if ($cantidad + $linea['cantidad_recibida'] > $linea['cantidad_solicitada'])
-                    throw new \Exception("Exceso en insumo ID: " . $linea['insumo_id']);
+                    throw new Exception("Exceso de recepción en insumo ID: " . $linea['insumo_id']);
 
                 $this->db->prepare("UPDATE detalle_orden_compra SET cantidad_recibida = cantidad_recibida + :c WHERE id = :id")
                     ->execute([':c' => $cantidad, ':id' => $detalleId]);
@@ -258,6 +268,7 @@ class OrdenCompraRepository
                         ':ref' => $ordenId,
                         ':ubi' => $ubicacionRecepcionId
                     ]);
+
                 $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'EN_BODEGA' WHERE orden_compra_id = :oc AND insumo_id = :iid")
                     ->execute([':oc' => $ordenId, ':iid' => $linea['insumo_id']]);
             }
@@ -265,14 +276,13 @@ class OrdenCompraRepository
             $stmtTotales = $this->db->prepare("SELECT SUM(cantidad_solicitada) as sol, SUM(cantidad_recibida) as rec FROM detalle_orden_compra WHERE orden_compra_id = :id");
             $stmtTotales->execute([':id' => $ordenId]);
             $totales = $stmtTotales->fetch(PDO::FETCH_ASSOC);
-
             $nuevoEstado = ($totales['rec'] >= $totales['sol']) ? 4 : ($totales['rec'] > 0 ? 3 : 2);
 
             $this->db->prepare("UPDATE ordenes_compra SET estado_id = :st WHERE id = :id")->execute([':st' => $nuevoEstado, ':id' => $ordenId]);
 
             $this->db->commit();
             return ["nuevo_estado" => $nuevoEstado];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->db->rollBack();
             throw $e;
         }
@@ -303,11 +313,10 @@ class OrdenCompraRepository
                 JOIN proveedores p ON oc.proveedor_id = p.id
                 JOIN detalle_orden_compra doc ON oc.id = doc.orden_compra_id
                 JOIN insumos i ON doc.insumo_id = i.id
-                -- LEFT JOIN usuarios u ON oc.usuario_recepcion_id = u.id (COMENTADO PORQUE NO EXISTE LA COLUMNA)
                 WHERE doc.cantidad_recibida > 0 
-                AND oc.estado_id IN (3, 4) -- 3=Recepcionado, 4=Parcial
+                AND oc.estado_id IN (3, 4)
                 ORDER BY oc.updated_at DESC";
 
-        return $this->db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 }
