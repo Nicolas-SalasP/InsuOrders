@@ -31,9 +31,10 @@ const Login = () => {
 
             if (result.success) {
                 switch (result.role) {
-                    case 'Compras': navigate('/compras'); break;
-                    case 'Bodega': navigate('/bodega'); break;
-                    case 'Mantencion': navigate('/mantencion'); break;
+                    case 'Compras' || 'Encargado Compras': navigate('/compras'); break;
+                    case 'Bodega' || 'Bodegero': navigate('/bodega'); break;
+                    case 'Mantencion' || 'Jefe Mantención' : navigate('/mantencion'); break;
+                    case 'Técnico Mantención' || 'Tecnico': navigate('/mis-mantenciones'); break;
                     default: navigate('/dashboard');
                 }
             } else {
