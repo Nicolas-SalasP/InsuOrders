@@ -15,10 +15,11 @@ class MisMantencionesService
 
     public function listarMisOts($userId)
     {
-        if (!$userId) throw new Exception("Usuario no identificado.");
-        
+        if (!$userId)
+            throw new Exception("Usuario no identificado.");
+
         $ots = $this->repository->getOtsAsignadas($userId);
-        
+
         foreach ($ots as &$ot) {
             $respuestas = $this->repository->getRespuestasPorOt($ot['id']);
             $mapa = [];
@@ -36,7 +37,8 @@ class MisMantencionesService
 
     public function guardarAvance($otId, $respuestas)
     {
-        if (empty($otId)) throw new Exception("Falta ID de OT.");
+        if (empty($otId))
+            throw new Exception("Falta ID de OT.");
         return $this->repository->guardarChecklist($otId, $respuestas);
     }
 
@@ -60,7 +62,7 @@ class MisMantencionesService
     {
         return $this->repository->guardarUrlPdf($otId, $url);
     }
-    
+
     public function getDatosReporte($otId)
     {
         return [
@@ -75,5 +77,12 @@ class MisMantencionesService
             'insumos' => $this->repository->getInsumosPorOt($otId, $userId),
             'respuestas' => $this->repository->getRespuestasPorOt($otId)
         ];
+    }
+
+    public function registrarInicioTrabajo($otId)
+    {
+        if (empty($otId))
+            throw new Exception("ID de OT no válido para iniciar trabajo.");
+        return $this->repository->iniciarTrabajoEnOrden($otId);
     }
 }
