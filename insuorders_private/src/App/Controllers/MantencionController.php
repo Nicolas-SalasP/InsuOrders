@@ -3,19 +3,16 @@ namespace App\Controllers;
 
 use App\Services\MantencionService;
 use App\Services\PDFService;
-use App\Repositories\MantencionRepository;
 use App\Middleware\AuthMiddleware;
 use Exception;
 
 class MantencionController
 {
     private $service;
-    private $repo;
 
     public function __construct()
     {
         $this->service = new MantencionService();
-        $this->repo = new MantencionRepository();
     }
 
     // =================================================================================
@@ -42,7 +39,9 @@ class MantencionController
         $data = json_decode(file_get_contents("php://input"), true);
 
         try {
-            if (!$usuarioId) throw new Exception("Usuario no identificado");
+            if (!$usuarioId) {
+                throw new Exception("Usuario no identificado");
+            }
 
             $id = $this->service->crearOT([
                 'usuario_id' => $usuarioId,
@@ -75,7 +74,6 @@ class MantencionController
 
         try {
             $this->service->editarOT($id, $data);
-            
             echo json_encode(["success" => true, "message" => "OT Actualizada y Sincronizada correctamente"]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -86,12 +84,18 @@ class MantencionController
     public function delete()
     {
         $id = $_GET['id'] ?? null;
-        if ($id) {
-            $this->service->anularOT($id);
-            echo json_encode(["success" => true, "message" => "Orden anulada correctamente"]);
-        } else {
+        if (!$id) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => "Falta ID"]);
+            return;
+        }
+
+        try {
+            $this->service->anularOT($id);
+            echo json_encode(["success" => true, "message" => "Orden anulada correctamente"]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
@@ -101,16 +105,18 @@ class MantencionController
             $data = json_decode(file_get_contents("php://input"), true);
             $otId = $data['id'] ?? null;
             $notas = $data['notas'] ?? '';
-            
+
             if (!$otId) {
                 http_response_code(400);
                 echo json_encode(["success" => false, "message" => "Falta ID de la Orden"]);
                 return;
             }
-            $usuarioId = AuthMiddleware::verify(); 
+
+            $usuarioId = AuthMiddleware::verify();
             $resultado = $this->service->finalizarTarea($otId, $usuarioId, $notas);
+
             echo json_encode([
-                "success" => true, 
+                "success" => true,
                 "message" => $resultado['message'],
                 "data" => $resultado
             ]);
@@ -127,18 +133,19 @@ class MantencionController
 
     public function activos()
     {
-        echo json_encode(["success" => true, "data" => $this->repo->getActivos()]);
+        echo json_encode(["success" => true, "data" => $this->service->listarActivos()]);
     }
 
     public function centrosCosto()
     {
-        echo json_encode(["success" => true, "data" => $this->repo->getCentrosCosto()]);
+        echo json_encode(["success" => true, "data" => $this->service->listarCentrosCosto()]);
     }
 
     public function storeActivo()
     {
         $data = $_POST;
-        
+        $files = $_FILES;
+
         if (empty($data['codigo_interno']) || empty($data['nombre'])) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => "Datos incompletos"]);
@@ -146,32 +153,7 @@ class MantencionController
         }
 
         try {
-            if (!empty($_FILES['imagen_principal']) && $_FILES['imagen_principal']['error'] === UPLOAD_ERR_OK) {
-                $data['imagen_url'] = $this->subirImagen($_FILES['imagen_principal']);
-            }
-            $galeria = [];
-            if (!empty($_FILES['galeria_files'])) {
-                foreach ($_FILES['galeria_files']['name'] as $key => $name) {
-                    if ($_FILES['galeria_files']['error'][$key] === UPLOAD_ERR_OK) {
-                        $fileArray = [
-                            'name' => $_FILES['galeria_files']['name'][$key],
-                            'type' => $_FILES['galeria_files']['type'][$key],
-                            'tmp_name' => $_FILES['galeria_files']['tmp_name'][$key],
-                            'error' => $_FILES['galeria_files']['error'][$key],
-                            'size' => $_FILES['galeria_files']['size'][$key],
-                        ];
-                        
-                        $url = $this->subirImagen($fileArray, 'galeria');
-                        if ($url) {
-                            $tipo = $_POST['galeria_tipos'][$key] ?? 'General';
-                            $galeria[] = ['url' => $url, 'tipo' => $tipo];
-                        }
-                    }
-                }
-            }
-            $data['galeria'] = $galeria;
-            $this->service->crearActivo($data);
-            
+            $this->service->crearActivo($data, $files);
             echo json_encode(["success" => true, "message" => "Activo creado con imágenes"]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -182,6 +164,7 @@ class MantencionController
     public function editarActivo()
     {
         $data = $_POST;
+        $files = $_FILES;
 
         if (empty($data['id'])) {
             http_response_code(400);
@@ -190,35 +173,29 @@ class MantencionController
         }
 
         try {
-            if (!empty($_FILES['imagen_principal']) && $_FILES['imagen_principal']['error'] === UPLOAD_ERR_OK) {
-                $data['imagen_url'] = $this->subirImagen($_FILES['imagen_principal']);
-            }
-            $galeria = [];
-            if (!empty($_FILES['galeria_files'])) {
-                foreach ($_FILES['galeria_files']['name'] as $key => $name) {
-                    if ($_FILES['galeria_files']['error'][$key] === UPLOAD_ERR_OK) {
-                        $fileArray = [
-                            'name' => $_FILES['galeria_files']['name'][$key],
-                            'type' => $_FILES['galeria_files']['type'][$key],
-                            'tmp_name' => $_FILES['galeria_files']['tmp_name'][$key],
-                            'error' => $_FILES['galeria_files']['error'][$key],
-                            'size' => $_FILES['galeria_files']['size'][$key],
-                        ];
-                        
-                        $url = $this->subirImagen($fileArray, 'galeria');
-                        if ($url) {
-                            $tipo = $_POST['galeria_tipos'][$key] ?? 'General';
-                            $galeria[] = ['url' => $url, 'tipo' => $tipo];
-                        }
-                    }
-                }
-            }
-            $data['galeria'] = $galeria;
-            $this->service->editarActivo($data);
-            
+            $this->service->editarActivo($data, $files);
             echo json_encode(["success" => true, "message" => "Activo actualizado"]);
         } catch (Exception $e) {
             http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
+    public function deleteActivo()
+    {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Falta el ID del activo"]);
+            return;
+        }
+
+        try {
+            $this->service->eliminarActivo($id);
+            echo json_encode(["success" => true, "message" => "Activo eliminado correctamente."]);
+        } catch (Exception $e) {
+            $code = (strpos($e->getMessage(), 'No se puede eliminar') !== false) ? 400 : 500;
+            http_response_code($code);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
@@ -229,21 +206,24 @@ class MantencionController
         echo json_encode(["success" => true, "data" => $this->service->obtenerGaleria($id)]);
     }
 
+    public function eliminarImagen()
+    {
+        AuthMiddleware::hasPermission('activos_editar');
+        $id = $_GET['id'] ?? null;
 
-    private function subirImagen($file, $subFolder = '') {
-        $targetDir = __DIR__ . '/../../../../public_html/uploads/activos/' . $subFolder;
-        if (!file_exists($targetDir)) {
-            mkdir($targetDir, 0777, true);
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "ID de imagen faltante"]);
+            return;
         }
-        
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = uniqid('ACT_') . '.' . $extension;
-        $targetPath = $targetDir . '/' . $filename;
-        
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            return '/uploads/activos/' . $subFolder . ($subFolder ? '/' : '') . $filename;
+
+        try {
+            $this->service->eliminarImagenGaleria($id);
+            echo json_encode(["success" => true, "message" => "Imagen eliminada"]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Error al eliminar: " . $e->getMessage()]);
         }
-        return null;
     }
 
     // =================================================================================
@@ -253,14 +233,14 @@ class MantencionController
     public function getKit()
     {
         $id = $_GET['id'] ?? 0;
-        echo json_encode(["success" => true, "data" => $this->repo->getKitActivo($id)]);
+        echo json_encode(["success" => true, "data" => $this->service->obtenerKitActivo($id)]);
     }
 
     public function saveKit()
     {
         $d = json_decode(file_get_contents("php://input"), true);
         try {
-            $this->repo->addInsumoToKit($d['activo_id'], $d['insumo_id'], $d['cantidad']);
+            $this->service->agregarItemKit($d);
             echo json_encode(["success" => true]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -272,7 +252,7 @@ class MantencionController
     {
         $d = json_decode(file_get_contents("php://input"), true);
         try {
-            $this->repo->updateKitQuantity($d['activo_id'], $d['insumo_id'], $d['cantidad']);
+            $this->service->actualizarCantidadKit($d);
             echo json_encode(["success" => true]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -286,8 +266,10 @@ class MantencionController
         $insumoId = $_GET['insumo_id'] ?? null;
 
         try {
-            if (!$activoId || !$insumoId) throw new Exception("Faltan IDs");
-            $this->repo->removeInsumoFromKit($activoId, $insumoId);
+            if (!$activoId || !$insumoId) {
+                throw new Exception("Faltan IDs");
+            }
+            $this->service->removerItemKit($activoId, $insumoId);
             echo json_encode(["success" => true]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -302,7 +284,7 @@ class MantencionController
     public function listDocs()
     {
         $id = $_GET['id'] ?? 0;
-        echo json_encode(["success" => true, "data" => $this->repo->getDocs($id)]);
+        echo json_encode(["success" => true, "data" => $this->service->listarDocumentos($id)]);
     }
 
     public function uploadDoc()
@@ -313,31 +295,12 @@ class MantencionController
             return;
         }
 
-        $activoId = $_POST['activo_id'];
-        $file = $_FILES['archivo'];
-        $nombre = $file['name'];
-        
-        $ext = pathinfo($nombre, PATHINFO_EXTENSION);
-        $nuevoNombre = "DOC_{$activoId}_" . uniqid() . "." . $ext;
-        
-        $targetDir = __DIR__ . '/../../../../public_html/uploads/activos/';
-        
-        if (!file_exists($targetDir)) {
-            mkdir($targetDir, 0777, true);
-        }
-
-        if (move_uploaded_file($file['tmp_name'], $targetDir . $nuevoNombre)) {
-            $url = "/uploads/activos/" . $nuevoNombre;
-            try {
-                $this->repo->addDoc($activoId, $nombre, $url);
-                echo json_encode(["success" => true, "url" => $url]);
-            } catch (Exception $e) {
-                http_response_code(500);
-                echo json_encode(["success" => false, "message" => "Error DB: " . $e->getMessage()]);
-            }
-        } else {
+        try {
+            $url = $this->service->subirDocumento($_POST['activo_id'], $_FILES['archivo']);
+            echo json_encode(["success" => true, "url" => $url]);
+        } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Error al guardar archivo en disco"]);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
@@ -345,7 +308,7 @@ class MantencionController
     {
         $id = $_GET['id'] ?? 0;
         try {
-            $this->repo->deleteDoc($id);
+            $this->service->eliminarDocumento($id);
             echo json_encode(["success" => true]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -359,21 +322,23 @@ class MantencionController
 
     public function downloadPdf()
     {
-        if (ob_get_length()) ob_clean();
-        
+        if (ob_get_length()) {
+            ob_clean();
+        }
+
         $id = $_GET['id'] ?? 0;
         $type = $_GET['type'] ?? 'sol';
-        
+
         try {
-            $ot = $this->repo->getOTHeader($id);
+            $otData = $this->service->obtenerHeaderOT($id);
             $pdf = new PDFService();
-            
+
             if ($type === 'entrega') {
-                $entregas = $this->repo->getEntregasOT($id);
-                echo $pdf->generarPdfEntrega($ot, $entregas);
+                $entregas = $this->service->obtenerEntregasOT($id);
+                echo $pdf->generarPdfEntrega($otData, $entregas);
             } else {
-                $detalles = $this->repo->getDetallesOT($id);
-                echo $pdf->generarPdfOT($ot, $detalles);
+                $detalles = $this->service->obtenerDetallesOT($id);
+                echo $pdf->generarPdfOT($otData, $detalles);
             }
             exit;
         } catch (Exception $e) {
@@ -386,17 +351,108 @@ class MantencionController
     {
         try {
             AuthMiddleware::verify();
-            
             $input = json_decode(file_get_contents("php://input"), true);
             $id = $input['activo_id'] ?? null;
             $plantilla = $input['plantilla'] ?? null;
+
             $this->service->guardarPlantilla($id, $plantilla);
 
             echo json_encode([
-                "success" => true, 
+                "success" => true,
                 "message" => "Plantilla actualizada correctamente"
             ]);
 
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
+    // =================================================================================
+    // 6. GESTIÓN DE BODEGA E INVENTARIO (NUEVOS ENDPOINTS)
+    // =================================================================================
+
+    public function pendientesEntrega()
+    {
+        try {
+            echo json_encode([
+                "success" => true,
+                "data" => $this->service->listarPendientesEntrega()
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
+    public function entregarMaterial()
+    {
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        try {
+            $usuarioId = AuthMiddleware::verify();
+
+            $detalleId = $data['detalle_id'] ?? null;
+            $cantidad = $data['cantidad'] ?? 0;
+            $receptorId = $data['receptor_id'] ?? null;
+
+            if (!$detalleId || !$cantidad || !$receptorId) {
+                http_response_code(400);
+                echo json_encode(["success" => false, "message" => "Faltan datos de entrega"]);
+                return;
+            }
+
+            $this->service->realizarEntregaMaterial($detalleId, $usuarioId, $cantidad, $receptorId);
+
+            echo json_encode(["success" => true, "message" => "Material entregado correctamente"]);
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
+    public function devolverMaterial()
+    {
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        try {
+            $bodegueroId = AuthMiddleware::verify();
+            $detalleId = $data['detalle_id'] ?? null;
+            $cantidad = $data['cantidad'] ?? 0;
+
+            if (!$detalleId || !$cantidad) {
+                http_response_code(400);
+                echo json_encode(["success" => false, "message" => "Faltan datos de devolución"]);
+                return;
+            }
+
+            $this->service->realizarDevolucionMaterial($detalleId, $cantidad, $bodegueroId);
+
+            echo json_encode(["success" => true, "message" => "Devolución registrada correctamente"]);
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
+    public function cierreAdministrativo()
+    {
+        $data = json_decode(file_get_contents("php://input"), true);
+        $id = $data['id'] ?? null;
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Falta ID de OT"]);
+            return;
+        }
+
+        try {
+            AuthMiddleware::verify();
+
+            $this->service->cierreAdministrativoOT($id);
+            echo json_encode(["success" => true, "message" => "OT cerrada administrativamente y stock liberado."]);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
