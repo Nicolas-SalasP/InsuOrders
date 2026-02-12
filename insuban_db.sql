@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 05-02-2026 a las 21:03:14
+-- Tiempo de generación: 12-02-2026 a las 20:15:08
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -88,7 +88,8 @@ INSERT INTO `activos` (`id`, `codigo_interno`, `codigo_maquina`, `nombre`, `tipo
 (31, 'MAQ-04', '', 'Tanque de almacenamiento de salmuera', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:25', '2026-01-12 15:13:25', NULL, NULL, NULL, NULL),
 (32, 'MAQ-05', '', 'Bomba de salmuera dosificación', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:50', '2026-01-12 15:13:50', NULL, NULL, NULL, NULL),
 (33, 'MAQ-06', '', 'Tornillo sinfín ', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:16:33', '2026-01-12 15:16:33', NULL, NULL, NULL, NULL),
-(34, 'KIT-01', '', 'Auditoría', 'Infraestructura', '', '', NULL, NULL, '', 'Kit de distintos insumos para auditoria', '', 25, 'OPERATIVO', '2026-01-12 15:17:42', '2026-01-12 15:44:17', NULL, NULL, NULL, NULL);
+(34, 'KIT-01', '', 'Auditoría', 'Infraestructura', '', '', NULL, NULL, '', 'Kit de distintos insumos para auditoria', '', 25, 'OPERATIVO', '2026-01-12 15:17:42', '2026-01-12 15:44:17', NULL, NULL, NULL, NULL),
+(35, 'GEN-001', 'G-500', 'Generador Diesel', 'Generador', 'Caterpillar', 'C500', NULL, 2023, 'XYZ123', 'Generador de respaldo', 'Planta 1', NULL, 'OPERATIVO', '2026-02-12 13:48:26', '2026-02-12 13:48:26', NULL, NULL, 6, 'MESES');
 
 -- --------------------------------------------------------
 
@@ -125,14 +126,6 @@ CREATE TABLE `activos_imagenes` (
   `tipo` varchar(50) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `activos_imagenes`
---
-
-INSERT INTO `activos_imagenes` (`id`, `activo_id`, `imagen_url`, `tipo`, `created_at`) VALUES
-(1, 30, '/uploads/activos/galeria/ACT_696e83787fa91.jpeg', 'Atrás', '2026-01-19 19:18:16'),
-(2, 30, '/uploads/activos/galeria/ACT_696e83787ffe2.jpeg', 'Frente', '2026-01-19 19:18:16');
 
 -- --------------------------------------------------------
 
@@ -753,27 +746,27 @@ CREATE TABLE `cronograma_mantencion` (
 --
 
 INSERT INTO `cronograma_mantencion` (`id`, `tipo_evento`, `titulo`, `descripcion`, `fecha_programada`, `hora_programada`, `estado`, `solicitud_ot_id`, `activo_id`, `insumo_id`, `cantidad`, `monto_estimado`, `icono`, `color`, `created_at`, `updated_at`) VALUES
-(7, 'MANTENCION', 'Mantenimiento preventivo', '', '2026-01-12', NULL, '', 19, 3, NULL, NULL, NULL, 'bi-tools', '#eebb2f', '2026-01-12 12:07:33', '2026-01-12 12:07:33'),
-(8, 'MANTENCION', 'Mantenimiento preventivo OT 1671', 'Mantenimiento preventivo OT 1671', '2026-01-14', NULL, NULL, 20, 1, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 12:14:26', '2026-01-12 19:57:46'),
-(9, 'MANTENCION', 'Mantenimiento preventivo OT 1673', 'Mantenimiento preventivo OT 1673', '2026-01-20', NULL, NULL, 21, 2, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 14:19:32', '2026-01-12 19:57:26'),
-(10, 'MANTENCION', 'Mantenimiento preventivo OT 1703', '', '2026-01-16', NULL, NULL, 22, 4, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 14:25:25', '2026-01-12 17:11:35'),
-(11, 'MANTENCION', 'Mantenimiento preventivo', '', '2026-02-02', NULL, '', 23, 28, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:30:45', '2026-01-12 18:30:45'),
-(13, 'MANTENCION', 'Mantenimiento preventivo ', '', '2026-02-10', NULL, '', 25, 30, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:33:27', '2026-01-12 18:33:27'),
-(14, 'MANTENCION', 'Mantenimiento preventivo', 'Mantenimiento preventivo', '2026-02-12', NULL, '', 26, 31, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:34:12', '2026-01-12 19:56:49'),
-(16, 'COMPRA', 'Auditoría Perú', 'Auditoría Perú', '2026-01-22', NULL, NULL, 29, 34, NULL, NULL, NULL, 'bi-tools', '#e89191', '2026-01-12 20:03:50', '2026-01-12 20:08:56'),
-(17, 'MANTENCION', 'Mantencion preventivo', 'MANTENCION PROGRAMADA: Mantencion preventivo', '2026-01-30', NULL, '', 33, 30, NULL, NULL, NULL, 'bi-tools', '#0d6efd', '2026-01-21 18:41:46', '2026-01-22 12:47:03'),
-(18, 'MANTENCION', 'Mantencion preventivo', '', '2026-05-30', NULL, '', 34, 30, NULL, NULL, NULL, 'bi-tools', '#0d6efd', '2026-01-21 18:41:47', '2026-01-21 18:41:47'),
-(19, 'MANTENCION', 'Mantencion', '', '2026-02-10', NULL, '', 35, 30, NULL, NULL, NULL, 'bi-cart-fill', '#0d6efd', '2026-01-21 18:42:38', '2026-01-21 18:42:38'),
-(20, 'MANTENCION', 'Mantencion', '', '2026-06-10', NULL, '', 36, 30, NULL, NULL, NULL, 'bi-cart-fill', '#0d6efd', '2026-01-21 18:42:38', '2026-01-21 18:42:38'),
-(21, 'MANTENCION', 'Mantencion General', '', '2026-02-11', NULL, '', 37, 30, NULL, NULL, NULL, 'bi-tools', '#3c905c', '2026-01-21 18:52:38', '2026-01-21 18:52:38'),
-(22, 'MANTENCION', 'Mantencion General', '', '2026-06-11', NULL, '', 38, 30, NULL, NULL, NULL, 'bi-tools', '#3c905c', '2026-01-21 18:52:38', '2026-01-21 18:52:38'),
-(23, 'MANTENCION', 'Mantencion General', '', '2026-10-11', NULL, '', 39, 30, NULL, NULL, NULL, 'bi-tools', '#3c905c', '2026-01-21 18:52:38', '2026-01-21 18:52:38'),
-(24, 'MANTENCION', 'Mantencion General', 'MANTENCION PROGRAMADA: Mantencion General', '2027-02-11', NULL, '', 40, 30, NULL, NULL, NULL, 'bi-tools', '#3c905c', '2026-01-21 18:52:38', '2026-01-22 12:42:56'),
-(25, 'MANTENCION', 'Mantencion cada 3 meses', '', '2026-01-25', NULL, '', 42, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:42', '2026-01-22 12:48:42'),
-(26, 'MANTENCION', 'Mantencion cada 3 meses', '', '2026-04-25', NULL, '', 43, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:42', '2026-01-22 12:48:42'),
-(27, 'MANTENCION', 'Mantencion cada 3 meses', '', '2026-07-25', NULL, '', 44, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:42', '2026-01-22 12:48:42'),
-(28, 'MANTENCION', 'Mantencion cada 3 meses', '', '2026-10-25', NULL, '', 45, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:42', '2026-01-22 12:48:42'),
-(29, 'MANTENCION', 'Mantencion cada 3 meses', '', '2027-01-25', NULL, '', 46, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:43', '2026-01-22 12:48:43');
+(7, 'MANTENCION', 'Mantenimiento preventivo', '', '2026-01-12', NULL, '', NULL, 3, NULL, NULL, NULL, 'bi-tools', '#eebb2f', '2026-01-12 12:07:33', '2026-01-12 12:07:33'),
+(8, 'MANTENCION', 'Mantenimiento preventivo OT 1671', 'Mantenimiento preventivo OT 1671', '2026-01-14', NULL, NULL, NULL, 1, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 12:14:26', '2026-01-12 19:57:46'),
+(9, 'MANTENCION', 'Mantenimiento preventivo OT 1673', 'Mantenimiento preventivo OT 1673', '2026-01-20', NULL, NULL, NULL, 2, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 14:19:32', '2026-01-12 19:57:26'),
+(10, 'MANTENCION', 'Mantenimiento preventivo OT 1703', '', '2026-01-16', NULL, NULL, NULL, 4, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 14:25:25', '2026-01-12 17:11:35'),
+(11, 'MANTENCION', 'Mantenimiento preventivo', '', '2026-02-02', NULL, '', NULL, 28, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:30:45', '2026-01-12 18:30:45'),
+(13, 'MANTENCION', 'Mantenimiento preventivo ', '', '2026-02-10', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:33:27', '2026-01-12 18:33:27'),
+(14, 'MANTENCION', 'Mantenimiento preventivo', 'Mantenimiento preventivo', '2026-02-12', NULL, '', NULL, 31, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:34:12', '2026-01-12 19:56:49'),
+(16, 'COMPRA', 'Auditoría Perú', 'Auditoría Perú', '2026-01-22', NULL, NULL, NULL, 34, NULL, NULL, NULL, 'bi-tools', '#e89191', '2026-01-12 20:03:50', '2026-01-12 20:08:56'),
+(17, 'MANTENCION', 'Mantencion preventivo', 'MANTENCION PROGRAMADA: Mantencion preventivo', '2026-01-30', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#0d6efd', '2026-01-21 18:41:46', '2026-01-22 12:47:03'),
+(18, 'MANTENCION', 'Mantencion preventivo', '', '2026-05-30', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#0d6efd', '2026-01-21 18:41:47', '2026-01-21 18:41:47'),
+(19, 'MANTENCION', 'Mantencion', '', '2026-02-10', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-cart-fill', '#0d6efd', '2026-01-21 18:42:38', '2026-01-21 18:42:38'),
+(20, 'MANTENCION', 'Mantencion', '', '2026-06-10', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-cart-fill', '#0d6efd', '2026-01-21 18:42:38', '2026-01-21 18:42:38'),
+(21, 'MANTENCION', 'Mantencion General', '', '2026-02-11', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#3c905c', '2026-01-21 18:52:38', '2026-01-21 18:52:38'),
+(22, 'MANTENCION', 'Mantencion General', '', '2026-06-11', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#3c905c', '2026-01-21 18:52:38', '2026-01-21 18:52:38'),
+(23, 'MANTENCION', 'Mantencion General', '', '2026-10-11', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#3c905c', '2026-01-21 18:52:38', '2026-01-21 18:52:38'),
+(24, 'MANTENCION', 'Mantencion General', 'MANTENCION PROGRAMADA: Mantencion General', '2027-02-11', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#3c905c', '2026-01-21 18:52:38', '2026-01-22 12:42:56'),
+(25, 'MANTENCION', 'Mantencion cada 3 meses', '', '2026-01-25', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:42', '2026-01-22 12:48:42'),
+(26, 'MANTENCION', 'Mantencion cada 3 meses', '', '2026-04-25', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:42', '2026-01-22 12:48:42'),
+(27, 'MANTENCION', 'Mantencion cada 3 meses', '', '2026-07-25', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:42', '2026-01-22 12:48:42'),
+(28, 'MANTENCION', 'Mantencion cada 3 meses', '', '2026-10-25', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:42', '2026-01-22 12:48:42'),
+(29, 'MANTENCION', 'Mantencion cada 3 meses', '', '2027-01-25', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-lightning-charge', '#d3a645', '2026-01-22 12:48:43', '2026-01-22 12:48:43');
 
 -- --------------------------------------------------------
 
@@ -827,7 +820,9 @@ INSERT INTO `detalle_orden_compra` (`id`, `orden_compra_id`, `insumo_id`, `canti
 (15, 240000, 1294, 1.00, 0.00, 600.00, 600.00),
 (16, 240000, 1295, 1.00, 0.00, 80000.00, 80000.00),
 (17, 240000, 1419, 2.00, 0.00, 56000.00, 112000.00),
-(18, 240001, 1026, 1.00, 1.00, 60000.00, 60000.00);
+(18, 240001, 1026, 1.00, 1.00, 60000.00, 60000.00),
+(19, 240002, 1096, 10.00, 10.00, 10000.00, 100000.00),
+(20, 240003, 1096, 10.00, 10.00, 15000.00, 150000.00);
 
 -- --------------------------------------------------------
 
@@ -850,238 +845,7 @@ CREATE TABLE `detalle_solicitud` (
 --
 
 INSERT INTO `detalle_solicitud` (`id`, `solicitud_id`, `insumo_id`, `cantidad`, `cantidad_entregada`, `estado_linea`, `orden_compra_id`) VALUES
-(22, 18, 89, 4.00, 0.00, 'ANULADO', NULL),
-(23, 18, 1118, 4.00, 0.00, 'ANULADO', NULL),
-(24, 18, 1452, 1.00, 0.00, 'ANULADO', NULL),
-(25, 18, 1453, 1.00, 0.00, 'ANULADO', NULL),
-(26, 18, 1454, 1.00, 0.00, 'ANULADO', NULL),
-(27, 18, 1455, 1.00, 0.00, 'ANULADO', NULL),
-(28, 18, 1456, 1.00, 0.00, 'ANULADO', NULL),
-(29, 18, 1457, 1.00, 0.00, 'ANULADO', NULL),
-(30, 18, 1458, 1.00, 0.00, 'ANULADO', NULL),
-(31, 18, 1459, 1.00, 0.00, 'ANULADO', NULL),
-(32, 18, 1460, 1.00, 0.00, 'ANULADO', NULL),
-(33, 18, 1461, 1.00, 0.00, 'ANULADO', NULL),
-(34, 18, 1462, 1.00, 0.00, 'ANULADO', NULL),
-(35, 18, 1463, 1.00, 0.00, 'ANULADO', NULL),
-(36, 18, 1464, 1.00, 0.00, 'ANULADO', NULL),
-(37, 18, 1465, 1.00, 0.00, 'ANULADO', NULL),
-(38, 18, 1466, 1.00, 0.00, 'ANULADO', NULL),
-(39, 18, 1467, 1.00, 0.00, 'ANULADO', NULL),
-(40, 18, 1468, 1.00, 0.00, 'ANULADO', NULL),
-(41, 18, 1469, 1.00, 0.00, 'ANULADO', NULL),
-(42, 18, 1470, 1.00, 0.00, 'ANULADO', NULL),
-(43, 18, 1471, 1.00, 0.00, 'ANULADO', NULL),
-(44, 18, 1472, 1.00, 0.00, 'ANULADO', NULL),
-(45, 19, 89, 4.00, 0.00, 'CANCELADO', NULL),
-(46, 19, 1120, 4.00, 0.00, 'CANCELADO', NULL),
-(47, 19, 1452, 1.00, 0.00, 'CANCELADO', NULL),
-(48, 19, 1453, 1.00, 0.00, 'CANCELADO', NULL),
-(49, 19, 1454, 1.00, 0.00, 'CANCELADO', NULL),
-(50, 19, 1455, 1.00, 0.00, 'CANCELADO', NULL),
-(51, 19, 1456, 1.00, 0.00, 'CANCELADO', NULL),
-(52, 19, 1457, 1.00, 0.00, 'CANCELADO', NULL),
-(53, 19, 1458, 1.00, 0.00, 'CANCELADO', NULL),
-(54, 19, 1459, 1.00, 0.00, 'CANCELADO', NULL),
-(55, 19, 1460, 1.00, 0.00, 'CANCELADO', NULL),
-(56, 19, 1461, 1.00, 0.00, 'CANCELADO', NULL),
-(57, 19, 1462, 1.00, 0.00, 'CANCELADO', NULL),
-(58, 19, 1463, 1.00, 0.00, 'CANCELADO', NULL),
-(59, 19, 1464, 1.00, 0.00, 'CANCELADO', NULL),
-(60, 19, 1465, 1.00, 0.00, 'CANCELADO', NULL),
-(61, 19, 1466, 1.00, 0.00, 'CANCELADO', NULL),
-(62, 19, 1467, 1.00, 0.00, 'CANCELADO', NULL),
-(63, 19, 1468, 1.00, 0.00, 'CANCELADO', NULL),
-(64, 19, 1469, 1.00, 0.00, 'CANCELADO', NULL),
-(65, 19, 1470, 1.00, 0.00, 'CANCELADO', NULL),
-(66, 19, 1471, 1.00, 0.00, 'CANCELADO', NULL),
-(67, 19, 1472, 1.00, 0.00, 'CANCELADO', NULL),
-(68, 20, 89, 4.00, 4.00, 'PENDIENTE', NULL),
-(70, 20, 1452, 1.00, 0.00, 'PENDIENTE', NULL),
-(71, 20, 1453, 1.00, 0.00, 'PENDIENTE', NULL),
-(72, 20, 1454, 1.00, 0.00, 'PENDIENTE', NULL),
-(73, 20, 1455, 1.00, 1.00, 'PENDIENTE', NULL),
-(74, 20, 1456, 1.00, 0.00, 'PENDIENTE', NULL),
-(75, 20, 1457, 1.00, 0.00, 'PENDIENTE', NULL),
-(76, 20, 1458, 1.00, 0.00, 'PENDIENTE', NULL),
-(77, 20, 1459, 1.00, 1.00, 'PENDIENTE', NULL),
-(78, 20, 1460, 1.00, 1.00, 'PENDIENTE', NULL),
-(79, 20, 1461, 1.00, 0.00, 'PENDIENTE', NULL),
-(80, 20, 1462, 1.00, 0.00, 'PENDIENTE', NULL),
-(81, 20, 1463, 1.00, 0.00, 'PENDIENTE', NULL),
-(82, 20, 1464, 1.00, 1.00, 'REQUIERE_COMPRA', NULL),
-(83, 20, 1465, 1.00, 0.00, 'PENDIENTE', NULL),
-(84, 20, 1466, 1.00, 0.00, 'PENDIENTE', NULL),
-(85, 20, 1467, 1.00, 0.00, 'PENDIENTE', NULL),
-(86, 20, 1468, 1.00, 0.00, 'PENDIENTE', NULL),
-(87, 20, 1469, 1.00, 0.00, 'PENDIENTE', NULL),
-(88, 20, 1470, 1.00, 0.00, 'PENDIENTE', NULL),
-(89, 20, 1471, 1.00, 0.00, 'PENDIENTE', NULL),
-(90, 20, 1472, 1.00, 0.00, 'PENDIENTE', NULL),
-(91, 20, 1120, 4.00, 4.00, 'ENTREGADO', NULL),
-(92, 21, 89, 4.00, 0.00, 'CANCELADO', NULL),
-(93, 21, 1120, 4.00, 0.00, 'CANCELADO', NULL),
-(94, 21, 1452, 1.00, 0.00, 'CANCELADO', NULL),
-(95, 21, 1453, 1.00, 0.00, 'CANCELADO', NULL),
-(96, 21, 1454, 1.00, 1.00, 'ENTREGADO', NULL),
-(97, 21, 1455, 1.00, 0.00, 'CANCELADO', NULL),
-(98, 21, 1456, 1.00, 0.00, 'CANCELADO', NULL),
-(99, 21, 1457, 1.00, 0.00, 'CANCELADO', NULL),
-(100, 21, 1458, 1.00, 0.00, 'CANCELADO', NULL),
-(101, 21, 1459, 1.00, 0.00, 'CANCELADO', NULL),
-(102, 21, 1460, 1.00, 0.00, 'CANCELADO', NULL),
-(103, 21, 1461, 1.00, 0.00, 'CANCELADO', NULL),
-(104, 21, 1462, 1.00, 0.00, 'CANCELADO', NULL),
-(105, 21, 1463, 1.00, 0.00, 'CANCELADO', NULL),
-(106, 21, 1464, 1.00, 0.00, 'CANCELADO', NULL),
-(107, 21, 1465, 1.00, 0.00, 'CANCELADO', NULL),
-(108, 21, 1466, 1.00, 0.00, 'CANCELADO', NULL),
-(109, 21, 1467, 1.00, 0.00, 'CANCELADO', NULL),
-(110, 21, 1468, 1.00, 0.00, 'CANCELADO', NULL),
-(111, 21, 1469, 1.00, 0.00, 'CANCELADO', NULL),
-(112, 21, 1470, 1.00, 1.00, 'ENTREGADO', NULL),
-(113, 21, 1471, 1.00, 0.00, 'CANCELADO', NULL),
-(114, 21, 1472, 1.00, 0.00, 'CANCELADO', NULL),
-(115, 22, 89, 4.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(116, 22, 1120, 4.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(117, 22, 1452, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(118, 22, 1453, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(119, 22, 1454, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(120, 22, 1455, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(121, 22, 1456, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(122, 22, 1457, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(123, 22, 1458, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(124, 22, 1459, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(125, 22, 1460, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(126, 22, 1461, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(127, 22, 1462, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(128, 22, 1463, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(129, 22, 1464, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(130, 22, 1465, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(131, 22, 1466, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(132, 22, 1467, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(133, 22, 1468, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(134, 22, 1469, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(135, 22, 1470, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(136, 22, 1471, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(137, 22, 1472, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(138, 23, 1280, 2.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(139, 23, 1281, 2.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(140, 24, 71, 1.00, 0.00, 'ANULADO', NULL),
-(141, 24, 767, 2.00, 0.00, 'ANULADO', NULL),
-(142, 24, 790, 1.00, 0.00, 'ANULADO', NULL),
-(143, 24, 966, 8.00, 0.00, 'ANULADO', NULL),
-(144, 24, 1357, 8.00, 0.00, 'ANULADO', NULL),
-(145, 24, 1358, 1.00, 0.00, 'ANULADO', NULL),
-(146, 25, 1294, 1.00, 0.00, 'COMPRADO', 240000),
-(147, 25, 1295, 1.00, 0.00, 'COMPRADO', 240000),
-(148, 25, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(149, 27, 202, 24.00, 0.00, 'ANULADO', NULL),
-(150, 27, 225, 3.00, 0.00, 'ANULADO', NULL),
-(151, 27, 228, 10.00, 0.00, 'ANULADO', NULL),
-(152, 27, 380, 12.00, 0.00, 'ANULADO', NULL),
-(153, 27, 1053, 7.00, 0.00, 'ANULADO', NULL),
-(154, 27, 1117, 6.00, 0.00, 'ANULADO', NULL),
-(155, 27, 1197, 10.00, 0.00, 'ANULADO', NULL),
-(156, 27, 1198, 10.00, 0.00, 'ANULADO', NULL),
-(157, 27, 1419, 7.00, 0.00, 'ANULADO', NULL),
-(158, 27, 1421, 12.00, 0.00, 'ANULADO', NULL),
-(159, 27, 1422, 1.00, 0.00, 'ANULADO', NULL),
-(160, 28, 1569, 1.00, 0.00, 'PENDIENTE', NULL),
-(161, 28, 1565, 1.00, 0.00, 'PENDIENTE', NULL),
-(162, 28, 467, 1.00, 0.00, 'PENDIENTE', NULL),
-(163, 28, 1539, 1.00, 0.00, 'PENDIENTE', NULL),
-(164, 28, 1570, 25.00, 0.00, 'PENDIENTE', NULL),
-(165, 29, 202, 24.00, 0.00, 'PENDIENTE', NULL),
-(166, 29, 225, 3.00, 0.00, 'PENDIENTE', NULL),
-(167, 29, 228, 10.00, 0.00, 'PENDIENTE', NULL),
-(168, 29, 380, 12.00, 0.00, 'PENDIENTE', 240000),
-(169, 29, 1053, 7.00, 0.00, 'PENDIENTE', NULL),
-(170, 29, 1117, 6.00, 0.00, 'PENDIENTE', NULL),
-(171, 29, 1197, 10.00, 0.00, 'REQUIERE_COMPRA', 240000),
-(172, 29, 1198, 10.00, 0.00, 'PENDIENTE', NULL),
-(173, 29, 1419, 7.00, 0.00, 'REQUIERE_COMPRA', 240000),
-(174, 29, 1421, 12.00, 0.00, 'PENDIENTE', NULL),
-(175, 29, 1422, 1.00, 0.00, 'PENDIENTE', NULL),
-(176, 30, 1431, 1.00, 1.00, 'ENTREGADO', NULL),
-(177, 31, 89, 4.00, 0.00, 'PENDIENTE', NULL),
-(178, 31, 1452, 1.00, 0.00, 'PENDIENTE', NULL),
-(179, 31, 1453, 1.00, 0.00, 'PENDIENTE', NULL),
-(180, 31, 1454, 1.00, 0.00, 'PENDIENTE', NULL),
-(181, 31, 1455, 1.00, 0.00, 'PENDIENTE', NULL),
-(182, 31, 1456, 1.00, 0.00, 'PENDIENTE', NULL),
-(183, 31, 1457, 1.00, 0.00, 'PENDIENTE', NULL),
-(184, 31, 1458, 1.00, 0.00, 'PENDIENTE', NULL),
-(185, 31, 1459, 1.00, 0.00, 'PENDIENTE', NULL),
-(186, 31, 1460, 1.00, 0.00, 'PENDIENTE', NULL),
-(187, 31, 1461, 1.00, 0.00, 'PENDIENTE', NULL),
-(188, 31, 1462, 1.00, 0.00, 'PENDIENTE', NULL),
-(189, 31, 1463, 1.00, 0.00, 'PENDIENTE', NULL),
-(190, 31, 1464, 1.00, 0.00, 'PENDIENTE', NULL),
-(191, 31, 1465, 1.00, 0.00, 'PENDIENTE', NULL),
-(192, 31, 1466, 1.00, 0.00, 'PENDIENTE', NULL),
-(193, 31, 1467, 1.00, 0.00, 'PENDIENTE', NULL),
-(194, 31, 1468, 1.00, 0.00, 'PENDIENTE', NULL),
-(195, 31, 1469, 1.00, 0.00, 'PENDIENTE', NULL),
-(196, 31, 1470, 1.00, 0.00, 'PENDIENTE', NULL),
-(197, 31, 1471, 1.00, 0.00, 'PENDIENTE', NULL),
-(198, 31, 1472, 1.00, 0.00, 'PENDIENTE', NULL),
-(199, 32, 552, 10.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(200, 33, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(201, 33, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(202, 33, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(203, 34, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(204, 34, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(205, 34, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(206, 35, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(207, 35, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(208, 35, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(209, 36, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(210, 36, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(211, 36, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(212, 37, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(213, 37, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(214, 37, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(215, 38, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(216, 38, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(217, 38, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(218, 39, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(219, 39, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(220, 39, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(221, 40, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(222, 40, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(223, 40, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(224, 41, 1294, 1.00, 0.00, 'ANULADO', NULL),
-(225, 41, 1295, 1.00, 0.00, 'ANULADO', NULL),
-(226, 41, 1431, 1.00, 0.00, 'ANULADO', NULL),
-(227, 40, 1026, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(228, 42, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(229, 42, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(230, 42, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(231, 43, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(232, 43, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(233, 43, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(234, 44, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(235, 44, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(236, 44, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(237, 45, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(238, 45, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(239, 45, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(240, 46, 1294, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(241, 46, 1295, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(242, 46, 1431, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(243, 47, 1086, 1.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(244, 48, 202, 24.00, 0.00, 'PENDIENTE', NULL),
-(245, 48, 225, 3.00, 0.00, 'PENDIENTE', NULL),
-(246, 48, 228, 10.00, 0.00, 'PENDIENTE', NULL),
-(247, 48, 380, 12.00, 0.00, 'PENDIENTE', NULL),
-(248, 48, 1053, 7.00, 0.00, 'PENDIENTE', NULL),
-(249, 48, 1117, 6.00, 0.00, 'PENDIENTE', NULL),
-(250, 48, 1197, 10.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(251, 48, 1198, 10.00, 0.00, 'PENDIENTE', NULL),
-(252, 48, 1419, 7.00, 0.00, 'REQUIERE_COMPRA', NULL),
-(253, 48, 1421, 12.00, 0.00, 'PENDIENTE', NULL),
-(254, 48, 1422, 1.00, 0.00, 'PENDIENTE', NULL);
+(266, 50, 1096, 10.00, 10.00, 'EN_BODEGA', 240003);
 
 -- --------------------------------------------------------
 
@@ -1111,7 +875,8 @@ INSERT INTO `empleados` (`id`, `nombre_completo`, `email`, `cargo`, `rut`, `cent
 (2, 'Froilan Urdaneta', 'furdaneta@insuban.cl', 'Usuario Sistema', NULL, NULL, 2, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04'),
 (3, 'Carlos Ruiz', 'cruiz@insuban.cl', 'Usuario Sistema', NULL, NULL, 3, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04'),
 (4, 'Rafael Morales', 'rmorales@insuban.cl', 'Usuario Sistema', NULL, NULL, 4, 1, '2026-01-07 03:56:04', '2026-01-07 03:56:04'),
-(5, 'Carla Tapia', NULL, NULL, '243791588', 23, NULL, 1, '2026-01-12 00:33:02', '2026-01-12 00:33:02');
+(5, 'Carla Tapia', NULL, NULL, '243791588', 23, NULL, 1, '2026-01-12 00:33:02', '2026-01-12 00:33:02'),
+(6, 'jain', 'jain@insuban.cl', 'Mécanico', '265708', 25, 7, 1, '2026-02-12 15:38:35', '2026-02-12 15:38:35');
 
 -- --------------------------------------------------------
 
@@ -1169,7 +934,8 @@ INSERT INTO `entregas_personal` (`id`, `insumo_id`, `usuario_operario_id`, `rece
 (26, 552, 1, NULL, 1, 2, 'LT7 - 1232\n', NULL, 10.00, 0.00, '2026-01-21 15:30:49', '2026-01-21 15:53:23', NULL, NULL),
 (27, 1454, 1, NULL, 1, 2, 'Entrega Masiva OT #21', 21, 1.00, 0.00, '2026-01-22 09:50:33', '2026-01-22 09:50:40', NULL, NULL),
 (28, 1470, 1, NULL, 1, 2, 'Entrega Masiva OT #21', 21, 1.00, 0.00, '2026-01-22 09:50:33', '2026-01-22 09:50:44', NULL, NULL),
-(29, 552, 1, NULL, 1, 4, 'aaaaaaaaaaa', NULL, 2.00, 0.00, '2026-02-05 08:52:01', '2026-02-05 08:52:09', NULL, 'Rechazado por operario');
+(29, 552, 1, NULL, 1, 4, 'aaaaaaaaaaa', NULL, 2.00, 0.00, '2026-02-05 08:52:01', '2026-02-05 08:52:09', NULL, 'Rechazado por operario'),
+(30, 1096, 1, NULL, 1, 2, 'Material para OT #50', 50, 10.00, 0.00, '2026-02-12 13:36:30', '2026-02-12 13:36:37', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -2386,7 +2152,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1093, '990000071992135', '(SHERWIN WILLIAMS) BLANCO - TRIPLE ACCION METAL ESMALTE ANTICORROSIVO', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1094, '990000071992136', '(CERESITA) NEGRO - CALORKOTE 280', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1095, '990000071992137', '(DYNAL) TAPAGOTERAS GRIS', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Galon', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
-(1096, '990000071992138', '(PINTURAS STERLING) BLANCO - TERMINACION BRILLANTE ESMALTE EPOXI/AGUA', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Galon', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
+(1096, '990000071992138', '(PINTURAS STERLING) BLANCO - TERMINACION BRILLANTE ESMALTE EPOXI/AGUA', '', NULL, 10.00, 5.00, 2.00, 0.00, 'CLP', 'Galon', NULL, '2025-12-30 16:34:25', '2026-02-12 16:49:35', NULL),
 (1097, '990000071992139', '(DELFIN COATINGS) POLIURETANO DCI - 324 GAL. COMP. B, CATALIZADOR 4:1', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1098, '990000071992140', '(DELFIN COATINGS) POLIURETANO CATALIZADOR ESMALTE PU ALUMINIO DCI - 324', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
 (1099, '990000071992141', '(DELFIN COATINGS) ENDURECEDOR POLIURETANO - DCI - 500 GAL. COMP. B, NO FERROSO (DCI - 324)', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:25', '2025-12-30 16:34:25', NULL),
@@ -2941,7 +2707,8 @@ INSERT INTO `insumo_stock_ubicacion` (`id`, `insumo_id`, `ubicacion_id`, `cantid
 (84, 1026, 1, 1.00, '2026-01-22 12:43:44'),
 (85, 1197, 24, 9.00, '2026-01-22 13:20:40'),
 (88, 552, 82, 48.00, '2026-02-05 11:52:01'),
-(89, 552, 1, 2.00, '2026-02-05 11:52:09');
+(89, 552, 1, 2.00, '2026-02-05 11:52:09'),
+(91, 1096, 1, 10.00, '2026-02-12 16:49:35');
 
 --
 -- Disparadores `insumo_stock_ubicacion`
@@ -3083,7 +2850,10 @@ INSERT INTO `movimientos_inventario` (`id`, `insumo_id`, `tipo_movimiento_id`, `
 (125, 552, 3, 50.00, 82, 1, NULL, NULL, NULL, 'Reubicación (Edición)', '2026-01-22 10:22:14'),
 (126, 552, 2, 2.00, 82, 1, 1, 6, NULL, 'Entrega a: Nicolas Salas (App). Obs: aaaaaaaaaaa', '2026-02-05 08:52:01'),
 (127, 552, 1, 2.00, 1, 1, NULL, NULL, NULL, 'Devuelto por Rechazo', '2026-02-05 08:52:09'),
-(128, 1431, 1, 1.00, 1, 1, NULL, NULL, NULL, 'Devolución voluntaria de operario', '2026-02-05 08:52:14');
+(128, 1431, 1, 1.00, 1, 1, NULL, NULL, NULL, 'Devolución voluntaria de operario', '2026-02-05 08:52:14'),
+(129, 1096, 1, 10.00, 1, 1, NULL, NULL, 240002, 'Recepción OC', '2026-02-12 13:36:21'),
+(130, 1096, 2, 10.00, 1, 1, 1, NULL, 266, 'Entrega OT', '2026-02-12 13:36:30'),
+(131, 1096, 1, 10.00, 1, 1, NULL, NULL, 240003, 'Recepción OC', '2026-02-12 13:49:35');
 
 -- --------------------------------------------------------
 
@@ -3097,6 +2867,7 @@ CREATE TABLE `ordenes_compra` (
   `usuario_creador_id` int(11) NOT NULL,
   `fecha_creacion` datetime DEFAULT current_timestamp(),
   `estado_id` int(11) NOT NULL,
+  `destino` varchar(255) DEFAULT NULL,
   `moneda` varchar(10) DEFAULT 'CLP',
   `tipo_cambio` decimal(10,2) DEFAULT 1.00,
   `numero_cotizacion` varchar(50) DEFAULT NULL,
@@ -3115,10 +2886,12 @@ CREATE TABLE `ordenes_compra` (
 -- Volcado de datos para la tabla `ordenes_compra`
 --
 
-INSERT INTO `ordenes_compra` (`id`, `proveedor_id`, `usuario_creador_id`, `fecha_creacion`, `estado_id`, `moneda`, `tipo_cambio`, `numero_cotizacion`, `monto_neto`, `impuesto_porcentaje`, `impuesto`, `monto_total`, `url_archivo`, `observaciones`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(11, 9, 3, '2026-01-13 09:03:55', 3, 'CLP', 1.00, '', 126891.00, 19.00, 24109.29, 151000.29, NULL, NULL, '2026-01-13 12:03:55', '2026-01-20 12:11:08', NULL),
-(240000, 220, 1, '2026-01-20 09:22:06', 3, 'CLP', 1.00, '', 195400.00, 19.00, 37126.00, 232526.00, NULL, NULL, '2026-01-20 12:22:06', '2026-01-20 12:35:45', NULL),
-(240001, 220, 1, '2026-01-20 09:36:45', 4, 'CLP', 1.00, '', 60000.00, 19.00, 11400.00, 71400.00, 'uploads/ordenes/OC_240001_1768914142.pdf', NULL, '2026-01-20 12:36:45', '2026-01-22 12:43:44', NULL);
+INSERT INTO `ordenes_compra` (`id`, `proveedor_id`, `usuario_creador_id`, `fecha_creacion`, `estado_id`, `destino`, `moneda`, `tipo_cambio`, `numero_cotizacion`, `monto_neto`, `impuesto_porcentaje`, `impuesto`, `monto_total`, `url_archivo`, `observaciones`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(11, 9, 3, '2026-01-13 09:03:55', 3, 'Camer', 'CLP', 1.00, '', 126891.00, 19.00, 24109.29, 151000.29, NULL, NULL, '2026-01-13 12:03:55', '2026-02-12 16:11:40', NULL),
+(240000, 220, 1, '2026-01-20 09:22:06', 3, 'Comafri', 'CLP', 1.00, '', 195400.00, 19.00, 37126.00, 232526.00, NULL, NULL, '2026-01-20 12:22:06', '2026-02-12 16:11:44', NULL),
+(240001, 220, 1, '2026-01-20 09:36:45', 4, 'Coexca', 'CLP', 1.00, '', 60000.00, 19.00, 11400.00, 71400.00, 'uploads/ordenes/OC_240001_1768914142.pdf', NULL, '2026-01-20 12:36:45', '2026-02-12 16:11:47', NULL),
+(240002, 220, 1, '2026-02-12 13:36:12', 4, '', 'CLP', 1.00, '', 100000.00, 19.00, 19000.00, 119000.00, NULL, NULL, '2026-02-12 16:36:12', '2026-02-12 16:36:21', NULL),
+(240003, 81, 1, '2026-02-12 13:49:30', 4, 'Comafri', 'CLP', 1.00, '', 150000.00, 19.00, 28500.00, 178500.00, NULL, NULL, '2026-02-12 16:49:30', '2026-02-12 16:49:35', NULL);
 
 -- --------------------------------------------------------
 
@@ -3136,6 +2909,13 @@ CREATE TABLE `ot_asignaciones` (
   `notas_cierre` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Volcado de datos para la tabla `ot_asignaciones`
+--
+
+INSERT INTO `ot_asignaciones` (`id`, `solicitud_id`, `usuario_id`, `tarea_rol`, `completado`, `fecha_completado`, `notas_cierre`) VALUES
+(2, 50, 1, NULL, 0, NULL, NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -3151,20 +2931,6 @@ CREATE TABLE `ot_checklist_respuestas` (
   `observacion` text DEFAULT NULL,
   `fecha_respuesta` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `ot_checklist_respuestas`
---
-
-INSERT INTO `ot_checklist_respuestas` (`id`, `solicitud_ot_id`, `seccion_key`, `item_key`, `valor`, `observacion`, `fecha_respuesta`) VALUES
-(57, 31, 'seguridad', 'permiso', 'si', NULL, '2026-01-22 09:45:48'),
-(58, 31, 'seguridad', 'ats', 'si', NULL, '2026-01-22 09:45:48'),
-(59, 31, 'seguridad', 'capacitacion', 'si', NULL, '2026-01-22 09:45:48'),
-(60, 31, 'seguridad', 'epp', 'si', NULL, '2026-01-22 09:45:48'),
-(61, 31, 'seguridad', 'loto', 'si', NULL, '2026-01-22 09:45:48'),
-(62, 31, 'seguridad', 'limpieza', 'si', NULL, '2026-01-22 09:45:48'),
-(63, 31, 'revision_tecnica', 'resorte_freno', 'bueno', NULL, '2026-01-22 09:45:48'),
-(64, 31, 'revision_tecnica', 'param_electricos', 'no_aplica', NULL, '2026-01-22 09:45:48');
 
 -- --------------------------------------------------------
 
@@ -3278,7 +3044,8 @@ INSERT INTO `permisos` (`id`, `codigo`, `modulo`, `descripcion`) VALUES
 (81, 'ver_categorias', 'Configuración', 'Permite ver el listado de categorías'),
 (82, 'crear_categorias', 'Configuración', 'Permite crear nuevas categorías'),
 (83, 'editar_categorias', 'Configuración', 'Permite editar categorías existentes'),
-(84, 'eliminar_categorias', 'Configuración', 'Permite eliminar categorías');
+(84, 'eliminar_categorias', 'Configuración', 'Permite eliminar categorías'),
+(85, 'ope_mant', 'Operario', 'Ver tareas asignadas');
 
 -- --------------------------------------------------------
 
@@ -3537,7 +3304,8 @@ INSERT INTO `proveedores` (`id`, `rut`, `nombre`, `direccion`, `email`, `telefon
 (230, '76.312.131-3', 'ALTI TEC Ltda', 'Av. Club Hipico 4676 Torre Norte Piso 8', 'proyectos@altitecchile.cl', '2 28870113', 'Jorge Reyes', 1, NULL, '2025-12-30 17:03:03', '2025-12-30 17:03:03', NULL),
 (231, '77.739.209-3', 'Confecciones Carlos Ruiz EIRL', 'Los Manantiales 1355', 'ventas@agenplanner.cl', '937125413', 'Carlos Ruiz', 1, NULL, '2025-12-30 17:03:03', '2025-12-30 17:03:03', NULL),
 (232, '77.413.460-3', 'Comercial Artipac Chile Limitada', 'Av. Club Hipico 4676 Of 812', 'erhode@artipac.cl', '226232728', 'Eric Rhode', 1, NULL, '2025-12-30 17:03:03', '2025-12-30 17:03:03', NULL),
-(233, '76.098.884-7', 'Quimica Manuel Humberto Madrid Sanchez EIRL', 'San Rafael 77', 'ventas@quimicamadrid.cl', '342530425', 'Mario Bodega', 1, NULL, '2025-12-30 17:03:03', '2025-12-30 17:03:03', NULL);
+(233, '76.098.884-7', 'Quimica Manuel Humberto Madrid Sanchez EIRL', 'San Rafael 77', 'ventas@quimicamadrid.cl', '342530425', 'Mario Bodega', 1, NULL, '2025-12-30 17:03:03', '2025-12-30 17:03:03', NULL),
+(234, '76123456-7', 'Ferreteria Industrial Ltda', 'Av Siempreviva 123', 'ventas@proveedor.cl', '912345678', 'Juan Perez', 1, NULL, '2026-02-12 13:54:24', '2026-02-12 13:54:24', NULL);
 
 -- --------------------------------------------------------
 
@@ -3697,7 +3465,8 @@ INSERT INTO `sistema_logs` (`id`, `usuario_id`, `modulo`, `accion`, `detalle`, `
 (3, 1, 'Proveedores', 'CREAR', 'Nuevo proveedor: ALTI TEC Ltda', NULL, '2025-12-30 17:03:03'),
 (4, 1, 'Proveedores', 'CREAR', 'Nuevo proveedor: Confecciones Carlos Ruiz EIRL', NULL, '2025-12-30 17:03:03'),
 (5, 1, 'Proveedores', 'CREAR', 'Nuevo proveedor: Comercial Artipac Chile Limitada', NULL, '2025-12-30 17:03:03'),
-(6, 1, 'Proveedores', 'CREAR', 'Nuevo proveedor: Quimica Manuel Humberto Madrid Sanchez EIRL', NULL, '2025-12-30 17:03:03');
+(6, 1, 'Proveedores', 'CREAR', 'Nuevo proveedor: Quimica Manuel Humberto Madrid Sanchez EIRL', NULL, '2025-12-30 17:03:03'),
+(7, 1, 'Proveedores', 'CREAR', 'Nuevo proveedor: Ferreteria Industrial Ltda', NULL, '2026-02-12 13:54:24');
 
 -- --------------------------------------------------------
 
@@ -3732,37 +3501,7 @@ CREATE TABLE `solicitudes_ot` (
 --
 
 INSERT INTO `solicitudes_ot` (`id`, `usuario_solicitante_id`, `activo_id`, `fecha_solicitud`, `fecha_requerida`, `estado_id`, `descripcion_trabajo`, `prioridad`, `origen_tipo`, `area_negocio`, `centro_costo_ot`, `solicitante_externo`, `created_at`, `updated_at`, `asignado_a`, `firma_tecnico`, `comentarios_finales`, `pdf_url`, `fecha_cierre`) VALUES
-(18, 5, 1, '2026-01-12 09:05:15', NULL, 6, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 12:05:15', '2026-01-12 12:05:20', NULL, NULL, NULL, NULL, NULL),
-(19, 5, 3, '2026-01-12 09:07:33', NULL, 5, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 12:07:33', '2026-01-12 12:08:52', NULL, NULL, NULL, NULL, NULL),
-(20, 5, 1, '2026-01-12 09:14:26', NULL, 5, 'Mantenimiento preventivo OT 1671', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 12:14:26', '2026-01-21 16:04:55', 1, 'data:image/png;base64,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QIAAAQIECDwvYITUAoJk6vYojgABAgQIECBAgAABAvkELgXJfJWqiAABAgQIECBAgAABAgRSCAiSKdqwVhHGIUCAAAECBAgQIECAwPYCguT2xmYgcF3AuwQIECBAgAABAgQaExAkG2uYcgkQyCGgCgIECBAgQIDAyAKC5Mjdt3YCBAiMJWC1BAgQIECAwEoCguRKkIYhQIAAAQIEthAwJgECBAhkFBAkM3ZFTQQIECBAgACBlgXUToBA9wKCZPcttkACBAgQIECAAAECtwUcQeARAUHyES3HEiBAgAABAgQIECBAII9AtUoEyWr0JiZAgAABAgQIECBAgECbAoLkM31zLgECBAgQIECAAAECBAYUECQHbProS7Z+AgQIECBAgAABAgSeExAkn/NzNgEC+wiYhQABAgQIECBAIJGAIJmoGUohQIBAXwJWQ4AAAQIECPQqIEj22lnrIkCAAAECSwScQ4AAAQIE7hAQJO9AcggBAgQIECBAILOA2ggQILC3gCC5t7j5CBAgQIAAAQIECBwODAg0LSBINt0+xRMgQIAAAQIECBAgsJ+AmSYBQXKS8EyAAAECBAgQIECAAAECdwk0FSTvWpGDCBAgQIAAAQIECBAgQGBTAUFyU16DHw4HCAQIECBAgAABAgQIdCYgSHbWUMshsI6AUQgQIECAAAECBAhcFhAkL9t4hwABAm0JqJYAAQIECBAgsJOAILkTtGkIECBAgMA5AfsIECBAgECLAoJki11TMwECBAgQIFBTwNwECBAYXkCQHP6/AAACBAgQIECAwAgC1kiAwJoCguSamsYiQIAAAQIECBAgQGA9ASOlFRAk07ZGYQQIECBAgAABAgQIEMgp8DsAAAD//5B9n3gAAAAGSURBVAMA03RricMWNH0AAAAASUVORK5CYII=', '', '/uploads/pdfs/OT_FINAL_20_1769011495.pdf', '2026-01-21 13:04:55'),
-(21, 5, 2, '2026-01-12 11:19:31', NULL, 5, 'Mantenimiento preventivo OT 1673', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 14:19:31', '2026-01-22 12:51:05', NULL, NULL, NULL, NULL, NULL),
-(22, 5, 4, '2026-01-12 11:25:25', NULL, 1, 'MANTENCION PROGRAMADA (EDITADO): Mantenimiento preventivo OT 1703', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 14:25:25', '2026-01-12 17:11:35', NULL, NULL, NULL, NULL, NULL),
-(23, 5, 28, '2026-01-12 15:30:45', NULL, 1, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:30:45', '2026-01-12 18:30:45', NULL, NULL, NULL, NULL, NULL),
-(24, 5, 29, '2026-01-12 15:31:56', NULL, 6, 'MANTENCION PROGRAMADA: Mantenimiento preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:31:56', '2026-01-13 14:07:45', NULL, NULL, NULL, NULL, NULL),
-(25, 5, 30, '2026-01-12 15:33:27', NULL, 1, 'MANTENCION PROGRAMADA: Mantenimiento preventivo ', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:33:27', '2026-01-12 18:33:27', NULL, NULL, NULL, NULL, NULL),
-(26, 5, 31, '2026-01-12 15:34:12', NULL, 1, 'Mantenimiento preventivo', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 18:34:12', '2026-01-12 19:56:49', NULL, NULL, NULL, NULL, NULL),
-(27, 5, 34, '2026-01-12 15:40:11', NULL, 6, 'MANTENCION PROGRAMADA: Auditoría Perú', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-12 18:40:11', '2026-01-12 20:03:18', NULL, NULL, NULL, NULL, NULL),
-(28, 5, NULL, '2026-01-12 16:53:37', NULL, 1, 'Cambio de contador de metabisulfito OT 1710', 'MEDIA', 'Servicio', NULL, '6130', 'Froilan Urdaneta ', '2026-01-12 19:53:37', '2026-01-12 19:53:37', NULL, NULL, NULL, NULL, NULL),
-(29, 5, 34, '2026-01-12 17:03:50', NULL, 1, 'Auditoría Perú', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-12 20:03:50', '2026-01-20 14:58:57', 1, NULL, NULL, NULL, NULL),
-(30, 1, 30, '2026-01-20 11:41:04', NULL, 5, '', 'MEDIA', 'Interna', NULL, NULL, NULL, '2026-01-20 14:41:04', '2026-01-20 14:52:00', NULL, NULL, NULL, NULL, NULL),
-(31, 1, 1, '2026-01-20 12:01:05', NULL, 1, '', 'MEDIA', 'Interna', NULL, NULL, NULL, '2026-01-20 15:01:05', '2026-01-20 15:01:19', 1, NULL, NULL, NULL, NULL),
-(32, 1, 1, '2026-01-20 12:12:37', NULL, 5, '', 'MEDIA', 'Interna', NULL, NULL, NULL, '2026-01-20 15:12:37', '2026-01-22 12:46:33', 1, 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA5IAAADECAYAAADtTh5lAAAQAElEQVR4AezdT8h/WV0H8MeYRVHRBAYKxuQiKGhhUGDgoEFBQaFCUa1UCqKVtpCWarughbMMinEWYYuCcZXQQsWB3I0ggQtDB4UGFBzBhaQ0fd6/ec7P87vP9/s83//fc+99yT2/+//cc17n95Pve859vs9P3PgfAQIECBAgQIAAAQIECBDYQ0CQ3ANrnEu1hAABAgQIECBAgAABAtcTECSvZ+/JaxPQXwIECBAgQIAAAQILERAkFzKQukGAwHkE1EqAAAECBAgQIHBXQJC8a+IIAQIECMxbQOsJECBAgACBMwsIkmcGVj0BAgQIECCwi4BrCBAgQGBOAoLknEZLWwkQIECAAAECIwloCwECqxUQJFc79DpOgAABAgQIECCwRgF9JnAKAUHyFIrqIECAAAECBAgQIECAwPkEhqtZkBxuSDSIAAECBAgQIECAAAECYwsIkruMj2sIECBAgAABAgQIECBA4LGAIPmYwsbSBPSHAAECBAgQIECAAIHzCAiS53FVKwEChwm4iwABAgQIECBAYAYCguQMBkkTCRAgMLaA1hEgQIAAAQJrExAk1zbi+kuAAAECBCKgECBAgACBIwQEySPw3EqAAAECBAgQuKSAZxEgQGAUAUFylJHQDgIECBAgQIAAgSUK6BOBRQoIkoscVp0iQIAAAQIECBAgQOBwAXc+JCBIPiTkPAECBAgQIECAAAECBAg8ITBkkHyihXYIECBAgAABAgQIECBAYCgBQXKo4Zh1YzSeAAECBAgQIECAAIGVCAiSKxlo3SSwWcBRAgQIECBAgAABAvsLCJL7m7ljvQK/VF1/TxULgesKeDoBAgQIECBA4MoCguSVB8DjZyHwwWrl61W+XuVzVb5b5eNVLAQIENhZwIUECBAgQGBJAoLkkkZTX04tkBnI56vSlFo9Xp6urY9VSajMNbVpIUCAAIEFCugSAQIECGwRECS3wDi8eoE/LYEEyMxG1ubGJa+5JkxmvfECBwkQIECAAIFLC3geAQKXEBAkL6HsGXMSyAxjAuSnq9G7BMR2/S7XVpUWAgQIECBAgACBOwIOzE5AkJzdkGnwGQUSBvNzkJtmIT9fz322yieqTJcWJrOenrNPgAABAgQIECBAYHECCZKL65QOEdhT4F11fWYh85pqbd5ZEh5/u46+VCVfsvP2Wn+jSr8kRObnJvtjtgkQIECAAAECBAgsUkCQnO2wavgJBDLzmBnIL1Zd2a7VE8tztfemKgmPtXq8JEQmWGaW8vHB2kgdmdWsTQsBAgQIECBAgACB5QoIkssdWz3bLpDZwwTIzEJme3plAmJmHT8yPdHtJ0x+qNtvm/cHyXaVNQECBAgQIECAAIEZCwiSMx48Td9bIKHxxborITLbtfnE8v3aSzjMbGOCYu3eu+SaXN9f9IF+x/YyBPSCAAECBAgQIEDgSQFB8kkPe8sVyOupCZDv3dLFb9XxP6zyqSr7LJm9TGn3JKDmV4e0fWsCBK4j4KkECBAgQIDAGQUEyTPiqnoIgbxqmgB53xfhJAj+YrU261rttWRW8oXJHe+c7NslQIAAgZ0EXESAAAECcxEQJOcyUtq5r0BmBhMM802s2d50f0JgXmNN2XR+12N5zmvdxR+u7W3PrFMWAgQIECCwIAFdIUBglQKC5CqHffGdbrOQ776np5lFzBfqJATec9lOpxJI87OX/cWCZK9hmwABAgQIEBhKQGMIHCsgSB4r6P7RBPKzkJmF3Nau/AxkfqVHflXHtmsOOZ5g2t+XMNvv2yZAgAABAgQIECBwjMBQ9wqSQw2Hxhwp8HLdv+1nIfNlOnmFdfotq3XLSZbMbGZmslXm21ubhDUBAgQIECBAgMDiBATJXYfUdSML5DXSb1cD31Fl0/KZOnjol+nUrTsvCZPt4rQppe1bEyBAgAABAgQIEFiMgCC5mKFcbUfyimq+lfXNGwS+UccyC/m+Wl9i+cLkIV5vnYDYJUCAAAECBAgQWIaAILmMcVxrLxLUnt/S+S/V8VN9mU5VZbmggEcRIECAAAECBAgMLiBIDj5AmnevwLYQmZ9V/K177zzPyTy3r9mrrb2G7YUL6B4BAgQIECCwJgFBck2jvay+5pXWTUHtE9XNzETW6uLLNEg+c/EWeCABAgT2EXAtAQIECBA4UECQPBDObVcX2PRzj/nVHvn1H9dqXIJkSnv+K23DmgABAgQInEpAPQQIEBhBQJAcYRS04RCBPrDl/lfrj3P9ao+q+qBl2saDKnETAQIECBAgMHsBHSCwOAFBcnFDupoOvdb1NNtv7fZtEiBAgAABAgQIEDhSwO33CQiS9+k4N7JAP9v33MgN1TYCBAgQIECAAAECSxMYNkguDVp/zirQh8qzPmiHykdqyw7NdQkBAgQIECBAgACB/QUEyf3N3LFd4JJn+m9sHSm89W35/CVBPIsAAQIECBAgQIDApQQEyUtJe86pBfINrflVHykjBbbv3Xb0R7frGaw0kQABAgQIECBAgMB+AoLkfl6uHkcgM3/5VR8p47Tq5ubLN2/876k3Vv4kcCYB1RIgQIAAAQIEriggSF4R36MXL/CexfdQBwkQ2EvAxQQIECBAYCkCguRSRlI/RhHITGlry0iv3LY2WRMgQIDAfgKuJkCAAIENAoLkBhSHCJxIoP9CoBNVqRoCBAgQIEDgYQFXECBwbgFB8tzC6l+zgCC55tHXdwIECBAgQGA/AVfPSkCQnNVwaezMBATJmQ2Y5hIgQIAAAQIECOwm0ILkble7isDyBd5VXcw3wX6u1q/flq/X+vkquwTD/mck6xYLAQIECBAgQIAAgeUJCJKzHlONP7FAvmX1i1Xnx6pku1aPlgTID9ZWAmVCZvZr10KAAAECBAgQIEBgnQKC5DrHXa/vCiQ4Zhby7pknjyRkfqUObQuT/YzkM3Xd3cURAgQIECBAgAABAjMXECRnPoCafzKBBMS+sldrJ6EwpTafWH6m9hI6M0tZm08s2wLmExfZmZ+AFhMgQIAAAQIECPxYQJD8sYWtdQtkRrIJPFsbb63y9q58ubb7JYEx4bO/L+f74PlKDigECFxNwIMJECBAgACBMwkIkmeCVe2sBPqZxU9Vy1+q0i8Jh++vA5vCZL6EZxom61ILAQIECBwm4C4CBAgQmIOAIDmHUdLGcwu8r3vAC912v9nCZIJmfzwzkwmTWed4W2dbIUCAAAEC6xDQSwIEVicgSK5uyHV4g8APb4+9VuvPV9m2JEx+ok5Or0l4zGuudeom19z4HwECBAgQIEBgdAHtI3CMgCB5jJ57lyLwX7cdefF2fd8qQfFDdcE0TOb12Okrrrm2LrUQIECAAAECBAgQOInAMJUIksMMhYZcUWAaCh9qSgJiwmTW/bVtVrI/ZpsAAQIECBAgQIDA4gQEyX2G1LVLFdg3SMYhITJhMtut5BXXflYy17Rz1gQIECBAgAABAgQWIyBILmYodWSbwI7HX63rfqfKPksCaH5mst0zDZLtuDUBAgQIECBAgACBRQkIkosaTp05UCAB8C1174+q7LvkW1z7mccPdBX0x7vDNncQcAkBAgQIECBAgMDAAoLkwIOjaRcTaIGvrfd5cO6Zzkq2+3OubVsTWIGALhIgQIAAAQJrERAk1zLS+rmLQGYmd7luek1ecU2ZHj+0vmk99gkQIHA+ATUTIECAAIEDBATJA9DcQmAikJnH6RfvvFLX5HitLAQIECBA4LQCaiNAgMC1BQTJa4+A548icGzoy/0vdJ35uW7bJgECBAgQIECAAIFFCQiSixpOnTlCIK+hphxRxc3Hb25uvlUly9P1x7H1VRUWAgQIECBAgACB6wl48jYBQXKbjOME9hfIrOS/dbd9sNu2SYAAAQIECBAgQGAxAkMHycUo68hcBBIEj23ri10FH6tts5KFMNiSMZmWwZqoOQQIECBAgACBsQUEybHHZ46tW3ubE1B6A7OSvcb5t+Mf87xmnPJ8PfJzVV6v8sMqWX+91tPSH889qaMusxAgQIAAAQIECGwSECQ3qTi2NoGEj/S5rbN9bPnBbQUzmZW8be08VhmnlATFlBYUWxhMEIx7SgLhe2679dTtetsqdabkntTxzbrwU1VyrFYWAgQIECBAgACBJiBINglrAqcVeLWrLsGk27V5gEDCYAuNbTYxQTEl5w6o8sFb3lZXfKDKf1QZc9EqAgQIECBAgMCVBATJK8F77JACp/gZyTZ7lbpS0tGEnXY8+8rDAvFqwTEzjZl1jOOpQmPGZlraN+5OW/eW6QH7BI4RcC8BAgQIEFiCgCC5hFHUh2MFElqOrWN6/xfqQP97Jc1KFsgDS8Yh4bGfcTw0OCYkfr6el1dTP1HrD1V5tspvV3lTlbdPSs5nBrIO31leunPEAQIE1iagvwQIECAwERAkJyB2VymQ0JGOJ8hkfUx5prs5IabVnVckT1F/V/0iNmMyDY85tkvnYpuwmKCY0kJiC4rZT0BM/RmLBMJcP60737SbGc/+eOp+rg4kcP5+rS0ECBAgMDsBDSZA4JwCguQ5ddW9doGEkRZcEo4OnV1bmmMcEu7yympmH/PKany29TOGCYItLCbc9WExdaXkum11bDueL9V5b3cyY5bwmWd8pI5nv1YWAgQIECBA4CICHjIbAUFyNkOloWcUOGVYmAai/vXWd5+xDyNXHZO82pvQ9nI1NLN/CY+1+cSScUgYTGBsYS6BsZ9ZzPlc98SNB+4k0KZd7fa8jpwAmdDajlkTIECAAAECBAhsEOiD5IbTDhFYnUBCzyk63cJOH3wSWk5V/ynaeO46MkuYGceUhMj0P8+MTcLaNDAmxCU05r6cz3W5/hwl45BA2+rOsxIs2741AQIECBAgQIDAPQKC5D048zillYMJtDCSYNKalsDUttv5tr+0dQJagmBeW82sY/ZjEYMExV+vDmedGcdcd+7AWI/buLRQ206mPW3bmgABAgQIECBA4AEBQfIBIKdXI5Cwk84m+GR9bGn1pZ4+LOVLd25ucnRZJW4Jhpl9TIBM72LQAmTOZT/Hr13S1tbGtCVtzMxxthUCBAgQIECAAIEdBATJHZBcQuAAgWloaj8rmRnJBJkDqhzylvQlIbEPkGlo+8bTnMv+SGX6SuvObRypEytsS/7tpOTv3Aq7r8sECBAgQGAsAUFyrPHQmusJtBmpfFA9Ryta/an7XM9I3Zcs6cc0QCZAZ4Yv33h6ybbs+qxP1oV9EPFKa4HMYEnYz38ASOlnk3dpumsIECBAgACBMwgIkmdAVeUsBV45QasTrFJNwlTWfUmQTMmxJbze+qfVkXyor9WjJX1OgMzPP+ZD/6ODg/2R8flw16a8ctzGpDtsczCBBP8+PGYcB2ui5pxeQI0ECBAgMLqAIDn6CGnfpQXO+Ss6ErTSn3wQzofjbM+x5BtYP901PGFs5ADZmtqHka/VQbORhTD4kn8nmfXum9leE++P2SZAYAQBbSBAWeMV2wAAEABJREFUYFUCguSqhltn7xFIGLrn9E6n8qE3F26rK8czc5drEiaznltJiOy/8fQz1YH8yo5aDb1klrSZZwx+d+jWalwT6Ge9cyz/hjKW2VYIECBA4AQCqiBwqIAgeaic+5Yq8GtHdKwFyftek81syg/qGX9SZW7LNETm1dD3zaATCZD9bGRmIhMmZ9D0VTfx5ep9+zdVmzcZszn8R4sb/yNAgAABAmcWGKJ6QXKIYdCIAQTyITXNeHP9keBRq72XZ3a4IzMqP1nX/V6V/kNy7Q69xKSfiUw/EsiGbnQ1Lu3uZ7XS5rS9TlkGFsh/tHhH176MmRDZgdgkQIAAAQLXFhAk9x0B1y9VoAXJ9O/YgJcPvalnU8m5lJxLyMl6DuVvJo2cw4f6jOM0RGYWddIVu4MJ5N9F/x8tvl/ty38A6P+N1iELAQIECBAgcE0BQfKa+p59MYEdH9Q+qB76hTv5AJxHtXqyval84fbgnL69tfUtTf9y/hi8pL39l7Q8V+0VIgth8GUa/vNv6Q+rzVnXykKAAAECBAiMIiBIjjIS2jGSQELIIe3Jh+Dc99CH3n5Gst2T+0Yu3+ka95Zu+5ybh9ad8etnIvNtuR85tDL3XUwg49aH//w7ykxk+/dysYZ4EAECBAgQIPCwgCD5sJEr1ieQcJeyb88zU5fy0H35YJwPybnukOfkvkuXH3UP/Gq3PdpmwkgfIjML6Vs+LzpKez8s/wZerLv6cavdGyEyCgoBAgQIEBhUQJAcdGA06yoCLdzl4QkkWe9T8uUgT+9zQ117yHPqtqsu+eB/1QZseXgs+zCSEJkwsuVyhwcQSMjPmL23a0v+Heb3kuY/uHSHbZ5VQOUECBAgQGBPAUFyTzCXL1qg/eziIZ1MiMl9u374zYflXL/LN73mumuXvl8JkgkA125T//y0J4GkHRMim8R46/b35/VqWn4tS/Zr89GS15ATItu/j0cH/UGAwGYBRwkQIHBNAUHymvqePZpA/+F13y/CaUHyvt8h2fe3PetX+oMDb09DdgLAd6u9rd+1eZUlISQBMu1pDRAim8RY64xVAn9+DrIfr7Qy/6EiATLns68QIEBgqQL6RWAxAoLkYoZSR04skICUD767VtuCZz4Q73LP924vemet93lOXX6VJeGshd/WgLzGmxCXYHCNABC3PD9j1dqUV1lT2r719QUyTvn7k78n0wCZv1P5VTIp2b5+a7WAAAECBAjcEXBgk4AguUnFsbUKHPpBNh+UU3L/rkGy/1Ke3DsH83zY/9aGhqb9CQj5fX//U+cTKvN7ABPwcq4OnXz5x6oxwaSvP+1LYKlTlgEEMjb5u5Bxav+hJc3Kv5O8wvqm2sks5K7/ZupyCwECBAgQIDCKwPBBchQo7ViFQD7g9h1NEOr3t20nNOXcPh+I+2vzgTv3j17i82w1sg/Btft4+enayq8GSah8vrYzW5gQkZ+Fy/qbdSz9jldK+p1Sh3deMiap98+7O1JnQknW3WGbVxRoATJ/F1ozXquNBMiEx5yvXQsBAgQIECAwVwFBcq4jN3a759q6BKWU1v5+FqUd27R+9+3BXX8+8vbyx6t9w9TjG6+wEZ/313Mz+7dPcEsf31b3xSohMyXhcloSElNyPmEjgTMl9+d4SsJkVfVoyWusacujHX9cXSBjljHtA2QalQD587WR87WyECBAgAABAnMXECTnPoLaf2qBPhwlsCTA3PeMnM91uaa/N/v3lQSylFyTcJX1lcvOj0+709cEuL/b+a7tF8awlVimJDwmjCRQpiSc5Hir5Ue18WqV/prck5LrUlqdddnGJeenJ3IsJcezbvWk3pTs9yXX5No1lxgkIGbmOeOR/eaRAJnZ4pxvx6wJECBAgACBBQgIkgsYRF04qcD020kTGnZ9QALWrtfmunZ9/8E7x+dUvrqlsf9Xx/MKbH5mMSV9zbXfqeOnWJ6qSvIabewS8FISOFMya5mS8JmSgJN1K9lPyX7WfcmxlBzLutWTelOy35dc00qO52c306aUauIFlus8Iv1LOHy5Hp/+J0DW5uMl/6HBK6yPOWwQIECAAIHlCQiSyxtTPTpOIB+A+xoeer11n6DZ19tv50N5vz+n7W1tz/+3vKM6Ep+E88xe/mrt/0KVBIzs57XUVjJz9a917qUqCZ212rjkXMYo640XbDmYdray5ZKDD7d609f87GaCVUqCZ84dXPFAN6YfCesJjwnM6V/CY8a4b2bGsY3vvmPU17P4bR0kQIAAAQJzF8iHvbn3QfsJnFIgH35TWp0JB/kQ3fan6/5cf9/0uk37CVjteF9POzaH9TNdI/+3226b6VcCVYJHZvnyhTsJIgkhCel5rTfr7P9R3fSuKrmnVk8smdVM+GwhJeu8Mpl1Ss4llLZ1As1Hq4bnqmS7ldTTl3a8rTfdk3MJuW2GNeOcUlXfuyR4pd8p2b734sFOZgwSGjN2Gbf0IdsZp/yb6JsblxhlPHLPLjb9/bYJzEVAOwkQIECgExAkOwybBG4FXrhdt9X0g3M7vvZ1wkYfkP65QB56dTVfuJP7YpqS+7OuWzcuCX0tHGYmcnpRQktKzuXatk6g+fu6+CNVst1KwmZf2vG23nRPzv1x1fPrVXJvguu05HhC6JfqmrSnVo+X9DchLGEsJdv39fnxjRfcSBvTpvQ1v8Il7UxozPhsakb62MJjXHLfpuscI0CAwJUFPJ4AgXMJCJLnklXvnAUSRvr2Z8as3++324xcPlj3x3fZ7p+TD/G73DPSNdOQ8bfVuN+skoBRq4OXzP4lmGWGK+ve6eBKz3BjxryVhNiE0N+q5yRkpt05V7uPl4S1lLhlVva7dSbbtbrKkrYkAKYtCY5ZJzzmZ0/7BqUfGYOMa0J9xiV9zL39dbYJECBAgMBpBNQyCwFBchbDpJEXFsiH5nx4bo9NyMuH7rZ/qnX/jFPVecl6+oCdIJX+pCRgJGjk2K7tyX0JKrkvs3/73LvrMy55Xdqfvvx1PTSzlLW6szxdRzI7mXKOv19V/Z0lz8n4JDQmPCY45u/39ML2umr6kJIAmfvyb2N6rX0CBAgQIEBghQLTILlCAl0msFFg+nrrtpmjfDBPBW2d7V1LwlNKrs/PCmY9l5JQ0fc5IbBve/qVWbkWQvLaZ8JIjqXk+lZyPNelztzX1zP37U9WB/pZygTMOvTEkr9bCXa95xMXHLGTnzmNa0r7Wcdt4TH2GZPMOLbXVXPsiMe7lQABAgQIEFiqgCC5iJHViTMI5IN3/yH6oaDXX7tPc9oMz6/sc9OVr80MWsJIa0bCx7b+53j6mNc+s06QSolvKzne6lrqOg7pd0J0QvM/VUdzrFaPloTIr9TWv1dJsExpPv9Zx/JrNuKewJmS7ZRck7CaurOdYym5JsHxi3VvxiqlNu8saUPGL21KSR13LnKAAAECBAgQIDAVECSnIvYJ/FigDzh5/S8f9n989o2tfBB/Y2vfP9+4/ntvrG5+o9ab6q/DQy0vVmsScmr1aImR8PGIYuc/8nfmL+rqzMTGrzYfLT9Tf/5elQTBlIS/lHfWsfyajbjn72FKtlNy/sN1Pq8ZZzvHUnJNHd645PkJni3UZvxybOPFDhIgQIAAAQIENgkIkptUHCPwhkD/6zlyJN8AmvWmcmgIzM+ipb6n6o9D66hbL7Ik3Ly3e1JCUMJQd2j5myfsYcJbwty3Tljnpqp+UAfzrMw8Zrwy85jnJkzWKQsBAgQIECBAYH8BQXJ/M3esRyAftPsP+X9ZXT912EsYq2ofLaeu+1GlJ/gj7coXs2Smq1X32dpIKKmV5QiBBLxn6/7pf7SoQ3stLSymvpT83W3B8aeqpoTHzDz2f9/q8GoWHSVAgAABAgROLCBInhhUdYsT+O+uRz9Z29NXBl+pY8cs+dCfkjryemLWo5QEyPysXUJktlu7ElB+v+1YHy2Q8c/fq4S9hPP4tiCYmcMcy7mUbLeS/ZR8OU4Li9lPyX2C49FDo4LrCng6AQIECIwsIEiOPDraNoJAPoz37Zh+6U5CQH/+kO1WR8JEH9gOqesU96QNCY8paVNfZ0LM1KQ/b/twgfw9yIxhfFsQTKDMsZxLyXYr2U85/InuJECAwKkF1EeAwGoEBMnVDLWOHiiQD+39h/W83pmgdWB1G2/rX2vMt3aeuv6ND91wMKEx3/KZADltQ2bJMvMVjw23OkSAAAECBAjMVUC7CRwiIEgeouaetQkkRPV9Tphs+33g6rfb+V3WmXV67fbC/BqQBLrb3bOv0ubMgCU85jXW/N7B/qHpe16VzDX9cdsECBAgQIAAAQLXE7j6kwXJqw+BBsxAIEGvn5XMzzImgKXpX80fVfJlJ7U6aEnd/f2p/6CKdrwpbU8wTHhMya+NyLH+9gTIzEDmurSvP2ebAAECBAgQIEBg5QKC5CF/AdyzRoEXuk4ndLVZw3wBT05lfUzg+odUcltSd55xu3uSVepMKPx21bYtPKb9fYCsSy0ECBAgQIAAAQIE7goIkndNHFmowJHdSghL0GrVtFnD/tgx4W9af16fPaa+tDP3p97XayevrWbm8c213S9pf8JjvkTHK6y9jG0CBAgQIECAAIGtAoLkVhonCNwR6Gcl2wxfgtidCw880H+RTULfy1VPnlOrnZcE0BYe28zj9Oa0OeExwTEl1/fPnl5/zX3PJkCAAAECBAgQGFBAkBxwUDRpWIEEroSw1sDMSr6z7dQ6M4C1OnhJUO3rf7pqykxiAmFeSc3M4jdvjz1f67Tnk7XOz3DmupzP8YTQOnxnSd35tRItPGb/zkUOEDheQA0ECBAgQIDA0gUEyaWPsP6dWiAzea3OBMc+SO47e9jqaevMCva/CqQdz3PaK6lvq4N5TmYeExg/XPsJtDlWmxuXBMb26mpC58aLHCRAYOUCuk+AAAECBPYQECT3wHIpgRJIEEvgq81HS4Lco43645kqxy4JiJ89tpK6P+ExoTezjyl9m+u0hQABAgSWIKAPBAgQuJaAIHktec+ds0BeD01QO1cf/qoqTgjc5xmv1j0Ji7kvv7Yj4TGvvu5TR1VhIUCAAAECBM4soHoCixAQJBcxjDpxYYGEs01h8g9O1I7UnxDYXkfN+s+q7qzz3ITFzIymZPvZOvfWKjmf+2rTQoAAAQIECBAgcDoBNU0FBMmpiH0Cuwlk9i9fjvOd7vKnuu1TbCZQpuRZ/1IVZp3wmLCYQJmS7ZfqnIUAAQIECBAgQIDAxQRmESQvpuFBBPYTSIj7aN3y/Spfq/L+KhYCBAgQIECAAAECixcQJBc/xFfr4FoenBnCn63O/nKVzBjWykKAAAECBAgQIEBg2QKC5LLHV+8I7CngcgIECBAgQIAAAQIPCwiSDxu5ggABAmMLaB0BAgQIECBA4MICguSFwT2OAAECBAhEQCFAgAABAnMWECTnPHraToAAAQIECFxSwLMIECBA4FZAkLyFsCJAgAABAgQIEEGfEB4AAAUgSURBVFiigD4RIHAOAUHyHKrqJECAAAECBAgQIEDgcAF3Di8gSA4/RBpIgAABAgQIECBAgACBsQQ2BcmxWqg1BAgQIECAAAECBAgQIDCUgCA51HAc0xj3EiBAgAABAgQIECBA4DICguRlnD2FwGYBRwkQIECAAAECBAjMUECQnOGgaTIBAtcV8HQCBAgQIECAwNoFBMm1/w3QfwIECKxDQC8JECBAgACBEwoIkifEVBUBAgQIECBwSgF1ESBAgMCoAoLkqCOjXQQIECBAgACBOQpoMwECqxAQJFcxzDpJgAABAgQIECBAYLuAMwT2FRAk9xVzPQECBAgQIECAAAECBK4vcNUWCJJX5fdwAgQIECBAgAABAgQIzE9AkDx0zNxHgAABAgQIECBAgACBlQoIkisd+LV2W78JECBAgAABAgQIEDheQJA83lANBAicV0DtBAgQIECAAAECgwkIkoMNiOYQIEBgGQJ6QYAAAQIECCxZQJBc8ujqGwECBAgQ2EfAtQQIECBAYEcBQXJHKJcRIECAAAECBEYU0CYCBAhcQ0CQvIa6ZxIgQIAAAQIECKxZQN8JzF5AkJz9EOoAAQIECBAgQIAAAQLnF/CEXkCQ7DVsEyBAgAABAgQIECBAgMCDArMJkg/2xAUECBAgQIAAAQIECBAgcBEBQfIizKt9iI4TIECAAAECBAgQILBAAUFygYOqSwSOE3A3AQIECBAgQIAAgfsFBMn7fZwlQIDAPAS0kgABAgQIECBwQQFB8oLYHkWAAAECBHoB2wQIECBAYK4CguRcR067CRAgQIAAgWsIeCYBAgQIlIAgWQgWAgQIECBAgACBJQvoGwECpxYQJE8tqj4CBAgQIECAAAECBI4XUMPQAoLk0MOjcQQIECBAgAABAgQIEBhPYFuQHK+lWkSAAAECBAgQIECAAAECQwgIkkMMw6kaoR4CBAgQIECAAAECBAicX0CQPL+xJxC4X8BZAgQIECBAgAABAjMTECRnNmCaS4DAGAJaQYAAAQIECBBYs4AguebR13cCBAisS0BvCRAgQIAAgRMJCJInglQNAQIECBAgcA4BdRIgQIDAiAKC5Iijok0ECBAgQIAAgTkLaDsBAosXECQXP8Q6SIAAAQIECBAgQOBhAVcQ2EdAkNxHy7UECBAgQIAAAQIECBAYR+BqLREkr0bvwQQIECBAgAABAgQIEJingCB5zLi5lwABAgQIECBAgAABAisUECRXOOhr77L+EyBAgAABAgQIECBwnIAgeZyfuwkQuIyApxAgQIAAAQIECAwkIEgONBiaQoAAgWUJ6A0BAgQIECCwVAFBcqkjq18ECBAgQOAQAfcQIECAAIEdBATJHZBcQoAAAQIECBAYWUDbCBAgcGkBQfLS4p5HgAABAgQIECBA4OaGAYFZCwiSsx4+jSdAgAABAgQIECBA4HICntQEBMkmYU2AAAECBAgQIECAAAECOwnMKkju1CMXESBAgAABAgQIECBAgMBZBQTJs/Kq/ObmBgIBAgQIECBAgAABAgsTECQXNqC6Q+A0AmohQIAAAQIECBAgsF1AkNxu4wwBAgTmJaC1BAgQIECAAIELCQiSF4L2GAIECBAgsEnAMQIECBAgMEcBQXKOo6bNBAgQIECAwDUFPJsAAQKrFxAkV/9XAAABAgQIECBAYA0C+kiAwCkFBMlTaqqLAAECBAgQIECAAIHTCahpWAFBctih0TACBAgQIECAAAECBAiMKfD/AAAA///y7z13AAAABklEQVQDAP79q7YCNpniAAAAAElFTkSuQmCC', 'khfIUHFIUEFHI', '/uploads/pdfs/OT_FINAL_32_1769085993.pdf', '2026-01-22 09:46:33'),
-(33, 1, 30, '2026-01-21 15:41:46', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion preventivo', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-21 18:41:46', '2026-01-22 12:47:03', 1, NULL, NULL, NULL, NULL),
-(34, 1, 30, '2026-01-21 15:41:47', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion preventivo', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-21 18:41:47', '2026-01-21 18:41:47', NULL, NULL, NULL, NULL, NULL),
-(35, 1, 30, '2026-01-21 15:42:38', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-21 18:42:38', '2026-01-21 18:42:38', NULL, NULL, NULL, NULL, NULL),
-(36, 1, 30, '2026-01-21 15:42:38', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-21 18:42:38', '2026-01-21 18:42:38', NULL, NULL, NULL, NULL, NULL),
-(37, 1, 30, '2026-01-21 15:52:38', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion General', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-21 18:52:38', '2026-01-21 18:52:38', NULL, NULL, NULL, NULL, NULL),
-(38, 1, 30, '2026-01-21 15:52:38', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion General', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-21 18:52:38', '2026-01-21 18:52:38', NULL, NULL, NULL, NULL, NULL),
-(39, 1, 30, '2026-01-21 15:52:38', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion General', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-21 18:52:38', '2026-01-21 18:52:38', NULL, NULL, NULL, NULL, NULL),
-(40, 1, 30, '2026-01-21 15:52:38', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion General', 'MEDIA', 'Interna', 'MANTENCION', NULL, NULL, '2026-01-21 18:52:38', '2026-01-22 12:42:56', NULL, NULL, NULL, NULL, NULL),
-(41, 1, 30, '2026-01-22 09:37:03', NULL, 6, '', 'MEDIA', 'Interna', NULL, NULL, NULL, '2026-01-22 12:37:03', '2026-01-22 12:38:40', NULL, NULL, NULL, NULL, NULL),
-(42, 1, 30, '2026-01-22 09:48:42', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion cada 3 meses', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-22 12:48:42', '2026-01-22 12:48:42', NULL, NULL, NULL, NULL, NULL),
-(43, 1, 30, '2026-01-22 09:48:42', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion cada 3 meses', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-22 12:48:42', '2026-01-22 12:48:42', NULL, NULL, NULL, NULL, NULL),
-(44, 1, 30, '2026-01-22 09:48:42', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion cada 3 meses', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-22 12:48:42', '2026-01-22 12:48:42', NULL, NULL, NULL, NULL, NULL),
-(45, 1, 30, '2026-01-22 09:48:42', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion cada 3 meses', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-22 12:48:42', '2026-01-22 12:48:42', NULL, NULL, NULL, NULL, NULL),
-(46, 1, 30, '2026-01-22 09:48:43', NULL, 1, 'MANTENCION PROGRAMADA: Mantencion cada 3 meses', 'MEDIA', 'Preventiva', 'MANTENCION', '6400', 'CRONOGRAMA', '2026-01-22 12:48:43', '2026-01-22 12:48:43', NULL, NULL, NULL, NULL, NULL),
-(47, 1, NULL, '2026-01-22 10:40:39', NULL, 1, 'ghhythytdhyejyjytrjytrjtrjytr', 'MEDIA', 'Servicio', NULL, '6013', 'Carla Tapia ', '2026-01-22 13:40:39', '2026-01-22 13:40:39', NULL, NULL, NULL, NULL, NULL),
-(48, 1, 34, '2026-02-05 12:17:09', NULL, 1, '', 'MEDIA', 'Interna', NULL, NULL, NULL, '2026-02-05 15:17:09', '2026-02-05 15:17:09', NULL, NULL, NULL, NULL, NULL);
+(50, 1, NULL, '2026-02-12 13:35:44', NULL, 2, '', 'MEDIA', 'Servicio', NULL, '6000', 'Carla Tapia', '2026-02-12 16:35:44', '2026-02-12 16:36:30', NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -3968,7 +3707,8 @@ INSERT INTO `usuarios` (`id`, `nombre`, `apellido`, `username`, `password_hash`,
 (3, 'Carlos', 'Ruiz', 'cruiz', '$2a$12$NLkp39h0OD0des7c12uhleid1Yts5xA9A99FtWel23h1vAOOf7LRa', 'cruiz@insuban.cl', NULL, 5, 1, '2025-12-29 18:59:17', '2026-01-12 11:47:11', NULL),
 (4, 'Rafael', 'Morales', 'rmorales', '$2a$12$NLkp39h0OD0des7c12uhleid1Yts5xA9A99FtWel23h1vAOOf7LRa', 'rmorales@insuban.cl', NULL, 2, 1, '2025-12-29 18:59:17', '2026-01-07 03:11:49', NULL),
 (5, 'Carla', 'Tapia', 'ctapia', '$2y$10$WIVqXIUaSOseyegN9H446enRhqPHJZPc8sUSdES9ImZy2eYVaT.Ei', 'ctapia@insuban.cl', '', 1, 1, '2026-01-12 00:32:34', '2026-01-12 16:09:14', NULL),
-(6, 'Paulina', 'Sandoval', 'psandoval', '$2y$10$BrVtkaeFQ3XrHw0UdNqAwOR3SAWgjLZIoDFhecokE4IiIYoUA.mGa', 'psandoval@insuban.cl', '', 1, 1, '2026-01-22 13:04:04', '2026-01-22 13:04:04', NULL);
+(6, 'Paulina', 'Sandoval', 'psandoval', '$2y$10$BrVtkaeFQ3XrHw0UdNqAwOR3SAWgjLZIoDFhecokE4IiIYoUA.mGa', 'psandoval@insuban.cl', '', 1, 1, '2026-01-22 13:04:04', '2026-01-22 13:04:04', NULL),
+(7, 'Juan', 'Rain', 'jrain', '$2y$10$lnqkej8uHhwJaBSpVGrPzOIOkYlFTkOUa89IqyU1H6q4wuBvrLD66', 'mantenimiento@insuban.cl', '', 4, 1, '2026-02-12 15:37:03', '2026-02-12 15:37:03', NULL);
 
 -- --------------------------------------------------------
 
@@ -4136,7 +3876,11 @@ INSERT INTO `usuario_permisos` (`id`, `usuario_id`, `permiso_id`) VALUES
 (834, 5, 54),
 (833, 5, 55),
 (832, 5, 56),
-(835, 5, 57);
+(835, 5, 57),
+(1176, 7, 43),
+(1177, 7, 44),
+(1178, 7, 45),
+(1179, 7, 85);
 
 --
 -- Índices para tablas volcadas
@@ -4465,7 +4209,7 @@ ALTER TABLE `usuario_permisos`
 -- AUTO_INCREMENT de la tabla `activos`
 --
 ALTER TABLE `activos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT de la tabla `activos_docs`
@@ -4537,25 +4281,25 @@ ALTER TABLE `detalle_cotizacion`
 -- AUTO_INCREMENT de la tabla `detalle_orden_compra`
 --
 ALTER TABLE `detalle_orden_compra`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_solicitud`
 --
 ALTER TABLE `detalle_solicitud`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=255;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
 
 --
 -- AUTO_INCREMENT de la tabla `empleados`
 --
 ALTER TABLE `empleados`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `entregas_personal`
 --
 ALTER TABLE `entregas_personal`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT de la tabla `estados_cotizacion`
@@ -4591,25 +4335,25 @@ ALTER TABLE `insumos`
 -- AUTO_INCREMENT de la tabla `insumo_stock_ubicacion`
 --
 ALTER TABLE `insumo_stock_ubicacion`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=91;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=93;
 
 --
 -- AUTO_INCREMENT de la tabla `movimientos_inventario`
 --
 ALTER TABLE `movimientos_inventario`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=129;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=132;
 
 --
 -- AUTO_INCREMENT de la tabla `ordenes_compra`
 --
 ALTER TABLE `ordenes_compra`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=240002;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=240004;
 
 --
 -- AUTO_INCREMENT de la tabla `ot_asignaciones`
 --
 ALTER TABLE `ot_asignaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `ot_checklist_respuestas`
@@ -4627,13 +4371,13 @@ ALTER TABLE `paises`
 -- AUTO_INCREMENT de la tabla `permisos`
 --
 ALTER TABLE `permisos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=85;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=86;
 
 --
 -- AUTO_INCREMENT de la tabla `proveedores`
 --
 ALTER TABLE `proveedores`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=234;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=235;
 
 --
 -- AUTO_INCREMENT de la tabla `proveedor_docs`
@@ -4663,13 +4407,13 @@ ALTER TABLE `sectores`
 -- AUTO_INCREMENT de la tabla `sistema_logs`
 --
 ALTER TABLE `sistema_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT de la tabla `solicitudes_ot`
 --
 ALTER TABLE `solicitudes_ot`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
 
 --
 -- AUTO_INCREMENT de la tabla `tipos_movimiento`
@@ -4699,13 +4443,13 @@ ALTER TABLE `ubicaciones_envio`
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario_permisos`
 --
 ALTER TABLE `usuario_permisos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1173;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1180;
 
 --
 -- Restricciones para tablas volcadas
