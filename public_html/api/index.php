@@ -174,8 +174,14 @@ try {
             break;
 
         case 'mantencion/activos':
-            AuthMiddleware::hasPermission('activos_ver');
-            (new MantencionController())->activos();
+            if ($method === 'GET') {
+                AuthMiddleware::hasPermission('activos_ver');
+                (new MantencionController())->activos();
+            }
+            elseif ($method === 'DELETE') {
+                AuthMiddleware::hasPermission('activos_editar');
+                (new MantencionController())->deleteActivo();
+            }
             break;
 
         case 'mantencion/crear-activo':
@@ -232,6 +238,12 @@ try {
         case 'mantencion/detalle':
             AuthMiddleware::verify(['mant_ver', 'ope_ver']);
             (new MantencionController())->detalles();
+            break;
+
+        case 'mantencion/imagen':
+            if ($method === 'DELETE') {
+                (new MantencionController())->eliminarImagen();
+            }
             break;
 
 
@@ -484,10 +496,18 @@ try {
             break;
 
         case 'importar':
-        case 'importar/plantilla':
             $uid = AuthMiddleware::hasPermission('inv_importar');
-            if ($method === 'POST')
+            if ($method === 'POST') {
                 (new ImportController())->importar($uid);
+            }
+            break;
+
+        case 'importar/plantilla':
+            AuthMiddleware::hasPermission('inv_importar');
+
+            if ($method === 'GET') {
+                (new ImportController())->plantilla();
+            }
             break;
 
         // --- COTIZACIONES ---

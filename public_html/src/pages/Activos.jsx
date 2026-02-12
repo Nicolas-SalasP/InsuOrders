@@ -5,25 +5,24 @@ import ActivoModal from '../components/ActivoModal';
 import ModalCargaMasiva from '../components/ModalCargaMasiva';
 import MessageModal from '../components/MessageModal';
 import PlantillaBuilderModal from '../components/PlantillaBuilderModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Activos = () => {
     const { auth } = useContext(AuthContext);
     
-    // --- ESTADOS DE DATOS ---
     const [activos, setActivos] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // --- ESTADOS DE MODALES ---
-    const [showModal, setShowModal] = useState(false); // Crear/Editar Activo
-    const [showImport, setShowImport] = useState(false); // Carga Masiva
-    const [showBuilder, setShowBuilder] = useState(false); // Constructor de Plantillas
+    const [showModal, setShowModal] = useState(false);
+    const [showBuilder, setShowBuilder] = useState(false);
+    const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null, type: 'danger', confirmText: '' });
     
-    // --- ESTADOS DE SELECCIÓN ---
+    const [modalImport, setModalImport] = useState({ show: false, tipo: 'activos' });
+    
     const [activoSeleccionado, setActivoSeleccionado] = useState(null); 
     const [activoParaPlantilla, setActivoParaPlantilla] = useState(null); 
 
-    // --- MENSAJES DE SISTEMA ---
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
 
     const hasPermission = (permiso) => {
@@ -58,8 +57,6 @@ const Activos = () => {
         (a.codigo_maquina && a.codigo_maquina.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    // --- MANEJADORES ---
-
     const handleEdit = (activo) => { 
         setActivoSeleccionado(activo); 
         setShowModal(true); 
@@ -75,12 +72,57 @@ const Activos = () => {
         setShowBuilder(true);
     };
 
+    const abrirImportar = (tipo) => {
+        setModalImport({ show: true, tipo });
+    };
+
+    const handleEliminar = (id) => {
+        setConfirm({
+            show: true,
+            title: "⚠️ ¿Eliminar Activo?",
+            message: "¿Estás seguro de que quieres eliminar este activo? Se borrará su configuración, galería y kit de repuestos.",
+            type: "warning",
+            confirmText: "Sí, continuar",
+            action: () => {
+                setTimeout(() => {
+                    setConfirm({
+                        show: true,
+                        title: "🚨 CONFIRMACIÓN FINAL IRREVERSIBLE",
+                        message: "¡CUIDADO! Esta acción no se puede deshacer. ¿Estás 100% seguro de eliminar este equipo permanentemente?",
+                        type: "danger",
+                        confirmText: "SÍ, ELIMINAR AHORA",
+                        action: async () => {
+                            try {
+                                const res = await api.delete(`/index.php/mantencion/activos?id=${id}`);
+                                if (res.data.success) {
+                                    setMsgModal({ show: true, title: 'Éxito', message: 'Activo eliminado correctamente', type: 'success' });
+                                    cargarActivos();
+                                }
+                            } catch (error) {
+                                setMsgModal({ 
+                                    show: true, 
+                                    title: 'No se pudo eliminar', 
+                                    message: error.response?.data?.message || 'El activo tiene historiales asociados.', 
+                                    type: 'error' 
+                                });
+                            }
+                        }
+                    });
+                }, 200);
+            }
+        });
+    };
+
+    const handleConfirmAction = () => {
+        if (confirm.action) confirm.action();
+        setConfirm({ ...confirm, show: false });
+    };
+
     const handleExport = async () => {
         setLoading(true);
         try {
             const response = await api.get('/index.php/exportar?modulo=activos', { responseType: 'blob' });
             
-            // Crear link de descarga invisible
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -93,7 +135,7 @@ const Activos = () => {
             setMsgModal({ show: true, title: "Éxito", message: "Archivo exportado correctamente.", type: "success" });
 
         } catch (error) {
-            setMsgModal({ show: true, title: "Error", message: "No se pudo exportar el archivo. Verifique permisos.", type: "error" });
+            setMsgModal({ show: true, title: "Error", message: "No se pudo exportar el archivo.", type: "error" });
         } finally { 
             setLoading(false); 
         }
@@ -104,7 +146,6 @@ const Activos = () => {
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             
-            {/* --- COMPONENTES MODALES --- */}
             <MessageModal 
                 show={msgModal.show} 
                 onClose={() => setMsgModal({...msgModal, show: false})} 
@@ -112,23 +153,36 @@ const Activos = () => {
                 message={msgModal.message} 
                 type={msgModal.type} 
             />
+
+            <ConfirmModal 
+                show={confirm.show} 
+                onClose={() => setConfirm({ ...confirm, show: false })} 
+                onConfirm={handleConfirmAction} 
+                title={confirm.title} 
+                message={confirm.message} 
+                confirmText={confirm.confirmText} 
+                type={confirm.type} 
+            />
             
             {(hasPermission('activos_crear') || hasPermission('activos_editar')) && (
                 <ActivoModal show={showModal} onClose={() => setShowModal(false)} activo={activoSeleccionado} onSave={cargarActivos} />
             )}
             
-            <ModalCargaMasiva show={showImport} onClose={() => setShowImport(false)} tipo="activos" onSave={cargarActivos} />
+            <ModalCargaMasiva 
+                show={modalImport.show} 
+                onClose={() => setModalImport({ ...modalImport, show: false })} 
+                tipo={modalImport.tipo} 
+                titulo={modalImport.tipo === 'activos' ? 'Importar Máquinas' : 'Importar Kits de Repuestos'}
+                onSave={cargarActivos} 
+            />
 
             <PlantillaBuilderModal 
                 show={showBuilder} 
                 onHide={() => setShowBuilder(false)}
                 activo={activoParaPlantilla}
-                onSuccess={() => {
-                    cargarActivos(); // Actualiza la lista para mostrar el icono verde
-                }}
+                onSuccess={() => cargarActivos()}
             />
 
-            {/* --- INTERFAZ PRINCIPAL --- */}
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
                     <div className="d-flex align-items-center mb-2 mb-md-0">
@@ -139,7 +193,8 @@ const Activos = () => {
                     </div>
                     
                     <div className="d-flex gap-2 justify-content-center justify-content-md-end flex-wrap align-items-center w-100 w-md-auto">
-                        <div className="input-group" style={{ maxWidth: '300px' }}>
+                        
+                        <div className="input-group" style={{ maxWidth: '250px' }}>
                             <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
                             <input 
                                 type="text" 
@@ -149,16 +204,29 @@ const Activos = () => {
                                 onChange={e => setSearchTerm(e.target.value)} 
                             />
                         </div>
+
                         {hasPermission('activos_exportar') && (
-                            <button className="btn btn-outline-success shadow-sm d-flex align-items-center py-2 px-3" onClick={handleExport} disabled={loading}>
+                            <button 
+                                className="btn btn-outline-success shadow-sm d-flex align-items-center py-2 px-3" 
+                                onClick={handleExport} 
+                                disabled={loading}
+                                title="Exportar a Excel"
+                            >
                                 <i className="bi bi-file-earmark-excel fs-5"></i>
                             </button>
                         )}
+
                         {auth.rol === 'Admin' && (
-                            <button className="btn btn-outline-dark shadow-sm d-flex align-items-center py-2 px-3" onClick={() => setShowImport(true)}>
-                                <i className="bi bi-file-earmark-arrow-up fs-5"></i>
-                            </button>
+                            <>
+                                <button className="btn btn-outline-secondary shadow-sm d-flex align-items-center py-2 px-3 fw-bold" onClick={() => abrirImportar('activos')} title="Importar Activos">
+                                    <i className="bi bi-file-earmark-spreadsheet me-2"></i>Activos
+                                </button>
+                                <button className="btn btn-outline-secondary shadow-sm d-flex align-items-center py-2 px-3 fw-bold" onClick={() => abrirImportar('kits')} title="Importar Kits">
+                                    <i className="bi bi-tools me-2"></i>Kits
+                                </button>
+                            </>
                         )}
+
                         {hasPermission('activos_crear') && (
                             <button className="btn btn-primary fw-bold shadow-sm d-flex align-items-center py-2 px-3" onClick={handleNew}>
                                 <i className="bi bi-plus-lg fs-5 me-2"></i><span className="small">Nuevo</span>
@@ -228,8 +296,12 @@ const Activos = () => {
                                                         <i className="bi bi-clipboard-check"></i>
                                                     </button>
 
-                                                    <button className="btn btn-sm btn-outline-primary" onClick={() => handleEdit(a)} title="Editar Datos del Activo">
+                                                    <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(a)} title="Editar Datos del Activo">
                                                         <i className="bi bi-pencil"></i>
+                                                    </button>
+
+                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleEliminar(a.id)} title="Eliminar Activo">
+                                                        <i className="bi bi-trash"></i>
                                                     </button>
                                                 </>
                                             )}
