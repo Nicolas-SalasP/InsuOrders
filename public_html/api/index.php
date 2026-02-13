@@ -24,6 +24,7 @@ use App\Controllers\ImportController;
 use App\Controllers\PersonalController;
 use App\Controllers\OperarioController;
 use App\Controllers\MisMantencionesController;
+use App\Controllers\CategoriaController;
 
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
@@ -173,8 +174,14 @@ try {
             break;
 
         case 'mantencion/activos':
-            AuthMiddleware::hasPermission('activos_ver');
-            (new MantencionController())->activos();
+            if ($method === 'GET') {
+                AuthMiddleware::hasPermission('activos_ver');
+                (new MantencionController())->activos();
+            }
+            elseif ($method === 'DELETE') {
+                AuthMiddleware::hasPermission('activos_editar');
+                (new MantencionController())->deleteActivo();
+            }
             break;
 
         case 'mantencion/crear-activo':
@@ -231,6 +238,12 @@ try {
         case 'mantencion/detalle':
             AuthMiddleware::verify(['mant_ver', 'ope_ver']);
             (new MantencionController())->detalles();
+            break;
+
+        case 'mantencion/imagen':
+            if ($method === 'DELETE') {
+                (new MantencionController())->eliminarImagen();
+            }
             break;
 
 
@@ -483,10 +496,18 @@ try {
             break;
 
         case 'importar':
-        case 'importar/plantilla':
             $uid = AuthMiddleware::hasPermission('inv_importar');
-            if ($method === 'POST')
+            if ($method === 'POST') {
                 (new ImportController())->importar($uid);
+            }
+            break;
+
+        case 'importar/plantilla':
+            AuthMiddleware::hasPermission('inv_importar');
+
+            if ($method === 'GET') {
+                (new ImportController())->plantilla();
+            }
             break;
 
         // --- COTIZACIONES ---
@@ -585,6 +606,24 @@ try {
         case 'personal':
             AuthMiddleware::verify();
             (new PersonalController())->index();
+            break;
+
+        // --- CATEGORÍAS DE INSUMOS ---
+        case 'categorias':
+            $c = new CategoriaController();
+            if ($method === 'GET') {
+                AuthMiddleware::verify('ver_categorias');
+                $c->index();
+            } elseif ($method === 'POST') {
+                AuthMiddleware::verify('crear_categorias');
+                $c->store();
+            } elseif ($method === 'PUT') {
+                AuthMiddleware::verify('editar_categorias');
+                $c->update();
+            } elseif ($method === 'DELETE') {
+                AuthMiddleware::verify('eliminar_categorias');
+                $c->delete();
+            }
             break;
 
         default:

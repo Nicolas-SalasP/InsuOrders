@@ -4,25 +4,33 @@ import AuthContext from '../context/AuthContext';
 import ChecklistRenderer from '../components/ChecklistRenderer';
 import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
+import { usePermission } from '../hooks/usePermission';
 
 const MisMantenciones = () => {
-    // --- ESTADOS DE DATOS ---
+    const { can } = usePermission();
+
     const [ots, setOts] = useState([]);
     const [selectedOt, setSelectedOt] = useState(null);
     const [detallesOt, setDetallesOt] = useState({ insumos: [], respuestas: [] });
 
-    // --- ESTADOS DE UI ---
     const [activeTab, setActiveTab] = useState('checklist');
     const [datosEnvio, setDatosEnvio] = useState({ respuestas: [], firma: null, comentarios: '' });
     const [loading, setLoading] = useState(true);
     const [loadingDetalle, setLoadingDetalle] = useState(false);
     const [guardando, setGuardando] = useState(false);
+    
+    const [filtroEstado, setFiltroEstado] = useState('pendientes'); 
+    const [busqueda, setBusqueda] = useState('');
+    const [filtroFecha, setFiltroFecha] = useState('');
 
-    // --- ESTADOS DE MODALES ---
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: '' });
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
 
-    useEffect(() => { cargarMisOts(); }, []);
+    useEffect(() => { 
+        if (can('ope_mant')) {
+            cargarMisOts(); 
+        }
+    }, []);
 
     const cargarMisOts = async () => {
         setLoading(true);
@@ -68,7 +76,21 @@ const MisMantenciones = () => {
         return mapa;
     };
 
-    // --- LÓGICA DE GUARDADO CON VALIDACIÓN Y MODALES ---
+    const otsFiltradas = ots.filter(ot => {
+        const matchEstado = 
+            filtroEstado === 'pendientes' ? (ot.estado_id === 1 || ot.estado_id === 4) && ot.mi_completado === 0 :
+            filtroEstado === 'proceso'    ? ot.estado_id === 2 && ot.mi_completado === 0 :
+            filtroEstado === 'terminado'  ? ot.mi_completado === 1 || ot.estado_id === 5 : true;
+
+        const texto = busqueda.toLowerCase();
+        const matchTexto = ot.activo.toLowerCase().includes(texto) || 
+                           `${ot.solicitante_nombre} ${ot.solicitante_apellido}`.toLowerCase().includes(texto) ||
+                           ot.id.toString().includes(texto);
+
+        const matchFecha = filtroFecha ? ot.fecha_solicitud.startsWith(filtroFecha) : true;
+
+        return matchEstado && matchTexto && matchFecha;
+    });
 
     const iniciarGuardado = () => {
         if (!selectedOt) return;
@@ -89,7 +111,6 @@ const MisMantenciones = () => {
                 return;
             }
         }
-
         procesarGuardado();
     };
 
@@ -111,8 +132,8 @@ const MisMantenciones = () => {
                     type: 'success'
                 });
 
+                cargarMisOts();
                 if (datosEnvio.firma) {
-                    cargarMisOts();
                     setSelectedOt(null);
                 }
             }
@@ -128,10 +149,20 @@ const MisMantenciones = () => {
         }
     };
 
+    if (!can('ope_mant')) {
+        return (
+            <div className="container h-100 d-flex align-items-center justify-content-center">
+                <div className="text-center p-5 shadow rounded bg-white">
+                    <i className="bi bi-shield-lock-fill text-danger display-1"></i>
+                    <h2 className="mt-3 fw-bold">Acceso Denegado</h2>
+                    <p className="text-muted">No tienes el permiso 'ope_mant' para acceder a este módulo.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column bg-light">
-
-            {/* --- COMPONENTES MODALES GLOBALES --- */}
             <MessageModal
                 show={msg.show}
                 onClose={() => setMsg({ ...msg, show: false })}
@@ -152,19 +183,64 @@ const MisMantenciones = () => {
             />
 
             <div className="row g-0 flex-grow-1" style={{ minHeight: 0 }}>
-
                 <div className={`col-12 col-md-4 col-lg-3 border-end bg-white d-flex flex-column shadow-sm z-1 ${selectedOt ? 'd-none d-md-flex' : 'd-flex'}`}>
                     <div className="p-4 border-bottom bg-white">
-                        <h5 className="fw-bold mb-0 text-dark d-flex align-items-center">
+                        <h5 className="fw-bold mb-3 text-dark d-flex align-items-center">
                             <i className="bi bi-clipboard-data me-3 fs-4 text-primary"></i>
                             Mis Asignaciones
                         </h5>
-                        <small className="text-muted">Selecciona una tarea para comenzar</small>
+
+                        <div className="input-group input-group-sm mb-2 shadow-sm">
+                            <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
+                            <input 
+                                type="text" 
+                                className="form-control border-start-0 ps-0" 
+                                placeholder="Título, solicitante o #OT..." 
+                                value={busqueda}
+                                onChange={(e) => setBusqueda(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="input-group input-group-sm mb-3 shadow-sm">
+                            <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-calendar"></i></span>
+                            <input 
+                                type="date" 
+                                className="form-control border-start-0 ps-0" 
+                                value={filtroFecha}
+                                onChange={(e) => setFiltroFecha(e.target.value)}
+                            />
+                        </div>
+                        
+                        <div className="btn-group w-100 shadow-sm" role="group">
+                            <button 
+                                className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                onClick={() => setFiltroEstado('pendientes')}
+                            >
+                                Pendientes
+                            </button>
+                            <button 
+                                className={`btn btn-sm ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                onClick={() => setFiltroEstado('proceso')}
+                            >
+                                En Proceso
+                            </button>
+                            <button 
+                                className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                onClick={() => setFiltroEstado('terminado')}
+                            >
+                                Terminado
+                            </button>
+                        </div>
                     </div>
+
                     <div className="flex-grow-1 overflow-auto p-2 bg-light">
-                        {loading ? <div className="p-5 text-center"><span className="spinner-border text-primary"></span></div> :
-                            ots.length === 0 ? <div className="p-5 text-center text-muted">No tienes tareas pendientes. ¡Buen trabajo!</div> :
-                                ots.map(ot => {
+                        {loading ? (
+                            <div className="p-5 text-center"><span className="spinner-border text-primary"></span></div>
+                        ) : (
+                            otsFiltradas.length === 0 ? (
+                                <div className="p-5 text-center text-muted small">No se encontraron tareas con estos filtros.</div>
+                            ) : (
+                                otsFiltradas.map(ot => {
                                     const isActive = selectedOt?.id === ot.id;
                                     return (
                                         <button key={ot.id}
@@ -173,23 +249,26 @@ const MisMantenciones = () => {
                                             onClick={() => handleSelectOt(ot)}>
                                             <div className="card-body p-3">
                                                 <div className="d-flex justify-content-between align-items-center mb-2">
-                                                    <span className={`badge ${isActive ? 'bg-primary' : 'bg-secondary'} bg-opacity-25 text-dark fw-bold`}>OT #{ot.id}</span>
+                                                    <span className={`badge ${isActive ? 'bg-primary text-white' : 'bg-secondary bg-opacity-25 text-dark'} fw-bold`}>OT #{ot.id}</span>
                                                     <small className="text-muted"><i className="bi bi-calendar-event me-1"></i>{new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
                                                 </div>
                                                 <h6 className="mb-1 fw-bold text-dark text-truncate">{ot.activo}</h6>
-                                                <p className="mb-2 small text-muted text-truncate">{ot.descripcion_solicitud}</p>
+                                                <div className="small text-muted text-truncate mb-2">
+                                                    <i className="bi bi-person-fill me-1"></i>{ot.solicitante_nombre} {ot.solicitante_apellido}
+                                                </div>
                                                 <span className="badge bg-info text-dark bg-opacity-25 border border-info fw-normal">{ot.estado}</span>
                                             </div>
                                         </button>
                                     );
-                                })}
+                                })
+                            )
+                        )}
                     </div>
                 </div>
 
                 <div className={`col-12 col-md-8 col-lg-9 d-flex flex-column position-relative ${!selectedOt ? 'd-none d-md-flex' : 'd-flex'}`} style={{ backgroundColor: '#f8f9fa' }}>
                     {selectedOt ? (
                         <>
-                            {/* CABECERA FLOTANTE INTEGRADA */}
                             <div className="bg-white border-bottom shadow-sm sticky-top" style={{ zIndex: 1020 }}>
                                 <div className="d-flex justify-content-between align-items-center p-3 p-md-4 pb-md-2">
                                     <div className="d-flex align-items-center overflow-hidden">
@@ -249,8 +328,6 @@ const MisMantenciones = () => {
                                     </div>
                                 ) : (
                                     <div className="bg-white rounded-4 shadow-sm p-4 mx-auto" style={{ maxWidth: '1000px', minHeight: '100%' }}>
-
-                                        {/* PESTAÑA CHECKLIST */}
                                         <div className={activeTab === 'checklist' ? 'd-block' : 'd-none'}>
                                             {selectedOt.plantilla_json ? (
                                                 <ChecklistRenderer
@@ -262,12 +339,11 @@ const MisMantenciones = () => {
                                                 <div className="text-center py-5 text-muted opacity-50">
                                                     <i className="bi bi-file-earmark-x display-1"></i>
                                                     <h4 className="mt-3">Sin Pauta Digital</h4>
-                                                    <p>Este activo no tiene un checklist configurado.</p>
+                                                    <p>Este servicio no requiere el llenado de un checklist.</p>
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* PESTAÑA MATERIALES */}
                                         <div className={activeTab === 'materiales' ? 'd-block' : 'd-none'}>
                                             <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
                                                 <i className="bi bi-box-seam me-2 text-primary"></i>
@@ -277,7 +353,7 @@ const MisMantenciones = () => {
                                             {detallesOt.insumos.length === 0 ? (
                                                 <div className="text-center py-5 text-muted opacity-50">
                                                     <i className="bi bi-box display-1"></i>
-                                                    <p className="mt-3 fw-bold">No se requieren materiales adicionales para esta tarea.</p>
+                                                    <p className="mt-3 fw-bold">No se requieren materiales para esta tarea.</p>
                                                 </div>
                                             ) : (
                                                 <div className="row row-cols-1 row-cols-md-2 g-3">
@@ -293,14 +369,13 @@ const MisMantenciones = () => {
                                                                         <div className={`rounded-circle p-3 me-3 d-flex align-items-center justify-content-center flex-shrink-0 ${tengoStock ? 'bg-success bg-opacity-10 text-success' : 'bg-danger bg-opacity-10 text-danger'}`} style={{ width: '60px', height: '60px' }}>
                                                                             <i className={`bi ${tengoStock ? 'bi-check-lg display-6' : 'bi-x-lg display-6'}`}></i>
                                                                         </div>
-
                                                                         <div className="flex-grow-1 overflow-hidden">
                                                                             <h6 className="fw-bold mb-1 text-truncate">{item.nombre}</h6>
                                                                             <div className="d-flex justify-content-between align-items-end">
                                                                                 <div>
                                                                                     <small className="text-muted d-block font-monospace"><i className="bi bi-upc me-1"></i>{item.codigo_sku}</small>
                                                                                     <div className="mt-2">
-                                                                                        <span className="badge bg-light text-dark border me-2">Solicita: {cantidadRequerida} {item.unidad_medida}</span>
+                                                                                        <span className="badge bg-light text-dark border me-2">Solicita: {item.cantidad} {item.unidad_medida}</span>
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="text-end">
@@ -313,7 +388,6 @@ const MisMantenciones = () => {
                                                                             </div>
                                                                         </div>
                                                                     </div>
-
                                                                     <div className={`card-footer py-1 small fw-bold text-center ${tengoStock ? 'bg-success text-white' : 'bg-danger text-white'}`}>
                                                                         {tengoStock ? 'DISPONIBLE EN MIS INSUMOS' : 'STOCK INSUFICIENTE'}
                                                                     </div>
@@ -338,7 +412,7 @@ const MisMantenciones = () => {
                         <div className="h-100 d-flex flex-column align-items-center justify-content-center text-muted p-4 text-center" style={{ backgroundColor: '#f8f9fa' }}>
                             <img src="https://cdn-icons-png.flaticon.com/512/7693/7693327.png" alt="Select Task" style={{ width: '150px', opacity: 0.5 }} className="mb-4 grayscale" />
                             <h3 className="fw-bold text-dark">¡Listo para trabajar!</h3>
-                            <p className="lead mb-0">Selecciona una Orden de Trabajo del panel izquierdo para comenzar tu pauta.</p>
+                            <p className="lead mb-0">Selecciona una tarea del panel izquierdo para comenzar tu pauta.</p>
                         </div>
                     )}
                 </div>
@@ -347,7 +421,6 @@ const MisMantenciones = () => {
     );
 };
 
-// Estilos CSS en línea para efectos
 const styles = document.createElement('style');
 styles.innerHTML = `
     .card-hover:hover { transform: translateX(5px); background-color: #f8f9fa !important; cursor: pointer; }

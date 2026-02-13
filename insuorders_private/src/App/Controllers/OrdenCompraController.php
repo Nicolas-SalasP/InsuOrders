@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Services\OrdenCompraService;
 use App\Middleware\AuthMiddleware;
+use Exception;
 
 class OrdenCompraController
 {
@@ -26,7 +27,7 @@ class OrdenCompraController
         try {
             $data = $this->service->listarOrdenes($filtros);
             echo json_encode(["success" => true, "data" => $data]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -38,7 +39,7 @@ class OrdenCompraController
         try {
             $data = $this->service->obtenerDatosFiltros();
             echo json_encode(["success" => true, "data" => $data['insumos']]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -50,7 +51,7 @@ class OrdenCompraController
         try {
             $data = $this->service->obtenerAlertasCompra();
             echo json_encode(["success" => true, "data" => $data]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -66,20 +67,24 @@ class OrdenCompraController
             return;
         }
 
-        $data = $this->service->obtenerDetalleOrden($id);
-        if ($data) {
-            echo json_encode(["success" => true, "data" => $data]);
-        } else {
-            http_response_code(404);
-            echo json_encode(["success" => false, "message" => "Orden no encontrada"]);
+        try {
+            $data = $this->service->obtenerDetalleOrden($id);
+            if ($data) {
+                echo json_encode(["success" => true, "data" => $data]);
+            } else {
+                http_response_code(404);
+                echo json_encode(["success" => false, "message" => "Orden no encontrada"]);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
 
     public function store($usuarioId = null)
     {
         AuthMiddleware::verify();
-        $input = file_get_contents("php://input");
-        $data = json_decode($input, true);
+        $data = json_decode(file_get_contents("php://input"), true);
 
         if (!$usuarioId) {
             http_response_code(401);
@@ -90,7 +95,7 @@ class OrdenCompraController
         try {
             $id = $this->service->crearOrden($data, $usuarioId);
             echo json_encode(["success" => true, "message" => "Orden creada exitosamente", "id" => $id]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -99,8 +104,7 @@ class OrdenCompraController
     public function recepcionar($usuarioId)
     {
         AuthMiddleware::verify();
-        $input = file_get_contents("php://input");
-        $data = json_decode($input, true);
+        $data = json_decode(file_get_contents("php://input"), true);
 
         if (!$usuarioId) {
             http_response_code(401);
@@ -109,11 +113,11 @@ class OrdenCompraController
 
         try {
             if (empty($data['orden_id']) || empty($data['items'])) {
-                throw new \Exception("Datos incompletos para recepción.");
+                throw new Exception("Datos incompletos para recepción.");
             }
             $resultado = $this->service->recepcionarOrden($data['orden_id'], $data['items'], $usuarioId);
             echo json_encode(["success" => true, "data" => $resultado]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
@@ -123,15 +127,22 @@ class OrdenCompraController
     {
         AuthMiddleware::verify();
         $id = $_GET['id'] ?? null;
-        if (!$id)
+
+        if (!$id) {
+            http_response_code(400);
             die("ID requerido");
+        }
 
         try {
             $pdfContent = $this->service->generarPDF($id);
+            if (ob_get_length())
+                ob_clean();
             header('Content-Type: application/pdf');
             header('Content-Disposition: inline; filename="OC_' . $id . '.pdf"');
             echo $pdfContent;
-        } catch (\Exception $e) {
+            exit;
+        } catch (Exception $e) {
+            http_response_code(500);
             die("Error PDF: " . $e->getMessage());
         }
     }
@@ -139,30 +150,23 @@ class OrdenCompraController
     public function uploadFile()
     {
         AuthMiddleware::verify();
-
         $id = $_POST['orden_id'] ?? null;
         $file = $_FILES['archivo'] ?? null;
 
         if (!$id || !$file) {
             http_response_code(400);
-            echo json_encode([
-                "success" => false,
-                "message" => "Faltan datos",
-                "debug_post" => $_POST,
-                "debug_files" => $_FILES
-            ]);
+            echo json_encode(["success" => false, "message" => "Faltan datos"]);
             return;
         }
 
         try {
             $url = $this->service->subirArchivo($id, $file);
             echo json_encode(["success" => true, "url" => $url]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
-
 
     public function cancelarOrden()
     {
@@ -179,18 +183,17 @@ class OrdenCompraController
         try {
             $this->service->cancelarOrden($id);
             echo json_encode(['success' => true, 'message' => 'Orden cancelada correctamente.']);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     }
 
-
     public function regenerarPdf()
     {
         AuthMiddleware::verify();
         $id = $_GET['id'] ?? null;
-        
+
         if (!$id) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => "ID faltante"]);
@@ -199,14 +202,12 @@ class OrdenCompraController
 
         try {
             $url = $this->service->regenerarDocumentoPdf($id);
-
             echo json_encode([
-                "success" => true, 
-                "message" => "PDF Regenerado correctamente", 
+                "success" => true,
+                "message" => "PDF Regenerado correctamente",
                 "url" => $url
             ]);
-
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => "Error regenerando: " . $e->getMessage()]);
         }

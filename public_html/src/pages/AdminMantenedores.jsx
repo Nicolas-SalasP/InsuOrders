@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
 import MessageModal from '../components/MessageModal';
+import { usePermission } from '../hooks/usePermission';
 
 // Importamos los modales
 import EmpleadoModal from '../components/EmpleadoModal';
@@ -9,8 +10,10 @@ import AreaModal from '../components/AreaModal';
 import SectorModal from '../components/SectorModal';
 import UbicacionModal from '../components/UbicacionModal';
 import UbicacionEnvioModal from '../components/UbicacionEnvioModal';
+import CategoriaModal from '../components/CategoriaModal';
 
 const AdminMantenedores = () => {
+    const { can } = usePermission();
     const [activeTab, setActiveTab] = useState('empleados');
     const [loading, setLoading] = useState(false);
     
@@ -21,6 +24,7 @@ const AdminMantenedores = () => {
     const [sectores, setSectores] = useState([]);
     const [ubicaciones, setUbicaciones] = useState([]);
     const [ubicacionesEnvio, setUbicacionesEnvio] = useState([]);
+    const [categorias, setCategorias] = useState([]); 
     const [usuarios, setUsuarios] = useState([]);
 
     // Control de Modales
@@ -30,7 +34,8 @@ const AdminMantenedores = () => {
         area: { show: false, data: null },
         sector: { show: false, data: null },
         ubicacion: { show: false, data: null },
-        ubicacionEnvio: { show: false, data: null } 
+        ubicacionEnvio: { show: false, data: null },
+        categoria: { show: false, data: null }
     });
 
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
@@ -78,6 +83,10 @@ const AdminMantenedores = () => {
                 const res = await api.get('/index.php/mantenedores/ubicaciones-envio');
                 if (res.data.success) setUbicacionesEnvio(res.data.data);
             }
+            else if (activeTab === 'categorias') {
+                const res = await api.get('/index.php/categorias');
+                if (res.data.success) setCategorias(res.data.data);
+            }
         } catch (error) {
             console.error("Error cargando datos", error);
         } finally {
@@ -90,12 +99,16 @@ const AdminMantenedores = () => {
 
     const handleDelete = async (endpoint, id) => {
         if (!window.confirm("¿Seguro de eliminar o desactivar este registro?")) return;
+        
+        // Ajuste para ruta de categorías que está en la raíz del router
+        const urlBase = endpoint === 'categorias' ? '/index.php/' : '/index.php/mantenedores/';
+        
         try {
-            await api.delete(`/index.php/mantenedores/${endpoint}?id=${id}`);
+            await api.delete(`${urlBase}${endpoint}?id=${id}`);
             cargarDatos();
-            setMsg({ show: true, title: "Éxito", text: "Registro actualizado.", type: "success" });
+            setMsg({ show: true, title: "Éxito", text: "Registro eliminado/actualizado.", type: "success" });
         } catch (error) {
-            setMsg({ show: true, title: "Error", text: "No se pudo eliminar.", type: "error" });
+            setMsg({ show: true, title: "Error", text: error.response?.data?.message || "No se pudo eliminar.", type: "error" });
         }
     };
 
@@ -112,6 +125,15 @@ const AdminMantenedores = () => {
         <div className="container-fluid p-4 bg-light min-vh-100">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
 
+            {/* MODALES */}
+            <EmpleadoModal show={modales.empleado.show} onClose={() => cerrarModal('empleado')} onSave={cargarDatos} empleado={modales.empleado.data} centros={centros} usuarios={usuarios} />
+            <CentroModal show={modales.centro.show} onClose={() => cerrarModal('centro')} onSave={cargarDatos} centro={modales.centro.data} areas={areas} />
+            <AreaModal show={modales.area.show} onClose={() => cerrarModal('area')} onSave={cargarDatos} area={modales.area.data} />
+            <SectorModal show={modales.sector.show} onClose={() => cerrarModal('sector')} onSave={cargarDatos} sector={modales.sector.data} />
+            <UbicacionModal show={modales.ubicacion.show} onClose={() => cerrarModal('ubicacion')} onSave={cargarDatos} ubicacion={modales.ubicacion.data} sectores={sectores} />
+            <UbicacionEnvioModal show={modales.ubicacionEnvio.show} onClose={() => cerrarModal('ubicacionEnvio')} onSave={cargarDatos} data={modales.ubicacionEnvio.data} />
+            <CategoriaModal show={modales.categoria.show} onClose={() => cerrarModal('categoria')} onSave={cargarDatos} data={modales.categoria.data} />
+
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <div>
                     <h3 className="fw-bold text-dark mb-0"><i className="bi bi-sliders me-2 text-primary"></i>Configuración</h3>
@@ -122,15 +144,15 @@ const AdminMantenedores = () => {
             <div className="card shadow-sm border-0">
                 <div className="card-header bg-white pt-3 px-3 pb-0 border-bottom">
                     <ul className="nav nav-tabs card-header-tabs border-0">
-                        {/* --- LISTA DE TABS ACTUALIZADA --- */}
                         {[
-                            {id: 'empleados', label: 'Empleados'},
-                            {id: 'centros', label: 'Centros Costo'},
-                            {id: 'areas', label: 'Áreas'},
-                            {id: 'sectores', label: 'Sectores (Bodegas)'},
-                            {id: 'ubicaciones', label: 'Estanterías'},
-                            {id: 'lugares_envio', label: 'Lugares de Envío'} // --- NUEVO ---
-                        ].map(tab => (
+                            {id: 'empleados', label: 'Empleados', show: true},
+                            {id: 'centros', label: 'Centros Costo', show: true},
+                            {id: 'areas', label: 'Áreas', show: true},
+                            {id: 'sectores', label: 'Sectores (Bodegas)', show: true},
+                            {id: 'ubicaciones', label: 'Estanterías', show: true},
+                            {id: 'lugares_envio', label: 'Lugares de Envío', show: true},
+                            {id: 'categorias', label: 'Categorías', show: can('ver_categorias')}
+                        ].filter(t => t.show).map(tab => (
                             <li className="nav-item" key={tab.id}>
                                 <button 
                                     className={`nav-link fw-bold px-4 py-2 ${activeTab === tab.id ? 'active border-bottom-0 text-primary' : 'text-muted border-0'}`}
@@ -190,7 +212,6 @@ const AdminMantenedores = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <EmpleadoModal show={modales.empleado.show} onClose={() => cerrarModal('empleado')} empleado={modales.empleado.data} centros={centros} usuarios={usuarios} onSave={cargarDatos} />
                                 </div>
                             )}
 
@@ -217,7 +238,6 @@ const AdminMantenedores = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <SectorModal show={modales.sector.show} onClose={() => cerrarModal('sector')} sector={modales.sector.data} onSave={cargarDatos} />
                                 </div>
                             )}
 
@@ -246,7 +266,6 @@ const AdminMantenedores = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <UbicacionModal show={modales.ubicacion.show} onClose={() => cerrarModal('ubicacion')} ubicacion={modales.ubicacion.data} sectores={sectores} onSave={cargarDatos} />
                                 </div>
                             )}
 
@@ -275,7 +294,6 @@ const AdminMantenedores = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <CentroModal show={modales.centro.show} onClose={() => cerrarModal('centro')} centro={modales.centro.data} areas={areas} onSave={cargarDatos} />
                                 </div>
                             )}
 
@@ -302,11 +320,10 @@ const AdminMantenedores = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <AreaModal show={modales.area.show} onClose={() => cerrarModal('area')} area={modales.area.data} onSave={cargarDatos} />
                                 </div>
                             )}
 
-                            {/* ---  LUGARES DE ENVÍO --- */}
+                            {/* --- LUGARES DE ENVÍO --- */}
                             {activeTab === 'lugares_envio' && (
                                 <div className="animate__animated animate__fadeIn">
                                     <TableHeader title="Lugares de Envío (Destinos)" btnAction={() => abrirModal('ubicacionEnvio')} btnLabel="Nuevo Lugar" />
@@ -344,7 +361,59 @@ const AdminMantenedores = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <UbicacionEnvioModal show={modales.ubicacionEnvio.show} onClose={() => cerrarModal('ubicacionEnvio')} ubicacion={modales.ubicacionEnvio.data} onSave={cargarDatos} />
+                                </div>
+                            )}
+
+                            {/* --- CATEGORÍAS --- */}
+                            {activeTab === 'categorias' && (
+                                <div className="animate__animated animate__fadeIn">
+                                    <TableHeader 
+                                        title="Categorías de Insumos" 
+                                        btnAction={() => can('crear_categorias') && abrirModal('categoria')} 
+                                        btnLabel="Nueva Categoría" 
+                                    />
+                                    <div className="table-responsive rounded border">
+                                        <table className="table table-hover align-middle mb-0">
+                                            <thead className="bg-light text-secondary small text-uppercase">
+                                                <tr>
+                                                    <th className="ps-4" style={{width: '100px'}}>ID</th>
+                                                    <th>Nombre</th>
+                                                    <th className="text-end pe-4">Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {categorias.map(cat => (
+                                                    <tr key={cat.id}>
+                                                        <td className="ps-4">
+                                                            {/* Diseño tipo "Código" de estantería */}
+                                                            <span className="badge bg-light text-dark border font-monospace">
+                                                                #{cat.id}
+                                                            </span>
+                                                        </td>
+                                                        <td className="fw-bold text-primary">
+                                                            {/* Diseño tipo "Nombre" de estantería */}
+                                                            {cat.nombre}
+                                                        </td>
+                                                        <td className="text-end pe-4">
+                                                            {can('editar_categorias') && (
+                                                                <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('categoria', cat)} title="Editar">
+                                                                    <i className="bi bi-pencil-square"></i>
+                                                                </button>
+                                                            )}
+                                                            {can('eliminar_categorias') && (
+                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('categorias', cat.id)} title="Eliminar">
+                                                                    <i className="bi bi-trash"></i>
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {categorias.length === 0 && (
+                                                    <tr><td colSpan="3" className="text-center py-4 text-muted">No hay categorías registradas.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             )}
 

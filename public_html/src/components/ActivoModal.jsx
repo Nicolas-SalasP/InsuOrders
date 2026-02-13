@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
 import ConfirmModal from './ConfirmModal';
-import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
+import { Modal, Button } from 'react-bootstrap';
 
 const BASE_URL = '/api';
 
@@ -22,7 +22,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         estado_activo: 'OPERATIVO',
         descripcion: '',
         centro_costo: '',
-        // NUEVOS CAMPOS DE FRECUENCIA
         frecuencia_mantencion: '',
         unidad_frecuencia: 'MESES'
     });
@@ -34,7 +33,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [mainImagePreview, setMainImagePreview] = useState(null);
     const [galleryItems, setGalleryItems] = useState([]); 
     const [existingGallery, setExistingGallery] = useState([]); 
+    
+    // --- ESTADO ZOOM MEJORADO ---
     const [zoomImage, setZoomImage] = useState(null); 
+    const [zoomLevel, setZoomLevel] = useState(1); // Escala inicial
 
     // --- ESTADOS EXISTENTES ---
     const [kitItems, setKitItems] = useState([]);
@@ -58,6 +60,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             setMainImagePreview(null);
             setGalleryItems([]);
             setExistingGallery([]);
+            setZoomLevel(1);
 
             api.get('/index.php/mantencion/centros-costo').then(res => { if (res.data.success) setListaCentros(res.data.data); });
 
@@ -75,7 +78,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     estado_activo: activo.estado_activo || 'OPERATIVO',
                     descripcion: activo.descripcion || '',
                     centro_costo: activo.centro_costo_id || '',
-                    // CARGAR DATOS FRECUENCIA
                     frecuencia_mantencion: activo.frecuencia_mantencion || '',
                     unidad_frecuencia: activo.unidad_frecuencia || 'MESES'
                 });
@@ -85,9 +87,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     setMainImagePreview(url);
                 }
 
-                api.get(`/index.php/mantencion/galeria?id=${activo.id}`)
-                    .then(res => { if (res.data.success) setExistingGallery(res.data.data); });
-
+                cargarGaleria(activo.id);
                 cargarKit(activo.id);
                 cargarDocs(activo.id);
             } else {
@@ -105,13 +105,46 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         }
     }, [show, activo]);
 
+    const cargarGaleria = (id) => {
+        api.get(`/index.php/mantencion/galeria?id=${id}`)
+            .then(res => { if (res.data.success) setExistingGallery(res.data.data); });
+    };
+
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    // ... (Mantén funciones handleMainImageChange, handleAddGalleryItem, etc. igual) ...
+    // --- IMÁGENES ---
     const handleMainImageChange = (e) => { const file = e.target.files[0]; if (file) { setMainImage(file); setMainImagePreview(URL.createObjectURL(file)); } };
     const handleAddGalleryItem = (e) => { const file = e.target.files[0]; if (file) { const newItem = { file, preview: URL.createObjectURL(file), tipo: 'General' }; setGalleryItems([...galleryItems, newItem]); } e.target.value = ''; };
     const handleGalleryTypeChange = (index, newType) => { const updatedItems = [...galleryItems]; updatedItems[index].tipo = newType; setGalleryItems(updatedItems); };
     const handleRemoveGalleryItem = (index) => { setGalleryItems(galleryItems.filter((_, i) => i !== index)); };
+
+    // --- ELIMINAR IMAGEN EXISTENTE ---
+    const solicitarEliminarImagen = (imgId) => {
+        setConfirm({
+            show: true,
+            title: "Eliminar Imagen",
+            message: "¿Estás seguro de que deseas eliminar esta imagen de la galería permanentemente?",
+            action: async () => {
+                try {
+                    await api.delete(`/index.php/mantencion/imagen?id=${imgId}`);
+                    showMessage("Éxito", "Imagen eliminada", "success");
+                    cargarGaleria(activo.id); // Recargar
+                } catch (error) {
+                    showMessage("Error", "No se pudo eliminar la imagen", "error");
+                }
+            }
+        });
+    };
+
+    // --- LOGICA ZOOM ---
+    const handleOpenZoom = (src) => {
+        setZoomImage(src);
+        setZoomLevel(1); // Resetear zoom al abrir
+    };
+
+    const zoomIn = () => setZoomLevel(prev => prev + 0.5);
+    const zoomOut = () => setZoomLevel(prev => (prev > 0.5 ? prev - 0.5 : prev));
+    const resetZoom = () => setZoomLevel(1);
 
     const handleSubmitGeneral = async (e) => {
         e.preventDefault();
@@ -137,7 +170,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         } finally { setSaving(false); }
     };
 
-    // ... (Mantén el resto de funciones cargarKit, etc. igual) ...
     const cargarKit = async (id) => { try { const res = await api.get(`/index.php/mantencion/kit?id=${id}`); setKitItems(res.data.data || []); } catch (e) { setKitItems([]); } };
     const agregarAlKit = async (insumo) => { if (!activo) return showMessage("Atención", "Guarda el activo primero.", "warning"); try { await api.post('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumo.id, cantidad: cantidadKit }); cargarKit(activo.id); setBusquedaInsumo(''); setCantidadKit(1); } catch (e) { showMessage("Error", "Error al agregar", "error"); } };
     const actualizarCantKit = async (insumoId, nuevaCant) => { const c = parseInt(nuevaCant); if (isNaN(c) || c < 1) return; try { await api.put('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumoId, cantidad: c }); cargarKit(activo.id); } catch (e) { } };
@@ -154,10 +186,31 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
             <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={handleConfirm} title={confirm.title} message={confirm.message} confirmText="Confirmar" type="danger" />
 
-            <Modal show={!!zoomImage} onHide={() => setZoomImage(null)} centered size="lg" className="bg-dark bg-opacity-75">
-                <Modal.Header closeButton className="bg-white border-0 py-2"></Modal.Header>
-                <Modal.Body className="p-0 text-center bg-white">
-                    <img src={zoomImage} alt="Zoom" className="img-fluid" style={{ maxHeight: '85vh', cursor: 'zoom-out' }} onClick={() => setZoomImage(null)} />
+            {/* --- MODAL ZOOM MEJORADO --- */}
+            <Modal show={!!zoomImage} onHide={() => setZoomImage(null)} centered size="xl" className="bg-dark bg-opacity-75">
+                <Modal.Header closeButton className="bg-white border-0 py-2">
+                    <div className="d-flex gap-2 align-items-center">
+                        <Button variant="outline-dark" size="sm" onClick={zoomOut}><i className="bi bi-dash-lg"></i></Button>
+                        <span className="fw-bold small">{Math.round(zoomLevel * 100)}%</span>
+                        <Button variant="outline-dark" size="sm" onClick={zoomIn}><i className="bi bi-plus-lg"></i></Button>
+                        <Button variant="link" size="sm" onClick={resetZoom}>Restablecer</Button>
+                    </div>
+                </Modal.Header>
+                <Modal.Body className="p-0 text-center bg-light position-relative" style={{ overflow: 'auto', maxHeight: '85vh', minHeight: '50vh' }}>
+                    {zoomImage && (
+                        <img 
+                            src={zoomImage} 
+                            alt="Zoom" 
+                            style={{ 
+                                transform: `scale(${zoomLevel})`, 
+                                transformOrigin: 'top center',
+                                transition: 'transform 0.2s ease-out',
+                                maxWidth: '100%',
+                                display: 'block',
+                                margin: '0 auto'
+                            }} 
+                        />
+                    )}
                 </Modal.Body>
             </Modal>
 
@@ -183,12 +236,11 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 {tab === 'general' && (
                                     <form onSubmit={handleSubmitGeneral}>
                                         <div className="row g-3">
-                                            {/* ... (Imagen Principal igual) ... */}
                                             <div className="col-12 mb-3">
                                                 <div className="d-flex align-items-center bg-light p-2 rounded border">
                                                     <div className="me-3 shadow-sm border rounded overflow-hidden bg-white" 
                                                          style={{ width: '85px', height: '85px', cursor: mainImagePreview ? 'zoom-in' : 'default' }}
-                                                         onClick={() => mainImagePreview && setZoomImage(mainImagePreview)}>
+                                                         onClick={() => mainImagePreview && handleOpenZoom(mainImagePreview)}>
                                                         {mainImagePreview ? (
                                                             <img src={mainImagePreview} alt="Port" className="w-100 h-100 object-fit-cover" />
                                                         ) : (
@@ -204,7 +256,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 </div>
                                             </div>
 
-                                            {/* ... (Campos existentes) ... */}
                                             <div className="col-md-6"><label className="form-label small fw-bold text-muted">CÓDIGO INTERNO</label><input type="text" name="codigo_interno" className="form-control fw-bold" required value={formData.codigo_interno} onChange={handleChange} /></div>
                                             <div className="col-md-6"><label className="form-label small fw-bold text-muted">CÓDIGO MÁQUINA</label><input type="text" name="codigo_maquina" className="form-control" value={formData.codigo_maquina} onChange={handleChange} /></div>
                                             <div className="col-12"><label className="form-label small fw-bold text-muted">NOMBRE ACTIVO</label><input type="text" name="nombre" className="form-control" required value={formData.nombre} onChange={handleChange} /></div>
@@ -212,7 +263,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">MODELO</label><input type="text" name="modelo" className="form-control" value={formData.modelo} onChange={handleChange} /></div>
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">AÑO</label><input type="number" name="anio" className="form-control" value={formData.anio} onChange={handleChange} /></div>
                                             
-                                            {/* NUEVA SECCIÓN: FRECUENCIA MANTENCIÓN */}
                                             <div className="col-12 mt-3"><h6 className="text-primary small fw-bold border-bottom pb-2">PLANIFICACIÓN</h6></div>
                                             <div className="col-md-6">
                                                 <label className="form-label small fw-bold text-muted">FRECUENCIA MANTENCIÓN</label>
@@ -225,7 +275,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                         <option value="ANIOS">Años</option>
                                                     </select>
                                                 </div>
-                                                <div className="form-text small">Cada cuánto tiempo se debe realizar mantención. Dejar en 0 si no aplica.</div>
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label small fw-bold text-muted">ESTADO ACTUAL</label>
@@ -253,7 +302,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                     </form>
                                 )}
                                 
-                                {/* ... (Resto de pestañas imagenes, kit, docs se mantienen igual) ... */}
                                 {tab === 'imagenes' && (
                                     <div>
                                         <div className="mb-4 bg-light p-3 rounded border">
@@ -270,7 +318,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                             <div className="card p-2 border-success bg-success bg-opacity-10 shadow-sm">
                                                                 <div className="d-flex align-items-center">
                                                                     <img src={item.preview} alt="N" style={{ width: '55px', height: '55px', objectFit: 'cover', cursor: 'zoom-in' }} 
-                                                                         className="me-2 rounded border" onClick={() => setZoomImage(item.preview)} />
+                                                                         className="me-2 rounded border" onClick={() => handleOpenZoom(item.preview)} />
                                                                     <select className="form-select form-select-sm" value={item.tipo} onChange={(e) => handleGalleryTypeChange(index, e.target.value)}>
                                                                         <option value="General">General</option><option value="Frente">Frente</option><option value="Atrás">Atrás</option><option value="Motor">Motor</option><option value="Interior">Interior</option>
                                                                     </select>
@@ -289,9 +337,24 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             <div className="row g-2">
                                                 {existingGallery.map((img) => (
                                                     <div key={img.id} className="col-6 col-md-3">
-                                                        <div className="card h-100 border-0 shadow-sm overflow-hidden" 
-                                                             style={{ cursor: 'zoom-in' }} onClick={() => setZoomImage(`${BASE_URL}${img.imagen_url}`)}>
-                                                            <img src={`${BASE_URL}${img.imagen_url}`} className="card-img-top" alt={img.tipo} style={{ height: '110px', objectFit: 'cover' }} />
+                                                        <div className="card h-100 border-0 shadow-sm overflow-hidden position-relative">
+                                                            {/* Botón de eliminar imagen existente */}
+                                                            <button 
+                                                                className="btn btn-danger btn-sm position-absolute top-0 end-0 m-1" 
+                                                                style={{zIndex: 10}}
+                                                                onClick={(e) => { e.stopPropagation(); solicitarEliminarImagen(img.id); }}
+                                                                title="Eliminar Imagen"
+                                                            >
+                                                                <i className="bi bi-trash-fill"></i>
+                                                            </button>
+
+                                                            <img 
+                                                                src={`${BASE_URL}${img.imagen_url}`} 
+                                                                className="card-img-top" 
+                                                                alt={img.tipo} 
+                                                                style={{ height: '110px', objectFit: 'cover', cursor: 'zoom-in' }} 
+                                                                onClick={() => handleOpenZoom(`${BASE_URL}${img.imagen_url}`)}
+                                                            />
                                                             <div className="card-footer p-1 bg-white text-center"><small className="text-muted fw-bold" style={{ fontSize: '0.7rem' }}>{img.tipo}</small></div>
                                                         </div>
                                                     </div>

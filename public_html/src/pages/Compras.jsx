@@ -9,6 +9,17 @@ import { usePermission } from '../hooks/usePermission';
 
 const Compras = () => {
     const { can } = usePermission();
+    if (!can('compras_ver')) {
+        return (
+            <div className="container h-100 d-flex align-items-center justify-content-center">
+                <div className="text-center p-5 shadow-sm rounded bg-white">
+                    <i className="bi bi-shield-lock text-danger display-1"></i>
+                    <h3 className="mt-3 fw-bold">Acceso Restringido</h3>
+                    <p className="text-muted">No tienes permiso para gestionar compras.</p>
+                </div>
+            </div>
+        );
+    }
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -27,6 +38,7 @@ const Compras = () => {
 
     // --- FILTROS ---
     const [filtroProveedor, setFiltroProveedor] = useState('');
+    const [filtroDestino, setFiltroDestino] = useState('');
     const [filtroEstado, setFiltroEstado] = useState([]);
     const [showEstadoDropdown, setShowEstadoDropdown] = useState(false);
     const estadoRef = useRef(null);
@@ -122,7 +134,11 @@ const Compras = () => {
         try {
             const res = await api.get('/index.php/compras/pendientes');
             if (res.data.success) setPendientes(res.data.data);
-        } catch (e) { }
+        } catch (e) {
+            if (e.response?.status === 403) {
+                console.warn("Usuario no tiene permiso para ver pendientes de compra.");
+            }
+        }
     };
 
     const generarOrdenDesdePendientes = () => {
@@ -278,6 +294,7 @@ const Compras = () => {
 
     const limpiarFiltros = () => {
         setFiltroProveedor('');
+        setFiltroDestino('');
         setFiltroEstado([]);
         setFiltroFecha('');
         setFiltroInsumo('');
@@ -295,9 +312,10 @@ const Compras = () => {
     const ordenesFiltradas = ordenes.filter(oc => {
         const matchProveedor = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
         const matchEstado = filtroEstado.length === 0 || filtroEstado.includes(oc.estado);
+        const matchDestino = filtroDestino === '' || (oc.destino && oc.destino.toLowerCase().includes(filtroDestino.toLowerCase()));
         const fechaOC = oc.fecha_creacion.split(' ')[0];
         const matchFecha = filtroFecha ? fechaOC === filtroFecha : true;
-        return matchProveedor && matchEstado && matchFecha;
+        return matchProveedor && matchDestino && matchEstado && matchFecha;
     });
 
     const getBadgeColor = (estado) => {
@@ -422,12 +440,29 @@ const Compras = () => {
 
                 <div className="bg-light p-3 border-bottom">
                     <div className="row g-2 align-items-center">
-                        <div className="col-md-3">
+                        {/* 1. PROVEEDOR (Reducido a col-md-2) */}
+                        <div className="col-md-2">
                             <div className="input-group">
                                 <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
-                                <input type="text" className="form-control border-start-0 ps-0" placeholder="Buscar proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} />
+                                <input type="text" className="form-control border-start-0 ps-0" placeholder="Proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} />
                             </div>
                         </div>
+
+                        {/* 2. DESTINO (NUEVO - col-md-2) */}
+                        <div className="col-md-2">
+                            <div className="input-group">
+                                <span className="input-group-text bg-white border-end-0"><i className="bi bi-geo-alt"></i></span>
+                                <input
+                                    type="text"
+                                    className="form-control border-start-0 ps-0"
+                                    placeholder="Destino (OT, Stock...)"
+                                    value={filtroDestino}
+                                    onChange={(e) => setFiltroDestino(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 3. INSUMO (col-md-3) */}
                         <div className="col-md-3 position-relative" ref={wrapperRef}>
                             <div className="input-group">
                                 <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-primary'}`}>
@@ -454,13 +489,15 @@ const Compras = () => {
                             )}
                         </div>
 
+                        {/* 4. ESTADO (col-md-2) */}
                         <div className="col-md-2 position-relative" ref={estadoRef}>
                             <button
                                 className="form-select text-start"
                                 onClick={() => setShowEstadoDropdown(!showEstadoDropdown)}
                             >
-                                {filtroEstado.length === 0 ? "Todos los Estados" : `${filtroEstado.length} seleccionado(s)`}
+                                {filtroEstado.length === 0 ? "Estado" : `${filtroEstado.length} selec.`}
                             </button>
+                            {/* ... (El contenido del dropdown de estado se mantiene igual) ... */}
                             {showEstadoDropdown && (
                                 <div className="card position-absolute w-100 shadow-sm mt-1 p-2" style={{ zIndex: 1050 }}>
                                     {['Emitida', 'Recepcion Parcial', 'Recepcion Total', 'Anulada'].map(estado => (
@@ -484,10 +521,15 @@ const Compras = () => {
                             )}
                         </div>
 
+                        {/* 5. FECHA (col-md-2) */}
                         <div className="col-md-2"><input type="date" className="form-control" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} /></div>
-                        <div className="col-md-2 text-end">
-                            {(filtroProveedor || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && (
-                                <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros}><i className="bi bi-x-lg me-1"></i>Limpiar Filtros</button>
+
+                        {/* 6. BOTÓN LIMPIAR (col-md-1 - ajustado al final) */}
+                        <div className="col-md-1 text-end">
+                            {(filtroProveedor || filtroDestino || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && (
+                                <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros} title="Limpiar Filtros">
+                                    <i className="bi bi-x-lg"></i>
+                                </button>
                             )}
                         </div>
                     </div>
@@ -526,7 +568,7 @@ const Compras = () => {
                                             <small className="text-muted">{oc.proveedor_rut}</small>
                                         </td>
                                         <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
-                                        
+
                                         <td>
                                             {oc.destino ? (
                                                 <span className="badge bg-light text-dark border fw-normal">

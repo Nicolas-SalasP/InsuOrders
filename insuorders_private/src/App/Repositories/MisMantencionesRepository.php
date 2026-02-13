@@ -16,19 +16,21 @@ class MisMantencionesRepository
 
     public function getOtsAsignadas($userId)
     {
-        $sql = "SELECT ot.id, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
+        $sql = "SELECT DISTINCT ot.id, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
                 ot.estado_id, e.nombre as estado,
-                COALESCE(a.nombre, 'Servicio General') as activo, 
+                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
                 a.plantilla_json,
-                u.nombre as solicitante_nombre, u.apellido as solicitante_apellido
+                u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
+                oa.completado as mi_completado
             FROM solicitudes_ot ot
+            JOIN ot_asignaciones oa ON ot.id = oa.solicitud_id
             LEFT JOIN activos a ON ot.activo_id = a.id 
             JOIN estados_solicitud e ON ot.estado_id = e.id
             JOIN usuarios u ON ot.usuario_solicitante_id = u.id
-            WHERE ot.asignado_a = :uid 
-            AND ot.estado_id NOT IN (5, 6) 
-            ORDER BY ot.fecha_solicitud DESC";
+            WHERE oa.usuario_id = :uid 
+            AND ot.estado_id != 6 
+            ORDER BY ot.id DESC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':uid' => $userId]);
@@ -49,7 +51,8 @@ class MisMantencionesRepository
     {
         try {
             $inTransaction = $this->db->inTransaction();
-            if (!$inTransaction) $this->db->beginTransaction();
+            if (!$inTransaction)
+                $this->db->beginTransaction();
 
             $del = $this->db->prepare("DELETE FROM ot_checklist_respuestas WHERE solicitud_ot_id = ?");
             $del->execute([$otId]);
@@ -59,7 +62,8 @@ class MisMantencionesRepository
             $stmt = $this->db->prepare($sql);
 
             foreach ($respuestas as $resp) {
-                if (!isset($resp['key'])) continue;
+                if (!isset($resp['key']))
+                    continue;
 
                 $stmt->execute([
                     ':ot' => $otId,
@@ -70,11 +74,13 @@ class MisMantencionesRepository
                 ]);
             }
 
-            if (!$inTransaction) $this->db->commit();
+            if (!$inTransaction)
+                $this->db->commit();
             return true;
 
         } catch (Exception $e) {
-            if (!$inTransaction && $this->db->inTransaction()) $this->db->rollBack();
+            if (!$inTransaction && $this->db->inTransaction())
+                $this->db->rollBack();
             throw $e;
         }
     }
@@ -160,7 +166,7 @@ class MisMantencionesRepository
                 AND estado_id IN (1, 2) 
                 AND (cantidad_entregada - cantidad_utilizada) > 0 
                 ORDER BY fecha_entrega ASC";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':uid' => $userId, ':iid' => $insumoId]);
         $misEntregas = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -168,23 +174,42 @@ class MisMantencionesRepository
         $pendiente = floatval($cantidadRequerida);
 
         foreach ($misEntregas as $entrega) {
-            if ($pendiente <= 0) break;
+            if ($pendiente <= 0)
+                break;
 
             $disponible = floatval($entrega['cantidad_entregada']) - floatval($entrega['cantidad_utilizada']);
-            
+
             $aDescontar = min($pendiente, $disponible);
-            
+
             $nuevoUso = floatval($entrega['cantidad_utilizada']) + $aDescontar;
-            
+
             $upd = $this->db->prepare("UPDATE entregas_personal SET cantidad_utilizada = :uso, fecha_uso = NOW() WHERE id = :id");
             $upd->execute([':uso' => $nuevoUso, ':id' => $entrega['id']]);
 
             $pendiente -= $aDescontar;
         }
     }
-    
-    public function beginTransaction() { return $this->db->beginTransaction(); }
-    public function commit() { return $this->db->commit(); }
-    public function rollBack() { return $this->db->rollBack(); }
-    public function inTransaction() { return $this->db->inTransaction(); }
+
+    public function iniciarTrabajoEnOrden($otId)
+    {
+        $stmt = $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = ? AND estado_id IN (1, 4)");
+        return $stmt->execute([$otId]);
+    }
+
+    public function beginTransaction()
+    {
+        return $this->db->beginTransaction();
+    }
+    public function commit()
+    {
+        return $this->db->commit();
+    }
+    public function rollBack()
+    {
+        return $this->db->rollBack();
+    }
+    public function inTransaction()
+    {
+        return $this->db->inTransaction();
+    }
 }
