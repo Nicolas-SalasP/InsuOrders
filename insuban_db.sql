@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 12-02-2026 a las 20:15:08
+-- Tiempo de generación: 16-02-2026 a las 21:20:08
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -85,9 +85,7 @@ INSERT INTO `activos` (`id`, `codigo_interno`, `codigo_maquina`, `nombre`, `tipo
 (28, 'MAQ-01', '', 'Extractor', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:12:04', '2026-01-12 15:12:04', NULL, NULL, NULL, NULL),
 (29, 'MAQ-02', '', 'Prensa neumática', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:12:51', '2026-01-12 15:12:51', NULL, NULL, NULL, NULL),
 (30, 'AUPS-01', 'AUPS-01-INS', 'ASmart UPS XL', 'Equipo', 'APC', 'Smart', '/uploads/activos/ACT_696e866d2b2a9.jpeg', 2020, '3r14213412341234', '', 'Bodega', 13, 'OPERATIVO', '2026-01-12 15:13:05', '2026-01-22 12:48:23', NULL, '{\"titulo\":\"MANTENCIÓN - ASmart UPS XL\",\"codigo_doc\":\"V.1.0\",\"secciones\":[{\"titulo\":\"Seccion de Seguridad\",\"key\":\"sec_1769086041711\",\"tipo\":\"checklist_si_no\",\"items\":[{\"key\":\"item_1769086051025\",\"label\":\"Revisar camion\",\"sku\":\"\",\"cant\":1}]}]}', 3, 'MESES'),
-(31, 'MAQ-04', '', 'Tanque de almacenamiento de salmuera', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:25', '2026-01-12 15:13:25', NULL, NULL, NULL, NULL),
 (32, 'MAQ-05', '', 'Bomba de salmuera dosificación', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:13:50', '2026-01-12 15:13:50', NULL, NULL, NULL, NULL),
-(33, 'MAQ-06', '', 'Tornillo sinfín ', 'Maquinaria', '', '', NULL, NULL, '', '', '', NULL, 'OPERATIVO', '2026-01-12 15:16:33', '2026-01-12 15:16:33', NULL, NULL, NULL, NULL),
 (34, 'KIT-01', '', 'Auditoría', 'Infraestructura', '', '', NULL, NULL, '', 'Kit de distintos insumos para auditoria', '', 25, 'OPERATIVO', '2026-01-12 15:17:42', '2026-01-12 15:44:17', NULL, NULL, NULL, NULL),
 (35, 'GEN-001', 'G-500', 'Generador Diesel', 'Generador', 'Caterpillar', 'C500', NULL, 2023, 'XYZ123', 'Generador de respaldo', 'Planta 1', NULL, 'OPERATIVO', '2026-02-12 13:48:26', '2026-02-12 13:48:26', NULL, NULL, 6, 'MESES');
 
@@ -259,8 +257,6 @@ INSERT INTO `activos_insumos` (`id`, `activo_id`, `insumo_id`, `cantidad_default
 (117, 30, 1294, 1.00),
 (118, 30, 1295, 1.00),
 (119, 30, 1431, 1.00),
-(120, 33, 700, 2.00),
-(121, 33, 1221, 1.00),
 (122, 25, 115, 2.00),
 (123, 25, 160, 4.00),
 (124, 25, 817, 4.00),
@@ -752,7 +748,6 @@ INSERT INTO `cronograma_mantencion` (`id`, `tipo_evento`, `titulo`, `descripcion
 (10, 'MANTENCION', 'Mantenimiento preventivo OT 1703', '', '2026-01-16', NULL, NULL, NULL, 4, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 14:25:25', '2026-01-12 17:11:35'),
 (11, 'MANTENCION', 'Mantenimiento preventivo', '', '2026-02-02', NULL, '', NULL, 28, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:30:45', '2026-01-12 18:30:45'),
 (13, 'MANTENCION', 'Mantenimiento preventivo ', '', '2026-02-10', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:33:27', '2026-01-12 18:33:27'),
-(14, 'MANTENCION', 'Mantenimiento preventivo', 'Mantenimiento preventivo', '2026-02-12', NULL, '', NULL, 31, NULL, NULL, NULL, 'bi-tools', '#4F6815', '2026-01-12 18:34:12', '2026-01-12 19:56:49'),
 (16, 'COMPRA', 'Auditoría Perú', 'Auditoría Perú', '2026-01-22', NULL, NULL, NULL, 34, NULL, NULL, NULL, 'bi-tools', '#e89191', '2026-01-12 20:03:50', '2026-01-12 20:08:56'),
 (17, 'MANTENCION', 'Mantencion preventivo', 'MANTENCION PROGRAMADA: Mantencion preventivo', '2026-01-30', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#0d6efd', '2026-01-21 18:41:46', '2026-01-22 12:47:03'),
 (18, 'MANTENCION', 'Mantencion preventivo', '', '2026-05-30', NULL, '', NULL, 30, NULL, NULL, NULL, 'bi-tools', '#0d6efd', '2026-01-21 18:41:47', '2026-01-21 18:41:47'),
@@ -816,7 +811,7 @@ INSERT INTO `detalle_orden_compra` (`id`, `orden_compra_id`, `insumo_id`, `canti
 (11, 11, 384, 3.00, 3.00, 17497.00, 52491.00),
 (12, 11, 545, 20.00, 10.00, 3720.00, 74400.00),
 (13, 240000, 380, 8.00, 8.00, 100.00, 800.00),
-(14, 240000, 1197, 1.00, 0.00, 2000.00, 2000.00),
+(14, 240000, 1197, 1.00, 1.00, 2000.00, 2000.00),
 (15, 240000, 1294, 1.00, 0.00, 600.00, 600.00),
 (16, 240000, 1295, 1.00, 0.00, 80000.00, 80000.00),
 (17, 240000, 1419, 2.00, 0.00, 56000.00, 112000.00),
@@ -2254,7 +2249,7 @@ INSERT INTO `insumos` (`id`, `codigo_sku`, `nombre`, `descripcion`, `categoria_i
 (1194, '990000071992236', 'RETEN LABIAL CODIGO 6.365-052.0', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1195, '990000071992237', 'RETENES CODIGO 6.365-377.0', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1196, '990000071992238', 'INTERRUPTOR AUTOMATICO 6A 380/415V 15 KA SCHNEIDER A9F87206 MGA87206', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
-(1197, '990000071992239', '(HELA) BROCHA CERDA 5/8X4', '', NULL, 9.00, 10.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-22 13:20:40', NULL),
+(1197, '990000071992239', '(HELA) BROCHA CERDA 5/8X4', '', NULL, 10.00, 10.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-02-16 18:41:18', NULL),
 (1198, '990000071992240', '(HELA) BROCHA CERDA 5/8X2', '', NULL, 17.00, 10.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2026-01-12 19:29:23', NULL),
 (1199, '990000071992241', 'ROSCALATA BINDING 12X1 1/2', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
 (1200, '990000071992242', 'ROSCALATA BINDING 10X1 1/4', '', NULL, 0.00, 5.00, 2.00, 0.00, 'CLP', 'Unidad', NULL, '2025-12-30 16:34:26', '2025-12-30 16:34:26', NULL),
@@ -2658,7 +2653,7 @@ INSERT INTO `insumo_stock_ubicacion` (`id`, `insumo_id`, `ubicacion_id`, `cantid
 (22, 1053, 1, 8.00, '2026-01-12 19:28:33'),
 (23, 1117, 1, 19.00, '2026-01-12 19:28:52'),
 (25, 1120, 1, 18.00, '2026-01-21 15:50:28'),
-(26, 1197, 1, 0.00, '2026-01-22 13:20:40'),
+(26, 1197, 1, 1.00, '2026-02-16 18:41:18'),
 (27, 1198, 1, 17.00, '2026-01-12 19:29:23'),
 (28, 1280, 1, 2.00, '2026-01-12 19:29:32'),
 (30, 1281, 1, 2.00, '2026-01-12 19:30:06'),
@@ -2853,7 +2848,25 @@ INSERT INTO `movimientos_inventario` (`id`, `insumo_id`, `tipo_movimiento_id`, `
 (128, 1431, 1, 1.00, 1, 1, NULL, NULL, NULL, 'Devolución voluntaria de operario', '2026-02-05 08:52:14'),
 (129, 1096, 1, 10.00, 1, 1, NULL, NULL, 240002, 'Recepción OC', '2026-02-12 13:36:21'),
 (130, 1096, 2, 10.00, 1, 1, 1, NULL, 266, 'Entrega OT', '2026-02-12 13:36:30'),
-(131, 1096, 1, 10.00, 1, 1, NULL, NULL, 240003, 'Recepción OC', '2026-02-12 13:49:35');
+(131, 1096, 1, 10.00, 1, 1, NULL, NULL, 240003, 'Recepción OC', '2026-02-12 13:49:35'),
+(132, 1197, 1, 1.00, 1, 1, NULL, NULL, 240000, 'Recepción OC', '2026-02-16 15:41:18');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `notificaciones`
+--
+
+CREATE TABLE `notificaciones` (
+  `id` int(11) NOT NULL,
+  `usuario_id` int(11) NOT NULL,
+  `titulo` varchar(100) NOT NULL,
+  `mensaje` text NOT NULL,
+  `link` varchar(255) DEFAULT NULL,
+  `tipo` enum('info','success','warning','error','high') DEFAULT 'info',
+  `leido` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -3045,7 +3058,8 @@ INSERT INTO `permisos` (`id`, `codigo`, `modulo`, `descripcion`) VALUES
 (82, 'crear_categorias', 'Configuración', 'Permite crear nuevas categorías'),
 (83, 'editar_categorias', 'Configuración', 'Permite editar categorías existentes'),
 (84, 'eliminar_categorias', 'Configuración', 'Permite eliminar categorías'),
-(85, 'ope_mant', 'Operario', 'Ver tareas asignadas');
+(85, 'ope_mant', 'Operario', 'Ver tareas asignadas'),
+(86, 'acceso_cliente', 'Cliente', 'Acceso exclusivo al portal de solicitudes para clientes');
 
 -- --------------------------------------------------------
 
@@ -3478,10 +3492,12 @@ CREATE TABLE `solicitudes_ot` (
   `id` int(11) NOT NULL,
   `usuario_solicitante_id` int(11) NOT NULL,
   `activo_id` int(11) DEFAULT NULL,
+  `titulo` varchar(150) DEFAULT NULL,
   `fecha_solicitud` datetime DEFAULT current_timestamp(),
   `fecha_requerida` date DEFAULT NULL,
   `estado_id` int(11) NOT NULL,
   `descripcion_trabajo` text DEFAULT NULL,
+  `imagen_url` varchar(255) DEFAULT NULL,
   `prioridad` enum('BAJA','MEDIA','ALTA','CRITICA') DEFAULT 'MEDIA',
   `origen_tipo` varchar(50) DEFAULT 'Interna',
   `area_negocio` varchar(50) DEFAULT NULL,
@@ -3500,8 +3516,13 @@ CREATE TABLE `solicitudes_ot` (
 -- Volcado de datos para la tabla `solicitudes_ot`
 --
 
-INSERT INTO `solicitudes_ot` (`id`, `usuario_solicitante_id`, `activo_id`, `fecha_solicitud`, `fecha_requerida`, `estado_id`, `descripcion_trabajo`, `prioridad`, `origen_tipo`, `area_negocio`, `centro_costo_ot`, `solicitante_externo`, `created_at`, `updated_at`, `asignado_a`, `firma_tecnico`, `comentarios_finales`, `pdf_url`, `fecha_cierre`) VALUES
-(50, 1, NULL, '2026-02-12 13:35:44', NULL, 2, '', 'MEDIA', 'Servicio', NULL, '6000', 'Carla Tapia', '2026-02-12 16:35:44', '2026-02-12 16:36:30', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `solicitudes_ot` (`id`, `usuario_solicitante_id`, `activo_id`, `titulo`, `fecha_solicitud`, `fecha_requerida`, `estado_id`, `descripcion_trabajo`, `imagen_url`, `prioridad`, `origen_tipo`, `area_negocio`, `centro_costo_ot`, `solicitante_externo`, `created_at`, `updated_at`, `asignado_a`, `firma_tecnico`, `comentarios_finales`, `pdf_url`, `fecha_cierre`) VALUES
+(50, 1, NULL, NULL, '2026-02-12 13:35:44', NULL, 2, '', NULL, 'MEDIA', 'Servicio', NULL, '6000', 'Carla Tapia', '2026-02-12 16:35:44', '2026-02-12 16:36:30', NULL, NULL, NULL, NULL, NULL),
+(51, 1, 30, NULL, '2026-02-16 17:04:00', NULL, 1, NULL, NULL, 'ALTA', 'Interna', NULL, NULL, NULL, '2026-02-16 20:04:00', '2026-02-16 20:04:00', NULL, NULL, NULL, NULL, NULL),
+(52, 1, 30, NULL, '2026-02-16 17:04:04', NULL, 1, NULL, NULL, 'ALTA', 'Interna', NULL, NULL, NULL, '2026-02-16 20:04:04', '2026-02-16 20:04:04', NULL, NULL, NULL, NULL, NULL),
+(53, 1, 5, NULL, '2026-02-16 17:12:36', NULL, 1, 'wwwwwwwwwwwwwwwwwww', NULL, 'ALTA', 'Interna', NULL, NULL, NULL, '2026-02-16 20:12:36', '2026-02-16 20:12:36', NULL, NULL, NULL, NULL, NULL),
+(54, 1, 2, NULL, '2026-02-16 17:14:42', NULL, 1, 'werqrwerwqrwqe', NULL, 'ALTA', 'Interna', NULL, NULL, NULL, '2026-02-16 20:14:42', '2026-02-16 20:14:42', NULL, NULL, NULL, NULL, NULL),
+(55, 1, NULL, NULL, '2026-02-16 17:17:25', NULL, 1, 'Pintas', NULL, 'MEDIA', 'Interna', NULL, NULL, NULL, '2026-02-16 20:17:25', '2026-02-16 20:17:25', NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -4068,6 +4089,13 @@ ALTER TABLE `movimientos_inventario`
   ADD KEY `fk_mov_ubicacion_envio` (`ubicacion_envio_id`);
 
 --
+-- Indices de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_notif_usuario` (`usuario_id`);
+
+--
 -- Indices de la tabla `ordenes_compra`
 --
 ALTER TABLE `ordenes_compra`
@@ -4335,13 +4363,19 @@ ALTER TABLE `insumos`
 -- AUTO_INCREMENT de la tabla `insumo_stock_ubicacion`
 --
 ALTER TABLE `insumo_stock_ubicacion`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=93;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=94;
 
 --
 -- AUTO_INCREMENT de la tabla `movimientos_inventario`
 --
 ALTER TABLE `movimientos_inventario`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=132;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=133;
+
+--
+-- AUTO_INCREMENT de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `ordenes_compra`
@@ -4371,7 +4405,7 @@ ALTER TABLE `paises`
 -- AUTO_INCREMENT de la tabla `permisos`
 --
 ALTER TABLE `permisos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=86;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
 
 --
 -- AUTO_INCREMENT de la tabla `proveedores`
@@ -4413,7 +4447,7 @@ ALTER TABLE `sistema_logs`
 -- AUTO_INCREMENT de la tabla `solicitudes_ot`
 --
 ALTER TABLE `solicitudes_ot`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
 
 --
 -- AUTO_INCREMENT de la tabla `tipos_movimiento`
@@ -4568,6 +4602,12 @@ ALTER TABLE `movimientos_inventario`
   ADD CONSTRAINT `movimientos_inventario_ibfk_1` FOREIGN KEY (`insumo_id`) REFERENCES `insumos` (`id`),
   ADD CONSTRAINT `movimientos_inventario_ibfk_2` FOREIGN KEY (`tipo_movimiento_id`) REFERENCES `tipos_movimiento` (`id`),
   ADD CONSTRAINT `movimientos_inventario_ibfk_3` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`);
+
+--
+-- Filtros para la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  ADD CONSTRAINT `fk_notif_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `ordenes_compra`
