@@ -169,7 +169,6 @@ class MantencionRepository
     {
         try {
             $this->db->beginTransaction();
-            $this->db->prepare("DELETE FROM kit_repuestos WHERE activo_id = ?")->execute([$activoId]);
             $this->db->prepare("DELETE FROM activos_insumos WHERE activo_id = ?")->execute([$activoId]);
             $this->db->prepare("DELETE FROM activos_imagenes WHERE activo_id = ?")->execute([$activoId]);
             $this->db->prepare("DELETE FROM activos_docs WHERE activo_id = ?")->execute([$activoId]);

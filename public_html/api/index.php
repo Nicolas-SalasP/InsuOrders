@@ -25,6 +25,7 @@ use App\Controllers\PersonalController;
 use App\Controllers\OperarioController;
 use App\Controllers\MisMantencionesController;
 use App\Controllers\CategoriaController;
+use App\Controllers\ClienteController;
 
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
@@ -639,13 +640,29 @@ try {
             }
             break;
 
+        // --- CLIENTES ---
+        case 'cliente/solicitudes':
+            $c = new ClienteController();
+            if ($method === 'GET') {
+                $c->misSolicitudes();
+            } elseif ($method === 'POST') {
+                $c->store();
+            }
+            break;
+
+        case 'cliente/activos':
+            if ($method === 'GET') {
+                (new ClienteController())->activosParaCliente();
+            }
+            break;
+
         default:
             jsonResponse(404, ["error" => "Ruta no encontrada: $path"]);
             break;
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     jsonResponse(500, [
         "success" => false,
-        "error" => "Error del Servidor: " . $e->getMessage()
+        "error" => "Error Fatal: " . $e->getMessage() . " en " . $e->getFile() . " línea " . $e->getLine()
     ]);
 }
