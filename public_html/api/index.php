@@ -491,12 +491,18 @@ try {
             (new DashboardController())->analytics();
             break;
 
-        // --- OTROS ---
+        // --- NOTIFICACIONES ---
         case 'notifications':
             AuthMiddleware::verify();
-            (new NotificationController())->index();
+            $c = new NotificationController();
+            if ($method === 'GET') {
+                $c->index();
+            } elseif ($method === 'POST') {
+                $c->leer();
+            }
             break;
 
+        // --- EXPORTACION E IMPORTACION ---
         case 'exportar':
             AuthMiddleware::verify();
             (new ExportController())->exportar($_GET['modulo'] ?? '');
