@@ -36,6 +36,32 @@ class MisMantencionesRepository
         $stmt->execute([':uid' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    // --- MÉTODO OPTIMIZADO PARA JEFE / ADMIN ---
+    public function getAllOtsWithAsignados()
+    {
+        $sql = "SELECT ot.id, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
+                ot.estado_id, e.nombre as estado,
+                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
+                COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
+                a.plantilla_json,
+                u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
+                IFNULL(GROUP_CONCAT(DISTINCT tec.id ORDER BY tec.id ASC), '') as asignados_ids,
+                IFNULL(GROUP_CONCAT(DISTINCT CONCAT(tec.nombre, ' ', tec.apellido) ORDER BY tec.id ASC SEPARATOR ', '), '') as asignados_nombres,
+                
+                0 as mi_completado
+
+            FROM solicitudes_ot ot
+            LEFT JOIN ot_asignaciones oa ON ot.id = oa.solicitud_id
+            LEFT JOIN usuarios tec ON oa.usuario_id = tec.id
+            LEFT JOIN activos a ON ot.activo_id = a.id 
+            JOIN estados_solicitud e ON ot.estado_id = e.id
+            JOIN usuarios u ON ot.usuario_solicitante_id = u.id
+            WHERE ot.estado_id != 6 
+            GROUP BY ot.id
+            ORDER BY ot.fecha_solicitud DESC";
+
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     public function getRespuestasPorOt($otId)
     {
