@@ -319,4 +319,37 @@ class OrdenCompraRepository
 
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function archivarSolicitudesPendientes($idsArray)
+    {
+        if (empty($idsArray)) return false;
+        $placeholders = implode(',', array_fill(0, count($idsArray), '?'));
+        $sql = "UPDATE detalle_solicitud 
+                SET estado_linea = 'OMITIDO' 
+                WHERE id IN ($placeholders)";
+
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($idsArray);
+    }
+
+    public function obtenerDatosParaNotificar($idsArray)
+    {
+        if (empty($idsArray)) return [];
+        
+        $placeholders = implode(',', array_fill(0, count($idsArray), '?'));
+        
+        $sql = "SELECT 
+                    ds.id, 
+                    i.nombre as nombre_insumo, 
+                    s.id as ot_id, 
+                    s.usuario_solicitante_id as usuario_id
+                FROM detalle_solicitud ds
+                JOIN solicitudes_ot s ON ds.solicitud_id = s.id
+                JOIN insumos i ON ds.insumo_id = i.id
+                WHERE ds.id IN ($placeholders)";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($idsArray);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

@@ -338,6 +338,13 @@ try {
             (new OrdenCompraController())->cancelarOrden();
             break;
 
+        case 'compras/omitir':
+            AuthMiddleware::verify('compras_crear');
+            if ($method === 'POST') {
+                (new OrdenCompraController())->omitir();
+            }
+            break;
+
         // --- PROVEEDORES ---
         case 'proveedores':
             $c = new ProveedorController();

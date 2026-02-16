@@ -221,4 +221,34 @@ class OrdenCompraService
 
         return $relativePath;
     }
+
+    public function omitirPendientes($idsString)
+    {
+        if (empty($idsString)) throw new Exception("No se seleccionaron ítems.");
+        
+        $ids = explode(',', $idsString);
+        $ids = array_filter($ids, 'is_numeric');
+
+        if (empty($ids)) return false;
+        $datosNotificacion = $this->repo->obtenerDatosParaNotificar($ids);
+
+        $resultado = $this->repo->archivarSolicitudesPendientes($ids);
+
+        if ($resultado && !empty($datosNotificacion)) {
+            $notifRepo = new \App\Repositories\NotificationRepository();
+            
+            foreach ($datosNotificacion as $dato) {
+                $mensaje = "Gestión de Compras: El insumo '{$dato['nombre_insumo']}' para la OT #{$dato['ot_id']} ha sido marcado como 'No Comprar' (Omitido).";
+                $notifRepo->create(
+                    $dato['usuario_id'], 
+                    'Insumo Omitido', 
+                    $mensaje, 
+                    '/mis-mantenciones',
+                    'high'
+                );
+            }
+        }
+        
+        return $resultado;
+    }
 }
