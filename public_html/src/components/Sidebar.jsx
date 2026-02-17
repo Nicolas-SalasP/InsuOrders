@@ -31,11 +31,11 @@ const Sidebar = ({ onClose }) => {
     const canViewDashboard = () => {
         if (isClientePuro) return false;
         if (isAdmin) return true;
-        if (can('dash_resumen')) return true;     
-        if (can('dash_compras')) return true;     
-        if (can('dash_mantencion')) return true;  
-        if (can('dash_bodega')) return true;      
-        if (can('dash_personal')) return true;    
+        if (can('dash_resumen')) return true;
+        if (can('dash_compras')) return true;
+        if (can('dash_mantencion')) return true;
+        if (can('dash_bodega')) return true;
+        if (can('dash_personal')) return true;
         return false;
     };
 
@@ -111,9 +111,9 @@ const Sidebar = ({ onClose }) => {
         return items;
     };
 
-    const countVisible = isClientePuro ? 0 : 
-        (can('compras_ver') ? notificaciones.compras.count : 0) + 
-        (can('bodega_ver') ? notificaciones.bodega.count : 0) + 
+    const countVisible = isClientePuro ? 0 :
+        (can('compras_ver') ? notificaciones.compras.count : 0) +
+        (can('bodega_ver') ? notificaciones.bodega.count : 0) +
         (can('mant_ver') ? notificaciones.mantencion.count : 0);
 
     return (
@@ -192,10 +192,10 @@ const Sidebar = ({ onClose }) => {
                                 </li>
                             )}
 
-                            {canViewDashboard() && (
-                                <li className="nav-item">
-                                    <NavLink to="/dashboard" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-gradient' : ''}`}>
-                                        <i className="bi bi-speedometer2 me-2"></i> Dashboard
+                            {can('activos_ver') && (
+                                <li>
+                                    <NavLink to="/activos" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-gradient' : ''}`}>
+                                        <i className="bi bi-hdd-rack me-2"></i> Activos
                                     </NavLink>
                                 </li>
                             )}
@@ -205,6 +205,14 @@ const Sidebar = ({ onClose }) => {
                                     <NavLink to="/bodega" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-gradient' : ''} d-flex justify-content-between`}>
                                         <span><i className="bi bi-inboxes me-2"></i> Bodega</span>
                                         {notificaciones.bodega.count > 0 && <span className="badge bg-danger rounded-pill">{notificaciones.bodega.count}</span>}
+                                    </NavLink>
+                                </li>
+                            )}
+
+                            {canViewDashboard() && (
+                                <li className="nav-item">
+                                    <NavLink to="/dashboard" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-gradient' : ''}`}>
+                                        <i className="bi bi-speedometer2 me-2"></i> Dashboard
                                     </NavLink>
                                 </li>
                             )}
@@ -225,7 +233,7 @@ const Sidebar = ({ onClose }) => {
                                     </NavLink>
                                 </li>
                             )}
-                             {can('cot_ver') && (
+                            {can('cot_ver') && (
                                 <li>
                                     <NavLink to="/cotizaciones" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-gradient' : ''}`}>
                                         <i className="bi bi-file-earmark-text me-2"></i> Cotizaciones
@@ -253,14 +261,6 @@ const Sidebar = ({ onClose }) => {
                                 <li>
                                     <NavLink to="/cronograma" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-gradient' : ''}`}>
                                         <i className="bi bi-calendar-check me-2"></i> Cronograma
-                                    </NavLink>
-                                </li>
-                            )}
-
-                            {can('activos_ver') && (
-                                <li>
-                                    <NavLink to="/activos" onClick={handleNavClick} className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-gradient' : ''}`}>
-                                        <i className="bi bi-hdd-rack me-2"></i> Activos
                                     </NavLink>
                                 </li>
                             )}

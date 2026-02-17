@@ -38,7 +38,7 @@ class ClienteService
             throw new Exception("La descripción es obligatoria.");
         }
         if (empty($data['titulo'])) {
-            throw new Exception("El título breve es obligatorio.");
+            throw new Exception("El título es obligatorio.");
         }
 
         $activoId = !empty($data['activo_id']) ? $data['activo_id'] : null;
@@ -66,8 +66,10 @@ class ClienteService
         ];
 
         $idSolicitud = $this->repo->crearSolicitud($datosInsert);
-
         $this->enviarCorreoCreacion($usuarioId, $idSolicitud, $datosInsert['titulo']);
+        if ($datosInsert['prioridad'] === 'CRITICO') {
+            $this->notificarUrgenciaTecnicos($idSolicitud, $datosInsert);
+        }
 
         return $idSolicitud;
     }
@@ -82,8 +84,43 @@ class ClienteService
             $message .= "Hemos recibido tu solicitud: '$titulo'.\n";
             $message .= "Estado: Pendiente\n\n";
             $message .= "Te notificaremos cuando un técnico sea asignado.";
+            
             $headers = "From: no-reply@insuorders.com\r\n";
+            $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+            
             @mail($to, $subject, $message, $headers);
+        }
+    }
+
+    private function notificarUrgenciaTecnicos($folio, $data)
+    {
+        $tecnicos = $this->repo->getEmailsPorRol('Tecnico'); 
+        $jefes = $this->repo->getEmailsPorRol('Jefe Mantencion');
+        
+        $destinatarios = array_merge($tecnicos, $jefes);
+
+        if (empty($destinatarios)) return;
+
+        $subject = "🚨 ALERTA CRÍTICA: Nueva Solicitud #$folio";
+        
+        $message = "ATENCIÓN EQUIPO DE MANTENCIÓN,\n\n";
+        $message .= "Se ha reportado una incidencia CRÍTICA que requiere atención inmediata.\n\n";
+        $message .= "FOLIO: #" . $folio . "\n";
+        $message .= "TÍTULO: " . $data['titulo'] . "\n";
+        $message .= "PRIORIDAD: CRÍTICO 🔴\n";
+        $message .= "DESCRIPCIÓN:\n" . $data['descripcion'] . "\n\n";
+        $message .= "Por favor asignar y atender a la brevedad.\n";
+        $message .= "Sistema InsuOrders.";
+        $headers = "From: no-reply@insuorders.com\r\n";
+        $headers .= "X-Priority: 1 (Highest)\r\n";
+        $headers .= "X-MSMail-Priority: High\r\n";
+        $headers .= "Importance: High\r\n";
+        $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+
+        foreach ($destinatarios as $user) {
+            if (!empty($user['email'])) {
+                @mail($user['email'], $subject, $message, $headers);
+            }
         }
     }
 }

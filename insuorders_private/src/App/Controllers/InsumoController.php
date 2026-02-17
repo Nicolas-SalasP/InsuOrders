@@ -221,4 +221,37 @@ class InsumoController
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     }
+
+    public function getOTsActivas()
+    {
+        try {
+            AuthMiddleware::verify();
+            $data = $this->service->obtenerOTsParaSalida();
+            echo json_encode(["success" => true, "data" => $data]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        }
+    }
+
+    public function salidaManual()
+    {
+        try {
+            $userId = AuthMiddleware::verify();
+            
+            $inputJSON = file_get_contents("php://input");
+            $data = json_decode($inputJSON, true);
+
+            if (!$data) {
+                throw new Exception("Datos inválidos (JSON incorrecto).");
+            }
+
+            $this->service->registrarSalida($data, $userId);
+
+            echo json_encode(["success" => true, "message" => "Salida registrada correctamente."]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        }
+    }
 }

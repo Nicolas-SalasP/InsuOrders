@@ -314,4 +314,107 @@ class InsumoRepository
         return '990000000000001';
     }
 
+    public function getOTsActivas()
+    {
+        $sql = "SELECT s.id, s.titulo, a.nombre as maquina, a.codigo_interno 
+                FROM solicitudes_ot s 
+                LEFT JOIN activos a ON s.activo_id = a.id 
+                WHERE s.estado_id IN (1, 2)
+                ORDER BY s.id DESC";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function registrarSalidaManual($data)
+    {
+        try {
+            $this->db->beginTransaction();
+
+            $insumoId = $data['insumo_id'];
+            $cantidad = floatval($data['cantidad']);
+            $usuarioId = $data['usuario_id'];
+            $otId = !empty($data['ot_id']) ? $data['ot_id'] : null;
+            $observacion = $data['observacion'] ?? 'Salida Manual';
+            
+            $empleadoId = !empty($data['empleado_id']) ? $data['empleado_id'] : null;
+            $ubicacionEnvioId = !empty($data['ubicacion_envio_id']) ? $data['ubicacion_envio_id'] : null;
+
+            $stmtLoc = $this->db->prepare("SELECT ubicacion_id, cantidad FROM insumo_stock_ubicacion WHERE insumo_id = ? AND cantidad > 0 ORDER BY cantidad DESC");
+            $stmtLoc->execute([$insumoId]);
+            $stocks = $stmtLoc->fetchAll(PDO::FETCH_ASSOC);
+
+            $cantidadRestante = $cantidad;
+            
+            if (empty($stocks)) {
+                throw new Exception("No hay stock disponible para realizar la salida.");
+            }
+
+            foreach ($stocks as $stock) {
+                if ($cantidadRestante <= 0) break;
+                
+                $descuento = min($cantidadRestante, $stock['cantidad']);
+                
+                $this->db->prepare("UPDATE insumo_stock_ubicacion SET cantidad = cantidad - :c WHERE insumo_id = :i AND ubicacion_id = :u")
+                    ->execute([':c' => $descuento, ':i' => $insumoId, ':u' => $stock['ubicacion_id']]);
+                
+                $obsFinal = $otId ? "Salida para OT #$otId: $observacion" : $observacion;
+                
+                $sqlInsert = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, ubicacion_id, empleado_id, ubicacion_envio_id, fecha) 
+                            VALUES (:iid, 2, :cant, :uid, :obs, :ref, :ubi, :emp, :env, NOW())";
+                
+                $this->db->prepare($sqlInsert)
+                    ->execute([
+                        ':iid' => $insumoId,
+                        ':cant' => $descuento,
+                        ':uid' => $usuarioId,
+                        ':obs' => $obsFinal,
+                        ':ref' => $otId,
+                        ':ubi' => $stock['ubicacion_id'],
+                        ':emp' => $empleadoId,
+                        ':env' => $ubicacionEnvioId
+                    ]);
+
+                $cantidadRestante -= $descuento;
+            }
+
+            if ($cantidadRestante > 0) {
+                throw new Exception("Stock insuficiente para cubrir la salida total.");
+            }
+
+            $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")
+                ->execute([$insumoId, $insumoId]);
+
+            if ($otId) {
+                $stmtCheck = $this->db->prepare("SELECT id, cantidad, cantidad_entregada FROM detalle_solicitud WHERE solicitud_id = :ot AND insumo_id = :insumo");
+                $stmtCheck->execute([':ot' => $otId, ':insumo' => $insumoId]);
+                $existe = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+                if ($existe) {
+                    $nuevaEntregada = floatval($existe['cantidad_entregada']) + $cantidad;
+                    $nuevoEstado = ($nuevaEntregada >= floatval($existe['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
+                    
+                    $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :ent, estado_linea = :st WHERE id = :id")
+                        ->execute([':ent' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $existe['id']]);
+                
+                } else {
+                    $sqlInsert = "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, estado_linea) 
+                                VALUES (:ot, :insumo, :cant1, :cant2, 'ENTREGADO')";
+                    $this->db->prepare($sqlInsert)->execute([
+                        ':ot' => $otId,
+                        ':insumo' => $insumoId,
+                        ':cant1' => $cantidad,
+                        ':cant2' => $cantidad 
+                    ]);
+                }
+
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $otId]);
+            }
+
+            $this->db->commit();
+            return true;
+
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
+    }
 }

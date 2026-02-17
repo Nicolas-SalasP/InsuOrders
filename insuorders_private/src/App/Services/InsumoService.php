@@ -111,4 +111,24 @@ class InsumoService
         $nombre = mb_strtolower(trim($nombre), 'UTF-8');
         return mb_convert_case($nombre, MB_CASE_TITLE, 'UTF-8');
     }
+
+    public function obtenerOTsParaSalida()
+    {
+        return $this->repo->getOTsActivas();
+    }
+
+    public function registrarSalida($data, $usuarioId)
+    {
+        if (empty($data['insumo_id'])) {
+            throw new Exception("El ID del insumo es obligatorio.");
+        }
+        if (empty($data['cantidad']) || $data['cantidad'] <= 0) {
+            throw new Exception("La cantidad debe ser mayor a 0.");
+        }
+        if (empty($data['ubicacion_envio_id'])) {
+            throw new Exception("Debe seleccionar una ubicación de destino.");
+        }
+        $data['usuario_id'] = $usuarioId;
+        return $this->repo->registrarSalidaManual($data);
+    }
 }

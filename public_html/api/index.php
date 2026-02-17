@@ -178,8 +178,7 @@ try {
             if ($method === 'GET') {
                 AuthMiddleware::hasPermission('activos_ver');
                 (new MantencionController())->activos();
-            }
-            elseif ($method === 'DELETE') {
+            } elseif ($method === 'DELETE') {
                 AuthMiddleware::hasPermission('activos_editar');
                 (new MantencionController())->deleteActivo();
             }
@@ -286,6 +285,19 @@ try {
             $uid = AuthMiddleware::hasPermission('ajustar_stock');
             if ($method === 'POST')
                 (new InsumoController())->ajustar($uid);
+            break;
+
+        case 'inventario/salida':
+            $c = new InsumoController();
+            if ($method === 'POST') {
+                $c->salidaManual();
+            }
+            break;
+
+        case 'inventario/ots-activas':
+            $c = new InsumoController();
+            if ($method === 'GET')
+                $c->getOTsActivas();
             break;
 
         // --- COMPRAS ---

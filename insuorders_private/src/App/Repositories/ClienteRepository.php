@@ -88,4 +88,16 @@ class ClienteRepository
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    public function getEmailsPorRol($nombreRol)
+    {
+        $sql = "SELECT u.email, u.nombre 
+                FROM usuarios u 
+                JOIN roles r ON u.rol_id = r.id 
+                WHERE r.nombre = :rol AND u.estado = 1";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':rol' => $nombreRol]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
