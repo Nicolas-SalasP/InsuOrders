@@ -128,7 +128,23 @@ class InsumoService
         if (empty($data['ubicacion_envio_id'])) {
             throw new Exception("Debe seleccionar una ubicación de destino.");
         }
+
         $data['usuario_id'] = $usuarioId;
         return $this->repo->registrarSalidaManual($data);
+    }
+
+    public function obtenerDatosComprobante($ids)
+    {
+        if (!is_array($ids)) {
+            $ids = explode(',', $ids);
+        }
+        $ids = array_map('intval', $ids);
+        $ids = array_filter($ids);
+
+        if (empty($ids)) {
+            throw new Exception("IDs de movimiento no válidos.");
+        }
+
+        return $this->repo->getDatosComprobante($ids);
     }
 }

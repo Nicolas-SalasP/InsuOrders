@@ -300,6 +300,13 @@ try {
                 $c->getOTsActivas();
             break;
 
+        case 'inventario/comprobante':
+            $c = new InsumoController();
+            if ($method === 'GET') {
+                $c->comprobanteEntrega();
+            }
+            break;
+
         // --- COMPRAS ---
         case 'compras':
             if ($method === 'GET') {

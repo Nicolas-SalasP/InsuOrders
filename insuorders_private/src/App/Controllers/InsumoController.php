@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Services\InsumoService;
 use App\Repositories\OperarioRepository;
+use App\Services\PDFService;
 use App\Middleware\AuthMiddleware;
 use Exception;
 
@@ -245,13 +246,40 @@ class InsumoController
             if (!$data) {
                 throw new Exception("Datos inválidos (JSON incorrecto).");
             }
+            $movimientosIds = $this->service->registrarSalida($data, $userId);
 
-            $this->service->registrarSalida($data, $userId);
-
-            echo json_encode(["success" => true, "message" => "Salida registrada correctamente."]);
+            echo json_encode([
+                "success" => true, 
+                "message" => "Salida registrada correctamente.",
+                "ids" => $movimientosIds
+            ]);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        }
+    }
+
+    public function comprobanteEntrega()
+    {
+        $ids = $_GET['ids'] ?? '';
+        
+        try {
+            $datos = $this->service->obtenerDatosComprobante($ids);
+
+            if (empty($datos)) {
+                die("No se encontraron datos para el comprobante.");
+            }
+
+            $pdf = new PDFService();
+            $pdf->setOrdenData(['id' => 'V-' . date('Hi'), 'proveedor' => 'INTERNO']); 
+            
+            $content = $pdf->generarComprobanteEntrega($datos);
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="Comprobante_' . time() . '.pdf"');
+            echo $content;
+
+        } catch (Exception $e) {
+            die("Error generando PDF: " . $e->getMessage());
         }
     }
 }
