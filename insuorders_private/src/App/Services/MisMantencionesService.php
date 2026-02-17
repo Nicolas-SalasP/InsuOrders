@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Repositories\MisMantencionesRepository;
+use App\Database\Database;
 use Exception;
 
 class MisMantencionesService
@@ -15,11 +16,17 @@ class MisMantencionesService
 
     public function listarMisOts($userId)
     {
-        if (!$userId)
-            throw new Exception("Usuario no identificado.");
-
-        $ots = $this->repository->getOtsAsignadas($userId);
-
+        if (!$userId) throw new Exception("Usuario no identificado.");
+        $db = Database::getConnection();
+        $stmt = $db->prepare("SELECT rol_id FROM usuarios WHERE id = ?");
+        $stmt->execute([$userId]);
+        $rolId = $stmt->fetchColumn();
+        if ($rolId == 1 || $rolId == 3) {
+            $ots = $this->repository->getAllOtsWithAsignados();
+        } else {
+            $ots = $this->repository->getOtsAsignadas($userId);
+        }
+        
         foreach ($ots as &$ot) {
             $respuestas = $this->repository->getRespuestasPorOt($ot['id']);
             $mapa = [];

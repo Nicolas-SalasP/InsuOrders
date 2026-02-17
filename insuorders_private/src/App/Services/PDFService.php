@@ -826,5 +826,133 @@ public function generarCotizacion($cotizacion)
         return $tmpFile;
     }
 
-    
+// -----------------------------------------------------------
+    // VALE DE SALIDA DE BODEGA 
+    // -----------------------------------------------------------
+    public function generarComprobanteEntrega($datos) {
+        if (ob_get_length()) ob_end_clean();
+
+        // Seteamos datos mínimos para que el Header() automático no de error
+        // Usamos el ID del primer movimiento como N° de Registro
+        $head = $datos[0];
+        $this->orden = [
+            'id' => $head['id'],
+            'proveedor' => '' 
+        ];
+
+        $this->AliasNbPages();
+        $this->AddPage();
+
+        // --- TRUCO PROFESIONAL: Limpiar el Header de OC ---
+        // Dibujamos un rectángulo blanco sobre los textos fijos de "Orden de Compra"
+        // que pone el Header() automático, para poder poner nuestros títulos.
+        $this->SetFillColor(255, 255, 255);
+        $this->Rect(110, 8, 90, 45, 'F'); // Tapamos el título y datos de OC
+        $this->Rect(10, 60, 190, 35, 'F'); // Tapamos el recuadro de "Datos del Proveedor"
+
+        // 1. Nuevo Título de Documento
+        $this->SetXY(110, 10);
+        $this->SetFont('Arial', 'B', 18);
+        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->Cell(90, 10, $this->txt('VALE DE ENTREGA'), 0, 1, 'R');
+        
+        $this->SetTextColor(0);
+        $this->SetXY(110, 22);
+        $this->SetFont('Arial', 'B', 10);
+        $this->Cell(55, 5, $this->txt('N° REGISTRO DE SALIDA:'), 0, 0, 'R');
+        $this->SetFont('Arial', '', 11);
+        $this->Cell(35, 5, '#' . $head['id'], 0, 1, 'R');
+
+        // 2. Información de Recepción (Bajamos la posición para que se vea limpio)
+        $this->SetY(45);
+        $fecha = date('d/m/Y H:i', strtotime($head['fecha']));
+        $referencia = $head['ot_id'] ? "Orden de Trabajo #" . $head['ot_id'] : "Salida Manual";
+
+        $this->SetFillColor(240, 240, 240);
+        $this->SetFont('Arial', 'B', 10);
+        $this->SetTextColor(0);
+        $this->Cell(0, 7, $this->txt('  DETALLES DE LA ENTREGA'), 0, 1, 'L', true);
+        $this->Ln(2);
+
+        // Bloque de datos
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 6, 'Fecha:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(70, 6, $fecha, 0, 0);
+        
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 6, 'Referencia:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(60, 6, $this->txt($referencia), 0, 1);
+
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 6, 'Entrega:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(70, 6, $this->txt($head['bodeguero_nombre'] . ' ' . $head['bodeguero_apellido']), 0, 0);
+
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 6, 'Destino:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(60, 6, $this->txt($head['ubicacion_destino'] ?? 'Planta General'), 0, 1);
+
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 6, 'Receptor:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(70, 6, $this->txt($head['receptor_nombre']), 0, 0);
+
+        $this->SetFont('Arial', 'B', 9);
+        $this->Cell(30, 6, 'RUT Receptor:', 0, 0);
+        $this->SetFont('Arial', '', 9);
+        $this->Cell(60, 6, $this->txt($head['receptor_rut']), 0, 1);
+
+        $this->Ln(8);
+
+        // 3. Tabla de Materiales
+        $this->SetFont('Arial', 'B', 9);
+        $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
+        $this->SetTextColor(255);
+
+        $this->Cell(35, 8, 'SKU', 0, 0, 'C', true);
+        $this->Cell(95, 8, 'DESCRIPCION DEL MATERIAL', 0, 0, 'L', true);
+        $this->Cell(30, 8, 'CANTIDAD', 0, 0, 'C', true);
+        $this->Cell(30, 8, 'UNIDAD', 0, 1, 'C', true);
+
+        $this->SetFont('Arial', '', 9);
+        $this->SetTextColor(0);
+        $fill = false;
+
+        foreach ($datos as $row) {
+            $this->SetFillColor(245, 245, 245);
+            $this->Cell(35, 7, $row['codigo_sku'], 'B', 0, 'C', $fill);
+            $this->Cell(95, 7, $this->txt(substr($row['insumo'], 0, 50)), 'B', 0, 'L', $fill);
+            $this->Cell(30, 7, floatval($row['cantidad']), 'B', 0, 'C', $fill);
+            $this->Cell(30, 7, $this->txt($row['unidad_medida']), 'B', 1, 'C', $fill);
+            $fill = !$fill;
+        }
+
+        if (!empty($head['observacion']) && $head['observacion'] !== 'Salida Manual') {
+            $this->Ln(5);
+            $this->SetFont('Arial', 'B', 9);
+            $this->Cell(0, 5, 'Observaciones:', 0, 1);
+            $this->SetFont('Arial', '', 9);
+            $this->MultiCell(0, 5, $this->txt($head['observacion']), 0, 'L');
+        }
+
+        // 4. Firmas al final de la página
+        $this->SetY(-55);
+        $yFirma = $this->GetY();
+        
+        $this->SetDrawColor(100, 100, 100);
+        $this->Line(25, $yFirma, 85, $yFirma);
+        $this->Line(125, $yFirma, 185, $yFirma);
+
+        $this->SetFont('Arial', 'B', 8);
+        $this->SetXY(25, $yFirma + 2);
+        $this->Cell(60, 4, 'FIRMA RESPONSABLE BODEGA', 0, 0, 'C');
+        
+        $this->SetXY(125, $yFirma + 2);
+        $this->Cell(60, 4, 'FIRMA RECEPTOR CONFORME', 0, 0, 'C');
+
+        return $this->Output('S');
+    }
 }

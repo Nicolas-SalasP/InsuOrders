@@ -8,27 +8,26 @@ import { usePermission } from '../hooks/usePermission';
 
 const MisMantenciones = () => {
     const { can } = usePermission();
-
+    const { auth: authData } = useContext(AuthContext);
     const [ots, setOts] = useState([]);
     const [selectedOt, setSelectedOt] = useState(null);
     const [detallesOt, setDetallesOt] = useState({ insumos: [], respuestas: [] });
-
     const [activeTab, setActiveTab] = useState('checklist');
     const [datosEnvio, setDatosEnvio] = useState({ respuestas: [], firma: null, comentarios: '' });
     const [loading, setLoading] = useState(true);
     const [loadingDetalle, setLoadingDetalle] = useState(false);
     const [guardando, setGuardando] = useState(false);
-    
-    const [filtroEstado, setFiltroEstado] = useState('pendientes'); 
+    const [filtroEstado, setFiltroEstado] = useState('pendientes');
     const [busqueda, setBusqueda] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
-
+    const [filtroTecnico, setFiltroTecnico] = useState(null);
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: '' });
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
+    const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
 
-    useEffect(() => { 
+    useEffect(() => {
         if (can('ope_mant')) {
-            cargarMisOts(); 
+            cargarMisOts();
         }
     }, []);
 
@@ -43,6 +42,33 @@ const MisMantenciones = () => {
             setLoading(false);
         }
     };
+
+    const obtenerEstadisticasEquipo = () => {
+        const stats = {};
+        ots.forEach(ot => {
+            if (!ot.asignados_ids) return;
+            const ids = ot.asignados_ids.toString().split(',');
+            const nombres = ot.asignados_nombres ? ot.asignados_nombres.toString().split(', ') : [];
+
+            ids.forEach((id, index) => {
+                if (!stats[id]) {
+                    stats[id] = {
+                        id,
+                        nombre: nombres[index] || 'Técnico',
+                        pendientes: 0,
+                        proceso: 0,
+                        terminado: 0
+                    };
+                }
+                if (ot.estado_id === 1 || ot.estado_id === 4) stats[id].pendientes++;
+                else if (ot.estado_id === 2) stats[id].proceso++;
+                else if (ot.estado_id === 3 || ot.estado_id === 5) stats[id].terminado++;
+            });
+        });
+        return Object.values(stats);
+    };
+
+    const teamStats = esJefe ? obtenerEstadisticasEquipo() : [];
 
     const handleSelectOt = async (ot) => {
         setSelectedOt(ot);
@@ -77,15 +103,21 @@ const MisMantenciones = () => {
     };
 
     const otsFiltradas = ots.filter(ot => {
-        const matchEstado = 
-            filtroEstado === 'pendientes' ? (ot.estado_id === 1 || ot.estado_id === 4) && ot.mi_completado === 0 :
-            filtroEstado === 'proceso'    ? ot.estado_id === 2 && ot.mi_completado === 0 :
-            filtroEstado === 'terminado'  ? ot.mi_completado === 1 || ot.estado_id === 5 : true;
+        if (filtroTecnico) {
+            const asignados = ot.asignados_ids ? ot.asignados_ids.toString().split(',') : [];
+            if (!asignados.includes(filtroTecnico.toString())) return false;
+        }
+
+        const matchEstado =
+            filtroEstado === 'pendientes' ? (ot.estado_id === 1 || ot.estado_id === 4) :
+                filtroEstado === 'proceso' ? ot.estado_id === 2 :
+                    filtroEstado === 'terminado' ? ot.mi_completado === 1 || ot.estado_id === 5 : true;
 
         const texto = busqueda.toLowerCase();
-        const matchTexto = ot.activo.toLowerCase().includes(texto) || 
-                           `${ot.solicitante_nombre} ${ot.solicitante_apellido}`.toLowerCase().includes(texto) ||
-                           ot.id.toString().includes(texto);
+        const matchTexto = ot.activo.toLowerCase().includes(texto) ||
+            `${ot.solicitante_nombre} ${ot.solicitante_apellido}`.toLowerCase().includes(texto) ||
+            ot.id.toString().includes(texto) ||
+            (ot.asignados_nombres && ot.asignados_nombres.toLowerCase().includes(texto));
 
         const matchFecha = filtroFecha ? ot.fecha_solicitud.startsWith(filtroFecha) : true;
 
@@ -132,9 +164,11 @@ const MisMantenciones = () => {
                     type: 'success'
                 });
 
-                cargarMisOts();
                 if (datosEnvio.firma) {
+                    cargarMisOts();
                     setSelectedOt(null);
+                } else {
+                    cargarMisOts();
                 }
             }
         } catch (e) {
@@ -184,47 +218,95 @@ const MisMantenciones = () => {
 
             <div className="row g-0 flex-grow-1" style={{ minHeight: 0 }}>
                 <div className={`col-12 col-md-4 col-lg-3 border-end bg-white d-flex flex-column shadow-sm z-1 ${selectedOt ? 'd-none d-md-flex' : 'd-flex'}`}>
-                    <div className="p-4 border-bottom bg-white">
+                    {esJefe && (
+                        <div className="p-3 bg-light border-bottom" style={{ maxHeight: '35vh', overflowY: 'auto' }}>
+                            <div className="d-flex justify-content-between align-items-center mb-2 sticky-top bg-light pt-1 pb-2" style={{ zIndex: 5 }}>
+                                <h6 className="fw-bold m-0 text-primary"><i className="bi bi-people-fill me-2"></i>Equipo</h6>
+                                {filtroTecnico && <button className="btn btn-xs btn-outline-secondary py-0" onClick={() => setFiltroTecnico(null)}>Ver Todos</button>}
+                            </div>
+                            <div className="row g-2">
+                                <div className="col-6">
+                                    <div
+                                        className={`card border-0 shadow-sm h-100 cursor-pointer ${filtroTecnico === null ? 'ring-2 ring-primary bg-primary text-white' : 'bg-white'}`}
+                                        onClick={() => setFiltroTecnico(null)}
+                                    >
+                                        <div className="card-body p-2 text-center d-flex flex-column justify-content-center align-items-center">
+                                            <div className="fw-bold mb-1 text-truncate w-100">TODOS</div>
+                                            <div className="display-6 fw-bold lh-1">{ots.length}</div>
+                                            <div className="small opacity-75 mt-1" style={{ fontSize: '0.7rem' }}>Total Tareas</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {teamStats.map(stat => (
+                                    <div className="col-6" key={stat.id}>
+                                        <div
+                                            className={`card border-0 shadow-sm h-100 cursor-pointer ${filtroTecnico === stat.id ? 'border border-2 border-primary bg-primary bg-opacity-10' : 'bg-white'}`}
+                                            onClick={() => setFiltroTecnico(stat.id)}
+                                        >
+                                            <div className="card-body p-2 d-flex flex-column justify-content-between">
+                                                <div className="fw-bold mb-2 text-truncate text-center w-100 fs-5" title={stat.nombre}>
+                                                    {stat.nombre.split(' ')[0]}
+                                                </div>
+                                                <div className="d-flex justify-content-between text-center px-1" style={{ fontSize: '0.7rem' }}>
+                                                    <div>
+                                                        <span className="d-block fw-bold text-warning fs-6">{stat.pendientes}</span>
+                                                        <span className="text-muted">Pend</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="d-block fw-bold text-primary fs-6">{stat.proceso}</span>
+                                                        <span className="text-muted">Proc</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="d-block fw-bold text-success fs-6">{stat.terminado}</span>
+                                                        <span className="text-muted">Fin</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="p-4 border-bottom bg-white flex-shrink-0">
                         <h5 className="fw-bold mb-3 text-dark d-flex align-items-center">
                             <i className="bi bi-clipboard-data me-3 fs-4 text-primary"></i>
-                            Mis Asignaciones
+                            {filtroTecnico ? 'Tareas de Usuario' : 'Listado General'}
                         </h5>
-
                         <div className="input-group input-group-sm mb-2 shadow-sm">
                             <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
-                            <input 
-                                type="text" 
-                                className="form-control border-start-0 ps-0" 
-                                placeholder="Título, solicitante o #OT..." 
+                            <input
+                                type="text"
+                                className="form-control border-start-0 ps-0"
+                                placeholder="Título, solicitante o #OT..."
                                 value={busqueda}
                                 onChange={(e) => setBusqueda(e.target.value)}
                             />
                         </div>
-
                         <div className="input-group input-group-sm mb-3 shadow-sm">
                             <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-calendar"></i></span>
-                            <input 
-                                type="date" 
-                                className="form-control border-start-0 ps-0" 
+                            <input
+                                type="date"
+                                className="form-control border-start-0 ps-0"
                                 value={filtroFecha}
                                 onChange={(e) => setFiltroFecha(e.target.value)}
                             />
                         </div>
-                        
                         <div className="btn-group w-100 shadow-sm" role="group">
-                            <button 
+                            <button
                                 className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`}
                                 onClick={() => setFiltroEstado('pendientes')}
                             >
                                 Pendientes
                             </button>
-                            <button 
+                            <button
                                 className={`btn btn-sm ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`}
                                 onClick={() => setFiltroEstado('proceso')}
                             >
                                 En Proceso
                             </button>
-                            <button 
+                            <button
                                 className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`}
                                 onClick={() => setFiltroEstado('terminado')}
                             >
@@ -245,17 +327,22 @@ const MisMantenciones = () => {
                                     return (
                                         <button key={ot.id}
                                             className={`card w-100 mb-2 border-0 shadow-sm text-start card-hover transition-all ${isActive ? 'border-start border-5 border-primary bg-white' : 'bg-white'}`}
-                                            style={{ transition: 'all 0.2s', transform: isActive ? 'translateX(5px)' : 'none' }}
                                             onClick={() => handleSelectOt(ot)}>
                                             <div className="card-body p-3">
-                                                <div className="d-flex justify-content-between align-items-center mb-2">
-                                                    <span className={`badge ${isActive ? 'bg-primary text-white' : 'bg-secondary bg-opacity-25 text-dark'} fw-bold`}>OT #{ot.id}</span>
-                                                    <small className="text-muted"><i className="bi bi-calendar-event me-1"></i>{new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
+                                                <div className="d-flex justify-content-between mb-2">
+                                                    <span className={`badge ${isActive ? 'bg-primary' : 'bg-secondary'} bg-opacity-25 text-dark fw-bold`}>OT #{ot.id}</span>
+                                                    <small className="text-muted">{new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
                                                 </div>
                                                 <h6 className="mb-1 fw-bold text-dark text-truncate">{ot.activo}</h6>
-                                                <div className="small text-muted text-truncate mb-2">
-                                                    <i className="bi bi-person-fill me-1"></i>{ot.solicitante_nombre} {ot.solicitante_apellido}
+                                                <div className="small text-muted text-truncate mb-1">
+                                                    <i className="bi bi-person-fill me-1"></i>Solicita: {ot.solicitante_nombre}
                                                 </div>
+                                                {esJefe && (
+                                                    <div className={`small text-truncate fst-italic mb-2 ${ot.asignados_nombres ? 'text-primary' : 'text-muted opacity-75'}`}>
+                                                        <i className={`bi ${ot.asignados_nombres ? 'bi-tools' : 'bi-exclamation-circle'} me-1`}></i>
+                                                        {ot.asignados_nombres ? `Asignado: ${ot.asignados_nombres}` : 'Sin técnicos'}
+                                                    </div>
+                                                )}
                                                 <span className="badge bg-info text-dark bg-opacity-25 border border-info fw-normal">{ot.estado}</span>
                                             </div>
                                         </button>
@@ -265,7 +352,6 @@ const MisMantenciones = () => {
                         )}
                     </div>
                 </div>
-
                 <div className={`col-12 col-md-8 col-lg-9 d-flex flex-column position-relative ${!selectedOt ? 'd-none d-md-flex' : 'd-flex'}`} style={{ backgroundColor: '#f8f9fa' }}>
                     {selectedOt ? (
                         <>
@@ -343,7 +429,6 @@ const MisMantenciones = () => {
                                                 </div>
                                             )}
                                         </div>
-
                                         <div className={activeTab === 'materiales' ? 'd-block' : 'd-none'}>
                                             <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
                                                 <i className="bi bi-box-seam me-2 text-primary"></i>
@@ -375,7 +460,7 @@ const MisMantenciones = () => {
                                                                                 <div>
                                                                                     <small className="text-muted d-block font-monospace"><i className="bi bi-upc me-1"></i>{item.codigo_sku}</small>
                                                                                     <div className="mt-2">
-                                                                                        <span className="badge bg-light text-dark border me-2">Solicita: {item.cantidad} {item.unidad_medida}</span>
+                                                                                        <span className="badge bg-light text-dark border me-2">Solicita: {cantidadRequerida} {item.unidad_medida}</span>
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="text-end">

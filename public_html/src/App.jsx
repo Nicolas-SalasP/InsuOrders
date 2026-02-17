@@ -20,6 +20,7 @@ import AdminMantenedores from './pages/AdminMantenedores';
 import MisInsumos from './pages/MisInsumos';
 import MisMantenciones from './pages/MisMantenciones';
 import Proveedores from './pages/Proveedores';
+import PortalCliente from './pages/PortalCliente';
 
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
@@ -29,7 +30,7 @@ const PrivateRoute = () => {
 
 const PermissionGuard = ({ children, permiso, redirectTo = "/dashboard" }) => {
     const { auth } = useContext(AuthContext);
-    
+
     if (auth.rol === 'Admin' || auth.rol === 1) return children;
 
     if (Array.isArray(permiso)) {
@@ -56,7 +57,7 @@ function App() {
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
                             <Route path="/dashboard" element={
-                                <PermissionGuard 
+                                <PermissionGuard
                                     permiso={['dash_resumen', 'dash_compras', 'dash_mantencion', 'dash_bodega', 'dash_personal']}
                                     redirectTo="/login"
                                 >
@@ -69,7 +70,7 @@ function App() {
                                     <Compras />
                                 </PermissionGuard>
                             } />
-                            
+
                             <Route path="/cotizaciones" element={
                                 <PermissionGuard permiso="cot_ver">
                                     <Cotizaciones />
@@ -135,7 +136,7 @@ function App() {
                                     <Usuarios />
                                 </PermissionGuard>
                             } />
-
+                            <Route path="/portal-cliente" element={<PortalCliente />} />
                         </Route>
                     </Route>
                 </Routes>

@@ -14,7 +14,10 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     // --- ESTADOS DEL FORMULARIO ---
     const [modo, setModo] = useState('maquina');
     const [activoId, setActivoId] = useState('');
-    const [solicitanteExterno, setSolicitanteExterno] = useState('');
+    
+    // CAMBIO: Ahora solicitante almacena el ID del usuario, no el nombre
+    const [solicitanteId, setSolicitanteId] = useState('');
+    
     const [centroCostoOT, setCentroCostoOT] = useState('');
     const [observacion, setObservacion] = useState('');
     const [items, setItems] = useState([]);
@@ -77,18 +80,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             
             const listaEmpleados = resPersonal.data.success ? resPersonal.data.data : [];
             setPersonal(listaEmpleados); 
+            
             const soloTecnicos = listaEmpleados.filter(e => {
                 if (!e.usuario_id) return false;
                 if (!e.cargo || e.cargo.trim() === '') return false;
                 const cargoNorm = e.cargo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-                const keywords = [
-                    'tecn',      // Técnico
-                    'mecan',     // Mecánico
-                    'elec',      // Eléctrico, Electricista
-                    'sold',      // Soldador
-                    'ayud'      // Ayudante       
-                ];
-
+                const keywords = ['tecn', 'mecan', 'elec', 'sold', 'ayud'];
                 return keywords.some(k => cargoNorm.includes(k));
             });
             setTecnicos(soloTecnicos);
@@ -111,7 +108,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setActivoId('');
         setObservacion('');
         setBusqueda('');
-        setSolicitanteExterno('');
+        setSolicitanteId('');
         setCentroCostoOT('');
         setAsignados([]); 
         setItems([]);
@@ -125,7 +122,10 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             } else {
                 setModo('servicio');
                 setActivoId('');
-                setSolicitanteExterno(otEditar.solicitante_externo || '');
+                
+                // CAMBIO: Cargar el ID del usuario solicitante. 
+                // Usamos usuario_solicitante_id que es la FK correcta en la DB.
+                setSolicitanteId(otEditar.usuario_solicitante_id || '');
                 setCentroCostoOT(otEditar.centro_costo_ot || '');
             }
             setObservacion(otEditar.descripcion_trabajo || '');
@@ -163,7 +163,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
     const toggleTecnico = (empleado) => {
         const uid = empleado.usuario_id ? parseInt(empleado.usuario_id) : parseInt(empleado.id);
-
         setAsignados(prev => {
             if (prev.includes(uid)) return prev.filter(id => id !== uid);
             return [...prev, uid];
@@ -172,7 +171,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
     const getNombresAsignados = () => {
         if (asignados.length === 0) return "Sin asignar";
-        
         const nombres = tecnicos
             .filter(t => {
                 const uid = t.usuario_id ? parseInt(t.usuario_id) : parseInt(t.id);
@@ -184,7 +182,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 if (partes.length >= 2) return `${partes[0]} ${partes[2] || partes[1]}`; 
                 return nombreFull;
             });
-            
         return nombres.join(', ');
     };
 
@@ -266,7 +263,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         if (modo === 'maquina' && !activoId) {
             return setMsgModal({ show: true, title: "Faltan Datos", message: "Por favor seleccione una máquina o activo.", type: "warning" });
         }
-        if (modo === 'servicio' && (!centroCostoOT || !solicitanteExterno)) {
+        if (modo === 'servicio' && (!centroCostoOT || !solicitanteId)) {
             return setMsgModal({ show: true, title: "Faltan Datos", message: "Debe indicar el Solicitante y el Centro de Costo.", type: "warning" });
         }
         if (items.length === 0 && !observacion.trim()) {
@@ -303,7 +300,10 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 activo_id: modo === 'maquina' ? activoId : null,
                 observacion: observacion,
                 items: itemsFormateados,
-                solicitante_externo: modo === 'servicio' ? solicitanteExterno : null,
+                
+                // CAMBIO: Enviamos el ID del usuario solicitante
+                usuario_solicitante_id: modo === 'servicio' ? solicitanteId : null,
+                
                 area_negocio: null,
                 centro_costo_ot: modo === 'servicio' ? centroCostoOT : null,
                 origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio',
@@ -415,10 +415,26 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     <h6 className="text-success fw-bold border-bottom pb-2 mb-3"><i className="bi bi-person-badge me-2"></i>Datos del Servicio</h6>
                                                     <div className="mb-3">
                                                         <label className="form-label small text-muted">Solicitante</label>
-                                                        <select className="form-select" value={solicitanteExterno} onChange={e => setSolicitanteExterno(e.target.value)} disabled={!!otEditar}>
+                                                        
+                                                        {/* SELECT DE SOLICITANTE CON ID */}
+                                                        <select 
+                                                            className="form-select" 
+                                                            value={solicitanteId || ''} 
+                                                            onChange={e => setSolicitanteId(e.target.value)} 
+                                                            disabled={!editable} // Siempre editable si la OT no está cerrada
+                                                        >
                                                             <option value="">Seleccione Solicitante...</option>
-                                                            {personal.map(p => (
-                                                                <option key={p.id} value={p.nombre_completo}>
+                                                            
+                                                            {/* Si el solicitante de la OT (cliente) NO está en la lista de personal, lo agregamos visualmente para que no quede en blanco */}
+                                                            {otEditar && otEditar.usuario_solicitante_id && !personal.some(p => p.usuario_id == otEditar.usuario_solicitante_id) && (
+                                                                <option value={otEditar.usuario_solicitante_id}>
+                                                                    {otEditar.solicitante_nombre || 'Usuario Cliente'}
+                                                                </option>
+                                                            )}
+
+                                                            {/* Listar solo personal con cuenta de usuario */}
+                                                            {personal.filter(p => p.usuario_id).map(p => (
+                                                                <option key={p.id} value={p.usuario_id}>
                                                                     {p.nombre_completo}
                                                                 </option>
                                                             ))}
@@ -426,7 +442,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     </div>
                                                     <div className="mb-2">
                                                         <label className="form-label small text-muted">Centro de Costo</label>
-                                                        <select className="form-select fw-bold" value={centroCostoOT} onChange={e => setCentroCostoOT(e.target.value)} disabled={!!otEditar}>
+                                                        <select 
+                                                            className="form-select fw-bold" 
+                                                            value={centroCostoOT || ''} 
+                                                            onChange={e => setCentroCostoOT(e.target.value)} 
+                                                            disabled={!editable}
+                                                        >
                                                             <option value="">Seleccione Centro...</option>
                                                             {centrosCosto.map(cc => (
                                                                 <option key={cc.id} value={cc.codigo}>{cc.codigo} - {cc.nombre}</option>

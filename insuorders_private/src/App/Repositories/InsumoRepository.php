@@ -314,4 +314,165 @@ class InsumoRepository
         return '990000000000001';
     }
 
+    public function getOTsActivas()
+    {
+        $sql = "SELECT s.id, s.titulo, a.nombre as maquina, a.codigo_interno 
+                FROM solicitudes_ot s 
+                LEFT JOIN activos a ON s.activo_id = a.id 
+                WHERE s.estado_id IN (1, 2)
+                ORDER BY s.id DESC";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function registrarSalidaManual($data)
+    {
+        try {
+            $this->db->beginTransaction();
+
+            $insumoId = $data['insumo_id'];
+            $cantidad = floatval($data['cantidad']);
+            $usuarioId = $data['usuario_id'];
+            $otId = !empty($data['ot_id']) ? $data['ot_id'] : null;
+            $observacion = $data['observacion'] ?? 'Salida Manual';
+            $empleadoId = !empty($data['empleado_id']) ? $data['empleado_id'] : null;
+            $ubicacionEnvioId = !empty($data['ubicacion_envio_id']) ? $data['ubicacion_envio_id'] : null;
+
+            // 1. Buscar ubicaciones con stock (Estrategia: Mayor cantidad primero)
+            $stmtLoc = $this->db->prepare("SELECT ubicacion_id, cantidad FROM insumo_stock_ubicacion WHERE insumo_id = ? AND cantidad > 0 ORDER BY cantidad DESC");
+            $stmtLoc->execute([$insumoId]);
+            $stocks = $stmtLoc->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($stocks)) {
+                throw new Exception("No hay stock disponible en ninguna ubicación.");
+            }
+
+            $cantidadRestante = $cantidad;
+            $idsGenerados = []; // Array para almacenar los IDs de los movimientos creados
+
+            foreach ($stocks as $stock) {
+                if ($cantidadRestante <= 0)
+                    break;
+
+                $descuento = min($cantidadRestante, $stock['cantidad']);
+
+                // A. Descontar de la ubicación específica
+                $this->db->prepare("UPDATE insumo_stock_ubicacion SET cantidad = cantidad - :c WHERE insumo_id = :i AND ubicacion_id = :u")
+                    ->execute([':c' => $descuento, ':i' => $insumoId, ':u' => $stock['ubicacion_id']]);
+
+                // B. Registrar el movimiento histórico
+                $obsFinal = $otId ? "Salida para OT #$otId: $observacion" : $observacion;
+
+                $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, ubicacion_id, empleado_id, ubicacion_envio_id, fecha) 
+                           VALUES (:iid, 2, :cant, :uid, :obs, :ref, :ubi, :emp, :env, NOW())";
+
+                $this->db->prepare($sqlMov)->execute([
+                    ':iid' => $insumoId,
+                    ':cant' => $descuento,
+                    ':uid' => $usuarioId,
+                    ':obs' => $obsFinal,
+                    ':ref' => $otId,
+                    ':ubi' => $stock['ubicacion_id'],
+                    ':emp' => $empleadoId,
+                    ':env' => $ubicacionEnvioId
+                ]);
+
+                // Guardamos el ID para el PDF
+                $idsGenerados[] = $this->db->lastInsertId();
+
+                $cantidadRestante -= $descuento;
+            }
+
+            if ($cantidadRestante > 0.001) {
+                throw new Exception("Stock insuficiente para cubrir la salida total solicitada.");
+            }
+
+            // 2. Actualizar stock maestro
+            $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")
+                ->execute([$insumoId, $insumoId]);
+
+            // 3. Imputar a Orden de Trabajo (Si aplica)
+            if ($otId) {
+                $this->imputarAOrdenTrabajo($otId, $insumoId, $cantidad);
+            }
+
+            $this->db->commit();
+
+            // Retornamos los IDs para que el Service se los pase al Controller
+            return $idsGenerados;
+
+        } catch (Exception $e) {
+            if ($this->db->inTransaction())
+                $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    private function imputarAOrdenTrabajo($otId, $insumoId, $cantidad)
+    {
+        // Verificar si ya estaba planificado
+        $stmtCheck = $this->db->prepare("SELECT id, cantidad, cantidad_entregada FROM detalle_solicitud WHERE solicitud_id = :ot AND insumo_id = :insumo");
+        $stmtCheck->execute([':ot' => $otId, ':insumo' => $insumoId]);
+        $existe = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        if ($existe) {
+            // Ya existía: Actualizamos lo entregado
+            $nuevaEntregada = floatval($existe['cantidad_entregada']) + $cantidad;
+            $nuevoEstado = ($nuevaEntregada >= floatval($existe['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
+
+            $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :ent, estado_linea = :st WHERE id = :id")
+                ->execute([':ent' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $existe['id']]);
+        } else {
+            // No existía: Lo agregamos como ítem adicional (Entregado Full)
+            // Usamos parámetros distintos (:c1, :c2) para evitar errores de PDO en algunos drivers
+            $sqlInsert = "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, estado_linea) 
+                          VALUES (:ot, :insumo, :cant_sol, :cant_ent, 'ENTREGADO')";
+            $this->db->prepare($sqlInsert)->execute([
+                ':ot' => $otId,
+                ':insumo' => $insumoId,
+                ':cant_sol' => $cantidad,
+                ':cant_ent' => $cantidad
+            ]);
+        }
+
+        // Asegurar que la OT pase a estado "En Proceso" (2) si estaba pendiente
+        $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $otId]);
+    }
+
+    /**
+     * Obtiene la información enriquecida para generar el PDF
+     */
+    public function getDatosComprobante($movimientoIds)
+    {
+        if (empty($movimientoIds))
+            return [];
+
+        $placeholders = implode(',', array_fill(0, count($movimientoIds), '?'));
+
+        $sql = "SELECT 
+                    m.id, m.fecha, m.cantidad, m.observacion, m.referencia_id as ot_id,
+                    i.nombre as insumo, i.codigo_sku, i.unidad_medida,
+                    
+                    -- Quién entregó (Usuario logueado)
+                    u.nombre as bodeguero_nombre, u.apellido as bodeguero_apellido,
+                    
+                    -- Quién recibió (Empleado o Usuario)
+                    COALESCE(e.nombre_completo, CONCAT(u_rec.nombre, ' ', u_rec.apellido), 'Sin Receptor') as receptor_nombre,
+                    COALESCE(e.rut, u_rec.email, 'S/I') as receptor_rut,
+                    
+                    -- Destino
+                    ub_dest.nombre as ubicacion_destino
+                FROM movimientos_inventario m
+                JOIN insumos i ON m.insumo_id = i.id
+                JOIN usuarios u ON m.usuario_id = u.id -- El que hizo la acción
+                
+                LEFT JOIN empleados e ON m.empleado_id = e.id 
+                LEFT JOIN usuarios u_rec ON m.usuario_id = u_rec.id -- Fallback si se asignó a usuario
+                LEFT JOIN ubicaciones ub_dest ON m.ubicacion_envio_id = ub_dest.id
+                
+                WHERE m.id IN ($placeholders)";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($movimientoIds);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

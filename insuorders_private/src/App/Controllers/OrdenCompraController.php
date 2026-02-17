@@ -212,4 +212,25 @@ class OrdenCompraController
             echo json_encode(["success" => false, "message" => "Error regenerando: " . $e->getMessage()]);
         }
     }
+
+    public function omitir()
+    {
+        try {
+            AuthMiddleware::verify();
+            AuthMiddleware::hasPermission('compras_crear_insumos'); 
+
+            $input = json_decode(file_get_contents("php://input"), true);
+            $ids = $input['ids'] ?? null;
+
+            if (!$ids) throw new Exception("Faltan identificadores.");
+
+            $this->service->omitirPendientes($ids);
+
+            echo json_encode(["success" => true, "message" => "Ítems quitados de la lista de compra."]);
+
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
 }

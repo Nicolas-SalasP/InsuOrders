@@ -19,9 +19,61 @@ class MantencionRepository
         return $this->db;
     }
 
-    // =================================================================================
-    // 1. GESTIÓN DE ACTIVOS
-    // =================================================================================
+    public function getAll($filters = [])
+    {
+        $sql = "SELECT DISTINCT s.*, 
+                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(s.area_negocio, 'General'))) as activo, 
+                COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
+                u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id,
+                t.nombre as tecnico_nombre, t.apellido as tecnico_apellido,
+                (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') FROM ot_asignaciones oa JOIN usuarios usr ON oa.usuario_id = usr.id WHERE oa.solicitud_id = s.id) as asignados_nombres,
+                (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids
+                FROM solicitudes_ot s 
+                LEFT JOIN activos a ON s.activo_id = a.id 
+                JOIN usuarios u ON s.usuario_solicitante_id = u.id 
+                JOIN estados_solicitud e ON s.estado_id = e.id 
+                LEFT JOIN usuarios t ON s.asignado_a = t.id 
+                WHERE 1=1";
+
+        $params = [];
+
+        if (!empty($filters['ot'])) {
+            $sql .= " AND s.id = :ot";
+            $params[':ot'] = $filters['ot'];
+        }
+        if (!empty($filters['maquina'])) {
+            $sql .= " AND (a.nombre LIKE :maq OR a.codigo_interno LIKE :maq)";
+            $params[':maq'] = '%' . $filters['maquina'] . '%';
+        }
+        if (!empty($filters['estado'])) {
+            $sql .= " AND e.nombre = :est";
+            $params[':est'] = $filters['estado'];
+        }
+        if (!empty($filters['fecha'])) {
+            $sql .= " AND DATE(s.fecha_solicitud) = :fec";
+            $params[':fec'] = $filters['fecha'];
+        }
+        if (!empty($filters['insumo_id'])) {
+            $sql .= " AND s.id IN (SELECT solicitud_id FROM detalle_solicitud WHERE insumo_id = :insumo)";
+            $params[':insumo'] = $filters['insumo_id'];
+        }
+
+        $sql .= " ORDER BY 
+                    CASE UPPER(TRIM(s.prioridad)) 
+                        WHEN 'CRITICO' THEN 1 
+                        WHEN 'CRÍTICO' THEN 1 
+                        WHEN 'URGENTE' THEN 2 
+                        WHEN 'ALTA' THEN 3 
+                        WHEN 'MEDIA' THEN 4 
+                        WHEN 'BAJA' THEN 5 
+                        ELSE 6 
+                    END ASC, 
+                    s.fecha_solicitud DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     public function getActivos()
     {
@@ -136,7 +188,6 @@ class MantencionRepository
         return true;
     }
 
-    // --- FUNCIONES SOPORTE ELIMINACIÓN ---
     public function contarOrdenesAsociadas($activoId)
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM solicitudes_ot WHERE activo_id = ?");
@@ -169,7 +220,6 @@ class MantencionRepository
     {
         try {
             $this->db->beginTransaction();
-            $this->db->prepare("DELETE FROM kit_repuestos WHERE activo_id = ?")->execute([$activoId]);
             $this->db->prepare("DELETE FROM activos_insumos WHERE activo_id = ?")->execute([$activoId]);
             $this->db->prepare("DELETE FROM activos_imagenes WHERE activo_id = ?")->execute([$activoId]);
             $this->db->prepare("DELETE FROM activos_docs WHERE activo_id = ?")->execute([$activoId]);
@@ -184,10 +234,6 @@ class MantencionRepository
             throw $e;
         }
     }
-
-    // =================================================================================
-    // 2. DOCUMENTOS Y GALERÍA
-    // =================================================================================
 
     public function getGaleriaActivo($activoId)
     {
@@ -227,9 +273,6 @@ class MantencionRepository
         $this->db->prepare("DELETE FROM activos_docs WHERE id=:id")->execute([':id' => $docId]);
     }
 
-    // =================================================================================
-    // 3. KITS
-    // =================================================================================
     public function getKitActivo($activoId)
     {
         $sql = "SELECT ai.insumo_id as id, i.nombre, i.codigo_sku, ai.cantidad_default as cantidad, 
@@ -267,27 +310,6 @@ class MantencionRepository
         $this->db->prepare("UPDATE insumos SET stock_minimo = :min WHERE id = :id")->execute([':min' => $total, ':id' => $insumoId]);
     }
 
-    // =================================================================================
-    // 4. OTs: LECTURA
-    // =================================================================================
-    public function getSolicitudes()
-    {
-        $sql = "SELECT DISTINCT s.*, 
-                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(s.area_negocio, 'General'))) as activo, 
-                COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
-                u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id,
-                (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') 
-                FROM ot_asignaciones oa 
-                JOIN usuarios usr ON oa.usuario_id = usr.id 
-                WHERE oa.solicitud_id = s.id) as asignados_nombres,
-                (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids
-                FROM solicitudes_ot s 
-                LEFT JOIN activos a ON s.activo_id = a.id 
-                JOIN usuarios u ON s.usuario_solicitante_id = u.id 
-                JOIN estados_solicitud e ON s.estado_id = e.id 
-                ORDER BY s.id DESC";
-        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-    }
     public function getOTHeader($id)
     {
         $sql = "SELECT s.*, s.asignado_a, u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, 
@@ -318,9 +340,6 @@ class MantencionRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // =================================================================================
-    // 5. OTs: ESCRITURA (CRUD + STOCK)
-    // =================================================================================
     public function syncAsignaciones($otId, $asignadosIds)
     {
         $stmt = $this->db->prepare("SELECT usuario_id FROM ot_asignaciones WHERE solicitud_id = :id");
@@ -405,7 +424,8 @@ class MantencionRepository
     {
         $inTransaction = $this->db->inTransaction();
         try {
-            if (!$inTransaction) $this->db->beginTransaction();
+            if (!$inTransaction)
+                $this->db->beginTransaction();
 
             $sql = "UPDATE solicitudes_ot SET activo_id=:aid, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot WHERE id=:id";
             $this->db->prepare($sql)->execute([
@@ -425,10 +445,12 @@ class MantencionRepository
                 $stmtCurrent = $this->db->prepare("SELECT id, estado_linea FROM detalle_solicitud WHERE solicitud_id = :sid");
                 $stmtCurrent->execute([':sid' => $id]);
                 $itemsEnBD = $stmtCurrent->fetchAll(PDO::FETCH_ASSOC);
-                
+
                 $estadosPorId = array_column($itemsEnBD, 'estado_linea', 'id');
                 $idsRecibidos = [];
-                foreach ($data['items'] as $item) if (!empty($item['id_linea'])) $idsRecibidos[] = $item['id_linea'];
+                foreach ($data['items'] as $item)
+                    if (!empty($item['id_linea']))
+                        $idsRecibidos[] = $item['id_linea'];
                 foreach ($itemsEnBD as $itemBD) {
                     if (!in_array($itemBD['id'], $idsRecibidos)) {
                         if (in_array($itemBD['estado_linea'], ['PENDIENTE', 'REQUIERE_COMPRA'])) {
@@ -463,17 +485,15 @@ class MantencionRepository
                 }
             }
 
-            if (!$inTransaction) $this->db->commit();
+            if (!$inTransaction)
+                $this->db->commit();
             return true;
         } catch (Exception $e) {
-            if (!$inTransaction) $this->db->rollBack();
+            if (!$inTransaction)
+                $this->db->rollBack();
             throw $e;
         }
     }
-
-    // =================================================================================
-    // 6. FLUJO DE CIERRE Y MOVIMIENTOS DE INVENTARIO
-    // =================================================================================
 
     public function finalizarTareaTecnico($otId, $usuarioId, $notas = '')
     {
@@ -534,7 +554,6 @@ class MantencionRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- MÉTODOS DE BODEGA / ENTREGA ---
     public function getPendientesEntrega()
     {
         $sql = "SELECT ds.id as detalle_id, ds.cantidad, ds.cantidad_entregada, (ds.cantidad - ds.cantidad_entregada) as cantidad_pendiente, 
@@ -644,5 +663,18 @@ class MantencionRepository
     public function getCentrosCosto()
     {
         return $this->db->query("SELECT * FROM centros_costo ORDER BY codigo ASC")->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public function getSolicitudById($id)
+    {
+        $sql = "SELECT s.*, 
+                    u.email as solicitante_email, u.nombre as solicitante_nombre,
+                    a.nombre as activo_nombre, a.codigo_interno
+                FROM solicitudes_ot s
+                LEFT JOIN usuarios u ON s.usuario_solicitante_id = u.id
+                LEFT JOIN activos a ON s.activo_id = a.id
+                WHERE s.id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 }

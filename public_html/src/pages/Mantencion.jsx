@@ -6,6 +6,18 @@ import DetalleSolicitudModal from '../components/DetalleSolicitudModal';
 import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
 
+// --- ESTILOS PARPADEO ---
+const blinkStyle = `
+@keyframes blink-animation {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+.blink-badge {
+  animation: blink-animation 1s infinite;
+}
+`;
+
 const Mantencion = () => {
     const { can } = usePermission();
     const [solicitudes, setSolicitudes] = useState([]);
@@ -14,16 +26,18 @@ const Mantencion = () => {
     const [showModal, setShowModal] = useState(false);
     const [otEditar, setOtEditar] = useState(null);
     const [detalleModal, setDetalleModal] = useState({ show: false, id: null });
-    
+
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirmAnular, setConfirmAnular] = useState({ show: false, id: null });
     const [confirmFinish, setConfirmFinish] = useState({ show: false, id: null });
 
+    // --- LÓGICA DE MENÚ FLOTANTE ---
     const [openMenuId, setOpenMenuId] = useState(null);
+    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 }); // Coordenadas del menú
 
     const [filtroOT, setFiltroOT] = useState('');
     const [filtroMaquina, setFiltroMaquina] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState(''); 
+    const [filtroEstado, setFiltroEstado] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
 
     const [filtroInsumo, setFiltroInsumo] = useState('');
@@ -35,14 +49,28 @@ const Mantencion = () => {
 
     useEffect(() => {
         cargarListaInsumos();
-        
-        const handleClickOutsideMenu = (event) => {
-            if (!event.target.closest('.dropdown-container')) {
+
+        // Cerrar menú al hacer scroll o click fuera
+        const handleGlobalClick = (event) => {
+            // Si el click no fue en el botón del menú ni en el menú mismo, cerramos
+            if (!event.target.closest('.menu-trigger-btn') && !event.target.closest('.dropdown-menu-fixed')) {
                 setOpenMenuId(null);
             }
         };
-        document.addEventListener('mousedown', handleClickOutsideMenu);
-        return () => document.removeEventListener('mousedown', handleClickOutsideMenu);
+        const handleScroll = () => setOpenMenuId(null); // Cerrar al scrollear para evitar desajuste visual
+
+        document.addEventListener('mousedown', handleGlobalClick);
+        window.addEventListener('scroll', handleScroll, true);
+
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = blinkStyle;
+        document.head.appendChild(styleSheet);
+
+        return () => {
+            document.removeEventListener('mousedown', handleGlobalClick);
+            window.removeEventListener('scroll', handleScroll, true);
+            document.head.removeChild(styleSheet);
+        };
 
     }, []);
 
@@ -68,7 +96,7 @@ const Mantencion = () => {
             const matches = listaInsumos.filter(item => {
                 const term = busquedaInsumo.toLowerCase();
                 return item.nombre.toLowerCase().includes(term) ||
-                       item.codigo_sku.toLowerCase().includes(term);
+                    item.codigo_sku.toLowerCase().includes(term);
             });
             setSugerencias(matches);
         }
@@ -76,7 +104,7 @@ const Mantencion = () => {
 
     const cargarListaInsumos = async () => {
         try {
-            const res = await api.get('/index.php/compras/filtros'); 
+            const res = await api.get('/index.php/compras/filtros');
             if (res.data.success) setListaInsumos(res.data.data);
         } catch (e) { console.error(e); }
     };
@@ -86,7 +114,11 @@ const Mantencion = () => {
         try {
             const params = new URLSearchParams();
             if (filtroInsumo) params.append('insumo_id', filtroInsumo);
-            
+            if (filtroOT) params.append('ot', filtroOT);
+            if (filtroMaquina) params.append('maquina', filtroMaquina);
+            if (filtroEstado) params.append('estado', filtroEstado);
+            if (filtroFecha) params.append('fecha', filtroFecha);
+
             const res = await api.get(`/index.php/mantencion?${params.toString()}`);
             if (res.data.success) {
                 setSolicitudes(res.data.data);
@@ -99,11 +131,11 @@ const Mantencion = () => {
     };
 
     const handleNew = () => { setOtEditar(null); setShowModal(true); };
-    
-    const handleEdit = (ot) => { 
-        setOpenMenuId(null); 
-        setOtEditar(ot); 
-        setShowModal(true); 
+
+    const handleEdit = (ot) => {
+        setOpenMenuId(null);
+        setOtEditar(ot);
+        setShowModal(true);
     };
 
     const solicitarAnulacion = (id) => {
@@ -140,10 +172,21 @@ const Mantencion = () => {
         }
     };
 
-    const toggleMenu = (id) => {
+    // --- NUEVO: Manejo del menú flotante ---
+    const toggleMenu = (id, event) => {
+        event.stopPropagation(); // Evitar que el click se propague
+        event.preventDefault(); // Prevenir comportamientos por defecto
+
         if (openMenuId === id) {
             setOpenMenuId(null);
         } else {
+            // Calcular posición basada en el botón clickeado
+            const rect = event.currentTarget.getBoundingClientRect();
+            // Ajustamos la posición: Debajo del botón y alineado a la derecha del mismo
+            const top = rect.bottom + window.scrollY + 2;
+            const left = (rect.left + window.scrollX) - 130; // Restamos ancho aprox del menú para alinear a la derecha
+
+            setMenuPos({ top, left });
             setOpenMenuId(id);
         }
     };
@@ -199,17 +242,6 @@ const Mantencion = () => {
             .finally(() => setLoading(false));
     };
 
-    const solicitudesFiltradas = solicitudes.filter(s => {
-        const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
-        const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
-        const matchMaquina = !filtroMaquina || maquinaStr.toLowerCase().includes(filtroMaquina.toLowerCase());
-        const matchEstado = !filtroEstado || s.estado === filtroEstado;
-        const fechaOT = s.fecha_solicitud ? s.fecha_solicitud.split(' ')[0] : '';
-        const matchFecha = !filtroFecha || fechaOT === filtroFecha;
-
-        return matchOT && matchMaquina && matchEstado && matchFecha;
-    });
-
     const seleccionarInsumo = (item) => {
         setFiltroInsumo(item.id);
         setBusquedaInsumo(item.nombre);
@@ -235,41 +267,72 @@ const Mantencion = () => {
         return 'bg-secondary';
     };
 
+    // Helper robusto para detectar crítico
+    const isCritico = (prio) => {
+        if (!prio) return false;
+        const p = prio.toString().toUpperCase().trim();
+        return p === 'CRITICO' || p === 'CRÍTICO';
+    };
+
+    const getPriorityBadge = (prio) => {
+        if (isCritico(prio)) {
+            return <span className="badge bg-danger blink-badge border border-white shadow-sm">CRÍTICO 🚨</span>;
+        }
+        switch (prio) {
+            case 'BAJA': return <span className="badge bg-secondary">Baja</span>;
+            case 'MEDIA': return <span className="badge bg-info text-dark">Media</span>;
+            case 'ALTA': return <span className="badge bg-warning text-dark">Alta</span>;
+            case 'URGENTE': return <span className="badge bg-danger">Urgente</span>;
+            default: return <span className="badge bg-light text-dark">{prio}</span>;
+        }
+    };
+
+    const solicitudesFiltradas = solicitudes.filter(s => {
+        const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
+        const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
+        const matchMaquina = !filtroMaquina || maquinaStr.toLowerCase().includes(filtroMaquina.toLowerCase());
+        const matchEstado = !filtroEstado || s.estado === filtroEstado;
+        const fechaOT = s.fecha_solicitud ? s.fecha_solicitud.split(' ')[0] : '';
+        const matchFecha = !filtroFecha || fechaOT === filtroFecha;
+
+        return matchOT && matchMaquina && matchEstado && matchFecha;
+    });
+
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
-            
-            <ConfirmModal 
-                show={confirmAnular.show} 
-                onClose={() => setConfirmAnular({ show: false, id: null })} 
-                onConfirm={confirmarAnulacion} 
-                title="Anular OT" 
-                message="¿Estás seguro de anular esta solicitud? Esta acción es irreversible." 
-                confirmText="Sí, Anular" 
-                type="danger" 
+
+            <ConfirmModal
+                show={confirmAnular.show}
+                onClose={() => setConfirmAnular({ show: false, id: null })}
+                onConfirm={confirmarAnulacion}
+                title="Anular OT"
+                message="¿Estás seguro de anular esta solicitud? Esta acción es irreversible."
+                confirmText="Sí, Anular"
+                type="danger"
             />
 
-            <ConfirmModal 
-                show={confirmFinish.show} 
-                onClose={() => setConfirmFinish({ show: false, id: null })} 
-                onConfirm={ejecutarFinalizar} 
-                title="Finalizar Trabajo" 
-                message={`¿Confirmas que el trabajo está terminado?\n\nCualquier insumo que no haya sido entregado se marcará como CANCELADO en Bodega.`} 
-                confirmText="Sí, Finalizar OT" 
-                type="success" 
+            <ConfirmModal
+                show={confirmFinish.show}
+                onClose={() => setConfirmFinish({ show: false, id: null })}
+                onConfirm={ejecutarFinalizar}
+                title="Finalizar Trabajo"
+                message={`¿Confirmas que el trabajo está terminado?\n\nCualquier insumo que no haya sido entregado se marcará como CANCELADO en Bodega.`}
+                confirmText="Sí, Finalizar OT"
+                type="success"
             />
 
             <NuevaSolicitudModal show={showModal} onClose={() => setShowModal(false)} onSave={cargarSolicitudes} otEditar={otEditar} />
-            
-            <DetalleSolicitudModal 
-                show={detalleModal.show} 
-                onClose={() => setDetalleModal({ show: false, id: null })} 
-                solicitudId={detalleModal.id} 
-                onSave={cargarSolicitudes} 
+
+            <DetalleSolicitudModal
+                show={detalleModal.show}
+                onClose={() => setDetalleModal({ show: false, id: null })}
+                solicitudId={detalleModal.id}
+                onSave={cargarSolicitudes}
             />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                
+                {/* HEADERS Y FILTROS (Sin cambios mayores, solo mantenidos) */}
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
@@ -293,31 +356,28 @@ const Mantencion = () => {
 
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2 align-items-center">
-                        
                         <div className="col-md-2">
                             <input type="text" className="form-control" placeholder="# OT" value={filtroOT} onChange={e => setFiltroOT(e.target.value)} />
                         </div>
-
                         <div className="col-md-3">
                             <input type="text" className="form-control" placeholder="Buscar Máquina..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
                         </div>
-
                         <div className="col-md-3 position-relative" ref={wrapperRef}>
                             <div className="input-group">
                                 <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-primary'}`}>
                                     <i className="bi bi-box-seam"></i>
                                 </span>
-                                <input 
-                                    type="text" 
-                                    className="form-control border-start-0 ps-0" 
-                                    placeholder="Filtrar por insumo..." 
+                                <input
+                                    type="text"
+                                    className="form-control border-start-0 ps-0"
+                                    placeholder="Filtrar por insumo..."
                                     value={busquedaInsumo}
-                                    onChange={(e) => { 
-                                        setBusquedaInsumo(e.target.value); 
-                                        setMostrarSugerencias(true); 
-                                        if (e.target.value === '') setFiltroInsumo(''); 
+                                    onChange={(e) => {
+                                        setBusquedaInsumo(e.target.value);
+                                        setMostrarSugerencias(true);
+                                        if (e.target.value === '') setFiltroInsumo('');
                                     }}
-                                    onFocus={() => setMostrarSugerencias(true)} 
+                                    onFocus={() => setMostrarSugerencias(true)}
                                 />
                                 {filtroInsumo && (
                                     <button className="btn btn-outline-secondary border-start-0" type="button" onClick={() => { setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarSolicitudes(); }}>
@@ -336,7 +396,6 @@ const Mantencion = () => {
                                 </ul>
                             )}
                         </div>
-
                         <div className="col-md-2">
                             <select className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
                                 <option value="">Estado: Todos</option>
@@ -346,7 +405,6 @@ const Mantencion = () => {
                                 <option value="Anulada">Anulada</option>
                             </select>
                         </div>
-
                         <div className="col-md-2 text-end">
                             {(filtroOT || filtroMaquina || filtroEstado || filtroFecha || filtroInsumo) && (
                                 <button className="btn btn-outline-secondary w-100" onClick={limpiarFiltros}>
@@ -372,105 +430,136 @@ const Mantencion = () => {
                                     <th>Descripción</th>
                                     <th>Solicitante</th>
                                     <th>Fecha</th>
+                                    <th>Prioridad</th>
                                     <th>Estado</th>
-                                    <th className="text-end pe-4" style={{minWidth: '200px'}}>Acciones</th>
+                                    <th className="text-end pe-4" style={{ minWidth: '200px' }}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => (
-                                    <tr key={s.id} className={s.estado === 'Anulada' ? 'bg-light text-muted' : ''}>
-                                        <td className="ps-4 fw-bold">#{s.id}</td>
-                                        <td>
-                                            <div className="fw-bold text-dark">{s.activo || 'General'}</div>
-                                            {s.activo_codigo && <small className="text-muted">{s.activo_codigo}</small>}
-                                        </td>
-                                        <td><small className="text-truncate d-block" style={{ maxWidth: '200px' }}>{s.descripcion_trabajo || '-'}</small></td>
-                                        <td>{s.solicitante_nombre} {s.solicitante_apellido}</td>
-                                        <td>{new Date(s.fecha_solicitud).toLocaleDateString()}</td>
-                                        <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
-                                        
-                                        <td className="text-end pe-4">
-                                            <div className="d-flex justify-content-end align-items-center gap-2">
-                                                
-                                                {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
-                                                    <>
-                                                        {can('mant_finalizar') && (
-                                                            <button 
-                                                                className="btn btn-sm btn-success fw-bold px-2 py-1" 
-                                                                onClick={() => solicitarFinalizar(s.id)}
-                                                                title="Finalizar Trabajo"
-                                                            >
-                                                                <i className="bi bi-check2-circle"></i>
-                                                            </button>
-                                                        )}
-                                                    </>
-                                                )}
+                                {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => {
+                                    const critico = isCritico(s.prioridad);
 
-                                                <div className="dropdown dropdown-container position-relative">
-                                                    <button 
-                                                        className={`btn btn-sm btn-light border ${openMenuId === s.id ? 'show' : ''}`}
-                                                        type="button" 
-                                                        onClick={() => toggleMenu(s.id)}
+                                    // ESTILOS FORZADOS PARA FILAS CRÍTICAS
+                                    const rowStyle = critico ? {
+                                        '--bs-table-bg': '#ffe6e6',
+                                        '--bs-table-accent-bg': '#ffe6e6',
+                                        backgroundColor: '#ffe6e6',
+                                        borderLeft: '5px solid #dc3545'
+                                    } : {};
+
+                                    return (
+                                        <tr
+                                            key={s.id}
+                                            style={rowStyle}
+                                            className={`${s.estado === 'Anulada' ? 'bg-light text-muted' : ''} ${critico ? 'text-danger fw-bold' : ''}`}
+                                        >
+                                            <td className="ps-4 fw-bold">#{s.id}</td>
+                                            <td>
+                                                <div className="fw-bold text-dark">{s.activo || 'General'}</div>
+                                                {s.activo_codigo && <small className="text-muted">{s.activo_codigo}</small>}
+                                            </td>
+                                            <td>
+                                                <div className="fw-bold text-dark">{s.titulo || ''}</div>
+                                                <small className="text-muted text-truncate d-block" style={{ maxWidth: '200px' }}>{s.descripcion_trabajo || '-'}</small>
+                                            </td>
+                                            <td>{s.solicitante_nombre} {s.solicitante_apellido}</td>
+                                            <td>{new Date(s.fecha_solicitud).toLocaleDateString()}</td>
+                                            <td>{getPriorityBadge(s.prioridad)}</td>
+                                            <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
+
+                                            <td className="text-end pe-4">
+                                                <div className="d-flex justify-content-end align-items-center gap-2">
+
+                                                    {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
+                                                        <>
+                                                            {can('mant_finalizar') && (
+                                                                <button
+                                                                    className="btn btn-sm btn-success fw-bold px-2 py-1"
+                                                                    onClick={() => solicitarFinalizar(s.id)}
+                                                                    title="Finalizar Trabajo"
+                                                                >
+                                                                    <i className="bi bi-check2-circle"></i>
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    )}
+
+                                                    {/* BOTÓN TRIGGER DEL MENÚ */}
+                                                    <button
+                                                        className={`btn btn-sm btn-light border menu-trigger-btn ${openMenuId === s.id ? 'active' : ''}`}
+                                                        type="button"
+                                                        onClick={(e) => toggleMenu(s.id, e)}
                                                     >
                                                         <i className="bi bi-three-dots-vertical"></i>
                                                     </button>
-                                                    
-                                                    {openMenuId === s.id && (
-                                                        <ul className="dropdown-menu dropdown-menu-end shadow-sm border-0 show" 
-                                                            style={{ position: 'absolute', right: 0, top: '100%', zIndex: 1050, display: 'block' }}>
-                                                            
-                                                            <li>
-                                                                <button className="dropdown-item" onClick={() => { setOpenMenuId(null); setDetalleModal({ show: true, id: s.id }); }}>
-                                                                    <i className="bi bi-eye text-info me-2"></i>Ver Detalle
-                                                                </button>
-                                                            </li>
-
-                                                            {can('mant_editar') && s.estado !== 'Completada' && s.estado !== 'Anulada' && (
-                                                                <li>
-                                                                    <button className="dropdown-item" onClick={() => handleEdit(s)}>
-                                                                        <i className="bi bi-pencil-square text-primary me-2"></i>Editar OT
-                                                                    </button>
-                                                                </li>
-                                                            )}
-
-                                                            {can('mant_pdf') && (
-                                                                <li>
-                                                                    <button className="dropdown-item" onClick={() => { setOpenMenuId(null); descargarPdfOT(s.id); }}>
-                                                                        <i className="bi bi-file-earmark-pdf text-danger me-2"></i>Exportar PDF
-                                                                    </button>
-                                                                </li>
-                                                            )}
-                                                            
-                                                            {can('mant_excel') && (
-                                                                <li>
-                                                                    <button className="dropdown-item" onClick={() => { setOpenMenuId(null); descargarExcelOT(s.id); }}>
-                                                                        <i className="bi bi-file-earmark-excel text-success me-2"></i>Exportar Excel
-                                                                    </button>
-                                                                </li>
-                                                            )}
-
-                                                            {can('mant_anular') && s.estado !== 'Completada' && s.estado !== 'Anulada' && (
-                                                                <li>
-                                                                    <hr className="dropdown-divider"/>
-                                                                    <button className="dropdown-item text-danger" onClick={() => solicitarAnulacion(s.id)}>
-                                                                        <i className="bi bi-trash me-2"></i>Anular OT
-                                                                    </button>
-                                                                </li>
-                                                            )}
-                                                        </ul>
-                                                    )}
                                                 </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr><td colSpan="7" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
+                                    <tr><td colSpan="8" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
                                 )}
                             </tbody>
                         </table>
                     )}
                 </div>
             </div>
+
+            {/* MENÚ FLOTANTE (FUERA DE LA TABLA PARA QUE NO SE CORTE) */}
+            {openMenuId && (
+                <div
+                    className="dropdown-menu shadow show border-0 dropdown-menu-fixed"
+                    style={{
+                        position: 'fixed', // Clave para evitar el problema del scroll
+                        top: menuPos.top,
+                        left: menuPos.left,
+                        zIndex: 9999, // Encima de todo
+                        minWidth: '160px'
+                    }}
+                >
+                    {/* Buscamos la solicitud activa para usar sus datos en el menú */}
+                    {(() => {
+                        const s = solicitudes.find(sol => sol.id === openMenuId);
+                        if (!s) return null;
+
+                        return (
+                            <>
+                                <button className="dropdown-item py-2" onClick={() => { setOpenMenuId(null); setDetalleModal({ show: true, id: s.id }); }}>
+                                    <i className="bi bi-eye text-info me-2"></i>Ver Detalle
+                                </button>
+
+                                {can('mant_editar') && s.estado !== 'Completada' && s.estado !== 'Anulada' && (
+                                    <button className="dropdown-item py-2" onClick={() => handleEdit(s)}>
+                                        <i className="bi bi-pencil-square text-primary me-2"></i>Editar OT
+                                    </button>
+                                )}
+
+                                {can('mant_pdf') && (
+                                    <button className="dropdown-item py-2" onClick={() => { setOpenMenuId(null); descargarPdfOT(s.id); }}>
+                                        <i className="bi bi-file-earmark-pdf text-danger me-2"></i>Exportar PDF
+                                    </button>
+                                )}
+
+                                {can('mant_excel') && (
+                                    <button className="dropdown-item py-2" onClick={() => { setOpenMenuId(null); descargarExcelOT(s.id); }}>
+                                        <i className="bi bi-file-earmark-excel text-success me-2"></i>Exportar Excel
+                                    </button>
+                                )}
+
+                                {can('mant_anular') && s.estado !== 'Completada' && s.estado !== 'Anulada' && (
+                                    <>
+                                        <hr className="dropdown-divider" />
+                                        <button className="dropdown-item py-2 text-danger" onClick={() => solicitarAnulacion(s.id)}>
+                                            <i className="bi bi-trash me-2"></i>Anular OT
+                                        </button>
+                                    </>
+                                )}
+                            </>
+                        );
+                    })()}
+                </div>
+            )}
+
         </div>
     );
 };

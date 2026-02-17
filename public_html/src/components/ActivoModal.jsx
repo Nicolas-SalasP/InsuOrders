@@ -28,20 +28,18 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     const [listaCentros, setListaCentros] = useState([]);
     
-    // --- ESTADOS PARA IMÁGENES ---
     const [mainImage, setMainImage] = useState(null);
     const [mainImagePreview, setMainImagePreview] = useState(null);
     const [galleryItems, setGalleryItems] = useState([]); 
     const [existingGallery, setExistingGallery] = useState([]); 
     
-    // --- ESTADO ZOOM MEJORADO ---
     const [zoomImage, setZoomImage] = useState(null); 
-    const [zoomLevel, setZoomLevel] = useState(1); // Escala inicial
+    const [zoomLevel, setZoomLevel] = useState(1); 
 
-    // --- ESTADOS EXISTENTES ---
     const [kitItems, setKitItems] = useState([]);
     const [insumos, setInsumos] = useState([]);
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
+    const [sugerenciasInsumo, setSugerenciasInsumo] = useState([]);
     const [cantidadKit, setCantidadKit] = useState(1);
     const [docs, setDocs] = useState([]);
     const [file, setFile] = useState(null);
@@ -61,6 +59,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             setGalleryItems([]);
             setExistingGallery([]);
             setZoomLevel(1);
+            setBusquedaInsumo('');
+            setSugerenciasInsumo([]);
 
             api.get('/index.php/mantencion/centros-costo').then(res => { if (res.data.success) setListaCentros(res.data.data); });
 
@@ -105,6 +105,20 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         }
     }, [show, activo]);
 
+    useEffect(() => {
+        if (busquedaInsumo.trim() === '') {
+            setSugerenciasInsumo([]);
+        } else {
+            const term = busquedaInsumo.toLowerCase();
+            const resultados = insumos.filter(insumo => {
+                const nombreMatch = insumo.nombre.toLowerCase().includes(term);
+                const skuMatch = insumo.codigo_sku ? insumo.codigo_sku.toString().toLowerCase().includes(term) : false;
+                return nombreMatch || skuMatch;
+            });
+            setSugerenciasInsumo(resultados.slice(0, 10));
+        }
+    }, [busquedaInsumo, insumos]);
+
     const cargarGaleria = (id) => {
         api.get(`/index.php/mantencion/galeria?id=${id}`)
             .then(res => { if (res.data.success) setExistingGallery(res.data.data); });
@@ -112,13 +126,11 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    // --- IMÁGENES ---
     const handleMainImageChange = (e) => { const file = e.target.files[0]; if (file) { setMainImage(file); setMainImagePreview(URL.createObjectURL(file)); } };
     const handleAddGalleryItem = (e) => { const file = e.target.files[0]; if (file) { const newItem = { file, preview: URL.createObjectURL(file), tipo: 'General' }; setGalleryItems([...galleryItems, newItem]); } e.target.value = ''; };
     const handleGalleryTypeChange = (index, newType) => { const updatedItems = [...galleryItems]; updatedItems[index].tipo = newType; setGalleryItems(updatedItems); };
     const handleRemoveGalleryItem = (index) => { setGalleryItems(galleryItems.filter((_, i) => i !== index)); };
 
-    // --- ELIMINAR IMAGEN EXISTENTE ---
     const solicitarEliminarImagen = (imgId) => {
         setConfirm({
             show: true,
@@ -128,7 +140,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 try {
                     await api.delete(`/index.php/mantencion/imagen?id=${imgId}`);
                     showMessage("Éxito", "Imagen eliminada", "success");
-                    cargarGaleria(activo.id); // Recargar
+                    cargarGaleria(activo.id); 
                 } catch (error) {
                     showMessage("Error", "No se pudo eliminar la imagen", "error");
                 }
@@ -136,12 +148,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         });
     };
 
-    // --- LOGICA ZOOM ---
-    const handleOpenZoom = (src) => {
-        setZoomImage(src);
-        setZoomLevel(1); // Resetear zoom al abrir
-    };
-
+    const handleOpenZoom = (src) => { setZoomImage(src); setZoomLevel(1); };
     const zoomIn = () => setZoomLevel(prev => prev + 0.5);
     const zoomOut = () => setZoomLevel(prev => (prev > 0.5 ? prev - 0.5 : prev));
     const resetZoom = () => setZoomLevel(1);
@@ -171,7 +178,20 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     };
 
     const cargarKit = async (id) => { try { const res = await api.get(`/index.php/mantencion/kit?id=${id}`); setKitItems(res.data.data || []); } catch (e) { setKitItems([]); } };
-    const agregarAlKit = async (insumo) => { if (!activo) return showMessage("Atención", "Guarda el activo primero.", "warning"); try { await api.post('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumo.id, cantidad: cantidadKit }); cargarKit(activo.id); setBusquedaInsumo(''); setCantidadKit(1); } catch (e) { showMessage("Error", "Error al agregar", "error"); } };
+    
+    const agregarAlKit = async (insumo) => { 
+        if (!activo) return showMessage("Atención", "Guarda el activo primero.", "warning"); 
+        try { 
+            await api.post('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumo.id, cantidad: cantidadKit }); 
+            cargarKit(activo.id); 
+            setBusquedaInsumo('');
+            setSugerenciasInsumo([]);
+            setCantidadKit(1); 
+        } catch (e) { 
+            showMessage("Error", "Error al agregar", "error"); 
+        } 
+    };
+
     const actualizarCantKit = async (insumoId, nuevaCant) => { const c = parseInt(nuevaCant); if (isNaN(c) || c < 1) return; try { await api.put('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumoId, cantidad: c }); cargarKit(activo.id); } catch (e) { } };
     const solicitarQuitarKit = (insumoId) => { setConfirm({ show: true, title: "Eliminar", message: "¿Quitar repuesto?", action: async () => { await api.delete(`/index.php/mantencion/kit?activo_id=${activo.id}&insumo_id=${insumoId}`); cargarKit(activo.id); } }); };
     const cargarDocs = async (id) => { try { const res = await api.get(`/index.php/mantencion/docs?id=${id}`); setDocs(res.data.data || []); } catch (e) { } };
@@ -186,7 +206,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
             <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={handleConfirm} title={confirm.title} message={confirm.message} confirmText="Confirmar" type="danger" />
 
-            {/* --- MODAL ZOOM MEJORADO --- */}
             <Modal show={!!zoomImage} onHide={() => setZoomImage(null)} centered size="xl" className="bg-dark bg-opacity-75">
                 <Modal.Header closeButton className="bg-white border-0 py-2">
                     <div className="d-flex gap-2 align-items-center">
@@ -262,17 +281,23 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">MARCA</label><input type="text" name="marca" className="form-control" value={formData.marca} onChange={handleChange} /></div>
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">MODELO</label><input type="text" name="modelo" className="form-control" value={formData.modelo} onChange={handleChange} /></div>
                                             <div className="col-md-4"><label className="form-label small fw-bold text-muted">AÑO</label><input type="number" name="anio" className="form-control" value={formData.anio} onChange={handleChange} /></div>
+                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">SERIE</label><input type="text" name="numero_serie" className="form-control" value={formData.numero_serie} onChange={handleChange} /></div>
                                             
+                                            <div className="col-md-4">
+                                                <label className="form-label small fw-bold text-muted">TIPO DE ACTIVO</label>
+                                                <select name="tipo" className="form-select" value={formData.tipo} onChange={handleChange}>
+                                                    <option value="">Seleccione...</option><option value="Maquinaria">Maquinaria</option><option value="Vehículo">Vehículo</option><option value="Generador">Generador</option><option value="Equipo">Equipo</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">UBICACIÓN FÍSICA</label><input type="text" name="ubicacion" className="form-control" value={formData.ubicacion} onChange={handleChange} /></div>
+
                                             <div className="col-12 mt-3"><h6 className="text-primary small fw-bold border-bottom pb-2">PLANIFICACIÓN</h6></div>
                                             <div className="col-md-6">
                                                 <label className="form-label small fw-bold text-muted">FRECUENCIA MANTENCIÓN</label>
                                                 <div className="input-group">
                                                     <input type="number" name="frecuencia_mantencion" className="form-control" placeholder="Ej: 3" min="0" value={formData.frecuencia_mantencion} onChange={handleChange} />
                                                     <select name="unidad_frecuencia" className="form-select bg-light" value={formData.unidad_frecuencia} onChange={handleChange}>
-                                                        <option value="DIAS">Días</option>
-                                                        <option value="SEMANAS">Semanas</option>
-                                                        <option value="MESES">Meses</option>
-                                                        <option value="ANIOS">Años</option>
+                                                        <option value="DIAS">Días</option><option value="SEMANAS">Semanas</option><option value="MESES">Meses</option><option value="ANIOS">Años</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -282,16 +307,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                     <option value="OPERATIVO">OPERATIVO</option><option value="EN_MANTENCION">EN MANTENCIÓN</option><option value="BAJA">DE BAJA</option>
                                                 </select>
                                             </div>
-
-                                            <div className="col-12 mt-3"><h6 className="text-secondary small fw-bold border-bottom pb-2">DETALLES ADICIONALES</h6></div>
-                                            <div className="col-md-4">
-                                                <label className="form-label small fw-bold text-muted">TIPO DE ACTIVO</label>
-                                                <select name="tipo" className="form-select" value={formData.tipo} onChange={handleChange}>
-                                                    <option value="">Seleccione...</option><option value="Maquinaria">Maquinaria</option><option value="Vehículo">Vehículo</option><option value="Generador">Generador</option><option value="Equipo">Equipo</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">UBICACIÓN FÍSICA</label><input type="text" name="ubicacion" className="form-control" value={formData.ubicacion} onChange={handleChange} /></div>
-                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">SERIE</label><input type="text" name="numero_serie" className="form-control" value={formData.numero_serie} onChange={handleChange} /></div>
                                             <div className="col-md-6"><label className="form-label small fw-bold text-primary">CENTRO DE COSTO</label><select name="centro_costo" className="form-select border-primary" value={formData.centro_costo} onChange={handleChange}><option value="">-- Sin Asignar --</option>{listaCentros.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo} - {cc.nombre}</option>)}</select></div>
                                             <div className="col-12"><label className="form-label small fw-bold text-muted">DESCRIPCIÓN</label><textarea name="descripcion" className="form-control" rows="2" value={formData.descripcion} onChange={handleChange}></textarea></div>
                                         </div>
@@ -308,7 +323,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             <label className="form-label fw-bold small text-success">AGREGAR NUEVA FOTO A GALERÍA</label>
                                             <input type="file" className="form-control" accept="image/*" onChange={handleAddGalleryItem} />
                                         </div>
-
                                         {galleryItems.length > 0 && (
                                             <div className="mb-4">
                                                 <h6 className="text-success small fw-bold border-bottom pb-2">Fotos nuevas por subir ({galleryItems.length})</h6>
@@ -331,30 +345,14 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 <div className="d-grid mt-2"><button className="btn btn-success btn-sm fw-bold" onClick={handleSubmitGeneral} disabled={saving}>{saving ? 'Guardando...' : 'Confirmar Subida de Imágenes'}</button></div>
                                             </div>
                                         )}
-
                                         <h6 className="text-secondary small fw-bold border-bottom pb-2">Galería Guardada (Haz clic para ampliar)</h6>
                                         {existingGallery.length === 0 ? (<p className="text-muted small fst-italic py-3 text-center">Sin imágenes secundarias.</p>) : (
                                             <div className="row g-2">
                                                 {existingGallery.map((img) => (
                                                     <div key={img.id} className="col-6 col-md-3">
                                                         <div className="card h-100 border-0 shadow-sm overflow-hidden position-relative">
-                                                            {/* Botón de eliminar imagen existente */}
-                                                            <button 
-                                                                className="btn btn-danger btn-sm position-absolute top-0 end-0 m-1" 
-                                                                style={{zIndex: 10}}
-                                                                onClick={(e) => { e.stopPropagation(); solicitarEliminarImagen(img.id); }}
-                                                                title="Eliminar Imagen"
-                                                            >
-                                                                <i className="bi bi-trash-fill"></i>
-                                                            </button>
-
-                                                            <img 
-                                                                src={`${BASE_URL}${img.imagen_url}`} 
-                                                                className="card-img-top" 
-                                                                alt={img.tipo} 
-                                                                style={{ height: '110px', objectFit: 'cover', cursor: 'zoom-in' }} 
-                                                                onClick={() => handleOpenZoom(`${BASE_URL}${img.imagen_url}`)}
-                                                            />
+                                                            <button className="btn btn-danger btn-sm position-absolute top-0 end-0 m-1" style={{zIndex: 10}} onClick={(e) => { e.stopPropagation(); solicitarEliminarImagen(img.id); }} title="Eliminar Imagen"><i className="bi bi-trash-fill"></i></button>
+                                                            <img src={`${BASE_URL}${img.imagen_url}`} className="card-img-top" alt={img.tipo} style={{ height: '110px', objectFit: 'cover', cursor: 'zoom-in' }} onClick={() => handleOpenZoom(`${BASE_URL}${img.imagen_url}`)} />
                                                             <div className="card-footer p-1 bg-white text-center"><small className="text-muted fw-bold" style={{ fontSize: '0.7rem' }}>{img.tipo}</small></div>
                                                         </div>
                                                     </div>
@@ -369,21 +367,47 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                         <div className="mb-3 border p-3 rounded bg-light">
                                             <div className="input-group">
                                                 <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                                                <input type="text" className="form-control" placeholder="Buscar insumo..." value={busquedaInsumo} onChange={e => setBusquedaInsumo(e.target.value)} />
+                                                <input 
+                                                    type="text" 
+                                                    className="form-control" 
+                                                    placeholder="Buscar por Nombre o SKU..." 
+                                                    value={busquedaInsumo} 
+                                                    onChange={e => setBusquedaInsumo(e.target.value)} 
+                                                />
                                                 <input type="number" className="form-control" style={{ maxWidth: '80px' }} value={cantidadKit} onChange={e => setCantidadKit(parseInt(e.target.value) || 1)} min="1" />
                                             </div>
-                                            {busquedaInsumo && (
+                                            
+                                            {busquedaInsumo && sugerenciasInsumo.length > 0 && (
                                                 <div className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                                                    {insumos.filter(i => i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase())).slice(0, 8).map(i => (
-                                                        <button key={i.id} className="list-group-item list-group-item-action d-flex justify-content-between" onClick={() => agregarAlKit(i)}><span>{i.nombre}</span><small className="text-muted">{i.codigo_sku}</small></button>
+                                                    {sugerenciasInsumo.map(i => (
+                                                        <button 
+                                                            key={i.id} 
+                                                            className="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
+                                                            onClick={() => agregarAlKit(i)}
+                                                        >
+                                                            <div>
+                                                                <span className="d-block fw-bold">{i.nombre}</span>
+                                                                <small className="text-muted">SKU: {i.codigo_sku || 'S/N'}</small>
+                                                            </div>
+                                                            <span className="badge bg-light text-dark border">Stock: {i.stock_actual}</span>
+                                                        </button>
                                                     ))}
                                                 </div>
                                             )}
+                                            {busquedaInsumo && sugerenciasInsumo.length === 0 && (
+                                                <div className="position-absolute w-100 bg-white border p-2 text-center text-muted shadow-sm" style={{zIndex: 1000}}>
+                                                    No se encontraron coincidencias.
+                                                </div>
+                                            )}
                                         </div>
+
                                         <ul className="list-group">
                                             {kitItems.map(k => (
                                                 <li key={k.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                                    <div><div className="fw-bold">{k.nombre}</div><small className="text-muted">SKU: {k.codigo_sku}</small></div>
+                                                    <div>
+                                                        <div className="fw-bold">{k.nombre}</div>
+                                                        <small className="text-muted">SKU: {k.codigo_sku}</small>
+                                                    </div>
                                                     <div className="d-flex align-items-center gap-2">
                                                         <input type="number" className="form-control form-control-sm text-center" style={{ width: '70px' }} value={Math.floor(k.cantidad)} onChange={(e) => actualizarCantKit(k.id, e.target.value)} />
                                                         <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarQuitarKit(k.id)}><i className="bi bi-trash"></i></button>

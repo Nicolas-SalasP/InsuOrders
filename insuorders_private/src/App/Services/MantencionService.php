@@ -10,7 +10,6 @@ class MantencionService
     private $repo;
     private $cronogramaRepo;
 
-    // Configuración de rutas de subida
     private $uploadBaseDir;
     private $publicUrlBase;
 
@@ -18,19 +17,17 @@ class MantencionService
     {
         $this->repo = new MantencionRepository();
         $this->cronogramaRepo = new CronogramaRepository();
-
-        // Definimos la ruta base física y la URL pública para los archivos
         $this->uploadBaseDir = __DIR__ . '/../../../../public_html/uploads/activos/';
         $this->publicUrlBase = '/uploads/activos/';
     }
 
     // =================================================================================
-    // 1. GESTIÓN DE OTs (LECTURA Y ESCRITURA BÁSICA)
+    // 1. GESTIÓN DE OTs
     // =================================================================================
 
     public function listarSolicitudes()
     {
-        return $this->repo->getSolicitudes();
+        return $this->repo->getAll($_GET);
     }
 
     public function obtenerDetalleOT($id)
@@ -59,7 +56,9 @@ class MantencionService
     public function editarOT($id, $data)
     {
         $resultado = $this->repo->updateOT($id, $data);
-        $this->cronogramaRepo->syncByOT($id, $data);
+        if ($this->cronogramaRepo) {
+            $this->cronogramaRepo->syncByOT($id, $data);
+        }
         return $resultado;
     }
 
@@ -78,7 +77,7 @@ class MantencionService
     }
 
     // =================================================================================
-    // 2. GESTIÓN DE ACTIVOS (CRUD COMPLETO CON ARCHIVOS)
+    // 2. GESTIÓN DE ACTIVOS
     // =================================================================================
 
     public function listarActivos()
@@ -231,7 +230,7 @@ class MantencionService
     }
 
     // =================================================================================
-    // 5. GESTIÓN DE KITS (MANTENIMIENTO PREVENTIVO)
+    // 5. GESTIÓN DE KITS
     // =================================================================================
 
     public function obtenerKitActivo($activoId)
@@ -258,7 +257,7 @@ class MantencionService
     }
 
     // =================================================================================
-    // 6. DATOS PARA PDF Y OTROS
+    // 6. DATOS ADICIONALES Y CIERRE
     // =================================================================================
 
     public function obtenerHeaderOT($id)
@@ -284,10 +283,6 @@ class MantencionService
         $jsonStr = is_array($plantillaData) ? json_encode($plantillaData, JSON_UNESCAPED_UNICODE) : $plantillaData;
         $this->repo->savePlantillaActivo($activoId, $jsonStr);
     }
-
-    // =================================================================================
-    // 7. GESTIÓN DE BODEGA E INVENTARIO (FUNCIONALIDADES COMPLETAS DEL REPO)
-    // =================================================================================
 
     public function listarPendientesEntrega()
     {
@@ -316,7 +311,7 @@ class MantencionService
     }
 
     // =================================================================================
-    // HELPERS PRIVADOS (FILE SYSTEM)
+    // HELPERS
     // =================================================================================
 
     private function subirArchivo($file, $subFolder = '')

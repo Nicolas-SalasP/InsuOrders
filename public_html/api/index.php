@@ -25,6 +25,7 @@ use App\Controllers\PersonalController;
 use App\Controllers\OperarioController;
 use App\Controllers\MisMantencionesController;
 use App\Controllers\CategoriaController;
+use App\Controllers\ClienteController;
 
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
@@ -177,8 +178,7 @@ try {
             if ($method === 'GET') {
                 AuthMiddleware::hasPermission('activos_ver');
                 (new MantencionController())->activos();
-            }
-            elseif ($method === 'DELETE') {
+            } elseif ($method === 'DELETE') {
                 AuthMiddleware::hasPermission('activos_editar');
                 (new MantencionController())->deleteActivo();
             }
@@ -287,6 +287,26 @@ try {
                 (new InsumoController())->ajustar($uid);
             break;
 
+        case 'inventario/salida':
+            $c = new InsumoController();
+            if ($method === 'POST') {
+                $c->salidaManual();
+            }
+            break;
+
+        case 'inventario/ots-activas':
+            $c = new InsumoController();
+            if ($method === 'GET')
+                $c->getOTsActivas();
+            break;
+
+        case 'inventario/comprobante':
+            $c = new InsumoController();
+            if ($method === 'GET') {
+                $c->comprobanteEntrega();
+            }
+            break;
+
         // --- COMPRAS ---
         case 'compras':
             if ($method === 'GET') {
@@ -336,6 +356,13 @@ try {
         case 'compras/cancelar':
             AuthMiddleware::verify('compras_anular');
             (new OrdenCompraController())->cancelarOrden();
+            break;
+
+        case 'compras/omitir':
+            AuthMiddleware::verify('compras_crear');
+            if ($method === 'POST') {
+                (new OrdenCompraController())->omitir();
+            }
             break;
 
         // --- PROVEEDORES ---
@@ -484,12 +511,18 @@ try {
             (new DashboardController())->analytics();
             break;
 
-        // --- OTROS ---
+        // --- NOTIFICACIONES ---
         case 'notifications':
             AuthMiddleware::verify();
-            (new NotificationController())->index();
+            $c = new NotificationController();
+            if ($method === 'GET') {
+                $c->index();
+            } elseif ($method === 'POST') {
+                $c->leer();
+            }
             break;
 
+        // --- EXPORTACION E IMPORTACION ---
         case 'exportar':
             AuthMiddleware::verify();
             (new ExportController())->exportar($_GET['modulo'] ?? '');
@@ -626,13 +659,29 @@ try {
             }
             break;
 
+        // --- CLIENTES ---
+        case 'cliente/solicitudes':
+            $c = new ClienteController();
+            if ($method === 'GET') {
+                $c->misSolicitudes();
+            } elseif ($method === 'POST') {
+                $c->store();
+            }
+            break;
+
+        case 'cliente/activos':
+            if ($method === 'GET') {
+                (new ClienteController())->activosParaCliente();
+            }
+            break;
+
         default:
             jsonResponse(404, ["error" => "Ruta no encontrada: $path"]);
             break;
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     jsonResponse(500, [
         "success" => false,
-        "error" => "Error del Servidor: " . $e->getMessage()
+        "error" => "Error Fatal: " . $e->getMessage() . " en " . $e->getFile() . " línea " . $e->getLine()
     ]);
 }

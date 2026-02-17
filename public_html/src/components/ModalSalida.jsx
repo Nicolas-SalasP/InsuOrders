@@ -12,6 +12,13 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
     const [ubicaciones, setUbicaciones] = useState([]);
     const [ubicacionId, setUbicacionId] = useState('');
     const [observacion, setObservacion] = useState('');
+
+    // --- ESTADOS PARA OT ---
+    const [esParaOT, setEsParaOT] = useState(false);
+    const [listaOTs, setListaOTs] = useState([]);
+    const [otSeleccionada, setOtSeleccionada] = useState('');
+    const [loadingOTs, setLoadingOTs] = useState(false);
+
     const wrapperRef = useRef(null);
     const [saving, setSaving] = useState(false);
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
@@ -23,7 +30,9 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
             setNombreSeleccionado('');
             setObservacion('');
             setBusqueda('');
-            setUbicacionId(''); 
+            setUbicacionId('');
+            setEsParaOT(false);
+            setOtSeleccionada('');
             setSaving(false);
 
             api.get('/index.php/personal')
@@ -41,6 +50,26 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
     }, [show]);
 
     useEffect(() => {
+        if (esParaOT && listaOTs.length === 0) {
+            cargarOTs();
+        }
+    }, [esParaOT]);
+
+    const cargarOTs = async () => {
+        setLoadingOTs(true);
+        try {
+            const res = await api.get('/index.php/inventario/ots-activas');
+            if (res.data.success) {
+                setListaOTs(res.data.data);
+            }
+        } catch (error) {
+            console.error("Error cargando OTs", error);
+        } finally {
+            setLoadingOTs(false);
+        }
+    };
+
+    useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 setMostrarLista(false);
@@ -50,8 +79,8 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [wrapperRef]);
 
-    const personalFiltrado = personal.filter(p => 
-        (p.nombre_completo || '').toLowerCase().includes(busqueda.toLowerCase()) || 
+    const personalFiltrado = personal.filter(p =>
+        (p.nombre_completo || '').toLowerCase().includes(busqueda.toLowerCase()) ||
         (p.rut || '').toLowerCase().includes(busqueda.toLowerCase())
     );
 
@@ -67,22 +96,45 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
         if (!cantidad || cantidad <= 0) return setMsgModal({ show: true, title: "Error", message: "Ingrese una cantidad válida", type: "warning" });
         if (parseFloat(cantidad) > parseFloat(insumo.stock_actual)) return setMsgModal({ show: true, title: "Error", message: "No hay suficiente stock", type: "warning" });
         if (!personalId) return setMsgModal({ show: true, title: "Error", message: "Debe seleccionar quién retira", type: "warning" });
-        if (!ubicacionId) return setMsgModal({ show: true, title: "Error", message: "Debe seleccionar la ubicación de destino (Planta, Obra, etc.)", type: "warning" });
+        if (!ubicacionId) return setMsgModal({ show: true, title: "Error", message: "Debe seleccionar la ubicación de destino", type: "warning" });
+        if (esParaOT && !otSeleccionada) return setMsgModal({ show: true, title: "Error", message: "Debe seleccionar la OT correspondiente", type: "warning" });
+
+        const pdfWindow = window.open('', '_blank');
+        if (pdfWindow) {
+            pdfWindow.document.write('<html><body style="font-family:sans-serif;text-align:center;padding-top:50px;">Generando comprobante de entrega...</body></html>');
+        }
 
         setSaving(true);
         try {
-            await api.post('/index.php/inventario/ajuste', {
+            const res = await api.post('/index.php/inventario/salida', {
                 insumo_id: insumo.id,
                 cantidad: cantidad,
                 tipo_movimiento_id: 2,
+                usuario_id: personalId,
                 empleado_id: personalId,
                 ubicacion_envio_id: ubicacionId,
-                observacion: observacion || 'Salida Manual'
+                observacion: observacion || 'Salida Manual',
+                ot_id: esParaOT ? otSeleccionada : null
             });
-            onSave();
-            onClose();
+
+            if (res.data.success) {
+                onSave();
+                onClose();
+                if (res.data.ids && res.data.ids.length > 0) {
+                    const ids = res.data.ids.join(',');
+                    if (pdfWindow) {
+                        pdfWindow.location.href = `${api.defaults.baseURL}/index.php/inventario/comprobante?ids=${ids}`;
+                    }
+                } else if (pdfWindow) {
+                    pdfWindow.close();
+                }
+            } else {
+                if (pdfWindow) pdfWindow.close();
+                setMsgModal({ show: true, title: "Error", message: res.data.error || "Error al registrar salida", type: "error" });
+            }
         } catch (error) {
-            setMsgModal({ show: true, title: "Error", message: error.response?.data?.message || "Error al registrar salida", type: "error" });
+            if (pdfWindow) pdfWindow.close();
+            setMsgModal({ show: true, title: "Error", message: error.response?.data?.error || "Error al registrar salida", type: "error" });
         } finally {
             setSaving(false);
         }
@@ -92,8 +144,8 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
 
     return (
         <>
-            <MessageModal show={msgModal.show} onClose={() => setMsgModal({...msgModal, show: false})} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
-            
+            <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
+
             <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
                 <div className="modal-dialog modal-dialog-centered">
                     <div className="modal-content shadow border-0">
@@ -101,7 +153,7 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                             <h5 className="modal-title fw-bold"><i className="bi bi-box-arrow-right me-2"></i>Registrar Salida / Consumo</h5>
                             <button className="btn-close btn-close-white" onClick={onClose}></button>
                         </div>
-                        
+
                         <form onSubmit={handleSubmit}>
                             <div className="modal-body p-4">
                                 <div className="alert alert-light border d-flex align-items-center mb-4">
@@ -111,7 +163,7 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                     <div>
                                         <div className="fw-bold text-dark">{insumo.nombre}</div>
                                         <div className="small text-muted">
-                                            SKU: <span className="fw-bold text-dark">{insumo.codigo_sku}</span> | 
+                                            SKU: <span className="fw-bold text-dark">{insumo.codigo_sku}</span> |
                                             Stock Actual: <span className="badge bg-success ms-1">{insumo.stock_actual}</span>
                                         </div>
                                     </div>
@@ -119,14 +171,14 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
 
                                 <div className="mb-3">
                                     <label className="form-label fw-bold text-secondary small text-uppercase">Cantidad a Retirar</label>
-                                    <input 
-                                        type="number" 
-                                        className="form-control form-control-lg fw-bold text-center text-primary" 
-                                        min="1" 
-                                        step="1" 
-                                        value={cantidad} 
-                                        onChange={e => setCantidad(e.target.value)} 
-                                        required 
+                                    <input
+                                        type="number"
+                                        className="form-control form-control-lg fw-bold text-center text-primary"
+                                        min="1"
+                                        step="1"
+                                        value={cantidad}
+                                        onChange={e => setCantidad(e.target.value)}
+                                        required
                                         autoFocus
                                     />
                                 </div>
@@ -145,13 +197,13 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                         <>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                                                <input 
-                                                    type="text" 
-                                                    className="form-control" 
-                                                    placeholder="Buscar empleado por nombre o RUT..." 
-                                                    value={busqueda} 
-                                                    onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }} 
-                                                    onFocus={() => setMostrarLista(true)} 
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    placeholder="Buscar empleado por nombre o RUT..."
+                                                    value={busqueda}
+                                                    onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }}
+                                                    onFocus={() => setMostrarLista(true)}
                                                 />
                                             </div>
                                             {mostrarLista && (
@@ -176,9 +228,9 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                     <label className="form-label fw-bold text-secondary small text-uppercase">Destino / Ubicación <span className="text-danger">*</span></label>
                                     <div className="input-group">
                                         <span className="input-group-text bg-light"><i className="bi bi-geo-alt-fill text-secondary"></i></span>
-                                        <select 
-                                            className="form-select fw-500" 
-                                            value={ubicacionId} 
+                                        <select
+                                            className="form-select fw-500"
+                                            value={ubicacionId}
                                             onChange={e => setUbicacionId(e.target.value)}
                                             required
                                         >
@@ -188,22 +240,66 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                             ))}
                                         </select>
                                     </div>
-                                    {ubicaciones.length === 0 && <div className="form-text text-warning small"><i className="bi bi-exclamation-triangle"></i> No hay ubicaciones configuradas. Avise al administrador.</div>}
+                                    {ubicaciones.length === 0 && <div className="form-text text-warning small"><i className="bi bi-exclamation-triangle"></i> No hay ubicaciones configuradas.</div>}
+                                </div>
+
+                                <div className="mb-3 p-3 bg-light rounded border border-secondary border-opacity-25">
+                                    <div className="form-check form-switch">
+                                        <input
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            id="checkOT"
+                                            checked={esParaOT}
+                                            onChange={(e) => {
+                                                setEsParaOT(e.target.checked);
+                                                if (!e.target.checked) setOtSeleccionada('');
+                                            }}
+                                        />
+                                        <label className="form-check-label fw-bold text-primary" htmlFor="checkOT">
+                                            ¿Corresponde a una Orden de Trabajo (OT)?
+                                        </label>
+                                    </div>
+
+                                    {esParaOT && (
+                                        <div className="mt-3 animate__animated animate__fadeIn">
+                                            {loadingOTs ? (
+                                                <div className="text-center small text-muted"><span className="spinner-border spinner-border-sm me-2"></span>Cargando OTs...</div>
+                                            ) : (
+                                                <select
+                                                    className="form-select border-primary"
+                                                    value={otSeleccionada}
+                                                    onChange={(e) => setOtSeleccionada(e.target.value)}
+                                                    required={esParaOT}
+                                                >
+                                                    <option value="">-- Seleccionar OT --</option>
+                                                    {listaOTs.map(ot => (
+                                                        <option key={ot.id} value={ot.id}>
+                                                            #{ot.id} - {ot.titulo} ({ot.maquina || 'General'})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                            <div className="form-text small mt-2 text-muted">
+                                                <i className="bi bi-info-circle me-1"></i>
+                                                Se marcará como "Entregado" en la OT seleccionada.
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="mb-3">
                                     <label className="form-label fw-bold text-secondary small text-uppercase">Observación (Opcional)</label>
-                                    <textarea 
-                                        className="form-control" 
-                                        rows="2" 
-                                        value={observacion} 
+                                    <textarea
+                                        className="form-control"
+                                        rows="2"
+                                        value={observacion}
                                         onChange={e => setObservacion(e.target.value)}
-                                        placeholder="Ej: Para trabajo urgente en máquina X..."
+                                        placeholder="Ej: Repuesto adicional por falla..."
                                     ></textarea>
                                 </div>
 
                             </div>
-                            
+
                             <div className="modal-footer border-top-0 pt-0 pb-4 px-4">
                                 <button type="button" className="btn btn-light text-muted fw-bold" onClick={onClose}>Cancelar</button>
                                 <button type="submit" className="btn btn-danger px-4 fw-bold shadow-sm" disabled={saving}>
