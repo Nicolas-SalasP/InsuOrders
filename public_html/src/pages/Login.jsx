@@ -9,7 +9,7 @@ const Login = () => {
 
     const [input, setInput] = useState({ username: '', password: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     // Estado del Modal
     const [modalInfo, setModalInfo] = useState({
         show: false,
@@ -23,19 +23,27 @@ const Login = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault(); 
+        e.preventDefault();
         setIsSubmitting(true);
 
         try {
             const result = await login(input.username, input.password);
 
             if (result.success) {
-                switch (result.role) {
-                    case 'Compras' || 'Encargado Compras': navigate('/compras'); break;
-                    case 'Bodega' || 'Bodegero': navigate('/bodega'); break;
-                    case 'Mantencion' || 'Jefe Mantención' : navigate('/mantencion'); break;
-                    case 'Técnico Mantención' || 'Tecnico': navigate('/mis-mantenciones'); break;
-                    default: navigate('/dashboard');
+                const userRole = result.role;
+
+                if (userRole === 'Cliente') {
+                    navigate('/portal-cliente');
+                } else if (userRole === 'Compras' || userRole === 'Encargado Compras') {
+                    navigate('/compras');
+                } else if (userRole === 'Bodega' || userRole === 'Bodegero') {
+                    navigate('/bodega');
+                } else if (userRole === 'Mantencion' || userRole === 'Jefe Mantención') {
+                    navigate('/mantencion');
+                } else if (userRole === 'Técnico Mantención' || userRole === 'Tecnico') {
+                    navigate('/mis-mantenciones');
+                } else {
+                    navigate('/dashboard');
                 }
             } else {
                 setModalInfo({
@@ -67,18 +75,18 @@ const Login = () => {
     return (
         // CAMBIO 1: Agregué 'w-100' para que ocupe todo el ancho y no se pegue a la izquierda.
         // CAMBIO 2: Puse un fondo degradado (gradient) que se ve más moderno que el gris plano.
-        <div 
+        <div
             className="d-flex justify-content-center align-items-center min-vh-100 w-100"
-            style={{ 
+            style={{
                 background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', // Degradado suave tipo "Nube"
                 margin: 0,
                 padding: 0
             }}
         >
-            
+
             <div className="card shadow-lg border-0" style={{ width: '100%', maxWidth: '400px', borderRadius: '15px', backgroundColor: '#ffffff' }}>
                 <div className="card-body p-4 p-md-5">
-                    
+
                     <div className="text-center mb-4">
                         <div className="display-1 text-primary mb-2">🏭</div>
                         <h2 className="fw-bold text-dark">InsuOrders</h2>
@@ -113,27 +121,27 @@ const Login = () => {
                             <label htmlFor="floatingPassword">Contraseña</label>
                         </div>
 
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             className="btn btn-primary w-100 btn-lg mb-3 shadow-sm"
                             disabled={isSubmitting}
                         >
                             {isSubmitting ? 'Verificando...' : 'Entrar'}
                         </button>
                     </form>
-                    
+
                     <div className="text-center mt-4">
                         <small className="text-muted">© 2024 Insuban Ltda.</small>
                     </div>
                 </div>
             </div>
 
-            <MessageModal 
-                show={modalInfo.show} 
-                onClose={closeModal} 
-                title={modalInfo.title} 
+            <MessageModal
+                show={modalInfo.show}
+                onClose={closeModal}
+                title={modalInfo.title}
                 message={modalInfo.message}
-                type={modalInfo.type} 
+                type={modalInfo.type}
             />
         </div>
     );
