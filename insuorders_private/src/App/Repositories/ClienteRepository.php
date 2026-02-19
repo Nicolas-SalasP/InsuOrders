@@ -94,7 +94,7 @@ class ClienteRepository
         $sql = "SELECT u.email, u.nombre 
                 FROM usuarios u 
                 JOIN roles r ON u.rol_id = r.id 
-                WHERE r.nombre = :rol AND u.estado = 1";
+                WHERE r.nombre = :rol AND u.activo = 1";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':rol' => $nombreRol]);
