@@ -21,7 +21,7 @@ class MantencionRepository
 
     public function getAll($filters = [])
     {
-        $sql = "SELECT DISTINCT s.*, 
+        $sql = "SELECT s.*, 
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(s.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id,
@@ -58,7 +58,8 @@ class MantencionRepository
             $params[':insumo'] = $filters['insumo_id'];
         }
 
-        $sql .= " ORDER BY 
+        $sql .= " GROUP BY s.id 
+                ORDER BY 
                     CASE UPPER(TRIM(s.prioridad)) 
                         WHEN 'CRITICO' THEN 1 
                         WHEN 'CRÍTICO' THEN 1 
@@ -68,7 +69,7 @@ class MantencionRepository
                         WHEN 'BAJA' THEN 5 
                         ELSE 6 
                     END ASC, 
-                    s.fecha_solicitud DESC";
+                    s.id DESC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

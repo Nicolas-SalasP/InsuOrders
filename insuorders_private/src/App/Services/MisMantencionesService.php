@@ -60,9 +60,9 @@ class MisMantencionesService
         }
     }
 
-    public function guardarCierre($otId, $firma, $comentarios)
+    public function guardarCierre($otId, $firma, $comentarios, $evidenciaStr = null)
     {
-        return $this->repository->guardarCierre($otId, $firma, $comentarios);
+        return $this->repository->guardarCierre($otId, $firma, $comentarios, $evidenciaStr);
     }
 
     public function guardarUrlPdf($otId, $url)

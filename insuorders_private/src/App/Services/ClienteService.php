@@ -42,19 +42,21 @@ class ClienteService
         }
 
         $activoId = !empty($data['activo_id']) ? $data['activo_id'] : null;
-        $imagenUrl = null;
+        $evidenciaUrls = [];
+        $uploadDir = __DIR__ . '/../../../../public_html/api/uploads/solicitudes/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
-        if (isset($files['imagen']) && $files['imagen']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = __DIR__ . '/../../../../public_html/api/uploads/solicitudes/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-
-            $ext = pathinfo($files['imagen']['name'], PATHINFO_EXTENSION);
-            $fileName = 'SOL_' . $usuarioId . '_' . time() . '.' . $ext;
-            
-            if (move_uploaded_file($files['imagen']['tmp_name'], $uploadDir . $fileName)) {
-                $imagenUrl = 'uploads/solicitudes/' . $fileName;
+        foreach ($files as $key => $file) {
+            if (strpos($key, 'evidencia_') === 0 && $file['error'] === UPLOAD_ERR_OK) {
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $fileName = 'SOL_' . $usuarioId . '_' . uniqid() . '.' . $ext;
+                
+                if (move_uploaded_file($file['tmp_name'], $uploadDir . $fileName)) {
+                    $evidenciaUrls[] = 'uploads/solicitudes/' . $fileName;
+                }
             }
         }
+        $imagenUrl = !empty($evidenciaUrls) ? json_encode($evidenciaUrls) : null;
 
         $datosInsert = [
             'usuario_id' => $usuarioId,
@@ -62,7 +64,8 @@ class ClienteService
             'titulo' => $data['titulo'],
             'descripcion' => $data['descripcion'],
             'prioridad' => $data['prioridad'] ?? 'MEDIA',
-            'imagen_url' => $imagenUrl
+            'imagen_url' => $imagenUrl,
+            'ubicacion' => $data['ubicacion'] ?? null
         ];
 
         $idSolicitud = $this->repo->crearSolicitud($datosInsert);

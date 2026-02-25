@@ -29,17 +29,40 @@ class MisMantencionesController
         }
     }
 
-    public function guardar()
+public function guardar()
     {
         try {
             AuthMiddleware::hasPermission('ope_mant');
             $userId = AuthMiddleware::verify(); 
 
-            $input = json_decode(file_get_contents("php://input"), true); 
+            $input = [];
+            if (!empty($_POST)) {
+                $input = $_POST;
+                $input['respuestas'] = json_decode($_POST['respuestas'] ?? '[]', true);
+            } else {
+                $input = json_decode(file_get_contents("php://input"), true); 
+            }
+
             $otId = $input['ot_id'] ?? null; 
             $checklistData = $input['respuestas'] ?? []; 
             $firma = $input['firma'] ?? null; 
             $comentarios = $input['comentarios'] ?? null; 
+
+            $evidenciaUrls = [];
+            if (!empty($_FILES)) {
+                $uploadDir = __DIR__ . '/../../public_html/api/uploads/cierre/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+
+                foreach ($_FILES as $key => $file) {
+                    if (strpos($key, 'evidencia_') === 0 && $file['error'] === UPLOAD_ERR_OK) {
+                        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                        $filename = 'cierre_' . $otId . '_' . uniqid() . '.' . $ext;
+                        if (move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+                            $evidenciaUrls[] = 'uploads/cierre/' . $filename;
+                        }
+                    }
+                }
+            }
 
             if (!$this->service->repository->inTransaction()) { 
                 $this->service->repository->beginTransaction(); 
@@ -52,7 +75,8 @@ class MisMantencionesController
 
             if ($firma) {
                 $this->service->ejecutarDescuentos($otId, $userId);
-                $this->service->guardarCierre($otId, $firma, $comentarios); 
+                $evidenciasStr = !empty($evidenciaUrls) ? json_encode($evidenciaUrls) : null;
+                $this->service->guardarCierre($otId, $firma, $comentarios, $evidenciasStr); 
 
                 $datosReporte = $this->service->getDatosReporte($otId); 
                 $pdfService = new PDFService(); 
@@ -75,9 +99,8 @@ class MisMantencionesController
             if ($this->service->repository->inTransaction()) { 
                 $this->service->repository->rollBack(); 
             }
-
             http_response_code(400); 
-            echo json_encode(["success" => false, "message" => "Error en proceso: " . $e->getMessage()]); 
+            echo json_encode(["success" => false, "message" => "Error en proceso: " . $e->getMessage()]);
         }
     }
 

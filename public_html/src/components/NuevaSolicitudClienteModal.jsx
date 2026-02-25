@@ -4,18 +4,18 @@ import api from '../api/axiosConfig';
 const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
     const [activos, setActivos] = useState([]);
     const [tipoTrabajo, setTipoTrabajo] = useState('general');
-    
-    // Estados de control de vista
     const [successId, setSuccessId] = useState(null); 
-    const [showUrgentConfirm, setShowUrgentConfirm] = useState(false); // <--- Controla la alerta de urgencia
+    const [showUrgentConfirm, setShowUrgentConfirm] = useState(false);
 
     const [form, setForm] = useState({
         titulo: '',
         descripcion: '',
         activo_id: '',
         prioridad: 'MEDIA',
-        imagen: null
+        imagenes: [],
+        ubicacion: ''
     });
+
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -27,7 +27,7 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
 
     const resetForm = () => {
         setTipoTrabajo('general'); 
-        setForm({ titulo: '', descripcion: '', activo_id: '', prioridad: 'MEDIA', imagen: null });
+        setForm({ titulo: '', descripcion: '', activo_id: '', prioridad: 'MEDIA', imagenes: [], ubicacion: '' });
         setSuccessId(null);
         setShowUrgentConfirm(false);
     };
@@ -39,33 +39,76 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
         } catch (e) { console.error(e); }
     };
 
-    // 1. PRIMER PASO: Validar antes de enviar
+    const comprimirImagen = (file) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                    }, 'image/jpeg', 0.3);
+                };
+            };
+        });
+    };
+
+    const handleFileChange = async (e) => {
+        const files = Array.from(e.target.files);
+        setLoading(true);
+        
+        const processedFiles = await Promise.all(files.map(async (file) => {
+            if (file.type.startsWith('image/')) {
+                return await comprimirImagen(file);
+            }
+            return file;
+        }));
+        
+        setForm(prev => ({ ...prev, imagenes: [...(prev.imagenes || []), ...processedFiles] }));
+        setLoading(false);
+    };
+
+    const removeFile = (indexToRemove) => {
+        setForm(prev => ({
+            ...prev,
+            imagenes: prev.imagenes.filter((_, idx) => idx !== indexToRemove)
+        }));
+    };
+
     const handlePreSubmit = (e) => {
         e.preventDefault();
-        
-        // Si seleccionó CRITICO (antes URGENTE), mostramos la advertencia primero
         if (form.prioridad === 'CRITICO') {
             setShowUrgentConfirm(true);
         } else {
-            // Si no es urgente, enviamos directo
             enviarDatosAlBackend();
         }
     };
 
-    // 2. SEGUNDO PASO: El envío real
     const enviarDatosAlBackend = async () => {
         setLoading(true);
 
         const formData = new FormData();
         formData.append('titulo', form.titulo);
         formData.append('descripcion', form.descripcion);
+        formData.append('ubicacion', form.ubicacion);
         formData.append('prioridad', form.prioridad);
         
         if (tipoTrabajo === 'activo' && form.activo_id) {
             formData.append('activo_id', form.activo_id);
         }
 
-        if (form.imagen) formData.append('imagen', form.imagen);
+        if (form.imagenes && form.imagenes.length > 0) {
+            form.imagenes.forEach((file, index) => {
+                formData.append(`evidencia_${index}`, file);
+            });
+        }
 
         try {
             const res = await api.post('/index.php/cliente/solicitudes', formData, {
@@ -74,12 +117,12 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
             
             if (res.data.success) {
                 onSave();
-                setShowUrgentConfirm(false); // Cerramos confirmación si estaba abierta
-                setSuccessId(res.data.id);   // Mostramos éxito
+                setShowUrgentConfirm(false);
+                setSuccessId(res.data.id);
             }
         } catch (error) {
             alert("Error: " + (error.response?.data?.error || "Error al crear solicitud"));
-            setShowUrgentConfirm(false); // Volver al form si falla
+            setShowUrgentConfirm(false);
         } finally {
             setLoading(false);
         }
@@ -96,8 +139,6 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
             <div className="modal-dialog modal-dialog-centered modal-lg">
                 <div className="modal-content shadow-lg border-0">
-                    
-                    {/* --- ESCENARIO 1: PANTALLA DE ÉXITO --- */}
                     {successId ? (
                         <div className="text-center p-5">
                             <div className="mb-4">
@@ -119,8 +160,6 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                         </div>
 
                     ) : showUrgentConfirm ? (
-                        
-                        /* --- ESCENARIO 2: CONFIRMACIÓN DE URGENCIA (EL SEGUNDO MODAL) --- */
                         <div className="text-center p-5 bg-warning bg-opacity-10 rounded">
                             <div className="mb-3">
                                 <i className="bi bi-exclamation-triangle-fill text-warning" style={{ fontSize: '4rem' }}></i>
@@ -130,7 +169,7 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                             <div className="alert alert-warning border-warning text-start d-inline-block p-3 mb-4" style={{maxWidth: '500px'}}>
                                 <p className="mb-2 fw-bold"><i className="bi bi-cone-striped me-2"></i>Consecuencias:</p>
                                 <ul className="mb-0 small text-dark">
-                                    <li>Se enviará una alerta inmediata a la gerencia y técnicos.</li>
+                                    <li>Se enviará una alerta inmediata a los encargados de mantencion y técnicos.</li>
                                     <li>Se detendrán otros trabajos en curso para atender este requerimiento.</li>
                                     <li>El uso injustificado de esta prioridad será auditado.</li>
                                 </ul>
@@ -143,14 +182,14 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                             <div className="d-flex justify-content-center gap-3">
                                 <button 
                                     className="btn btn-outline-secondary px-4" 
-                                    onClick={() => setShowUrgentConfirm(false)} // Volver atrás
+                                    onClick={() => setShowUrgentConfirm(false)}
                                     disabled={loading}
                                 >
                                     Cancelar, no es tan urgente
                                 </button>
                                 <button 
                                     className="btn btn-danger px-4 fw-bold shadow-sm" 
-                                    onClick={enviarDatosAlBackend} // Confirmar y enviar
+                                    onClick={enviarDatosAlBackend}
                                     disabled={loading}
                                 >
                                     {loading ? 'Procesando...' : 'SÍ, ES UNA EMERGENCIA'}
@@ -159,14 +198,12 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                         </div>
 
                     ) : (
-                        
-                        /* --- ESCENARIO 3: FORMULARIO NORMAL --- */
                         <>
                             <div className="modal-header bg-primary text-white border-0 py-3">
                                 <h5 className="modal-title fw-bold fs-4"><i className="bi bi-plus-circle me-2"></i>Nueva Solicitud</h5>
                                 <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
                             </div>
-                            <form onSubmit={handlePreSubmit}> {/* OJO: Usamos handlePreSubmit aquí */}
+                            <form onSubmit={handlePreSubmit}>
                                 <div className="modal-body p-4">
                                     
                                     <div className="mb-4">
@@ -217,14 +254,43 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                     )}
 
                                     <div className="mb-3">
+                                        <label className="form-label fw-bold">Ubicación del trabajo</label>
+                                        <input 
+                                            type="text" 
+                                            className="form-control" 
+                                            placeholder="Ej: Sala de reuniones piso 2, Bodega principal, etc." 
+                                            value={form.ubicacion} 
+                                            onChange={(e) => setForm({...form, ubicacion: e.target.value})} 
+                                        />
+                                    </div>
+
+                                    <div className="mb-3">
                                         <label className="form-label fw-bold">Detalles Adicionales</label>
                                         <textarea className="form-control" rows="4" required value={form.descripcion} onChange={(e) => setForm({...form, descripcion: e.target.value})} placeholder="Por favor sé lo más específico posible..."></textarea>
                                     </div>
 
                                     <div className="row g-2">
                                         <div className="col-md-8">
-                                            <label className="form-label fw-bold">Evidencia (Foto)</label>
-                                            <input type="file" className="form-control" accept="image/*" onChange={(e) => setForm({...form, imagen: e.target.files[0]})} />
+                                            <label className="form-label fw-bold">Evidencia (Fotos o Videos)</label>
+                                            <input 
+                                                type="file" 
+                                                className="form-control" 
+                                                accept="image/*,video/*" 
+                                                multiple 
+                                                capture="environment"
+                                                onChange={handleFileChange} 
+                                            />
+                                            {form.imagenes && form.imagenes.length > 0 && (
+                                                <div className="d-flex flex-wrap gap-2 mt-2">
+                                                    {form.imagenes.map((file, idx) => (
+                                                        <span key={idx} className="badge bg-secondary d-flex align-items-center gap-2 p-2">
+                                                            <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i> 
+                                                            {file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name}
+                                                            <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-1" onClick={() => removeFile(idx)}></i>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="col-md-4">
                                             <label className="form-label fw-bold">Prioridad</label>
@@ -244,7 +310,8 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                 <div className="modal-footer bg-light">
                                     <button type="button" className="btn btn-link text-decoration-none text-muted" onClick={onClose}>Cancelar</button>
                                     <button type="submit" className="btn btn-primary px-4 shadow-sm" disabled={loading}>
-                                        <i className="bi bi-send-fill me-2"></i>Crear Solicitud
+                                        {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-send-fill me-2"></i>}
+                                        {loading ? 'Subiendo archivos...' : 'Crear Solicitud'}
                                     </button>
                                 </div>
                             </form>

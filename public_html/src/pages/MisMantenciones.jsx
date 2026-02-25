@@ -1,4 +1,5 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useRef } from 'react';
+import SignatureCanvas from 'react-signature-canvas';
 import api from '../api/axiosConfig';
 import AuthContext from '../context/AuthContext';
 import ChecklistRenderer from '../components/ChecklistRenderer';
@@ -12,8 +13,8 @@ const MisMantenciones = () => {
     const [ots, setOts] = useState([]);
     const [selectedOt, setSelectedOt] = useState(null);
     const [detallesOt, setDetallesOt] = useState({ insumos: [], respuestas: [] });
-    const [activeTab, setActiveTab] = useState('checklist');
-    const [datosEnvio, setDatosEnvio] = useState({ respuestas: [], firma: null, comentarios: '' });
+    const [activeTab, setActiveTab] = useState('info');
+    const [datosEnvio, setDatosEnvio] = useState({ respuestas: [], firma: null, comentarios: '', archivos: [] });
     const [loading, setLoading] = useState(true);
     const [loadingDetalle, setLoadingDetalle] = useState(false);
     const [guardando, setGuardando] = useState(false);
@@ -23,7 +24,10 @@ const MisMantenciones = () => {
     const [filtroTecnico, setFiltroTecnico] = useState(null);
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: '' });
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
+    
     const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
+    const sigCanvas = useRef(null);
+    const [enlargedImage, setEnlargedImage] = useState(null); // Estado para el visor de imágenes
 
     useEffect(() => {
         if (can('ope_mant')) {
@@ -73,8 +77,10 @@ const MisMantenciones = () => {
     const handleSelectOt = async (ot) => {
         setSelectedOt(ot);
         setLoadingDetalle(true);
-        setActiveTab('checklist');
-        setDatosEnvio({ respuestas: [], firma: null, comentarios: '' });
+        setActiveTab('info');
+        setDatosEnvio({ respuestas: [], firma: null, comentarios: '', archivos: [] });
+        sigCanvas.current?.clear();
+        setEnlargedImage(null);
 
         try {
             const res = await api.get(`/mis-mantenciones/detalle?id=${ot.id}`);
@@ -124,6 +130,79 @@ const MisMantenciones = () => {
         return matchEstado && matchTexto && matchFecha;
     });
 
+    const comprimirImagen = (file) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                    }, 'image/jpeg', 0.3);
+                };
+            };
+        });
+    };
+
+    const handleFileChange = async (e) => {
+        const files = Array.from(e.target.files);
+        setGuardando(true); 
+        
+        const processedFiles = await Promise.all(files.map(async (file) => {
+            if (file.type.startsWith('image/')) {
+                return await comprimirImagen(file);
+            }
+            return file;
+        }));
+        
+        setDatosEnvio(prev => ({ ...prev, archivos: [...(prev.archivos || []), ...processedFiles] }));
+        setGuardando(false);
+    };
+
+    const renderEvidencia = (evidenciaStr) => {
+        if (!evidenciaStr) return (
+            <div className="p-5 bg-light rounded border text-center text-muted h-100 d-flex flex-column align-items-center justify-content-center">
+                <i className="bi bi-image text-secondary opacity-50 display-4 mb-2"></i>
+                <span>Sin imagen adjunta</span>
+            </div>
+        );
+
+        let archivos = [];
+        try {
+            archivos = JSON.parse(evidenciaStr);
+            if (!Array.isArray(archivos)) archivos = [evidenciaStr];
+        } catch (e) {
+            archivos = [evidenciaStr];
+        }
+
+        return (
+            <div className="d-flex flex-wrap gap-2 mt-1">
+                {archivos.map((url, idx) => {
+                    const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                    return isVideo ? (
+                        <video key={idx} src={`/api/${url}`} controls className="rounded border shadow-sm bg-dark" style={{ height: '120px', maxWidth: '100%' }}></video>
+                    ) : (
+                        <img 
+                            key={idx} 
+                            src={`/api/${url}`} 
+                            alt={`Evidencia ${idx+1}`} 
+                            className="rounded border shadow-sm cursor-pointer" 
+                            style={{ height: '120px', width: '120px', objectFit: 'cover' }} 
+                            onClick={() => setEnlargedImage(`/api/${url}`)} 
+                        />
+                    );
+                })}
+            </div>
+        );
+    };
+
     const iniciarGuardado = () => {
         if (!selectedOt) return;
         if (datosEnvio.firma) {
@@ -151,19 +230,23 @@ const MisMantenciones = () => {
         setGuardando(true);
 
         try {
-            const res = await api.post('/mis-mantenciones/guardar', {
-                ot_id: selectedOt.id,
-                ...datosEnvio
+            const formData = new FormData();
+            formData.append('ot_id', selectedOt.id);
+            formData.append('respuestas', JSON.stringify(datosEnvio.respuestas || []));
+            if (datosEnvio.firma) formData.append('firma', datosEnvio.firma);
+            if (datosEnvio.comentarios) formData.append('comentarios', datosEnvio.comentarios);
+            if (datosEnvio.archivos && datosEnvio.archivos.length > 0) {
+                datosEnvio.archivos.forEach((file, index) => {
+                    formData.append(`evidencia_${index}`, file);
+                });
+            }
+
+            const res = await api.post('/mis-mantenciones/guardar', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
 
             if (res.data.success) {
-                setMsg({
-                    show: true,
-                    title: datosEnvio.firma ? '¡Trabajo Finalizado!' : 'Avance Guardado',
-                    text: 'Operación registrada correctamente.',
-                    type: 'success'
-                });
-
+                setMsg({ show: true, title: datosEnvio.firma ? '¡Trabajo Finalizado!' : 'Avance Guardado', text: 'Operación registrada correctamente.', type: 'success' });
                 if (datosEnvio.firma) {
                     cargarMisOts();
                     setSelectedOt(null);
@@ -172,12 +255,7 @@ const MisMantenciones = () => {
                 }
             }
         } catch (e) {
-            setMsg({
-                show: true,
-                title: 'Error',
-                text: e.response?.data?.message || 'No se pudo guardar el avance.',
-                type: 'error'
-            });
+            setMsg({ show: true, title: 'Error', text: e.response?.data?.message || 'No se pudo guardar el avance.', type: 'error' });
         } finally {
             setGuardando(false);
         }
@@ -196,7 +274,34 @@ const MisMantenciones = () => {
     }
 
     return (
-        <div className="container-fluid h-100 p-0 d-flex flex-column bg-light">
+        <div className="container-fluid h-100 p-0 d-flex flex-column bg-light position-relative">
+            
+            {/* VISOR DE IMÁGENES A PANTALLA COMPLETA */}
+            {enlargedImage && (
+                <div 
+                    className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
+                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999 }} 
+                    onClick={() => setEnlargedImage(null)}
+                >
+                    <div className="position-relative text-center p-3" style={{ maxWidth: '100%', maxHeight: '100%' }}>
+                        <button 
+                            className="btn btn-light position-absolute top-0 end-0 m-4 rounded-circle shadow-sm d-flex justify-content-center align-items-center" 
+                            style={{ zIndex: 10000, width: '45px', height: '45px', transform: 'translate(25%, -25%)' }}
+                            onClick={() => setEnlargedImage(null)}
+                        >
+                            <i className="bi bi-x-lg text-dark fw-bold fs-5"></i>
+                        </button>
+                        <img 
+                            src={enlargedImage} 
+                            alt="Ampliación" 
+                            className="img-fluid rounded shadow-lg" 
+                            style={{ maxHeight: '90vh', maxWidth: '100%', objectFit: 'contain' }}
+                            onClick={(e) => e.stopPropagation()} 
+                        />
+                    </div>
+                </div>
+            )}
+
             <MessageModal
                 show={msg.show}
                 onClose={() => setMsg({ ...msg, show: false })}
@@ -388,9 +493,15 @@ const MisMantenciones = () => {
                                 <div className="px-3 px-md-4">
                                     <ul className="nav nav-pills nav-fill gap-2 p-1 bg-light rounded-pill" role="tablist" style={{ maxWidth: '600px' }}>
                                         <li className="nav-item">
+                                            <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 ${activeTab === 'info' ? 'active shadow-sm' : 'text-muted'}`}
+                                                onClick={() => setActiveTab('info')}>
+                                                <i className="bi bi-info-circle me-2 fs-5"></i>Info. Solicitud
+                                            </button>
+                                        </li>
+                                        <li className="nav-item">
                                             <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 ${activeTab === 'checklist' ? 'active shadow-sm' : 'text-muted'}`}
                                                 onClick={() => setActiveTab('checklist')}>
-                                                <i className="bi bi-list-check me-2 fs-5"></i>Pauta de Trabajo
+                                                <i className="bi bi-list-check me-2 fs-5"></i>Pauta
                                             </button>
                                         </li>
                                         <li className="nav-item">
@@ -414,6 +525,37 @@ const MisMantenciones = () => {
                                     </div>
                                 ) : (
                                     <div className="bg-white rounded-4 shadow-sm p-4 mx-auto" style={{ maxWidth: '1000px', minHeight: '100%' }}>
+                                        
+                                        {/* PESTAÑA 1: INFO GENERAL */}
+                                        <div className={activeTab === 'info' ? 'd-block' : 'd-none'}>
+                                            <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
+                                                <i className="bi bi-journal-text me-2 text-primary"></i>
+                                                Detalles del Requerimiento
+                                            </h5>
+                                            <div className="row">
+                                                <div className="col-md-7">
+                                                    <div className="mb-4">
+                                                        <label className="text-muted small fw-bold text-uppercase mb-1">Descripción del Problema</label>
+                                                        <div className="p-3 bg-light rounded border">
+                                                            {selectedOt.descripcion_solicitud || 'Sin descripción proporcionada.'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mb-4">
+                                                        <label className="text-muted small fw-bold text-uppercase mb-1">Ubicación / Referencia</label>
+                                                        <div className="d-flex align-items-center">
+                                                            <i className="bi bi-geo-alt-fill text-danger me-2 fs-5"></i>
+                                                            <span className="fs-6 fw-medium">{selectedOt.ubicacion || 'No especificada'}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-5">
+                                                    <label className="text-muted small fw-bold text-uppercase mb-1">Evidencia (Cliente)</label>
+                                                    {renderEvidencia(selectedOt.imagen_url)}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* PESTAÑA 2: CHECKLIST (PAUTA) O CIERRE DIRECTO */}
                                         <div className={activeTab === 'checklist' ? 'd-block' : 'd-none'}>
                                             {selectedOt.plantilla_json ? (
                                                 <ChecklistRenderer
@@ -422,13 +564,76 @@ const MisMantenciones = () => {
                                                     onChange={(data) => setDatosEnvio(data)}
                                                 />
                                             ) : (
-                                                <div className="text-center py-5 text-muted opacity-50">
-                                                    <i className="bi bi-file-earmark-x display-1"></i>
-                                                    <h4 className="mt-3">Sin Pauta Digital</h4>
-                                                    <p>Este servicio no requiere el llenado de un checklist.</p>
+                                                <div className="bg-white rounded border shadow-sm p-4 mb-4">
+                                                    <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
+                                                        <i className="bi bi-clipboard-check me-2 text-primary"></i>
+                                                        Cierre de Servicio General
+                                                    </h5>
+                                                    
+                                                    <div className="alert alert-light border d-flex align-items-center mb-4">
+                                                        <i className="bi bi-info-circle-fill fs-4 me-3 text-secondary"></i>
+                                                        <span className="small text-muted">Este trabajo no requiere pauta paso a paso. Adjunte evidencias, comente y firme para finalizar.</span>
+                                                    </div>
+
+                                                    <div className="mb-4">
+                                                        <label className="form-label fw-bold text-muted small text-uppercase">1. Detalles del Trabajo Realizado</label>
+                                                        <textarea 
+                                                            className="form-control bg-light" 
+                                                            rows="4" 
+                                                            placeholder="Describa aquí lo que se reparó, cambió o solucionó..."
+                                                            value={datosEnvio.comentarios || ''}
+                                                            onChange={(e) => setDatosEnvio({ ...datosEnvio, comentarios: e.target.value })}
+                                                        ></textarea>
+                                                    </div>
+
+                                                    <div className="mb-4">
+                                                        <label className="form-label fw-bold text-muted small text-uppercase">2. Evidencia (Fotos / Videos)</label>
+                                                        <input 
+                                                            type="file" 
+                                                            className="form-control mb-2" 
+                                                            accept="image/*,video/*" 
+                                                            capture="environment" 
+                                                            multiple 
+                                                            onChange={handleFileChange} 
+                                                        />
+                                                        {datosEnvio.archivos && datosEnvio.archivos.length > 0 && (
+                                                            <div className="d-flex flex-wrap gap-2 mt-2">
+                                                                {datosEnvio.archivos.map((file, idx) => (
+                                                                    <span key={idx} className="badge bg-secondary d-flex align-items-center gap-2 p-2">
+                                                                        <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i> 
+                                                                        {file.name.substring(0,10)}... 
+                                                                        <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-2" 
+                                                                           onClick={() => setDatosEnvio(prev => ({...prev, archivos: prev.archivos.filter((_, i) => i !== idx)}))}></i>
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        <small className="text-muted d-block mt-1"><i className="bi bi-arrows-collapse me-1"></i>Las imágenes se comprimirán automáticamente un 70%.</small>
+                                                    </div>
+
+                                                    <div className="mb-2">
+                                                        <div className="d-flex justify-content-between align-items-end mb-2">
+                                                            <label className="form-label fw-bold text-muted small text-uppercase mb-0">3. Firma de Conformidad</label>
+                                                            <button type="button" className="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onClick={() => {
+                                                                sigCanvas.current?.clear();
+                                                                setDatosEnvio({ ...datosEnvio, firma: null });
+                                                            }}>
+                                                                <i className="bi bi-eraser me-1"></i>Limpiar
+                                                            </button>
+                                                        </div>
+                                                        <div className="border border-2 border-primary border-opacity-25 bg-white rounded-3 shadow-sm overflow-hidden" style={{ height: '200px' }}>
+                                                            <SignatureCanvas 
+                                                                ref={sigCanvas}
+                                                                canvasProps={{ className: 'w-100 h-100' }}
+                                                                onEnd={() => setDatosEnvio({ ...datosEnvio, firma: sigCanvas.current.getTrimmedCanvas().toDataURL('image/png') })}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* PESTAÑA 3: MATERIALES */}
                                         <div className={activeTab === 'materiales' ? 'd-block' : 'd-none'}>
                                             <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
                                                 <i className="bi bi-box-seam me-2 text-primary"></i>

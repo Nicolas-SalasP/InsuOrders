@@ -18,6 +18,7 @@ class MisMantencionesRepository
     {
         $sql = "SELECT DISTINCT ot.id, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
                 ot.estado_id, e.nombre as estado,
+                ot.imagen_url, ot.ubicacion,
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
                 a.plantilla_json,
@@ -36,11 +37,12 @@ class MisMantencionesRepository
         $stmt->execute([':uid' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    // --- MÉTODO OPTIMIZADO PARA JEFE / ADMIN ---
+
     public function getAllOtsWithAsignados()
     {
         $sql = "SELECT ot.id, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
                 ot.estado_id, e.nombre as estado,
+                ot.imagen_url, ot.ubicacion,
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
                 a.plantilla_json,
@@ -111,11 +113,12 @@ class MisMantencionesRepository
         }
     }
 
-    public function guardarCierre($otId, $firmaBase64, $comentarios)
+    public function guardarCierre($otId, $firmaBase64, $comentarios, $evidenciaStr = null)
     {
         $sql = "UPDATE solicitudes_ot SET 
             firma_tecnico = :firma, 
             comentarios_finales = :com,
+            evidencia_cierre = :evi,
             estado_id = 5, 
             fecha_cierre = NOW() 
             WHERE id = :id";
@@ -123,6 +126,7 @@ class MisMantencionesRepository
         $this->db->prepare($sql)->execute([
             ':firma' => $firmaBase64,
             ':com' => $comentarios,
+            ':evi' => $evidenciaStr,
             ':id' => $otId
         ]);
     }
