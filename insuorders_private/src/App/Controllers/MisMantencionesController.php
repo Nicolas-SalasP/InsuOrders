@@ -120,4 +120,28 @@ public function guardar()
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
+
+    public function actualizarEstadoManual()
+    {
+        try {
+            AuthMiddleware::hasPermission('ope_mant');
+            $input = json_decode(file_get_contents("php://input"), true);
+            
+            $otId = $input['ot_id'] ?? null;
+            $nuevoEstadoId = $input['estado_id'] ?? null;
+
+            if (!$otId || !$nuevoEstadoId) throw new Exception("Datos incompletos.");
+            
+            if ((int)$nuevoEstadoId === 5) {
+                throw new Exception("Para finalizar la orden debe utilizar el proceso de firma.");
+            }
+
+            $this->service->actualizarEstadoOT($otId, $nuevoEstadoId);
+
+            echo json_encode(["success" => true, "message" => "Estado actualizado"]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
 }

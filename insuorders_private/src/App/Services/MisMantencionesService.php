@@ -92,4 +92,12 @@ class MisMantencionesService
             throw new Exception("ID de OT no válido para iniciar trabajo.");
         return $this->repository->iniciarTrabajoEnOrden($otId);
     }
+
+    public function actualizarEstadoOT($otId, $estadoId)
+    {
+        if (empty($otId) || empty($estadoId)) {
+            throw new Exception("ID de OT y Estado son obligatorios.");
+        }
+        return $this->repository->actualizarEstadoOT($otId, $estadoId);
+    }
 }

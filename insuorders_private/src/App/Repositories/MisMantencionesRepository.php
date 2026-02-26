@@ -220,6 +220,16 @@ class MisMantencionesRepository
         }
     }
 
+    public function actualizarEstadoOT($otId, $estadoId)
+    {
+        $sql = "UPDATE solicitudes_ot SET estado_id = :estado WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            ':estado' => $estadoId,
+            ':id' => $otId
+        ]);
+    }
+
     public function iniciarTrabajoEnOrden($otId)
     {
         $stmt = $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = ? AND estado_id IN (1, 4)");
