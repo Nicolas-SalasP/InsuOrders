@@ -11,7 +11,9 @@ const MisInsumos = () => {
     const [consumo, setConsumo] = useState({}); 
     const [busqueda, setBusqueda] = useState('');
     
-    // Modales
+    // --- ESTADO NUEVO: SELECCIÓN MÚLTIPLE ---
+    const [seleccionados, setSeleccionados] = useState([]);
+    
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, action: null, title: '', message: '' });
 
@@ -24,6 +26,7 @@ const MisInsumos = () => {
                         pendientes: Array.isArray(res.data.data.pendientes) ? res.data.data.pendientes : [],
                         inventario: Array.isArray(res.data.data.inventario) ? res.data.data.inventario : []
                     });
+                    setSeleccionados([]); // Limpiamos selección al recargar
                 } else {
                     setData({ pendientes: [], inventario: [] });
                 }
@@ -37,7 +40,19 @@ const MisInsumos = () => {
 
     useEffect(() => { cargarDatos(); }, []);
 
-    // --- LÓGICA DE AGRUPACIÓN Y SUMA DE STOCK ---
+    // --- FUNCIONES SELECCIÓN MASIVA ---
+    const toggleSeleccion = (id) => {
+        setSeleccionados(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+    };
+
+    const toggleAll = () => {
+        if (seleccionados.length === data.pendientes.length) {
+            setSeleccionados([]);
+        } else {
+            setSeleccionados(data.pendientes.map(p => p.id));
+        }
+    };
+
     const agruparPorSku = (items) => {
         const agrupados = {};
         
@@ -55,9 +70,7 @@ const MisInsumos = () => {
             agrupados[key].saldo_total += parseFloat(item.saldo_actual);
             agrupados[key].entregas.push(item);
             
-            // CORRECCIÓN: Pasamos todo a minúsculas para que no falle la búsqueda de la palabra
             if (item.observacion && item.observacion.toLowerCase().includes('rechazad')) {
-                // Limpiamos el texto genérico para mostrar solo el motivo real
                 let motivoLimpio = item.observacion.split('Motivo:');
                 agrupados[key].observacion_rechazo = motivoLimpio.length > 1 ? motivoLimpio[1].trim() : item.observacion;
             }
@@ -66,20 +79,28 @@ const MisInsumos = () => {
         return Object.values(agrupados);
     };
 
-    // --- ACCIONES (Aceptar/Rechazar entrega de bodega) ---
-    const iniciarRespuesta = (entregaId, accion) => {
+    // --- ACEPTAR / RECHAZAR (SOPORTA ÚNICO O MASIVO) ---
+    const iniciarRespuesta = (entregaIdOrArray, accion) => {
+        const isArray = Array.isArray(entregaIdOrArray);
+        const cantidad = isArray ? entregaIdOrArray.length : 1;
         const texto = accion === 'ACEPTAR' ? 'recibir' : 'rechazar';
+        
         setConfirm({
             show: true,
             title: `Confirmar ${texto}`,
-            message: `¿Estás seguro de que deseas ${texto} esta entrega?`,
-            action: () => procesarRespuesta(entregaId, accion)
+            message: `¿Estás seguro de que deseas ${texto} ${cantidad > 1 ? `los ${cantidad} repuestos seleccionados` : 'esta entrega'}?`,
+            action: () => procesarRespuesta(entregaIdOrArray, accion)
         });
     };
 
-    const procesarRespuesta = async (entregaId, accion) => {
+    const procesarRespuesta = async (entregaIdOrArray, accion) => {
         try {
-            await api.post('/operario/responder', { entrega_id: entregaId, accion });
+            // Evaluamos si el frontend mandó array (entregas_ids) o un solo item (entrega_id)
+            const payload = Array.isArray(entregaIdOrArray) 
+                ? { entregas_ids: entregaIdOrArray, accion }
+                : { entrega_id: entregaIdOrArray, accion };
+
+            await api.post('/operario/responder', payload);
             setMsg({ show: true, title: "Éxito", text: "Respuesta registrada correctamente.", type: "success" });
             cargarDatos();
         } catch (error) {
@@ -89,9 +110,8 @@ const MisInsumos = () => {
         }
     };
 
-    // --- ACCIONES DE STOCK (Devolver) ---
+    // --- DEVOLVER STOCK ---
     const iniciarDevolucion = (itemAgrupado) => { 
-        // CORRECCIÓN: Parseamos como Entero (Base 10) en lugar de Float
         const cantInput = parseInt(consumo[itemAgrupado.insumo_id], 10);
         
         if (!cantInput || cantInput <= 0 || isNaN(cantInput)) {
@@ -133,7 +153,6 @@ const MisInsumos = () => {
         }
     };
 
-    // --- AGRUPACIÓN POR OT ---
     const inventarioAgrupado = data.inventario.reduce((acc, item) => {
         const key = item.ot_id ? `OT #${item.ot_id}` : 'Material General / EPP';
         if (!acc[key]) acc[key] = [];
@@ -170,41 +189,91 @@ const MisInsumos = () => {
                 </div>
             </div>
 
+            {/* SECCIÓN PENDIENTES CON ACCIÓN MASIVA */}
             {data.pendientes.length > 0 && (
                 <div className="mb-5 animate__animated animate__fadeIn">
-                    <div className="alert alert-warning border-warning shadow-sm mb-3 d-flex justify-content-between align-items-center">
-                        <span className="fw-bold"><i className="bi bi-bell-fill me-2"></i> Tienes entregas de bodega por confirmar</span>
-                        <span className="badge bg-dark">{data.pendientes.length}</span>
+                    <div className="alert alert-warning border-warning shadow-sm mb-3">
+                        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                            <div>
+                                <span className="fw-bold d-block"><i className="bi bi-bell-fill me-2"></i> Tienes entregas de bodega por confirmar ({data.pendientes.length})</span>
+                                <div className="form-check mt-1">
+                                    <input 
+                                        className="form-check-input" 
+                                        type="checkbox" 
+                                        id="selectAll"
+                                        checked={seleccionados.length === data.pendientes.length && data.pendientes.length > 0} 
+                                        onChange={toggleAll} 
+                                        style={{cursor: 'pointer'}}
+                                    />
+                                    <label className="form-check-label fw-bold text-dark user-select-none" htmlFor="selectAll" style={{cursor: 'pointer'}}>
+                                        Seleccionar Todos
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            {/* BOTONES MASIVOS APARECEN AL SELECCIONAR */}
+                            {seleccionados.length > 0 && (
+                                <div className="d-flex gap-2 bg-white p-2 rounded shadow-sm border">
+                                    <button className="btn btn-success btn-sm fw-bold" onClick={() => iniciarRespuesta(seleccionados, 'ACEPTAR')}>
+                                        <i className="bi bi-check-all me-1"></i> Aceptar Selec. ({seleccionados.length})
+                                    </button>
+                                    <button className="btn btn-outline-danger btn-sm bg-white" onClick={() => iniciarRespuesta(seleccionados, 'RECHAZAR')}>
+                                        <i className="bi bi-x-lg me-1"></i> Rechazar Selec.
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
+                    
                     <div className="row g-3">
-                        {data.pendientes.map(p => (
-                            <div key={p.id} className="col-12 col-md-6 col-lg-4">
-                                <div className="card border-warning border-start border-4 shadow-sm h-100">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between mb-2">
-                                            <small className="text-muted">{new Date(p.fecha_entrega).toLocaleDateString()}</small>
-                                            <span className="badge bg-warning text-dark">Por Confirmar</span>
-                                        </div>
-                                        <h6 className="fw-bold mb-1 text-truncate">{p.insumo}</h6>
-                                        <div className="text-muted small mb-3">Bodeguero: {p.bodeguero_nombre}</div>
-                                        
-                                        <div className="d-flex justify-content-between align-items-center bg-light p-2 rounded mb-3">
-                                            <span className="small fw-bold text-uppercase">Recibido:</span>
-                                            <span className="fs-5 fw-bold text-dark">{parseInt(p.cantidad_entregada, 10)} {p.unidad_medida}</span>
-                                        </div>
+                        {data.pendientes.map(p => {
+                            const isSelected = seleccionados.includes(p.id);
+                            return (
+                                <div key={p.id} className="col-12 col-md-6 col-lg-4">
+                                    <div 
+                                        className={`card border-start border-4 shadow-sm h-100 ${isSelected ? 'border-primary bg-primary bg-opacity-10' : 'border-warning bg-white'}`}
+                                        onClick={() => toggleSeleccion(p.id)}
+                                        style={{ cursor: 'pointer', transition: 'all 0.2s ease-in-out' }}
+                                    >
+                                        <div className="card-body">
+                                            <div className="d-flex justify-content-between align-items-start mb-2">
+                                                <div className="form-check" onClick={e => e.stopPropagation()}>
+                                                    <input 
+                                                        className="form-check-input fs-5 mt-0" 
+                                                        type="checkbox" 
+                                                        checked={isSelected} 
+                                                        onChange={() => toggleSeleccion(p.id)} 
+                                                        style={{cursor: 'pointer'}}
+                                                    />
+                                                </div>
+                                                <div className="text-end">
+                                                    <span className="badge bg-warning text-dark mb-1">Por Confirmar</span>
+                                                    <div className="small text-muted" style={{fontSize:'0.7rem'}}>{new Date(p.fecha_entrega).toLocaleDateString()}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <h6 className="fw-bold mb-1 text-truncate" title={p.insumo}>{p.insumo}</h6>
+                                            <div className="text-muted small mb-3"><i className="bi bi-person-fill me-1"></i>De: {p.bodeguero_nombre}</div>
+                                            
+                                            <div className={`d-flex justify-content-between align-items-center p-2 rounded mb-3 border ${isSelected ? 'bg-white' : 'bg-light'}`}>
+                                                <span className="small fw-bold text-uppercase">Recibido:</span>
+                                                <span className="fs-5 fw-bold text-dark">{parseInt(p.cantidad_entregada, 10)} {p.unidad_medida}</span>
+                                            </div>
 
-                                        <div className="d-flex gap-2">
-                                            <button className="btn btn-success flex-grow-1 fw-bold btn-sm" onClick={() => iniciarRespuesta(p.id, 'ACEPTAR')}>
-                                                <i className="bi bi-check-lg me-1"></i> Aceptar
-                                            </button>
-                                            <button className="btn btn-outline-danger flex-grow-1 btn-sm" onClick={() => iniciarRespuesta(p.id, 'RECHAZAR')}>
-                                                <i className="bi bi-x-lg me-1"></i> Rechazar
-                                            </button>
+                                            {/* Evitar que dar clic en los botones individuales active el check de la tarjeta */}
+                                            <div className="d-flex gap-2" onClick={e => e.stopPropagation()}>
+                                                <button className="btn btn-success flex-grow-1 fw-bold btn-sm" onClick={() => iniciarRespuesta([p.id], 'ACEPTAR')}>
+                                                    <i className="bi bi-check-lg me-1"></i> Aceptar
+                                                </button>
+                                                <button className="btn btn-outline-danger bg-white flex-grow-1 btn-sm" onClick={() => iniciarRespuesta([p.id], 'RECHAZAR')}>
+                                                    <i className="bi bi-x-lg me-1"></i> Rechazar
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -256,7 +325,6 @@ const MisInsumos = () => {
                                                     {i.insumo}
                                                 </h6>
                                                 
-                                                {/* CORRECCIÓN: ALERTA DE RECHAZO CLARA Y FORMATEADA */}
                                                 <div className="flex-grow-1">
                                                     {i.observacion_rechazo && (
                                                         <div className="alert alert-danger p-2 small mt-2 mb-2 d-flex flex-column" style={{fontSize: '0.75rem'}}>
@@ -270,7 +338,6 @@ const MisInsumos = () => {
 
                                                 <div className="mt-auto pt-3 border-top">
                                                     <div className="input-group mb-2 input-group-sm">
-                                                        {/* CORRECCIÓN: INPUT BLOQUEADO PARA ENTEROS */}
                                                         <input 
                                                             type="number" 
                                                             className="form-control text-center fw-bold" 
@@ -280,13 +347,11 @@ const MisInsumos = () => {
                                                             max={parseInt(i.saldo_total, 10)}
                                                             value={consumo[i.insumo_id] || ''}
                                                             onKeyDown={(e) => {
-                                                                // Bloquear coma y punto en el teclado
                                                                 if (e.key === '.' || e.key === ',') {
                                                                     e.preventDefault();
                                                                 }
                                                             }}
                                                             onChange={e => {
-                                                                // Limpiar cualquier cosa que no sea un número (ej. si pegan un texto)
                                                                 const val = e.target.value.replace(/\D/g, '');
                                                                 setConsumo({...consumo, [i.insumo_id]: val});
                                                             }}
@@ -295,7 +360,7 @@ const MisInsumos = () => {
                                                     </div>
                                                     
                                                     <button 
-                                                        className="btn btn-sm btn-outline-danger w-100" 
+                                                        className="btn btn-sm btn-outline-danger w-100 fw-bold" 
                                                         onClick={() => iniciarDevolucion(i)}
                                                         disabled={!consumo[i.insumo_id]}
                                                     >

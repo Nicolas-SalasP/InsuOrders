@@ -47,15 +47,11 @@ class OperarioRepository
             foreach ($ubicaciones as $ubicacion) {
                 if ($porDescontar <= 0)
                     break;
-
                 $disponible = floatval($ubicacion['cantidad']);
                 $aDescontar = min($disponible, $porDescontar);
 
                 $sqlUpdate = "UPDATE insumo_stock_ubicacion SET cantidad = cantidad - :cant WHERE id = :id";
-                $this->db->prepare($sqlUpdate)->execute([
-                    ':cant' => $aDescontar,
-                    ':id' => $ubicacion['id']
-                ]);
+                $this->db->prepare($sqlUpdate)->execute([':cant' => $aDescontar, ':id' => $ubicacion['id']]);
 
                 $porDescontar -= $aDescontar;
                 $ubicacionRef = $ubicacion['ubicacion_id'];
@@ -66,9 +62,16 @@ class OperarioRepository
             $empleado = $stmtEmp->fetch(PDO::FETCH_ASSOC);
 
             if (!$empleado) {
-                throw new Exception("El empleado seleccionado no existe.");
+                $stmtEmp = $this->db->prepare("SELECT id, nombre_completo, usuario_id FROM empleados WHERE usuario_id = :uid");
+                $stmtEmp->execute([':uid' => $empleadoId]);
+                $empleado = $stmtEmp->fetch(PDO::FETCH_ASSOC);
             }
 
+            if (!$empleado) {
+                throw new Exception("El empleado/usuario seleccionado no existe en el sistema.");
+            }
+
+            $empleadoIdDb = $empleado['id'];
             $usuarioOperarioId = $empleado['usuario_id'];
             $receptorExterno = null;
             $fechaAceptacion = null;
@@ -96,7 +99,7 @@ class OperarioRepository
                 ':uid' => $bodegueroId,
                 ':obs' => substr($obsKardex, 0, 255),
                 ':ubi' => $ubicacionRef,
-                ':emp' => $empleadoId,
+                ':emp' => $empleadoIdDb,
                 ':env' => $ubicacionEnvioId
             ]);
 
@@ -133,6 +136,12 @@ class OperarioRepository
             $stmtEmp->execute([':eid' => $datos['empleado_id']]);
             $empleado = $stmtEmp->fetch(PDO::FETCH_ASSOC);
 
+            if (!$empleado) {
+                $stmtEmp = $this->db->prepare("SELECT id, nombre_completo, usuario_id FROM empleados WHERE usuario_id = :uid");
+                $stmtEmp->execute([':uid' => $datos['empleado_id']]);
+                $empleado = $stmtEmp->fetch(PDO::FETCH_ASSOC);
+            }
+
             if (!$empleado)
                 return false;
 
@@ -141,9 +150,9 @@ class OperarioRepository
             $fechaAceptacion = null;
 
             if (!empty($usuarioOperarioId)) {
-                $estadoId = 1;
+                $estadoId = 1; // PENDIENTE DE ACEPTACIÓN
             } else {
-                $estadoId = 2;
+                $estadoId = 2; // AUTO ACEPTADO
                 $receptorExterno = $empleado['nombre_completo'];
                 $fechaAceptacion = date('Y-m-d H:i:s');
             }
@@ -386,5 +395,69 @@ class OperarioRepository
             ':ot' => $datos['ot_id'],
             ':bod' => $datos['bodeguero_id']
         ]);
+    }
+
+    public function gestionarRecepcionMasiva($entregasIds, $accion, $observacion = null)
+    {
+        try {
+            $this->db->beginTransaction();
+
+            foreach ($entregasIds as $entregaId) {
+                $stmt = $this->db->prepare("SELECT * FROM entregas_personal WHERE id = :id FOR UPDATE");
+                $stmt->execute([':id' => $entregaId]);
+                $entrega = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$entrega) continue;
+
+                if ($accion === 'RECHAZAR') {
+                    $nuevoEstado = 4;
+                    $cantidad = floatval($entrega['cantidad_entregada']);
+                    $bodegaId = 1;
+
+                    $sqlUpd = "UPDATE entregas_personal 
+                        SET estado_id = :est, fecha_aceptacion = NOW(), observacion_rechazo = :obs,
+                            cantidad_utilizada = 0 
+                        WHERE id = :id";
+                    $this->db->prepare($sqlUpd)->execute([
+                        ':est' => $nuevoEstado,
+                        ':obs' => $observacion ?? 'Rechazo Masivo por Operario',
+                        ':id' => $entregaId
+                    ]);
+
+                    $sqlRestock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
+                            VALUES (:iid, :uid, :cant) 
+                            ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
+
+                    $this->db->prepare($sqlRestock)->execute([
+                        ':iid' => $entrega['insumo_id'],
+                        ':uid' => $bodegaId,
+                        ':cant' => $cantidad,
+                        ':cant_upd' => $cantidad
+                    ]);
+
+                    $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
+                        VALUES (:iid, 1, :cant, :uid, 'Devuelto por Rechazo Masivo', :ubi, NOW())";
+                    $this->db->prepare($sqlMov)->execute([
+                        ':iid' => $entrega['insumo_id'],
+                        ':cant' => $cantidad,
+                        ':uid' => $entrega['usuario_operario_id'],
+                        ':ubi' => $bodegaId
+                    ]);
+
+                } else {
+                    $nuevoEstado = 2;
+                    $sqlUpd = "UPDATE entregas_personal SET estado_id = :est, fecha_aceptacion = NOW() WHERE id = :id";
+                    $this->db->prepare($sqlUpd)->execute([':est' => $nuevoEstado, ':id' => $entregaId]);
+                }
+            }
+
+            $this->db->commit();
+            return true;
+
+        } catch (Exception $e) {
+            if ($this->db->inTransaction())
+                $this->db->rollBack();
+            throw $e;
+        }
     }
 }

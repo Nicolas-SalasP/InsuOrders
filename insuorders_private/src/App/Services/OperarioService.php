@@ -30,9 +30,17 @@ class OperarioService
 
     public function responderEntrega($data)
     {
-        if (empty($data['entrega_id']) || empty($data['accion'])) {
-            throw new Exception("Datos inválidos.");
+        if (empty($data['entrega_id']) && empty($data['entregas_ids'])) {
+            throw new Exception("Datos inválidos. No se enviaron entregas.");
         }
+        if (empty($data['accion'])) {
+            throw new Exception("Acción no especificada.");
+        }
+
+        if (!empty($data['entregas_ids']) && is_array($data['entregas_ids'])) {
+            return $this->repo->gestionarRecepcionMasiva($data['entregas_ids'], $data['accion'], $data['observacion'] ?? null);
+        }
+
         return $this->repo->gestionarRecepcion($data['entrega_id'], $data['accion'], $data['observacion'] ?? null);
     }
 
