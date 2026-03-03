@@ -6,7 +6,6 @@ import DetalleSolicitudModal from '../components/DetalleSolicitudModal';
 import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
 
-// --- ESTILOS PARPADEO ---
 const blinkStyle = `
 @keyframes blink-animation {
   0% { opacity: 1; }
@@ -31,12 +30,12 @@ const Mantencion = () => {
     const [confirmAnular, setConfirmAnular] = useState({ show: false, id: null });
     const [confirmFinish, setConfirmFinish] = useState({ show: false, id: null });
 
-    // --- LÓGICA DE MENÚ FLOTANTE ---
     const [openMenuId, setOpenMenuId] = useState(null);
-    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 }); // Coordenadas del menú
+    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 }); 
 
     const [filtroOT, setFiltroOT] = useState('');
     const [filtroMaquina, setFiltroMaquina] = useState('');
+    const [filtroUbicacion, setFiltroUbicacion] = useState(''); // NUEVO: Filtro de ubicación
     const [filtroEstado, setFiltroEstado] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
 
@@ -45,19 +44,21 @@ const Mantencion = () => {
     const [listaInsumos, setListaInsumos] = useState([]);
     const [sugerencias, setSugerencias] = useState([]);
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+    
+    const [filtroSinTecnico, setFiltroSinTecnico] = useState(false);
+    const [ordenOTAsc, setOrdenOTAsc] = useState(false);
+
     const wrapperRef = useRef(null);
 
     useEffect(() => {
         cargarListaInsumos();
 
-        // Cerrar menú al hacer scroll o click fuera
         const handleGlobalClick = (event) => {
-            // Si el click no fue en el botón del menú ni en el menú mismo, cerramos
             if (!event.target.closest('.menu-trigger-btn') && !event.target.closest('.dropdown-menu-fixed')) {
                 setOpenMenuId(null);
             }
         };
-        const handleScroll = () => setOpenMenuId(null); // Cerrar al scrollear para evitar desajuste visual
+        const handleScroll = () => setOpenMenuId(null); 
 
         document.addEventListener('mousedown', handleGlobalClick);
         window.addEventListener('scroll', handleScroll, true);
@@ -172,20 +173,16 @@ const Mantencion = () => {
         }
     };
 
-    // --- NUEVO: Manejo del menú flotante ---
     const toggleMenu = (id, event) => {
-        event.stopPropagation(); // Evitar que el click se propague
-        event.preventDefault(); // Prevenir comportamientos por defecto
+        event.stopPropagation(); 
+        event.preventDefault(); 
 
         if (openMenuId === id) {
             setOpenMenuId(null);
         } else {
-            // Calcular posición basada en el botón clickeado
             const rect = event.currentTarget.getBoundingClientRect();
-            // Ajustamos la posición: Debajo del botón y alineado a la derecha del mismo
             const top = rect.bottom + window.scrollY + 2;
-            const left = (rect.left + window.scrollX) - 130; // Restamos ancho aprox del menú para alinear a la derecha
-
+            const left = (rect.left + window.scrollX) - 130; 
             setMenuPos({ top, left });
             setOpenMenuId(id);
         }
@@ -251,11 +248,14 @@ const Mantencion = () => {
     const limpiarFiltros = () => {
         setFiltroOT('');
         setFiltroMaquina('');
+        setFiltroUbicacion(''); // Limpiar nueva ubicación
         setFiltroEstado('');
         setFiltroFecha('');
         setFiltroInsumo('');
         setBusquedaInsumo('');
         setMostrarSugerencias(false);
+        setFiltroSinTecnico(false);
+        setOrdenOTAsc(false);
         cargarSolicitudes();
     };
 
@@ -267,35 +267,66 @@ const Mantencion = () => {
         return 'bg-secondary';
     };
 
-    // Helper robusto para detectar crítico
     const isCritico = (prio) => {
         if (!prio) return false;
         const p = prio.toString().toUpperCase().trim();
-        return p === 'CRITICO' || p === 'CRÍTICO';
+        return p === 'CRITICO' || p === 'CRÍTICO' || p === 'CRITICA' || p === 'CRÍTICA';
+    };
+
+    const getPrioridadValor = (prio) => {
+        if (!prio) return 6;
+        const p = prio.toString().toUpperCase().trim();
+        
+        if (p === 'CRITICO' || p === 'CRÍTICO' || p === 'CRITICA' || p === 'CRÍTICA') return 1;
+        if (p === 'URGENTE') return 2;
+        if (p === 'ALTA' || p === 'ALTO') return 3;
+        if (p === 'MEDIA' || p === 'MEDIO') return 4;
+        if (p === 'BAJA' || p === 'BAJO') return 5;
+        
+        return 6;
     };
 
     const getPriorityBadge = (prio) => {
         if (isCritico(prio)) {
             return <span className="badge bg-danger blink-badge border border-white shadow-sm">CRÍTICO 🚨</span>;
         }
-        switch (prio) {
-            case 'BAJA': return <span className="badge bg-secondary">Baja</span>;
-            case 'MEDIA': return <span className="badge bg-info text-dark">Media</span>;
-            case 'ALTA': return <span className="badge bg-warning text-dark">Alta</span>;
-            case 'URGENTE': return <span className="badge bg-danger">Urgente</span>;
-            default: return <span className="badge bg-light text-dark">{prio}</span>;
-        }
+        
+        const p = prio ? prio.toString().toUpperCase().trim() : '';
+
+        if (p === 'BAJA' || p === 'BAJO') return <span className="badge bg-secondary">Baja</span>;
+        if (p === 'MEDIA' || p === 'MEDIO') return <span className="badge bg-info text-dark">Media</span>;
+        if (p === 'ALTA' || p === 'ALTO') return <span className="badge bg-warning text-dark">Alta</span>;
+        if (p === 'URGENTE') return <span className="badge bg-danger">Urgente</span>;
+        
+        return <span className="badge bg-light text-dark border">{prio || 'No def.'}</span>;
     };
 
     const solicitudesFiltradas = solicitudes.filter(s => {
         const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
         const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
         const matchMaquina = !filtroMaquina || maquinaStr.toLowerCase().includes(filtroMaquina.toLowerCase());
+        
+        // Aplicando el filtro de Ubicación
+        const matchUbicacion = !filtroUbicacion || (s.ubicacion && s.ubicacion.toLowerCase().includes(filtroUbicacion.toLowerCase()));
+        
         const matchEstado = !filtroEstado || s.estado === filtroEstado;
         const fechaOT = s.fecha_solicitud ? s.fecha_solicitud.split(' ')[0] : '';
         const matchFecha = !filtroFecha || fechaOT === filtroFecha;
+        const matchSinTecnico = !filtroSinTecnico || !s.asignados_nombres;
 
-        return matchOT && matchMaquina && matchEstado && matchFecha;
+        return matchOT && matchMaquina && matchUbicacion && matchEstado && matchFecha && matchSinTecnico;
+    }).sort((a, b) => {
+        if (ordenOTAsc) {
+            return parseInt(a.id) - parseInt(b.id); 
+        }
+        const prioA = getPrioridadValor(a.prioridad);
+        const prioB = getPrioridadValor(b.prioridad);
+        
+        if (prioA !== prioB) {
+            return prioA - prioB;
+        }
+        
+        return parseInt(b.id) - parseInt(a.id);
     });
 
     return (
@@ -332,7 +363,6 @@ const Mantencion = () => {
             />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                {/* HEADERS Y FILTROS (Sin cambios mayores, solo mantenidos) */}
                 <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
@@ -359,10 +389,16 @@ const Mantencion = () => {
                         <div className="col-md-2">
                             <input type="text" className="form-control" placeholder="# OT" value={filtroOT} onChange={e => setFiltroOT(e.target.value)} />
                         </div>
-                        <div className="col-md-3">
-                            <input type="text" className="form-control" placeholder="Buscar Máquina..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
+                        <div className="col-md-2">
+                            <input type="text" className="form-control" placeholder="Máquina/Activo..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
                         </div>
-                        <div className="col-md-3 position-relative" ref={wrapperRef}>
+                        
+                        {/* NUEVO CAMPO: Filtro por Ubicación */}
+                        <div className="col-md-2">
+                            <input type="text" className="form-control" placeholder="Ubicación (ej: HOR)..." value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)} />
+                        </div>
+
+                        <div className="col-md-2 position-relative" ref={wrapperRef}>
                             <div className="input-group">
                                 <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-primary'}`}>
                                     <i className="bi bi-box-seam"></i>
@@ -370,7 +406,7 @@ const Mantencion = () => {
                                 <input
                                     type="text"
                                     className="form-control border-start-0 ps-0"
-                                    placeholder="Filtrar por insumo..."
+                                    placeholder="Insumo..."
                                     value={busquedaInsumo}
                                     onChange={(e) => {
                                         setBusquedaInsumo(e.target.value);
@@ -406,11 +442,30 @@ const Mantencion = () => {
                             </select>
                         </div>
                         <div className="col-md-2 text-end">
-                            {(filtroOT || filtroMaquina || filtroEstado || filtroFecha || filtroInsumo) && (
+                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado || filtroFecha || filtroInsumo || filtroSinTecnico || ordenOTAsc) && (
                                 <button className="btn btn-outline-secondary w-100" onClick={limpiarFiltros}>
                                     <i className="bi bi-x-lg me-1"></i> Limpiar
                                 </button>
                             )}
+                        </div>
+                    </div>
+                    <div className="row mt-2">
+                        <div className="col-12 d-flex flex-wrap gap-2">
+                            <button 
+                                className={`btn btn-sm shadow-sm ${filtroSinTecnico ? 'btn-danger text-white border-danger' : 'btn-outline-secondary bg-white'}`}
+                                onClick={() => setFiltroSinTecnico(!filtroSinTecnico)}
+                            >
+                                <i className="bi bi-person-x-fill me-2"></i>
+                                {filtroSinTecnico ? 'Mostrando: Sin Técnico Asignado' : 'Filtrar: Sin Técnico'}
+                            </button>
+                            
+                            <button 
+                                className={`btn btn-sm shadow-sm ${ordenOTAsc ? 'btn-primary text-white border-primary' : 'btn-outline-secondary bg-white'}`}
+                                onClick={() => setOrdenOTAsc(!ordenOTAsc)}
+                            >
+                                <i className={`bi ${ordenOTAsc ? 'bi-sort-numeric-down' : 'bi-sort-down-alt'} me-2`}></i> 
+                                {ordenOTAsc ? 'Orden: N° OT (Menor a Mayor)' : 'Orden: Prioridad y Recientes'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -439,7 +494,6 @@ const Mantencion = () => {
                                 {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => {
                                     const critico = isCritico(s.prioridad);
 
-                                    // ESTILOS FORZADOS PARA FILAS CRÍTICAS
                                     const rowStyle = critico ? {
                                         '--bs-table-bg': '#ffe6e6',
                                         '--bs-table-accent-bg': '#ffe6e6',
@@ -456,13 +510,24 @@ const Mantencion = () => {
                                             <td className="ps-4 fw-bold">#{s.id}</td>
                                             <td>
                                                 <div className="fw-bold text-dark">{s.activo || 'General'}</div>
-                                                {s.activo_codigo && <small className="text-muted">{s.activo_codigo}</small>}
+                                                {s.activo_codigo && <small className="text-muted d-block">{s.activo_codigo}</small>}
+                                                {/* VISUALIZAR LA UBICACIÓN */}
+                                                {s.ubicacion && <span className="badge bg-light text-secondary border mt-1"><i className="bi bi-geo-alt me-1"></i>{s.ubicacion}</span>}
                                             </td>
                                             <td>
                                                 <div className="fw-bold text-dark">{s.titulo || ''}</div>
                                                 <small className="text-muted text-truncate d-block" style={{ maxWidth: '200px' }}>{s.descripcion_trabajo || '-'}</small>
                                             </td>
-                                            <td>{s.solicitante_nombre} {s.solicitante_apellido}</td>
+                                            <td>
+                                                <div className="text-dark">{s.solicitante_nombre} {s.solicitante_apellido}</div>
+                                                <div className="small mt-1 text-truncate" style={{maxWidth: '150px'}}>
+                                                    {s.asignados_nombres ? (
+                                                        <span className="text-primary"><i className="bi bi-tools me-1"></i>{s.asignados_nombres}</span>
+                                                    ) : (
+                                                        <span className="text-danger fw-medium"><i className="bi bi-exclamation-circle me-1"></i>Sin Asignar</span>
+                                                    )}
+                                                </div>
+                                            </td>
                                             <td>{new Date(s.fecha_solicitud).toLocaleDateString()}</td>
                                             <td>{getPriorityBadge(s.prioridad)}</td>
                                             <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
@@ -483,8 +548,6 @@ const Mantencion = () => {
                                                             )}
                                                         </>
                                                     )}
-
-                                                    {/* BOTÓN TRIGGER DEL MENÚ */}
                                                     <button
                                                         className={`btn btn-sm btn-light border menu-trigger-btn ${openMenuId === s.id ? 'active' : ''}`}
                                                         type="button"
@@ -505,19 +568,18 @@ const Mantencion = () => {
                 </div>
             </div>
 
-            {/* MENÚ FLOTANTE (FUERA DE LA TABLA PARA QUE NO SE CORTE) */}
+            {/* MENÚ FLOTANTE */}
             {openMenuId && (
                 <div
                     className="dropdown-menu shadow show border-0 dropdown-menu-fixed"
                     style={{
-                        position: 'fixed', // Clave para evitar el problema del scroll
+                        position: 'fixed', 
                         top: menuPos.top,
                         left: menuPos.left,
-                        zIndex: 9999, // Encima de todo
+                        zIndex: 9999, 
                         minWidth: '160px'
                     }}
                 >
-                    {/* Buscamos la solicitud activa para usar sus datos en el menú */}
                     {(() => {
                         const s = solicitudes.find(sol => sol.id === openMenuId);
                         if (!s) return null;

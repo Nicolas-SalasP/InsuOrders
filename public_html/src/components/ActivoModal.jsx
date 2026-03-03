@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
 import ConfirmModal from './ConfirmModal';
-import { Modal, Button } from 'react-bootstrap';
 
 const BASE_URL = '/api';
 
@@ -23,10 +22,12 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         descripcion: '',
         centro_costo: '',
         frecuencia_mantencion: '',
-        unidad_frecuencia: 'MESES'
+        unidad_frecuencia: 'MESES',
+        activo_padre_id: ''
     });
 
     const [listaCentros, setListaCentros] = useState([]);
+    const [listaActivos, setListaActivos] = useState([]); 
     
     const [mainImage, setMainImage] = useState(null);
     const [mainImagePreview, setMainImagePreview] = useState(null);
@@ -37,32 +38,53 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [zoomLevel, setZoomLevel] = useState(1); 
 
     const [kitItems, setKitItems] = useState([]);
-    const [insumos, setInsumos] = useState([]);
+    const [insumosList, setInsumosList] = useState([]);
+    const [loadingKit, setLoadingKit] = useState(false);
+    
+    // --- ESTADOS PARA BUSCADOR DE INSUMOS ---
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
-    const [sugerenciasInsumo, setSugerenciasInsumo] = useState([]);
-    const [cantidadKit, setCantidadKit] = useState(1);
+    const [insumoSeleccionado, setInsumoSeleccionado] = useState(null);
+    const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+    const wrapperRef = useRef(null);
+
     const [docs, setDocs] = useState([]);
     const [file, setFile] = useState(null);
-    const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
-    const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
+    const [loadingDocs, setLoadingDocs] = useState(false);
+
     const [saving, setSaving] = useState(false);
 
-    const showMessage = (title, message, type = 'error') => {
-        setMsgModal({ show: true, title, message, type });
-    };
+    const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
+    const [confirmModal, setConfirmModal] = useState({ show: false, id: null, action: null, title: '', message: '' });
+
+    // Cerrar buscador de insumos al hacer clic afuera
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+                setMostrarSugerencias(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if (show) {
-            setSaving(false);
-            setMainImage(null);
-            setMainImagePreview(null);
-            setGalleryItems([]);
-            setExistingGallery([]);
-            setZoomLevel(1);
-            setBusquedaInsumo('');
-            setSugerenciasInsumo([]);
+            setTab('general');
+            
+            // 1. Cargar Centros de Costo
+            api.get('/index.php/mantencion/centros-costo').then(res => {
+                if(res.data.success) setListaCentros(res.data.data || []);
+            }).catch(console.error);
+            
+            // 2. CORRECCIÓN: Cargar TODO EL INVENTARIO (No los filtros de compras)
+            api.get('/index.php/inventario').then(res => {
+                if(res.data.success) setInsumosList(res.data.data || []);
+            }).catch(console.error);
 
-            api.get('/index.php/mantencion/centros-costo').then(res => { if (res.data.success) setListaCentros(res.data.data); });
+            // 3. Cargar todos los activos para el selector de Sub-Equipo
+            api.get('/index.php/mantencion/activos').then(res => {
+                if(res.data.success) setListaActivos(res.data.data || []);
+            }).catch(console.error);
 
             if (activo) {
                 setFormData({
@@ -79,358 +101,474 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     descripcion: activo.descripcion || '',
                     centro_costo: activo.centro_costo_id || '',
                     frecuencia_mantencion: activo.frecuencia_mantencion || '',
-                    unidad_frecuencia: activo.unidad_frecuencia || 'MESES'
+                    unidad_frecuencia: activo.unidad_frecuencia || 'MESES',
+                    activo_padre_id: activo.activo_padre_id || '' 
                 });
                 
-                if (activo.imagen_url) {
-                    const url = activo.imagen_url.startsWith('http') ? activo.imagen_url : `${BASE_URL}${activo.imagen_url}`;
-                    setMainImagePreview(url);
+                if (activo.imagen_url || activo.imagen_principal) {
+                    setMainImagePreview(`${BASE_URL}${activo.imagen_url || activo.imagen_principal}`);
+                } else {
+                    setMainImagePreview(null);
                 }
-
+                
+                setMainImage(null);
+                setGalleryItems([]);
+                
                 cargarGaleria(activo.id);
                 cargarKit(activo.id);
                 cargarDocs(activo.id);
             } else {
                 setFormData({
-                    codigo_interno: '', codigo_maquina: '', nombre: '', tipo: '',
-                    marca: '', modelo: '', anio: '', numero_serie: '',
-                    ubicacion: '', estado_activo: 'OPERATIVO', descripcion: '', centro_costo: '',
-                    frecuencia_mantencion: '', unidad_frecuencia: 'MESES'
+                    codigo_interno: '', codigo_maquina: '', nombre: '', tipo: '', marca: '', modelo: '', anio: '',
+                    numero_serie: '', ubicacion: '', estado_activo: 'OPERATIVO', descripcion: '', centro_costo: '',
+                    frecuencia_mantencion: '', unidad_frecuencia: 'MESES', activo_padre_id: ''
                 });
-                setKitItems([]);
-                setDocs([]);
+                setMainImage(null); setMainImagePreview(null); setGalleryItems([]); setExistingGallery([]);
+                setKitItems([]); setDocs([]);
             }
-            api.get('/index.php/inventario').then(res => setInsumos(res.data.data || []));
-            setTab('general');
+            
+            setBusquedaInsumo('');
+            setInsumoSeleccionado(null);
         }
     }, [show, activo]);
 
-    useEffect(() => {
-        if (busquedaInsumo.trim() === '') {
-            setSugerenciasInsumo([]);
-        } else {
-            const term = busquedaInsumo.toLowerCase();
-            const resultados = insumos.filter(insumo => {
-                const nombreMatch = insumo.nombre.toLowerCase().includes(term);
-                const skuMatch = insumo.codigo_sku ? insumo.codigo_sku.toString().toLowerCase().includes(term) : false;
-                return nombreMatch || skuMatch;
-            });
-            setSugerenciasInsumo(resultados.slice(0, 10));
-        }
-    }, [busquedaInsumo, insumos]);
-
     const cargarGaleria = (id) => {
         api.get(`/index.php/mantencion/galeria?id=${id}`)
-            .then(res => { if (res.data.success) setExistingGallery(res.data.data); });
+            .then(res => { if(res.data.success) setExistingGallery(res.data.data || []); })
+            .catch(console.error);
     };
 
-    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-    const handleMainImageChange = (e) => { const file = e.target.files[0]; if (file) { setMainImage(file); setMainImagePreview(URL.createObjectURL(file)); } };
-    const handleAddGalleryItem = (e) => { const file = e.target.files[0]; if (file) { const newItem = { file, preview: URL.createObjectURL(file), tipo: 'General' }; setGalleryItems([...galleryItems, newItem]); } e.target.value = ''; };
-    const handleGalleryTypeChange = (index, newType) => { const updatedItems = [...galleryItems]; updatedItems[index].tipo = newType; setGalleryItems(updatedItems); };
-    const handleRemoveGalleryItem = (index) => { setGalleryItems(galleryItems.filter((_, i) => i !== index)); };
-
-    const solicitarEliminarImagen = (imgId) => {
-        setConfirm({
-            show: true,
-            title: "Eliminar Imagen",
-            message: "¿Estás seguro de que deseas eliminar esta imagen de la galería permanentemente?",
-            action: async () => {
-                try {
-                    await api.delete(`/index.php/mantencion/imagen?id=${imgId}`);
-                    showMessage("Éxito", "Imagen eliminada", "success");
-                    cargarGaleria(activo.id); 
-                } catch (error) {
-                    showMessage("Error", "No se pudo eliminar la imagen", "error");
-                }
-            }
-        });
+    const cargarKit = (id) => {
+        setLoadingKit(true);
+        api.get(`/index.php/mantencion/kit?id=${id}`)
+            .then(res => { if(res.data.success) setKitItems(res.data.data || []); })
+            .catch(console.error)
+            .finally(() => setLoadingKit(false));
     };
 
-    const handleOpenZoom = (src) => { setZoomImage(src); setZoomLevel(1); };
-    const zoomIn = () => setZoomLevel(prev => prev + 0.5);
-    const zoomOut = () => setZoomLevel(prev => (prev > 0.5 ? prev - 0.5 : prev));
-    const resetZoom = () => setZoomLevel(1);
+    const cargarDocs = (id) => {
+        setLoadingDocs(true);
+        api.get(`/index.php/mantencion/docs?id=${id}`)
+            .then(res => { if(res.data.success) setDocs(res.data.data || []); })
+            .catch(console.error)
+            .finally(() => setLoadingDocs(false));
+    };
 
     const handleSubmitGeneral = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
-            const dataToSend = new FormData();
-            Object.keys(formData).forEach(key => { dataToSend.append(key, formData[key] ?? ''); });
-            if (activo) dataToSend.append('id', activo.id);
-            if (mainImage) dataToSend.append('imagen_principal', mainImage);
-            galleryItems.forEach((item) => {
-                dataToSend.append('galeria_files[]', item.file);
-                dataToSend.append('galeria_tipos[]', item.tipo);
+            const formDataObj = new FormData();
+            Object.keys(formData).forEach(key => {
+                formDataObj.append(key, formData[key] === null ? '' : formData[key]);
             });
 
-            const config = { headers: { 'Content-Type': 'multipart/form-data' } };
-            const url = activo ? '/index.php/mantencion/editar-activo' : '/index.php/mantencion/crear-activo';
-            await api.post(url, dataToSend, config);
+            if (mainImage) formDataObj.append('imagen_principal', mainImage);
             
-            showMessage("Éxito", "Activo guardado correctamente", "success");
-            setTimeout(() => { onSave(); onClose(); }, 1000);
+            // CORRECCIÓN GALERÍA: Usar los nombres de variable exactos que espera MantencionService.php
+            galleryItems.forEach((file) => {
+                formDataObj.append('galeria_files[]', file);
+                formDataObj.append('galeria_tipos[]', 'General');
+            });
+
+            let res;
+            if (activo) {
+                formDataObj.append('id', activo.id);
+                res = await api.post('/index.php/mantencion/editar-activo', formDataObj, { headers: { 'Content-Type': 'multipart/form-data' } });
+            } else {
+                res = await api.post('/index.php/mantencion/crear-activo', formDataObj, { headers: { 'Content-Type': 'multipart/form-data' } });
+            }
+
+            if (res.data.success) {
+                setMsgModal({ show: true, title: 'Éxito', message: 'Activo guardado correctamente.', type: 'success' });
+                onSave();
+                if (!activo) {
+                    setTimeout(onClose, 1000);
+                } else { 
+                    setMainImage(null); 
+                    setGalleryItems([]); 
+                    cargarGaleria(activo.id); 
+                }
+            }
         } catch (error) {
-            showMessage("Error", error.response?.data?.message || "Error al guardar", "error");
-        } finally { setSaving(false); }
+            setMsgModal({ show: true, title: 'Error', message: error.response?.data?.message || 'Ocurrió un error al guardar.', type: 'error' });
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const cargarKit = async (id) => { try { const res = await api.get(`/index.php/mantencion/kit?id=${id}`); setKitItems(res.data.data || []); } catch (e) { setKitItems([]); } };
-    
-    const agregarAlKit = async (insumo) => { 
-        if (!activo) return showMessage("Atención", "Guarda el activo primero.", "warning"); 
-        try { 
-            await api.post('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumo.id, cantidad: cantidadKit }); 
-            cargarKit(activo.id); 
+    const handleAddKitItem = async () => {
+        const cant = document.getElementById('nuevaCantidad').value;
+        if (!insumoSeleccionado || !cant) return setMsgModal({show:true, title:'Error', message:'Faltan datos de insumo o cantidad', type:'warning'});
+
+        try {
+            await api.post('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumoSeleccionado.id, cantidad: cant });
+            setInsumoSeleccionado(null);
             setBusquedaInsumo('');
-            setSugerenciasInsumo([]);
-            setCantidadKit(1); 
-        } catch (e) { 
-            showMessage("Error", "Error al agregar", "error"); 
-        } 
+            document.getElementById('nuevaCantidad').value = '';
+            cargarKit(activo.id);
+        } catch (e) {
+            setMsgModal({show:true, title:'Error', message:'No se pudo agregar', type:'error'});
+        }
     };
 
-    const actualizarCantKit = async (insumoId, nuevaCant) => { const c = parseInt(nuevaCant); if (isNaN(c) || c < 1) return; try { await api.put('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumoId, cantidad: c }); cargarKit(activo.id); } catch (e) { } };
-    const solicitarQuitarKit = (insumoId) => { setConfirm({ show: true, title: "Eliminar", message: "¿Quitar repuesto?", action: async () => { await api.delete(`/index.php/mantencion/kit?activo_id=${activo.id}&insumo_id=${insumoId}`); cargarKit(activo.id); } }); };
-    const cargarDocs = async (id) => { try { const res = await api.get(`/index.php/mantencion/docs?id=${id}`); setDocs(res.data.data || []); } catch (e) { } };
-    const subirDoc = async () => { if (!file || !activo) return; const d = new FormData(); d.append('activo_id', activo.id); d.append('archivo', file); try { await api.post('/index.php/mantencion/docs', d, { headers: { 'Content-Type': 'multipart/form-data' } }); setFile(null); document.getElementById('fileInput').value = ""; cargarDocs(activo.id); } catch (e) { showMessage("Error", "Error al subir", "error"); } };
-    const solicitarBorrarDoc = (docId) => { setConfirm({ show: true, title: "Eliminar", message: "¿Borrar archivo?", action: async () => { await api.delete(`/index.php/mantencion/docs?id=${docId}`); cargarDocs(activo.id); } }); };
-    const handleConfirm = () => { if (confirm.action) confirm.action(); setConfirm({ ...confirm, show: false, action: null }); };
+    const handleDeleteKit = (id) => {
+        api.delete(`/index.php/mantencion/kit?id=${id}`).then(() => cargarKit(activo.id)).catch(console.error);
+    };
+
+    const subirDoc = async () => {
+        if (!file || !activo) return;
+        const data = new FormData();
+        data.append('activo_id', activo.id);
+        data.append('documento', file);
+        data.append('nombre_archivo', file.name);
+
+        try {
+            await api.post('/index.php/mantencion/docs', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+            setFile(null);
+            document.getElementById('fileInput').value = '';
+            cargarDocs(activo.id);
+        } catch(e) { console.error(e); }
+    };
+
+    const solicitarBorrarDoc = (id) => {
+        setConfirmModal({
+            show: true, id: id, title: 'Borrar Documento', message: '¿Estás seguro de borrar este archivo?',
+            action: () => {
+                api.delete(`/index.php/mantencion/docs?id=${id}`).then(() => {
+                    setConfirmModal({ show: false, id: null, action: null });
+                    cargarDocs(activo.id);
+                });
+            }
+        });
+    };
+
+    const handleDeleteImage = (id, type) => {
+        setConfirmModal({
+            show: true, id: id, title: 'Eliminar Imagen', message: `¿Seguro de eliminar esta imagen ${type === 'principal' ? 'principal' : 'de la galería'}?`,
+            action: async () => {
+                try {
+                    await api.delete(`/index.php/mantencion/imagen?id=${id}&tipo=${type}&activo_id=${activo.id}`);
+                    setConfirmModal({ show: false, id: null });
+                    if (type === 'principal') setMainImagePreview(null);
+                    else cargarGaleria(activo.id);
+                    onSave(); 
+                } catch(e) { console.error(e); }
+            }
+        });
+    };
+
+    // Filtro para el buscador interactivo de insumos
+    const insumosFiltrados = busquedaInsumo
+        ? insumosList.filter(i =>
+            i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase()) ||
+            (i.codigo_sku && i.codigo_sku.toLowerCase().includes(busquedaInsumo.toLowerCase()))
+        ).slice(0, 15)
+        : insumosList.slice(0, 15);
 
     if (!show) return null;
 
     return (
         <>
-            <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
-            <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={handleConfirm} title={confirm.title} message={confirm.message} confirmText="Confirmar" type="danger" />
-
-            <Modal show={!!zoomImage} onHide={() => setZoomImage(null)} centered size="xl" className="bg-dark bg-opacity-75">
-                <Modal.Header closeButton className="bg-white border-0 py-2">
-                    <div className="d-flex gap-2 align-items-center">
-                        <Button variant="outline-dark" size="sm" onClick={zoomOut}><i className="bi bi-dash-lg"></i></Button>
-                        <span className="fw-bold small">{Math.round(zoomLevel * 100)}%</span>
-                        <Button variant="outline-dark" size="sm" onClick={zoomIn}><i className="bi bi-plus-lg"></i></Button>
-                        <Button variant="link" size="sm" onClick={resetZoom}>Restablecer</Button>
-                    </div>
-                </Modal.Header>
-                <Modal.Body className="p-0 text-center bg-light position-relative" style={{ overflow: 'auto', maxHeight: '85vh', minHeight: '50vh' }}>
-                    {zoomImage && (
-                        <img 
-                            src={zoomImage} 
-                            alt="Zoom" 
-                            style={{ 
-                                transform: `scale(${zoomLevel})`, 
-                                transformOrigin: 'top center',
-                                transition: 'transform 0.2s ease-out',
-                                maxWidth: '100%',
-                                display: 'block',
-                                margin: '0 auto'
-                            }} 
-                        />
-                    )}
-                </Modal.Body>
-            </Modal>
-
-            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto', zIndex: 1050 }}>
-                <div className="modal-dialog modal-lg modal-dialog-centered">
-                    <div className="modal-content shadow border-0">
-                        <div className="modal-header bg-dark text-white">
-                            <h5 className="modal-title fw-bold">{activo ? `🔧 Editar: ${activo.nombre}` : '✨ Nuevo Activo / Máquina'}</h5>
-                            <button className="btn-close btn-close-white" onClick={onClose}></button>
+            <MessageModal show={msgModal.show} onClose={() => setMsgModal({...msgModal, show: false})} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
+            <ConfirmModal show={confirmModal.show} onClose={() => setConfirmModal({...confirmModal, show: false})} onConfirm={confirmModal.action} title={confirmModal.title} message={confirmModal.message} />
+            
+            {zoomImage && (
+                <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 1070 }} onClick={() => setZoomImage(null)}>
+                    <div className="position-relative text-center p-4">
+                        <div className="btn-group position-absolute top-0 start-50 translate-middle-x mt-3" onClick={e => e.stopPropagation()}>
+                            <button className="btn btn-light" onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 3))}><i className="bi bi-zoom-in"></i></button>
+                            <button className="btn btn-light" onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 0.5))}><i className="bi bi-zoom-out"></i></button>
+                            <button className="btn btn-danger" onClick={() => setZoomImage(null)}><i className="bi bi-x-lg"></i></button>
                         </div>
+                        <img src={zoomImage} alt="Zoom" className="img-fluid shadow-lg rounded mt-5" style={{ maxHeight: '80vh', maxWidth: '90vw', transform: `scale(${zoomLevel})`, transition: 'transform 0.2s ease', objectFit: 'contain' }} onClick={e => e.stopPropagation()} />
+                    </div>
+                </div>
+            )}
 
-                        <div className="modal-body p-0">
-                            {activo && (
-                                <ul className="nav nav-tabs nav-fill bg-light px-3 pt-3 border-bottom-0">
-                                    <li className="nav-item"><button className={`nav-link fw-bold ${tab === 'general' ? 'active' : ''}`} onClick={() => setTab('general')}>General</button></li>
-                                    <li className="nav-item"><button className={`nav-link fw-bold ${tab === 'imagenes' ? 'active' : ''}`} onClick={() => setTab('imagenes')}>Imágenes</button></li>
-                                    <li className="nav-item"><button className={`nav-link fw-bold ${tab === 'kit' ? 'active' : ''}`} onClick={() => setTab('kit')}>Kit Repuestos</button></li>
-                                    <li className="nav-item"><button className={`nav-link fw-bold ${tab === 'docs' ? 'active' : ''}`} onClick={() => setTab('docs')}>Documentación</button></li>
-                                </ul>
-                            )}
-
-                            <div className="p-4 bg-white">
-                                {tab === 'general' && (
-                                    <form onSubmit={handleSubmitGeneral}>
-                                        <div className="row g-3">
-                                            <div className="col-12 mb-3">
-                                                <div className="d-flex align-items-center bg-light p-2 rounded border">
-                                                    <div className="me-3 shadow-sm border rounded overflow-hidden bg-white" 
-                                                         style={{ width: '85px', height: '85px', cursor: mainImagePreview ? 'zoom-in' : 'default' }}
-                                                         onClick={() => mainImagePreview && handleOpenZoom(mainImagePreview)}>
-                                                        {mainImagePreview ? (
-                                                            <img src={mainImagePreview} alt="Port" className="w-100 h-100 object-fit-cover" />
-                                                        ) : (
-                                                            <div className="w-100 h-100 d-flex align-items-center justify-content-center text-muted">
-                                                                <i className="bi bi-camera fs-2"></i>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        <label className="form-label small fw-bold text-primary mb-1">Imagen Principal (Click en foto para ampliar)</label>
-                                                        <input type="file" className="form-control form-control-sm" accept="image/*" onChange={handleMainImageChange} />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="col-md-6"><label className="form-label small fw-bold text-muted">CÓDIGO INTERNO</label><input type="text" name="codigo_interno" className="form-control fw-bold" required value={formData.codigo_interno} onChange={handleChange} /></div>
-                                            <div className="col-md-6"><label className="form-label small fw-bold text-muted">CÓDIGO MÁQUINA</label><input type="text" name="codigo_maquina" className="form-control" value={formData.codigo_maquina} onChange={handleChange} /></div>
-                                            <div className="col-12"><label className="form-label small fw-bold text-muted">NOMBRE ACTIVO</label><input type="text" name="nombre" className="form-control" required value={formData.nombre} onChange={handleChange} /></div>
-                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">MARCA</label><input type="text" name="marca" className="form-control" value={formData.marca} onChange={handleChange} /></div>
-                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">MODELO</label><input type="text" name="modelo" className="form-control" value={formData.modelo} onChange={handleChange} /></div>
-                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">AÑO</label><input type="number" name="anio" className="form-control" value={formData.anio} onChange={handleChange} /></div>
-                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">SERIE</label><input type="text" name="numero_serie" className="form-control" value={formData.numero_serie} onChange={handleChange} /></div>
-                                            
-                                            <div className="col-md-4">
-                                                <label className="form-label small fw-bold text-muted">TIPO DE ACTIVO</label>
-                                                <select name="tipo" className="form-select" value={formData.tipo} onChange={handleChange}>
-                                                    <option value="">Seleccione...</option><option value="Maquinaria">Maquinaria</option><option value="Vehículo">Vehículo</option><option value="Generador">Generador</option><option value="Equipo">Equipo</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-md-4"><label className="form-label small fw-bold text-muted">UBICACIÓN FÍSICA</label><input type="text" name="ubicacion" className="form-control" value={formData.ubicacion} onChange={handleChange} /></div>
-
-                                            <div className="col-12 mt-3"><h6 className="text-primary small fw-bold border-bottom pb-2">PLANIFICACIÓN</h6></div>
-                                            <div className="col-md-6">
-                                                <label className="form-label small fw-bold text-muted">FRECUENCIA MANTENCIÓN</label>
-                                                <div className="input-group">
-                                                    <input type="number" name="frecuencia_mantencion" className="form-control" placeholder="Ej: 3" min="0" value={formData.frecuencia_mantencion} onChange={handleChange} />
-                                                    <select name="unidad_frecuencia" className="form-select bg-light" value={formData.unidad_frecuencia} onChange={handleChange}>
-                                                        <option value="DIAS">Días</option><option value="SEMANAS">Semanas</option><option value="MESES">Meses</option><option value="ANIOS">Años</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div className="col-md-6">
-                                                <label className="form-label small fw-bold text-muted">ESTADO ACTUAL</label>
-                                                <select name="estado_activo" className="form-select" value={formData.estado_activo} onChange={handleChange}>
-                                                    <option value="OPERATIVO">OPERATIVO</option><option value="EN_MANTENCION">EN MANTENCIÓN</option><option value="BAJA">DE BAJA</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-md-6"><label className="form-label small fw-bold text-primary">CENTRO DE COSTO</label><select name="centro_costo" className="form-select border-primary" value={formData.centro_costo} onChange={handleChange}><option value="">-- Sin Asignar --</option>{listaCentros.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo} - {cc.nombre}</option>)}</select></div>
-                                            <div className="col-12"><label className="form-label small fw-bold text-muted">DESCRIPCIÓN</label><textarea name="descripcion" className="form-control" rows="2" value={formData.descripcion} onChange={handleChange}></textarea></div>
-                                        </div>
-                                        <div className="modal-footer border-top-0 px-0 pb-0 mt-4 d-flex justify-content-end gap-2">
-                                            <button type="button" className="btn btn-outline-secondary px-4" onClick={onClose} disabled={saving}>Cancelar</button>
-                                            <button type="submit" className="btn btn-primary px-4 fw-bold shadow-sm" disabled={saving}>{saving ? 'Guardando...' : 'Guardar Cambios'}</button>
-                                        </div>
-                                    </form>
+            <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1050 }}>
+                <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                    <div className="modal-content shadow-lg border-0">
+                        <div className="modal-header bg-dark text-white border-bottom-0 py-3">
+                            <h5 className="modal-title fw-bold"><i className="bi bi-box me-2 text-warning"></i>{activo ? `Editar: ${activo.nombre}` : 'Nuevo Activo'}</h5>
+                            <button type="button" className="btn-close btn-close-white" onClick={onClose} disabled={saving}></button>
+                        </div>
+                        
+                        <div className="modal-body p-0 d-flex flex-column flex-md-row">
+                            
+                            {/* MENU VERTICAL */}
+                            <div className="bg-light border-end p-3 d-flex flex-column gap-2" style={{ minWidth: '220px' }}>
+                                <button className={`btn text-start fw-bold w-100 shadow-sm ${tab === 'general' ? 'btn-primary' : 'btn-white border text-muted'}`} onClick={() => setTab('general')}><i className="bi bi-info-circle me-2"></i>Datos Generales</button>
+                                {activo && (
+                                    <>
+                                        <button className={`btn text-start fw-bold w-100 shadow-sm ${tab === 'galeria' ? 'btn-primary' : 'btn-white border text-muted'}`} onClick={() => setTab('galeria')}><i className="bi bi-images me-2"></i>Galería de Fotos</button>
+                                        <button className={`btn text-start fw-bold w-100 shadow-sm ${tab === 'kit' ? 'btn-primary' : 'btn-white border text-muted'}`} onClick={() => setTab('kit')}><i className="bi bi-tools me-2"></i>Kit Mantenimiento</button>
+                                        <button className={`btn text-start fw-bold w-100 shadow-sm ${tab === 'docs' ? 'btn-primary' : 'btn-white border text-muted'}`} onClick={() => setTab('docs')}><i className="bi bi-file-earmark-pdf me-2"></i>Documentos</button>
+                                    </>
                                 )}
+                            </div>
+
+                            <div className="p-4 flex-grow-1 bg-white" style={{ minHeight: '60vh' }}>
                                 
-                                {tab === 'imagenes' && (
-                                    <div>
-                                        <div className="mb-4 bg-light p-3 rounded border">
-                                            <label className="form-label fw-bold small text-success">AGREGAR NUEVA FOTO A GALERÍA</label>
-                                            <input type="file" className="form-control" accept="image/*" onChange={handleAddGalleryItem} />
-                                        </div>
-                                        {galleryItems.length > 0 && (
-                                            <div className="mb-4">
-                                                <h6 className="text-success small fw-bold border-bottom pb-2">Fotos nuevas por subir ({galleryItems.length})</h6>
-                                                <div className="row g-2">
-                                                    {galleryItems.map((item, index) => (
-                                                        <div className="col-md-6" key={index}>
-                                                            <div className="card p-2 border-success bg-success bg-opacity-10 shadow-sm">
-                                                                <div className="d-flex align-items-center">
-                                                                    <img src={item.preview} alt="N" style={{ width: '55px', height: '55px', objectFit: 'cover', cursor: 'zoom-in' }} 
-                                                                         className="me-2 rounded border" onClick={() => handleOpenZoom(item.preview)} />
-                                                                    <select className="form-select form-select-sm" value={item.tipo} onChange={(e) => handleGalleryTypeChange(index, e.target.value)}>
-                                                                        <option value="General">General</option><option value="Frente">Frente</option><option value="Atrás">Atrás</option><option value="Motor">Motor</option><option value="Interior">Interior</option>
-                                                                    </select>
-                                                                    <button className="btn btn-sm text-danger ms-1" onClick={() => handleRemoveGalleryItem(index)}><i className="bi bi-x-circle-fill fs-5"></i></button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                <form onSubmit={handleSubmitGeneral} className={(tab === 'general' || tab === 'galeria') ? "d-flex flex-column h-100" : "d-none"}>
+                                    
+                                    {/* TAB 1: DATOS GENERALES */}
+                                    <div className={tab === 'general' ? 'd-block' : 'd-none'}>
+                                        <div className="row g-3">
+                                            
+                                            <div className="col-12 mb-2">
+                                                <label className="form-label fw-bold text-muted small text-uppercase">
+                                                    <i className="bi bi-diagram-2 me-1"></i> Sub-Equipo De (Opcional)
+                                                </label>
+                                                <select 
+                                                    className="form-select border-primary shadow-sm" 
+                                                    value={formData.activo_padre_id} 
+                                                    onChange={e => setFormData({...formData, activo_padre_id: e.target.value})}
+                                                >
+                                                    <option value="">-- Ninguno (Es una máquina principal) --</option>
+                                                    {listaActivos.filter(a => a.id !== activo?.id).map(a => (
+                                                        <option key={a.id} value={a.id}>
+                                                            {a.codigo_interno} - {a.nombre}
+                                                        </option>
                                                     ))}
-                                                </div>
-                                                <div className="d-grid mt-2"><button className="btn btn-success btn-sm fw-bold" onClick={handleSubmitGeneral} disabled={saving}>{saving ? 'Guardando...' : 'Confirmar Subida de Imágenes'}</button></div>
+                                                </select>
+                                                <small className="text-muted fst-italic">Indique si pertenece a otra máquina.</small>
                                             </div>
-                                        )}
-                                        <h6 className="text-secondary small fw-bold border-bottom pb-2">Galería Guardada (Haz clic para ampliar)</h6>
-                                        {existingGallery.length === 0 ? (<p className="text-muted small fst-italic py-3 text-center">Sin imágenes secundarias.</p>) : (
-                                            <div className="row g-2">
-                                                {existingGallery.map((img) => (
-                                                    <div key={img.id} className="col-6 col-md-3">
-                                                        <div className="card h-100 border-0 shadow-sm overflow-hidden position-relative">
-                                                            <button className="btn btn-danger btn-sm position-absolute top-0 end-0 m-1" style={{zIndex: 10}} onClick={(e) => { e.stopPropagation(); solicitarEliminarImagen(img.id); }} title="Eliminar Imagen"><i className="bi bi-trash-fill"></i></button>
-                                                            <img src={`${BASE_URL}${img.imagen_url}`} className="card-img-top" alt={img.tipo} style={{ height: '110px', objectFit: 'cover', cursor: 'zoom-in' }} onClick={() => handleOpenZoom(`${BASE_URL}${img.imagen_url}`)} />
-                                                            <div className="card-footer p-1 bg-white text-center"><small className="text-muted fw-bold" style={{ fontSize: '0.7rem' }}>{img.tipo}</small></div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
 
-                                {tab === 'kit' && (
-                                    <div>
-                                        <div className="mb-3 border p-3 rounded bg-light">
-                                            <div className="input-group">
-                                                <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                                                <input 
-                                                    type="text" 
-                                                    className="form-control" 
-                                                    placeholder="Buscar por Nombre o SKU..." 
-                                                    value={busquedaInsumo} 
-                                                    onChange={e => setBusquedaInsumo(e.target.value)} 
-                                                />
-                                                <input type="number" className="form-control" style={{ maxWidth: '80px' }} value={cantidadKit} onChange={e => setCantidadKit(parseInt(e.target.value) || 1)} min="1" />
+                                            <div className="col-md-6"><label className="form-label fw-bold text-muted small text-uppercase">Nombre del Activo <span className="text-danger">*</span></label><input type="text" className="form-control" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Interno <span className="text-danger">*</span></label><input type="text" className="form-control font-monospace" value={formData.codigo_interno} onChange={e => setFormData({...formData, codigo_interno: e.target.value})} required /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Fabricante</label><input type="text" className="form-control font-monospace" value={formData.codigo_maquina} onChange={e => setFormData({...formData, codigo_maquina: e.target.value})} /></div>
+                                            
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Tipo</label><input type="text" className="form-control" value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Marca</label><input type="text" className="form-control" value={formData.marca} onChange={e => setFormData({...formData, marca: e.target.value})} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Modelo</label><input type="text" className="form-control" value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">N° Serie</label><input type="text" className="form-control" value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} /></div>
+
+                                            <div className="col-md-4"><label className="form-label fw-bold text-muted small text-uppercase">Ubicación</label><input type="text" className="form-control" value={formData.ubicacion} onChange={e => setFormData({...formData, ubicacion: e.target.value})} /></div>
+                                            <div className="col-md-4">
+                                                <label className="form-label fw-bold text-muted small text-uppercase">Centro de Costo</label>
+                                                <select className="form-select" value={formData.centro_costo} onChange={e => setFormData({...formData, centro_costo: e.target.value})}>
+                                                    <option value="">Seleccione...</option>
+                                                    {listaCentros.map(c => <option key={c.id} value={c.id}>{c.codigo} - {c.nombre}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="col-md-4">
+                                                <label className="form-label fw-bold text-muted small text-uppercase">Estado</label>
+                                                <select className="form-select fw-bold" value={formData.estado_activo} onChange={e => setFormData({...formData, estado_activo: e.target.value})}>
+                                                    <option value="OPERATIVO" className="text-success">🟢 Operativo</option>
+                                                    <option value="FUERA DE SERVICIO" className="text-danger">🔴 Fuera de Servicio</option>
+                                                    <option value="EN MANTENCION" className="text-warning">🟡 En Mantención</option>
+                                                </select>
+                                            </div>
+
+                                            <div className="col-12"><label className="form-label fw-bold text-muted small text-uppercase">Descripción / Notas</label><textarea className="form-control" rows="3" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})}></textarea></div>
+                                        </div>
+                                    </div>
+
+                                    {/* TAB 2: GALERÍA DE FOTOS */}
+                                    <div className={tab === 'galeria' ? 'd-block' : 'd-none'}>
+                                        <h5 className="fw-bold mb-4 border-bottom pb-2"><i className="bi bi-images text-primary me-2"></i>Gestión de Fotografías</h5>
+                                        <div className="row g-4">
+                                            <div className="col-md-4">
+                                                <label className="form-label fw-bold text-muted small text-uppercase">Imagen Principal (Portada)</label>
+                                                {mainImagePreview ? (
+                                                    <div className="position-relative border rounded shadow-sm w-100 mb-3 bg-light" style={{height:'180px', overflow:'hidden'}}>
+                                                        <img src={mainImagePreview} className="w-100 h-100" style={{objectFit:'contain', cursor:'pointer'}} onClick={() => {setZoomImage(mainImagePreview); setZoomLevel(1);}} alt="Portada"/>
+                                                        {activo?.imagen_url && <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle shadow" onClick={() => handleDeleteImage(null, 'principal')} title="Eliminar Foto Principal"><i className="bi bi-trash"></i></button>}
+                                                    </div>
+                                                ) : (
+                                                    <div className="border rounded d-flex align-items-center justify-content-center bg-light w-100 mb-3 text-muted" style={{height:'180px'}}>
+                                                        <div className="text-center"><i className="bi bi-camera fs-1 d-block mb-1"></i>Sin portada</div>
+                                                    </div>
+                                                )}
+                                                <input type="file" className="form-control form-control-sm" accept="image/*" onChange={(e) => {
+                                                    const file = e.target.files[0];
+                                                    if(file) {
+                                                        setMainImage(file);
+                                                        setMainImagePreview(URL.createObjectURL(file));
+                                                    }
+                                                }}/>
+                                            </div>
+
+                                            {activo && (
+                                                <div className="col-md-8 border-start ps-4">
+                                                    <label className="form-label fw-bold text-muted small text-uppercase d-flex justify-content-between">
+                                                        <span>Galería Adicional</span>
+                                                        <span className="badge bg-secondary">{existingGallery.length} fotos</span>
+                                                    </label>
+                                                    
+                                                    <div className="d-flex flex-wrap gap-2 pb-3 mb-3 border-bottom">
+                                                        {existingGallery.map(img => (
+                                                            <div key={img.id} className="position-relative border rounded shadow-sm" style={{width:'100px', height:'100px', backgroundColor:'#fff'}}>
+                                                                <img src={`${BASE_URL}${img.imagen_url || img.url_imagen}`} className="w-100 h-100 rounded" style={{objectFit:'cover', cursor:'pointer'}} onClick={() => {setZoomImage(`${BASE_URL}${img.imagen_url || img.url_imagen}`); setZoomLevel(1);}} alt="Galeria" />
+                                                                <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-1 lh-1 shadow-sm" onClick={() => handleDeleteImage(img.id, 'galeria')}><i className="bi bi-x-circle-fill"></i></button>
+                                                            </div>
+                                                        ))}
+                                                        {existingGallery.length === 0 && <div className="text-muted small py-4 fst-italic w-100 text-center bg-light rounded border">No hay fotos adicionales guardadas.</div>}
+                                                    </div>
+
+                                                    <label className="form-label fw-bold text-primary small"><i className="bi bi-plus-circle me-1"></i>Añadir nuevas fotos</label>
+                                                    <input type="file" className="form-control form-control-sm" accept="image/*" multiple onChange={(e) => {
+                                                        const files = Array.from(e.target.files);
+                                                        setGalleryItems(prev => [...prev, ...files]);
+                                                    }}/>
+                                                    
+                                                    {galleryItems.length > 0 && (
+                                                        <div className="mt-2 d-flex flex-wrap gap-2">
+                                                            {galleryItems.map((file, idx) => (
+                                                                <span key={idx} className="badge bg-success bg-opacity-10 text-success border border-success d-flex align-items-center">
+                                                                    <i className="bi bi-image me-1"></i> {file.name.substring(0, 15)}...
+                                                                    <i className="bi bi-x-circle-fill ms-2 cursor-pointer" onClick={() => setGalleryItems(prev => prev.filter((_, i) => i !== idx))}></i>
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="text-end mt-auto pt-3 border-top position-sticky bottom-0 bg-white py-2" style={{zIndex: 10}}>
+                                        <button type="submit" className="btn btn-success fw-bold px-4 shadow-sm" disabled={saving}>
+                                            {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Guardando...</> : <><i className="bi bi-save me-2"></i>Guardar Activo</>}
+                                        </button>
+                                    </div>
+                                </form>
+
+                                {/* TAB 3: KIT DE MANTENCION (CON BUSCADOR MEJORADO Y INVENTARIO FULL) */}
+                                {activo && (
+                                    <div className={tab === 'kit' ? 'd-block' : 'd-none'}>
+                                        <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-tools text-primary me-2"></i>Kit de Repuestos Sugeridos</h5>
+                                        <div className="alert alert-info border-info d-flex align-items-center p-3 shadow-sm">
+                                            <i className="bi bi-info-circle-fill fs-3 me-3 text-info"></i>
+                                            <div>Estos insumos se cargarán automáticamente al abrir una Solicitud de Mantención para este equipo.</div>
+                                        </div>
+                                        
+                                        <div className="row g-2 mb-4 bg-light p-3 rounded border shadow-sm align-items-end">
+                                            <div className="col-12 col-md-7 position-relative" ref={wrapperRef}>
+                                                <label className="small fw-bold text-muted mb-1">Buscar Insumo / Repuesto</label>
+                                                <div className="input-group">
+                                                    <span className="input-group-text bg-white"><i className="bi bi-search text-muted"></i></span>
+                                                    <input 
+                                                        type="text" 
+                                                        className="form-control" 
+                                                        placeholder="Escriba nombre o SKU..."
+                                                        value={busquedaInsumo}
+                                                        onChange={e => {
+                                                            setBusquedaInsumo(e.target.value);
+                                                            setInsumoSeleccionado(null);
+                                                            setMostrarSugerencias(true);
+                                                        }}
+                                                        onFocus={() => setMostrarSugerencias(true)}
+                                                    />
+                                                </div>
+                                                
+                                                {/* LISTA DESPLEGABLE BUSCADOR */}
+                                                {mostrarSugerencias && (
+                                                    <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1050, maxHeight: '220px', overflowY: 'auto', left: 0 }}>
+                                                        {insumosFiltrados.length > 0 ? insumosFiltrados.map(ins => (
+                                                            <li key={ins.id} 
+                                                                className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center"
+                                                                onMouseDown={(e) => {
+                                                                    e.preventDefault();
+                                                                    setInsumoSeleccionado(ins);
+                                                                    setBusquedaInsumo(`${ins.codigo_sku} - ${ins.nombre}`);
+                                                                    setMostrarSugerencias(false);
+                                                                }}
+                                                            >
+                                                                <div>
+                                                                    <div className="fw-bold small text-dark">{ins.nombre}</div>
+                                                                    <small className="text-muted" style={{fontSize: '0.75rem'}}>{ins.codigo_sku}</small>
+                                                                </div>
+                                                                <span className={`badge rounded-pill ${parseFloat(ins.stock_actual) > 0 ? 'bg-success' : 'bg-danger'}`}>
+                                                                    Stock: {ins.stock_actual}
+                                                                </span>
+                                                            </li>
+                                                        )) : (
+                                                            <li className="list-group-item text-center text-muted small py-3">No se encontraron resultados</li>
+                                                        )}
+                                                    </ul>
+                                                )}
                                             </div>
                                             
-                                            {busquedaInsumo && sugerenciasInsumo.length > 0 && (
-                                                <div className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                                                    {sugerenciasInsumo.map(i => (
-                                                        <button 
-                                                            key={i.id} 
-                                                            className="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
-                                                            onClick={() => agregarAlKit(i)}
-                                                        >
-                                                            <div>
-                                                                <span className="d-block fw-bold">{i.nombre}</span>
-                                                                <small className="text-muted">SKU: {i.codigo_sku || 'S/N'}</small>
-                                                            </div>
-                                                            <span className="badge bg-light text-dark border">Stock: {i.stock_actual}</span>
-                                                        </button>
+                                            <div className="col-8 col-md-3">
+                                                <label className="small fw-bold text-muted mb-1">Cant. Default</label>
+                                                <input type="number" id="nuevaCantidad" className="form-control text-center fw-bold" placeholder="0.0" min="0.1" step="0.1" />
+                                            </div>
+                                            
+                                            <div className="col-4 col-md-2">
+                                                <button type="button" className="btn btn-primary w-100 fw-bold shadow-sm" onClick={handleAddKitItem}>Agregar</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="table-responsive">
+                                            {loadingKit ? <div className="text-center py-5"><div className="spinner-border text-primary"></div></div> : (
+                                                <table className="table table-hover align-middle border shadow-sm">
+                                                    <thead className="table-light text-secondary small text-uppercase">
+                                                        <tr>
+                                                            <th className="ps-3">Ref. / Jerarquía</th>
+                                                            <th>SKU</th>
+                                                            <th>Insumo</th>
+                                                            <th className="text-center">Cantidad</th>
+                                                            <th className="text-end pe-3">Acción</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {kitItems.map(k => (
+                                                            <tr key={k.id}>
+                                                                <td className="ps-3">
+                                                                    {k.activo_id === activo.id ? (
+                                                                        <span className="badge bg-primary text-white shadow-sm">Directo</span>
+                                                                    ) : (
+                                                                        <span className="badge bg-light text-dark border"><i className="bi bi-diagram-2 me-1 text-primary"></i>De: {k.origen_codigo || k.origen_nombre}</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="font-monospace text-muted small">{k.insumo_sku}</td>
+                                                                <td className="fw-bold text-dark">{k.insumo_nombre || k.nombre}</td>
+                                                                <td className="text-center fw-bold text-success">{k.cantidad_sugerida || k.cantidad} <span className="small text-muted fw-normal">{k.unidad_medida}</span></td>
+                                                                <td className="text-end pe-3">
+                                                                    {k.activo_id === activo.id && (
+                                                                        <button className="btn btn-sm text-danger border-0" title="Quitar de este kit" onClick={() => handleDeleteKit(k.id)}><i className="bi bi-trash-fill fs-5"></i></button>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                        {kitItems.length === 0 && <tr><td colSpan="5" className="text-center py-5 text-muted fst-italic">No hay repuestos configurados.</td></tr>}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* TAB 4: DOCUMENTOS */}
+                                {activo && (
+                                    <div className={tab === 'docs' ? 'd-block' : 'd-none'}>
+                                        <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-file-earmark-text text-primary me-2"></i>Manuales y Planos</h5>
+                                        <div className="input-group mb-4 shadow-sm">
+                                            <input type="file" id="fileInput" className="form-control bg-white" onChange={e => setFile(e.target.files[0])} />
+                                            <button type="button" className="btn btn-primary fw-bold px-4" onClick={subirDoc} disabled={!file}><i className="bi bi-cloud-upload me-2"></i>Subir Archivo</button>
+                                        </div>
+                                        
+                                        <div className="card border-0 shadow-sm">
+                                            {loadingDocs ? <div className="text-center py-5"><div className="spinner-border text-primary"></div></div> : (
+                                                <div className="list-group list-group-flush border rounded">
+                                                    {docs.map(d => (
+                                                        <div key={d.id} className="list-group-item d-flex justify-content-between align-items-center p-3 hover-bg-light">
+                                                            <a href={`${BASE_URL}${d.url_archivo}`} target="_blank" rel="noreferrer" className="text-decoration-none text-dark d-flex align-items-center text-truncate">
+                                                                <i className="bi bi-file-earmark-pdf-fill me-3 text-danger fs-3"></i>
+                                                                <span className="fw-bold text-truncate">{d.nombre_archivo}</span>
+                                                            </a>
+                                                            <button className="btn btn-sm text-danger flex-shrink-0" title="Borrar Documento" onClick={() => solicitarBorrarDoc(d.id)}><i className="bi bi-trash fs-5"></i></button>
+                                                        </div>
                                                     ))}
-                                                </div>
-                                            )}
-                                            {busquedaInsumo && sugerenciasInsumo.length === 0 && (
-                                                <div className="position-absolute w-100 bg-white border p-2 text-center text-muted shadow-sm" style={{zIndex: 1000}}>
-                                                    No se encontraron coincidencias.
+                                                    {docs.length === 0 && <div className="text-center py-5 text-muted fst-italic">No hay documentos cargados.</div>}
                                                 </div>
                                             )}
                                         </div>
-
-                                        <ul className="list-group">
-                                            {kitItems.map(k => (
-                                                <li key={k.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                                    <div>
-                                                        <div className="fw-bold">{k.nombre}</div>
-                                                        <small className="text-muted">SKU: {k.codigo_sku}</small>
-                                                    </div>
-                                                    <div className="d-flex align-items-center gap-2">
-                                                        <input type="number" className="form-control form-control-sm text-center" style={{ width: '70px' }} value={Math.floor(k.cantidad)} onChange={(e) => actualizarCantKit(k.id, e.target.value)} />
-                                                        <button className="btn btn-sm btn-outline-danger" onClick={() => solicitarQuitarKit(k.id)}><i className="bi bi-trash"></i></button>
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
                                     </div>
                                 )}
 
-                                {tab === 'docs' && (
-                                    <div>
-                                        <div className="input-group mb-3"><input type="file" id="fileInput" className="form-control" onChange={e => setFile(e.target.files[0])} /><button type="button" className="btn btn-primary" onClick={subirDoc} disabled={!file}><i className="bi bi-cloud-upload me-2"></i>Subir</button></div>
-                                        <div className="list-group">
-                                            {docs.map(d => (
-                                                <div key={d.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                                    <a href={`${BASE_URL}${d.url_archivo}`} target="_blank" rel="noreferrer" className="text-decoration-none text-dark d-flex align-items-center"><i className="bi bi-file-earmark-pdf me-2 text-danger fs-5"></i><span>{d.nombre_archivo}</span></a>
-                                                    <button className="btn btn-sm text-danger" onClick={() => solicitarBorrarDoc(d.id)}><i className="bi bi-trash"></i></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>

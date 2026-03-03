@@ -450,6 +450,21 @@ try {
             (new BodegaController())->entregarMasivo($userId);
             break;
 
+        case 'bodega/devoluciones':
+            AuthMiddleware::hasPermission('bodega_organizar');
+            (new BodegaController())->devolucionesPendientes();
+            break;
+
+        case 'bodega/devoluciones/aprobar':
+            $uid = AuthMiddleware::hasPermission('bodega_organizar');
+            (new BodegaController())->aprobarDevolucion($uid);
+            break;
+        
+        case 'bodega/devoluciones/rechazar':
+            $uid = AuthMiddleware::hasPermission('bodega_organizar');
+            (new BodegaController())->rechazarDevolucion($uid);
+            break;
+
         // --- OPERARIO / ENTREGAS PERSONALES  ---
         case 'operario/asignar':
             if ($method === 'POST')
@@ -475,6 +490,7 @@ try {
             if ($method === 'GET')
                 (new OperarioController())->dashboard();
             break;
+
         case 'operario/devolver':
             if ($method === 'POST')
                 (new OperarioController())->devolver();
@@ -490,9 +506,15 @@ try {
             if ($method === 'POST')
                 (new MisMantencionesController())->guardar();
             break;
+
         case 'mis-mantenciones/detalle':
             if ($method === 'GET')
                 (new MisMantencionesController())->detalle();
+            break;
+            
+        case 'mis-mantenciones/cambiar-estado':
+            if ($method === 'POST')
+                (new MisMantencionesController())->actualizarEstadoManual();
             break;
 
         // --- DASHBOARD ---

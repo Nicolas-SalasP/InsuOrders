@@ -24,8 +24,6 @@ class OrdenCompraService
         $this->insumoRepo = new InsumoRepository();
         $this->proveedorRepo = new ProveedorRepository();
         $this->db = Database::getConnection();
-
-        // Rutas estandarizadas
         $this->uploadBaseDir = __DIR__ . '/../../../../public_html/uploads/ordenes/';
         $this->publicUrlBase = 'uploads/ordenes/';
     }
@@ -53,7 +51,7 @@ class OrdenCompraService
         return $this->repo->getOrdenCompleta($id);
     }
 
-    public function crearOrden($data, $usuarioId)
+public function crearOrden($data, $usuarioId)
     {
         if (empty($data['items']))
             throw new Exception("La orden debe tener items.");
@@ -61,7 +59,9 @@ class OrdenCompraService
             throw new Exception("Seleccione un proveedor.");
 
         try {
-            $this->db->beginTransaction();
+            if (!$this->db->inTransaction()) {
+                $this->db->beginTransaction();
+            }
 
             $itemsProcesados = [];
             $montoNeto = 0;
@@ -135,11 +135,16 @@ class OrdenCompraService
                 $this->repo->asociarSolicitudesAOrden($ordenId, $idsUnicos);
             }
 
-            $this->db->commit();
+            if ($this->db->inTransaction()) {
+                $this->db->commit();
+            }
+            
             return $ordenId;
 
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }

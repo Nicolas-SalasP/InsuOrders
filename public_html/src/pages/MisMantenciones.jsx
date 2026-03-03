@@ -1,4 +1,5 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useRef } from 'react';
+import SignatureCanvas from 'react-signature-canvas';
 import api from '../api/axiosConfig';
 import AuthContext from '../context/AuthContext';
 import ChecklistRenderer from '../components/ChecklistRenderer';
@@ -12,18 +13,25 @@ const MisMantenciones = () => {
     const [ots, setOts] = useState([]);
     const [selectedOt, setSelectedOt] = useState(null);
     const [detallesOt, setDetallesOt] = useState({ insumos: [], respuestas: [] });
-    const [activeTab, setActiveTab] = useState('checklist');
-    const [datosEnvio, setDatosEnvio] = useState({ respuestas: [], firma: null, comentarios: '' });
+    const [activeTab, setActiveTab] = useState('info');
+    const [datosEnvio, setDatosEnvio] = useState({ respuestas: [], firma: null, comentarios: '', archivos: [] });
     const [loading, setLoading] = useState(true);
     const [loadingDetalle, setLoadingDetalle] = useState(false);
     const [guardando, setGuardando] = useState(false);
+    
+    // --- ESTADOS DE FILTRO ---
     const [filtroEstado, setFiltroEstado] = useState('pendientes');
     const [busqueda, setBusqueda] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
     const [filtroTecnico, setFiltroTecnico] = useState(null);
+    const [filtroUbicacion, setFiltroUbicacion] = useState(''); // <-- NUEVO ESTADO DE UBICACIÓN
+
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: '' });
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
+    
     const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
+    const sigCanvas = useRef(null);
+    const [enlargedImage, setEnlargedImage] = useState(null);
 
     useEffect(() => {
         if (can('ope_mant')) {
@@ -52,13 +60,7 @@ const MisMantenciones = () => {
 
             ids.forEach((id, index) => {
                 if (!stats[id]) {
-                    stats[id] = {
-                        id,
-                        nombre: nombres[index] || 'Técnico',
-                        pendientes: 0,
-                        proceso: 0,
-                        terminado: 0
-                    };
+                    stats[id] = { id, nombre: nombres[index] || 'Técnico', pendientes: 0, proceso: 0, terminado: 0 };
                 }
                 if (ot.estado_id === 1 || ot.estado_id === 4) stats[id].pendientes++;
                 else if (ot.estado_id === 2) stats[id].proceso++;
@@ -73,8 +75,10 @@ const MisMantenciones = () => {
     const handleSelectOt = async (ot) => {
         setSelectedOt(ot);
         setLoadingDetalle(true);
-        setActiveTab('checklist');
-        setDatosEnvio({ respuestas: [], firma: null, comentarios: '' });
+        setActiveTab('info');
+        setDatosEnvio({ respuestas: [], firma: null, comentarios: '', archivos: [] });
+        sigCanvas.current?.clear();
+        setEnlargedImage(null);
 
         try {
             const res = await api.get(`/mis-mantenciones/detalle?id=${ot.id}`);
@@ -102,27 +106,122 @@ const MisMantenciones = () => {
         return mapa;
     };
 
+    const handleCambiarEstadoManual = async (nuevoEstadoId) => {
+        try {
+            setGuardando(true);
+            const res = await api.post('/mis-mantenciones/cambiar-estado', {
+                ot_id: selectedOt.id,
+                estado_id: nuevoEstadoId
+            });
+            if (res.data.success) {
+                setSelectedOt({ ...selectedOt, estado_id: parseInt(nuevoEstadoId) });
+                cargarMisOts();
+                setMsg({ show: true, title: "Éxito", text: "Estado actualizado correctamente", type: "success" });
+            }
+        } catch (e) {
+            setMsg({ show: true, title: "Error", text: e.response?.data?.message || "No se pudo cambiar el estado", type: "error" });
+        } finally {
+            setGuardando(false);
+        }
+    };
+
     const otsFiltradas = ots.filter(ot => {
+        // Filtro por Técnico (Tarjetas de arriba)
         if (filtroTecnico) {
             const asignados = ot.asignados_ids ? ot.asignados_ids.toString().split(',') : [];
             if (!asignados.includes(filtroTecnico.toString())) return false;
         }
 
+        // Filtro por Estado
         const matchEstado =
             filtroEstado === 'pendientes' ? (ot.estado_id === 1 || ot.estado_id === 4) :
                 filtroEstado === 'proceso' ? ot.estado_id === 2 :
                     filtroEstado === 'terminado' ? ot.mi_completado === 1 || ot.estado_id === 5 : true;
 
+        // Filtro de Búsqueda de Texto General
         const texto = busqueda.toLowerCase();
         const matchTexto = ot.activo.toLowerCase().includes(texto) ||
             `${ot.solicitante_nombre} ${ot.solicitante_apellido}`.toLowerCase().includes(texto) ||
             ot.id.toString().includes(texto) ||
             (ot.asignados_nombres && ot.asignados_nombres.toLowerCase().includes(texto));
 
+        // Filtro por Fecha
         const matchFecha = filtroFecha ? ot.fecha_solicitud.startsWith(filtroFecha) : true;
+        
+        // NUEVO: Filtro por Destino / Ubicación
+        const matchUbicacion = !filtroUbicacion || (ot.ubicacion && ot.ubicacion.toLowerCase().includes(filtroUbicacion.toLowerCase()));
 
-        return matchEstado && matchTexto && matchFecha;
+        return matchEstado && matchTexto && matchFecha && matchUbicacion;
     });
+
+    const comprimirImagen = (file) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                    }, 'image/jpeg', 0.3);
+                };
+            };
+        });
+    };
+
+    const handleFileChange = async (e) => {
+        const files = Array.from(e.target.files);
+        setGuardando(true); 
+        const processedFiles = await Promise.all(files.map(async (file) => {
+            if (file.type.startsWith('image/')) return await comprimirImagen(file);
+            return file;
+        }));
+        setDatosEnvio(prev => ({ ...prev, archivos: [...(prev.archivos || []), ...processedFiles] }));
+        setGuardando(false);
+    };
+
+    const renderEvidencia = (evidenciaStr) => {
+        if (!evidenciaStr) return (
+            <div className="p-5 bg-light rounded border text-center text-muted h-100 d-flex flex-column align-items-center justify-content-center">
+                <i className="bi bi-image text-secondary opacity-50 display-4 mb-2"></i>
+                <span>Sin imagen adjunta</span>
+            </div>
+        );
+
+        let archivos = [];
+        try {
+            archivos = JSON.parse(evidenciaStr);
+            if (!Array.isArray(archivos)) archivos = [evidenciaStr];
+        } catch (e) {
+            archivos = [evidenciaStr];
+        }
+
+        return (
+            <div className="d-flex flex-wrap gap-2 mt-1">
+                {archivos.map((url, idx) => {
+                    const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                    return isVideo ? (
+                        <video key={idx} src={`/api/${url}`} controls className="rounded border shadow-sm bg-dark" style={{ height: '120px', maxWidth: '100%' }}></video>
+                    ) : (
+                        <img 
+                            key={idx} 
+                            src={`/api/${url}`} 
+                            alt={`Evidencia ${idx+1}`} 
+                            className="rounded border shadow-sm cursor-pointer" 
+                            style={{ height: '120px', width: '120px', objectFit: 'cover' }} 
+                            onClick={() => setEnlargedImage(`/api/${url}`)} 
+                        />
+                    );
+                })}
+            </div>
+        );
+    };
 
     const iniciarGuardado = () => {
         if (!selectedOt) return;
@@ -151,19 +250,23 @@ const MisMantenciones = () => {
         setGuardando(true);
 
         try {
-            const res = await api.post('/mis-mantenciones/guardar', {
-                ot_id: selectedOt.id,
-                ...datosEnvio
+            const formData = new FormData();
+            formData.append('ot_id', selectedOt.id);
+            formData.append('respuestas', JSON.stringify(datosEnvio.respuestas || []));
+            if (datosEnvio.firma) formData.append('firma', datosEnvio.firma);
+            if (datosEnvio.comentarios) formData.append('comentarios', datosEnvio.comentarios);
+            if (datosEnvio.archivos && datosEnvio.archivos.length > 0) {
+                datosEnvio.archivos.forEach((file, index) => {
+                    formData.append(`evidencia_${index}`, file);
+                });
+            }
+
+            const res = await api.post('/mis-mantenciones/guardar', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
 
             if (res.data.success) {
-                setMsg({
-                    show: true,
-                    title: datosEnvio.firma ? '¡Trabajo Finalizado!' : 'Avance Guardado',
-                    text: 'Operación registrada correctamente.',
-                    type: 'success'
-                });
-
+                setMsg({ show: true, title: datosEnvio.firma ? '¡Trabajo Finalizado!' : 'Avance Guardado', text: 'Operación registrada correctamente.', type: 'success' });
                 if (datosEnvio.firma) {
                     cargarMisOts();
                     setSelectedOt(null);
@@ -172,12 +275,7 @@ const MisMantenciones = () => {
                 }
             }
         } catch (e) {
-            setMsg({
-                show: true,
-                title: 'Error',
-                text: e.response?.data?.message || 'No se pudo guardar el avance.',
-                type: 'error'
-            });
+            setMsg({ show: true, title: 'Error', text: e.response?.data?.message || 'No se pudo guardar el avance.', type: 'error' });
         } finally {
             setGuardando(false);
         }
@@ -196,28 +294,42 @@ const MisMantenciones = () => {
     }
 
     return (
-        <div className="container-fluid h-100 p-0 d-flex flex-column bg-light">
-            <MessageModal
-                show={msg.show}
-                onClose={() => setMsg({ ...msg, show: false })}
-                title={msg.title}
-                message={msg.text}
-                type={msg.type}
-            />
+        <div className="container-fluid h-100 p-0 d-flex flex-column bg-light position-relative">
+            
+            {/* VISOR DE IMÁGENES A PANTALLA COMPLETA */}
+            {enlargedImage && (
+                <div 
+                    className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
+                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999 }} 
+                    onClick={() => setEnlargedImage(null)}
+                >
+                    <div className="position-relative text-center p-3" style={{ maxWidth: '100%', maxHeight: '100%' }}>
+                        <button 
+                            className="btn btn-light position-absolute top-0 end-0 m-4 rounded-circle shadow-sm d-flex justify-content-center align-items-center" 
+                            style={{ zIndex: 10000, width: '45px', height: '45px', transform: 'translate(25%, -25%)' }}
+                            onClick={() => setEnlargedImage(null)}
+                        >
+                            <i className="bi bi-x-lg text-dark fw-bold fs-5"></i>
+                        </button>
+                        <img 
+                            src={enlargedImage} 
+                            alt="Ampliación" 
+                            className="img-fluid rounded shadow-lg" 
+                            style={{ maxHeight: '90vh', maxWidth: '100%', objectFit: 'contain' }}
+                            onClick={(e) => e.stopPropagation()} 
+                        />
+                    </div>
+                </div>
+            )}
 
-            <ConfirmModal
-                show={confirm.show}
-                onClose={() => setConfirm({ ...confirm, show: false })}
-                onConfirm={confirm.action}
-                title={confirm.title}
-                message={confirm.message}
-                confirmText="Sí, Finalizar igual"
-                cancelText="Cancelar"
-                type="warning"
-            />
+            <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
+            <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={confirm.action} title={confirm.title} message={confirm.message} confirmText="Sí, Finalizar igual" cancelText="Cancelar" type="warning" />
 
             <div className="row g-0 flex-grow-1" style={{ minHeight: 0 }}>
+                {/* --- BARRA LATERAL IZQUIERDA --- */}
                 <div className={`col-12 col-md-4 col-lg-3 border-end bg-white d-flex flex-column shadow-sm z-1 ${selectedOt ? 'd-none d-md-flex' : 'd-flex'}`}>
+                    
+                    {/* RESTAURADO: TARJETAS DE EQUIPO PARA EL JEFE */}
                     {esJefe && (
                         <div className="p-3 bg-light border-bottom" style={{ maxHeight: '35vh', overflowY: 'auto' }}>
                             <div className="d-flex justify-content-between align-items-center mb-2 sticky-top bg-light pt-1 pb-2" style={{ zIndex: 5 }}>
@@ -269,49 +381,28 @@ const MisMantenciones = () => {
                         </div>
                     )}
 
+                    {/* FILTROS LATERALES */}
                     <div className="p-4 border-bottom bg-white flex-shrink-0">
                         <h5 className="fw-bold mb-3 text-dark d-flex align-items-center">
                             <i className="bi bi-clipboard-data me-3 fs-4 text-primary"></i>
                             {filtroTecnico ? 'Tareas de Usuario' : 'Listado General'}
                         </h5>
+                        
                         <div className="input-group input-group-sm mb-2 shadow-sm">
                             <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
-                            <input
-                                type="text"
-                                className="form-control border-start-0 ps-0"
-                                placeholder="Título, solicitante o #OT..."
-                                value={busqueda}
-                                onChange={(e) => setBusqueda(e.target.value)}
-                            />
+                            <input type="text" className="form-control border-start-0 ps-0" placeholder="Título, #OT o Solicitante..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
                         </div>
+
+                        {/* NUEVO: FILTRO DE DESTINO/UBICACIÓN */}
                         <div className="input-group input-group-sm mb-3 shadow-sm">
-                            <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-calendar"></i></span>
-                            <input
-                                type="date"
-                                className="form-control border-start-0 ps-0"
-                                value={filtroFecha}
-                                onChange={(e) => setFiltroFecha(e.target.value)}
-                            />
+                            <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-geo-alt"></i></span>
+                            <input type="text" className="form-control border-start-0 ps-0" placeholder="Filtrar por Destino o Ubicación..." value={filtroUbicacion} onChange={(e) => setFiltroUbicacion(e.target.value)} />
                         </div>
+
                         <div className="btn-group w-100 shadow-sm" role="group">
-                            <button
-                                className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                onClick={() => setFiltroEstado('pendientes')}
-                            >
-                                Pendientes
-                            </button>
-                            <button
-                                className={`btn btn-sm ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                onClick={() => setFiltroEstado('proceso')}
-                            >
-                                En Proceso
-                            </button>
-                            <button
-                                className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                onClick={() => setFiltroEstado('terminado')}
-                            >
-                                Terminado
-                            </button>
+                            <button className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('pendientes')}>Pendientes</button>
+                            <button className={`btn btn-sm ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('proceso')}>En Proceso</button>
+                            <button className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('terminado')}>Terminado</button>
                         </div>
                     </div>
 
@@ -334,6 +425,12 @@ const MisMantenciones = () => {
                                                     <small className="text-muted">{new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
                                                 </div>
                                                 <h6 className="mb-1 fw-bold text-dark text-truncate">{ot.activo}</h6>
+                                                
+                                                {/* Mostrar la ubicación en la tarjetita para que sepan por qué se filtró */}
+                                                {ot.ubicacion && (
+                                                    <div className="small text-danger text-truncate mb-1"><i className="bi bi-geo-alt-fill me-1"></i>{ot.ubicacion}</div>
+                                                )}
+
                                                 <div className="small text-muted text-truncate mb-1">
                                                     <i className="bi bi-person-fill me-1"></i>Solicita: {ot.solicitante_nombre}
                                                 </div>
@@ -352,6 +449,8 @@ const MisMantenciones = () => {
                         )}
                     </div>
                 </div>
+
+                {/* --- CONTENIDO PRINCIPAL DERECHO --- */}
                 <div className={`col-12 col-md-8 col-lg-9 d-flex flex-column position-relative ${!selectedOt ? 'd-none d-md-flex' : 'd-flex'}`} style={{ backgroundColor: '#f8f9fa' }}>
                     {selectedOt ? (
                         <>
@@ -388,9 +487,15 @@ const MisMantenciones = () => {
                                 <div className="px-3 px-md-4">
                                     <ul className="nav nav-pills nav-fill gap-2 p-1 bg-light rounded-pill" role="tablist" style={{ maxWidth: '600px' }}>
                                         <li className="nav-item">
+                                            <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 ${activeTab === 'info' ? 'active shadow-sm' : 'text-muted'}`}
+                                                onClick={() => setActiveTab('info')}>
+                                                <i className="bi bi-info-circle me-2 fs-5"></i>Info. Solicitud
+                                            </button>
+                                        </li>
+                                        <li className="nav-item">
                                             <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 ${activeTab === 'checklist' ? 'active shadow-sm' : 'text-muted'}`}
                                                 onClick={() => setActiveTab('checklist')}>
-                                                <i className="bi bi-list-check me-2 fs-5"></i>Pauta de Trabajo
+                                                <i className="bi bi-list-check me-2 fs-5"></i>Pauta
                                             </button>
                                         </li>
                                         <li className="nav-item">
@@ -414,6 +519,77 @@ const MisMantenciones = () => {
                                     </div>
                                 ) : (
                                     <div className="bg-white rounded-4 shadow-sm p-4 mx-auto" style={{ maxWidth: '1000px', minHeight: '100%' }}>
+                                        
+                                        {/* PESTAÑA 1: INFO GENERAL CON BOTONES DE ESTADO */}
+                                        <div className={activeTab === 'info' ? 'd-block' : 'd-none'}>
+                                            
+                                            {/* PANEL DE ESTADO MANUAL */}
+                                            <div className="mb-5 p-4 bg-light rounded-4 border shadow-sm">
+                                                <h6 className="fw-bold text-dark text-uppercase mb-3">
+                                                    <i className="bi bi-gear-fill text-primary me-2"></i> Cambiar Mi Estado
+                                                </h6>
+                                                <div className="d-flex flex-wrap gap-2">
+                                                    <button 
+                                                        className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 1 ? 'btn-warning text-dark border-warning' : 'btn-white border text-muted'}`}
+                                                        onClick={() => handleCambiarEstadoManual(1)}
+                                                        disabled={guardando || parseInt(selectedOt.estado_id) === 1 || parseInt(selectedOt.estado_id) === 5}
+                                                    >
+                                                        <i className="bi bi-hourglass-split me-2"></i>Pendiente
+                                                    </button>
+                                                    <button 
+                                                        className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 2 ? 'btn-primary border-primary' : 'btn-white border text-muted'}`}
+                                                        onClick={() => handleCambiarEstadoManual(2)}
+                                                        disabled={guardando || parseInt(selectedOt.estado_id) === 2 || parseInt(selectedOt.estado_id) === 5}
+                                                    >
+                                                        <i className="bi bi-tools me-2"></i>En Proceso
+                                                    </button>
+                                                    <button 
+                                                        className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 4 ? 'btn-danger border-danger' : 'btn-white border text-muted'}`}
+                                                        onClick={() => handleCambiarEstadoManual(4)}
+                                                        disabled={guardando || parseInt(selectedOt.estado_id) === 4 || parseInt(selectedOt.estado_id) === 5}
+                                                    >
+                                                        <i className="bi bi-pause-circle-fill me-2"></i>Pausada
+                                                    </button>
+                                                </div>
+                                                {parseInt(selectedOt.estado_id) === 5 ? (
+                                                    <small className="text-success mt-3 d-block fw-bold">
+                                                        <i className="bi bi-check-circle-fill me-1"></i> Esta tarea ya fue finalizada y firmada. No se puede revertir.
+                                                    </small>
+                                                ) : (
+                                                    <small className="text-muted mt-3 d-block">
+                                                        <i className="bi bi-info-circle me-1"></i> Actualiza esto si hubo un error automático o si debes pausar. <b>Para Finalizar la OT, usa el botón "Guardar Avance" y firma el trabajo.</b>
+                                                    </small>
+                                                )}
+                                            </div>
+
+                                            <h5 className="fw-bold mb-4 text-dark border-bottom pb-2 mt-4">
+                                                <i className="bi bi-journal-text me-2 text-primary"></i>
+                                                Detalles del Requerimiento
+                                            </h5>
+                                            <div className="row">
+                                                <div className="col-md-7">
+                                                    <div className="mb-4">
+                                                        <label className="text-muted small fw-bold text-uppercase mb-1">Descripción del Problema</label>
+                                                        <div className="p-3 bg-light rounded border">
+                                                            {selectedOt.descripcion_solicitud || 'Sin descripción proporcionada.'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mb-4">
+                                                        <label className="text-muted small fw-bold text-uppercase mb-1">Ubicación / Referencia</label>
+                                                        <div className="d-flex align-items-center">
+                                                            <i className="bi bi-geo-alt-fill text-danger me-2 fs-5"></i>
+                                                            <span className="fs-6 fw-medium">{selectedOt.ubicacion || 'No especificada'}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-5">
+                                                    <label className="text-muted small fw-bold text-uppercase mb-1">Evidencia (Cliente)</label>
+                                                    {renderEvidencia(selectedOt.imagen_url)}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* PESTAÑA 2: CHECKLIST (PAUTA) O CIERRE DIRECTO */}
                                         <div className={activeTab === 'checklist' ? 'd-block' : 'd-none'}>
                                             {selectedOt.plantilla_json ? (
                                                 <ChecklistRenderer
@@ -422,13 +598,76 @@ const MisMantenciones = () => {
                                                     onChange={(data) => setDatosEnvio(data)}
                                                 />
                                             ) : (
-                                                <div className="text-center py-5 text-muted opacity-50">
-                                                    <i className="bi bi-file-earmark-x display-1"></i>
-                                                    <h4 className="mt-3">Sin Pauta Digital</h4>
-                                                    <p>Este servicio no requiere el llenado de un checklist.</p>
+                                                <div className="bg-white rounded border shadow-sm p-4 mb-4">
+                                                    <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
+                                                        <i className="bi bi-clipboard-check me-2 text-primary"></i>
+                                                        Cierre de Servicio General
+                                                    </h5>
+                                                    
+                                                    <div className="alert alert-light border d-flex align-items-center mb-4">
+                                                        <i className="bi bi-info-circle-fill fs-4 me-3 text-secondary"></i>
+                                                        <span className="small text-muted">Este trabajo no requiere pauta paso a paso. Adjunte evidencias, comente y firme para finalizar.</span>
+                                                    </div>
+
+                                                    <div className="mb-4">
+                                                        <label className="form-label fw-bold text-muted small text-uppercase">1. Detalles del Trabajo Realizado</label>
+                                                        <textarea 
+                                                            className="form-control bg-light" 
+                                                            rows="4" 
+                                                            placeholder="Describa aquí lo que se reparó, cambió o solucionó..."
+                                                            value={datosEnvio.comentarios || ''}
+                                                            onChange={(e) => setDatosEnvio({ ...datosEnvio, comentarios: e.target.value })}
+                                                        ></textarea>
+                                                    </div>
+
+                                                    <div className="mb-4">
+                                                        <label className="form-label fw-bold text-muted small text-uppercase">2. Evidencia (Fotos / Videos)</label>
+                                                        <input 
+                                                            type="file" 
+                                                            className="form-control mb-2" 
+                                                            accept="image/*,video/*" 
+                                                            capture="environment" 
+                                                            multiple 
+                                                            onChange={handleFileChange} 
+                                                        />
+                                                        {datosEnvio.archivos && datosEnvio.archivos.length > 0 && (
+                                                            <div className="d-flex flex-wrap gap-2 mt-2">
+                                                                {datosEnvio.archivos.map((file, idx) => (
+                                                                    <span key={idx} className="badge bg-secondary d-flex align-items-center gap-2 p-2">
+                                                                        <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i> 
+                                                                        {file.name.substring(0,10)}... 
+                                                                        <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-2" 
+                                                                           onClick={() => setDatosEnvio(prev => ({...prev, archivos: prev.archivos.filter((_, i) => i !== idx)}))}></i>
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        <small className="text-muted d-block mt-1"><i className="bi bi-arrows-collapse me-1"></i>Las imágenes se comprimirán automáticamente un 70%.</small>
+                                                    </div>
+
+                                                    <div className="mb-2">
+                                                        <div className="d-flex justify-content-between align-items-end mb-2">
+                                                            <label className="form-label fw-bold text-muted small text-uppercase mb-0">3. Firma de Conformidad</label>
+                                                            <button type="button" className="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onClick={() => {
+                                                                sigCanvas.current?.clear();
+                                                                setDatosEnvio({ ...datosEnvio, firma: null });
+                                                            }}>
+                                                                <i className="bi bi-eraser me-1"></i>Limpiar
+                                                            </button>
+                                                        </div>
+                                                        <div className="border border-2 border-primary border-opacity-25 bg-white rounded-3 shadow-sm overflow-hidden" style={{ height: '200px' }}>
+                                                            <SignatureCanvas 
+                                                                ref={sigCanvas}
+                                                                canvasProps={{ className: 'w-100 h-100' }}
+                                                                onEnd={() => setDatosEnvio({ ...datosEnvio, firma: sigCanvas.current.getTrimmedCanvas().toDataURL('image/png') })}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* PESTAÑA 3: MATERIALES */}
                                         <div className={activeTab === 'materiales' ? 'd-block' : 'd-none'}>
                                             <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
                                                 <i className="bi bi-box-seam me-2 text-primary"></i>
@@ -497,7 +736,7 @@ const MisMantenciones = () => {
                         <div className="h-100 d-flex flex-column align-items-center justify-content-center text-muted p-4 text-center" style={{ backgroundColor: '#f8f9fa' }}>
                             <img src="https://cdn-icons-png.flaticon.com/512/7693/7693327.png" alt="Select Task" style={{ width: '150px', opacity: 0.5 }} className="mb-4 grayscale" />
                             <h3 className="fw-bold text-dark">¡Listo para trabajar!</h3>
-                            <p className="lead mb-0">Selecciona una tarea del panel izquierdo para comenzar tu pauta.</p>
+                            <p className="lead mb-0">Selecciona una tarea del panel izquierdo para comenzar.</p>
                         </div>
                     )}
                 </div>

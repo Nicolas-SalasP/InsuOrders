@@ -60,9 +60,9 @@ class MisMantencionesService
         }
     }
 
-    public function guardarCierre($otId, $firma, $comentarios)
+    public function guardarCierre($otId, $firma, $comentarios, $evidenciaStr = null)
     {
-        return $this->repository->guardarCierre($otId, $firma, $comentarios);
+        return $this->repository->guardarCierre($otId, $firma, $comentarios, $evidenciaStr);
     }
 
     public function guardarUrlPdf($otId, $url)
@@ -91,5 +91,13 @@ class MisMantencionesService
         if (empty($otId))
             throw new Exception("ID de OT no válido para iniciar trabajo.");
         return $this->repository->iniciarTrabajoEnOrden($otId);
+    }
+
+    public function actualizarEstadoOT($otId, $estadoId)
+    {
+        if (empty($otId) || empty($estadoId)) {
+            throw new Exception("ID de OT y Estado son obligatorios.");
+        }
+        return $this->repository->actualizarEstadoOT($otId, $estadoId);
     }
 }

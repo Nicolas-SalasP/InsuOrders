@@ -130,10 +130,12 @@ class OrdenCompraRepository
     {
         $sql = "SELECT 
                     ds.insumo_id as id, i.nombre, i.codigo_sku, i.unidad_medida,
+                    i.stock_actual,
                     GREATEST(0, SUM(ds.cantidad) - i.stock_actual) as cantidad_total,
                     i.precio_costo as precio,
                     GROUP_CONCAT(ds.id SEPARATOR ',') as ids_detalle_solicitud,
-                    GROUP_CONCAT(DISTINCT s.id ORDER BY s.id ASC SEPARATOR ', ') as lista_ots
+                    GROUP_CONCAT(DISTINCT s.id ORDER BY s.id ASC SEPARATOR ', ') as lista_ots,
+                    MAX(CASE WHEN UPPER(s.prioridad) IN ('URGENTE', 'CRITICA', 'CRÍTICA', 'CRITICO', 'CRÍTICO') THEN 1 ELSE 0 END) as es_urgente
                 FROM detalle_solicitud ds
                 JOIN solicitudes_ot s ON ds.solicitud_id = s.id
                 JOIN insumos i ON ds.insumo_id = i.id

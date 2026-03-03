@@ -37,7 +37,7 @@ const Compras = () => {
 
     // UI
     const [actionMenu, setActionMenu] = useState({ show: false, top: 0, left: 0, id: null, url: null, estado: null });
-    const [expandirPendientes, setExpandirPendientes] = useState(false); // Nuevo estado para colapsar/expandir
+    const [expandirPendientes, setExpandirPendientes] = useState(false); 
 
     // Filtros
     const [filtroProveedor, setFiltroProveedor] = useState('');
@@ -128,7 +128,6 @@ const Compras = () => {
 
     const procesarOmitir = async () => {
         setConfirmOmitir({ ...confirmOmitir, show: false });
-        // No activamos loading general para no bloquear toda la UI, solo refrescamos tabla
         try {
             const res = await api.post('/index.php/compras/omitir', { ids: confirmOmitir.ids });
             if (res.data.success) {
@@ -153,6 +152,23 @@ const Compras = () => {
         }));
         setItemsPrecargados(items);
         setShowModal(true);
+    };
+
+    // --- NUEVO: Exportar Pendientes ---
+    const handleExportarPendientes = async (e) => {
+        e.stopPropagation(); // Evitar que colapse el acordeón al hacer clic
+        try {
+            const res = await api.get('/index.php/exportar?modulo=compras_pendientes', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a'); 
+            link.href = url; 
+            link.setAttribute('download', `Analisis_Pendientes_Compra_${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link); 
+            link.click();
+            setTimeout(() => { document.body.removeChild(link); window.URL.revokeObjectURL(url); }, 100);
+        } catch (e) { 
+            setMsg({ show: true, title: "Error", text: "Error al exportar pendientes.", type: "error" }); 
+        }
     };
 
     const handleNewOrder = () => { setItemsPrecargados([]); setShowModal(true); };
@@ -354,7 +370,7 @@ const Compras = () => {
 
                 <div className="card-body p-0 flex-grow-1 overflow-auto position-relative bg-light">
                     
-                    {/* --- SECCIÓN DE ALERTAS MEJORADA (ACORDEÓN) --- */}
+                    {/* --- SECCIÓN DE ALERTAS MEJORADA CON EXPORTAR --- */}
                     {pendientes.length > 0 && can('compras_crear_insumos') && (
                         <div className="mx-3 mt-3 mb-2">
                             <div className="card border-warning shadow-sm">
@@ -367,6 +383,13 @@ const Compras = () => {
                                         </div>
                                     </div>
                                     <div className="d-flex align-items-center gap-2">
+                                        <button 
+                                            className="btn btn-sm btn-outline-dark bg-white fw-bold border-dark px-3 d-flex align-items-center" 
+                                            onClick={handleExportarPendientes}
+                                            title="Exportar Análisis a Excel"
+                                        >
+                                            <i className="bi bi-file-earmark-excel text-success me-1 fs-6"></i> Excel
+                                        </button>
                                         {expandirPendientes && (
                                             <button 
                                                 className="btn btn-sm btn-warning text-dark fw-bold border-dark px-3" 
@@ -382,7 +405,7 @@ const Compras = () => {
                                 
                                 {expandirPendientes && (
                                     <div className="card-body p-0">
-                                        <div className="table-responsive" style={{maxHeight: '300px'}}>
+                                        <div className="table-responsive" style={{maxHeight: '400px'}}>
                                             <table className="table table-sm table-hover align-middle mb-0 small table-striped">
                                                 <thead className="table-light sticky-top">
                                                     <tr>
@@ -404,7 +427,11 @@ const Compras = () => {
                                                             </td>
                                                             <td className="font-monospace text-muted">{p.codigo_sku}</td>
                                                             <td className="fw-bold text-primary">
-                                                                {p.nombre}
+                                                                <div className="d-flex align-items-center gap-2">
+                                                                    {p.nombre}
+                                                                    {/* BADGE DE URGENCIA */}
+                                                                    {p.es_urgente == 1 && <span className="badge bg-danger shadow-sm border border-white" style={{fontSize: '0.65rem'}}>🚨 Urgente</span>}
+                                                                </div>
                                                                 <div className="text-muted fw-normal fst-italic" style={{fontSize: '0.7rem'}}>Requerido en OTs: {p.lista_ots}</div>
                                                             </td>
                                                             <td className="text-center text-danger fw-bold">-{p.cantidad_total} {p.unidad_medida}</td>

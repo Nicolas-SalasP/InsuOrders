@@ -43,20 +43,26 @@ class MantencionController
                 throw new Exception("Usuario no identificado");
             }
 
-            $id = $this->service->crearOT([
+            $payload = [
                 'usuario_id' => $usuarioId,
                 'activo_id' => $data['activo_id'] ?? null,
-                'observacion' => $data['observacion'],
+                'observacion' => $data['observacion'] ?? '',
                 'origen_tipo' => $data['origen_tipo'] ?? 'Interna',
                 'area_negocio' => $data['area_negocio'] ?? null,
                 'centro_costo_ot' => $data['centro_costo_ot'] ?? null,
                 'solicitante_externo' => $data['solicitante_externo'] ?? null,
+                'prioridad' => $data['prioridad'] ?? 'Media',
+                'ubicacion' => $data['ubicacion'] ?? null,
+                'usuario_solicitante_id' => !empty($data['usuario_solicitante_id']) ? $data['usuario_solicitante_id'] : $usuarioId,
+                'asignados' => $data['asignados'] ?? [],
                 'items' => $data['items'] ?? []
-            ], $usuarioId);
+            ];
+
+            $id = $this->service->crearOT($payload, $usuarioId);
 
             echo json_encode(["success" => true, "message" => "Solicitud #$id creada correctamente"]);
         } catch (Exception $e) {
-            http_response_code(500);
+            http_response_code(400); 
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }

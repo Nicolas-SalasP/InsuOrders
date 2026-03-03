@@ -21,7 +21,7 @@ class MantencionRepository
 
     public function getAll($filters = [])
     {
-        $sql = "SELECT DISTINCT s.*, 
+        $sql = "SELECT s.*, 
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(s.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id,
@@ -58,7 +58,8 @@ class MantencionRepository
             $params[':insumo'] = $filters['insumo_id'];
         }
 
-        $sql .= " ORDER BY 
+        $sql .= " GROUP BY s.id 
+                ORDER BY 
                     CASE UPPER(TRIM(s.prioridad)) 
                         WHEN 'CRITICO' THEN 1 
                         WHEN 'CRÍTICO' THEN 1 
@@ -68,7 +69,7 @@ class MantencionRepository
                         WHEN 'BAJA' THEN 5 
                         ELSE 6 
                     END ASC, 
-                    s.fecha_solicitud DESC";
+                    s.id DESC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -80,10 +81,12 @@ class MantencionRepository
         $sql = "SELECT a.*, 
                 COALESCE(cc.nombre, cc_legacy.nombre) as centro_costo_nombre, 
                 COALESCE(cc.codigo, cc_legacy.codigo) as centro_costo_codigo, 
-                COALESCE(cc.id, cc_legacy.id) as centro_costo_real_id 
+                COALESCE(cc.id, cc_legacy.id) as centro_costo_real_id,
+                p.nombre as padre_nombre, p.codigo_interno as padre_codigo
                 FROM activos a 
                 LEFT JOIN centros_costo cc ON a.centro_costo_id = cc.id 
                 LEFT JOIN centros_costo cc_legacy ON a.centro_costo_id = cc_legacy.codigo 
+                LEFT JOIN activos p ON a.activo_padre_id = p.id
                 ORDER BY a.nombre ASC";
         $data = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
         foreach ($data as &$row) {
@@ -110,9 +113,10 @@ class MantencionRepository
             throw new Exception("El código '{$data['codigo_interno']}' ya existe.");
 
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
+        $padreId = !empty($data['activo_padre_id']) ? $data['activo_padre_id'] : null;
 
-        $sql = "INSERT INTO activos (codigo_interno, codigo_maquina, nombre, tipo, marca, modelo, anio, numero_serie, ubicacion, descripcion, centro_costo_id, estado_activo, imagen_url, frecuencia_mantencion, unidad_frecuencia) 
-                VALUES (:cod, :cod_maq, :nom, :tipo, :marca, :mod, :anio, :serie, :ubi, :desc, :cc, :est, :img, :frec, :uni)";
+        $sql = "INSERT INTO activos (codigo_interno, codigo_maquina, nombre, tipo, marca, modelo, anio, numero_serie, ubicacion, descripcion, centro_costo_id, estado_activo, imagen_url, frecuencia_mantencion, unidad_frecuencia, activo_padre_id) 
+                VALUES (:cod, :cod_maq, :nom, :tipo, :marca, :mod, :anio, :serie, :ubi, :desc, :cc, :est, :img, :frec, :uni, :padre)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
@@ -130,7 +134,8 @@ class MantencionRepository
             ':est' => $data['estado_activo'] ?? 'OPERATIVO',
             ':img' => $data['imagen_url'] ?? null,
             ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null,
-            ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null
+            ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null,
+            ':padre' => $padreId
         ]);
 
         $activoId = $this->db->lastInsertId();
@@ -148,12 +153,14 @@ class MantencionRepository
     public function updateActivo($data)
     {
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
+        $padreId = !empty($data['activo_padre_id']) ? $data['activo_padre_id'] : null;
         $imgSql = !empty($data['imagen_url']) ? ", imagen_url = :img" : "";
 
         $sql = "UPDATE activos SET 
                 codigo_interno=:cod, codigo_maquina=:cod_maq, nombre=:nom, tipo=:tipo, marca=:marca, modelo=:mod,
                 anio=:anio, numero_serie=:serie, ubicacion=:ubi, descripcion=:desc, centro_costo_id=:cc,
-                estado_activo=:est, frecuencia_mantencion=:frec, unidad_frecuencia=:uni $imgSql 
+                estado_activo=:est, frecuencia_mantencion=:frec, unidad_frecuencia=:uni, 
+                activo_padre_id=:padre $imgSql 
                 WHERE id=:id";
 
         $params = [
@@ -171,6 +178,7 @@ class MantencionRepository
             ':est' => $data['estado_activo'] ?? 'OPERATIVO',
             ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null,
             ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null,
+            ':padre' => $padreId,
             ':id' => $data['id']
         ];
         if (!empty($data['imagen_url']))
@@ -275,11 +283,18 @@ class MantencionRepository
 
     public function getKitActivo($activoId)
     {
-        $sql = "SELECT ai.insumo_id as id, i.nombre, i.codigo_sku, ai.cantidad_default as cantidad, 
-                i.stock_actual, i.unidad_medida, i.precio_costo as precio 
-                FROM activos_insumos ai JOIN insumos i ON ai.insumo_id = i.id WHERE ai.activo_id = :id";
+        $sql = "SELECT ai.insumo_id as id, i.nombre as insumo_nombre, i.codigo_sku as insumo_sku, 
+                    ai.cantidad_default as cantidad, ai.cantidad_default as cantidad_sugerida,
+                    i.stock_actual, i.unidad_medida, i.precio_costo as precio,
+                    ai.activo_id, a.nombre as origen_nombre, a.codigo_interno as origen_codigo
+                FROM activos_insumos ai 
+                JOIN insumos i ON ai.insumo_id = i.id 
+                JOIN activos a ON ai.activo_id = a.id
+                WHERE ai.activo_id = :id1 
+                OR ai.activo_id IN (SELECT id FROM activos WHERE activo_padre_id = :id2)";
+
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id' => $activoId]);
+        $stmt->execute([':id1' => $activoId, ':id2' => $activoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     public function addInsumoToKit($activoId, $insumoId, $cant)

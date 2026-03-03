@@ -23,7 +23,8 @@ class ClienteRepository
                     prioridad, 
                     estado_id, 
                     fecha_solicitud, 
-                    imagen_url
+                    imagen_url,
+                    ubicacion
                 ) VALUES (
                     :uid, 
                     :activo, 
@@ -32,7 +33,8 @@ class ClienteRepository
                     :prio, 
                     1, 
                     NOW(), 
-                    :img
+                    :img,
+                    :ubicacion
                 )";
         
         $stmt = $this->db->prepare($sql);
@@ -43,13 +45,14 @@ class ClienteRepository
             ':titulo' => $data['titulo'],
             ':desc' => $data['descripcion'],
             ':prio' => $data['prioridad'],
-            ':img' => $data['imagen_url']
+            ':img' => $data['imagen_url'],
+            ':ubicacion' => $data['ubicacion'] ?? null
         ]);
 
         return $this->db->lastInsertId();
     }
 
-    public function getMisSolicitudes($usuarioId)
+    public function getMisSolicitudes($usuarioId) 
     {
         $sql = "SELECT 
                     s.id, 
@@ -59,19 +62,24 @@ class ClienteRepository
                     s.prioridad, 
                     s.imagen_url,
                     s.activo_id,
+                    s.ubicacion,
+                    s.usuario_solicitante_id,
+                    CONCAT(u.nombre, ' ', u.apellido) as solicitante,
                     e.nombre as estado,
                     e.id as estado_id,
                     a.nombre as activo_nombre,
-                    CONCAT(t.nombre, ' ', t.apellido) as tecnico_asignado
+                    (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') 
+                    FROM ot_asignaciones oa 
+                    JOIN usuarios usr ON oa.usuario_id = usr.id 
+                    WHERE oa.solicitud_id = s.id) as tecnico_asignado
                 FROM solicitudes_ot s
                 JOIN estados_solicitud e ON s.estado_id = e.id
                 LEFT JOIN activos a ON s.activo_id = a.id
-                LEFT JOIN usuarios t ON s.asignado_a = t.id
-                WHERE s.usuario_solicitante_id = :uid
+                LEFT JOIN usuarios u ON s.usuario_solicitante_id = u.id
                 ORDER BY s.fecha_solicitud DESC";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':uid' => $usuarioId]);
+        $stmt->execute(); 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

@@ -14,12 +14,14 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     // --- ESTADOS DEL FORMULARIO ---
     const [modo, setModo] = useState('maquina');
     const [activoId, setActivoId] = useState('');
-    
-    // CAMBIO: Ahora solicitante almacena el ID del usuario, no el nombre
     const [solicitanteId, setSolicitanteId] = useState('');
-    
     const [centroCostoOT, setCentroCostoOT] = useState('');
     const [observacion, setObservacion] = useState('');
+    
+    // NUEVOS CAMPOS
+    const [prioridad, setPrioridad] = useState('Media');
+    const [ubicacion, setUbicacion] = useState('');
+
     const [items, setItems] = useState([]);
     
     // --- ESTADO MULTI-ASIGNACIÓN ---
@@ -32,6 +34,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [mostrarLista, setMostrarLista] = useState(false);
     const wrapperRef = useRef(null);
     const [loading, setLoading] = useState(false);
+
+    // --- EVIDENCIAS ---
+    const [evidencias, setEvidencias] = useState([]);
 
     // --- MODALES AUXILIARES ---
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
@@ -110,8 +115,11 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setBusqueda('');
         setSolicitanteId('');
         setCentroCostoOT('');
+        setPrioridad('Media');
+        setUbicacion('');
         setAsignados([]); 
         setItems([]);
+        setEvidencias([]);
     };
 
     const cargarDatosEdicion = async () => {
@@ -122,13 +130,13 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             } else {
                 setModo('servicio');
                 setActivoId('');
-                
-                // CAMBIO: Cargar el ID del usuario solicitante. 
-                // Usamos usuario_solicitante_id que es la FK correcta en la DB.
                 setSolicitanteId(otEditar.usuario_solicitante_id || '');
                 setCentroCostoOT(otEditar.centro_costo_ot || '');
             }
             setObservacion(otEditar.descripcion_trabajo || '');
+            setPrioridad(otEditar.prioridad || 'Media');
+            setUbicacion(otEditar.ubicacion || '');
+
             if (otEditar.asignados_ids) {
                 const ids = String(otEditar.asignados_ids).split(',').map(Number);
                 setAsignados(ids);
@@ -206,7 +214,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                 stock_actual: parseFloat(k.stock_actual || 0),
                                 unidad_medida: k.unidad_medida,
                                 cantidad: parseFloat(k.cantidad || 1),
-                                estado_linea: 'NUEVO'
+                                estado_linea: 'NUEVO',
+                                origen_nombre: k.origen_nombre,
+                                origen_codigo: k.origen_codigo
                             }));
                             setItems(kitItems);
                             setConfirmModal({ show: false });
@@ -259,6 +269,15 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setItems(items.filter((_, i) => i !== idx));
     };
 
+    const handleEvidencias = (e) => {
+        const files = Array.from(e.target.files);
+        setEvidencias(prev => [...prev, ...files]);
+    };
+    
+    const removeEvidencia = (index) => {
+        setEvidencias(prev => prev.filter((_, i) => i !== index));
+    };
+
     const preSubmit = () => {
         if (modo === 'maquina' && !activoId) {
             return setMsgModal({ show: true, title: "Faltan Datos", message: "Por favor seleccione una máquina o activo.", type: "warning" });
@@ -286,7 +305,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     };
 
     const procesarEnvio = async () => {
-        setConfirmModal({ show: false });
+        setConfirmModal({ show: false, title: '', message: '', action: null });
         setLoading(true);
         try {
             const itemsFormateados = items.map(i => ({
@@ -299,11 +318,10 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 id: otEditar ? otEditar.id : null,
                 activo_id: modo === 'maquina' ? activoId : null,
                 observacion: observacion,
+                prioridad: prioridad,
+                ubicacion: ubicacion,
                 items: itemsFormateados,
-                
-                // CAMBIO: Enviamos el ID del usuario solicitante
-                usuario_solicitante_id: modo === 'servicio' ? solicitanteId : null,
-                
+                usuario_solicitante_id: solicitanteId || null, 
                 area_negocio: null,
                 centro_costo_ot: modo === 'servicio' ? centroCostoOT : null,
                 origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio',
@@ -326,7 +344,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
         } catch (error) {
             console.error("Error en petición:", error);
-            const errorMsg = error.response?.data?.message || "Error al procesar.";
+            const errorMsg = error.response?.data?.message || "Error al procesar la solicitud.";
             setMsgModal({ show: true, title: "Error", message: errorMsg, type: "error" });
         } finally {
             setLoading(false);
@@ -406,7 +424,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     >
                                                         <option value="">-- Seleccione Máquina --</option>
                                                         {activos.map(a => (
-                                                            <option key={a.id} value={a.id}>{a.nombre} [{a.codigo_interno}]</option>
+                                                            <option key={a.id} value={a.id}>
+                                                                {a.codigo_interno} - {a.nombre} {a.padre_nombre ? `(Sub-equipo de: ${a.padre_nombre})` : ''}
+                                                            </option>
                                                         ))}
                                                     </select>
                                                 </div>
@@ -415,24 +435,18 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     <h6 className="text-success fw-bold border-bottom pb-2 mb-3"><i className="bi bi-person-badge me-2"></i>Datos del Servicio</h6>
                                                     <div className="mb-3">
                                                         <label className="form-label small text-muted">Solicitante</label>
-                                                        
-                                                        {/* SELECT DE SOLICITANTE CON ID */}
                                                         <select 
                                                             className="form-select" 
                                                             value={solicitanteId || ''} 
                                                             onChange={e => setSolicitanteId(e.target.value)} 
-                                                            disabled={!editable} // Siempre editable si la OT no está cerrada
+                                                            disabled={!editable} 
                                                         >
                                                             <option value="">Seleccione Solicitante...</option>
-                                                            
-                                                            {/* Si el solicitante de la OT (cliente) NO está en la lista de personal, lo agregamos visualmente para que no quede en blanco */}
                                                             {otEditar && otEditar.usuario_solicitante_id && !personal.some(p => p.usuario_id == otEditar.usuario_solicitante_id) && (
                                                                 <option value={otEditar.usuario_solicitante_id}>
                                                                     {otEditar.solicitante_nombre || 'Usuario Cliente'}
                                                                 </option>
                                                             )}
-
-                                                            {/* Listar solo personal con cuenta de usuario */}
                                                             {personal.filter(p => p.usuario_id).map(p => (
                                                                 <option key={p.id} value={p.usuario_id}>
                                                                     {p.nombre_completo}
@@ -456,6 +470,35 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     </div>
                                                 </div>
                                             )}
+
+                                            <div className="row g-2 mb-3">
+                                                <div className="col-6">
+                                                    <label className="form-label small text-muted">Prioridad</label>
+                                                    <select 
+                                                        className={`form-select shadow-sm fw-bold ${prioridad === 'Critico' ? 'text-danger border-danger' : ''}`} 
+                                                        value={prioridad} 
+                                                        onChange={e => setPrioridad(e.target.value)} 
+                                                        disabled={!editable}
+                                                    >
+                                                        <option value="Baja">Baja</option>
+                                                        <option value="Media">Media</option>
+                                                        <option value="Alta">Alta</option>
+                                                        <option value="Urgente">Urgente</option>
+                                                        <option value="Critico">Crítico 🚨</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-6">
+                                                    <label className="form-label small text-muted">Ubicación / Área</label>
+                                                    <input 
+                                                        type="text" 
+                                                        className="form-control shadow-sm" 
+                                                        placeholder="Ej: Planta 1, Sector B..." 
+                                                        value={ubicacion} 
+                                                        onChange={e => setUbicacion(e.target.value)} 
+                                                        disabled={!editable} 
+                                                    />
+                                                </div>
+                                            </div>
 
                                             {/* ASIGNACIÓN MÚLTIPLE DE TÉCNICOS */}
                                             <div className="mb-2" ref={dropdownRef}>
@@ -509,13 +552,34 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     placeholder="Describa el problema o requerimiento detalladamente..."
                                                     disabled={!editable}
                                                 ></textarea>
+                                                
+                                                {/* EVIDENCIAS */}
+                                                <div className="mt-3">
+                                                    <label className="form-label fw-bold small text-muted text-uppercase">
+                                                        <i className="bi bi-camera me-1"></i> Evidencia Adjunta (Opcional)
+                                                    </label>
+                                                    {editable && (
+                                                        <input type="file" className="form-control form-control-sm shadow-sm" multiple accept="image/*,video/*" onChange={handleEvidencias} />
+                                                    )}
+                                                    {evidencias.length > 0 && (
+                                                        <div className="d-flex flex-wrap gap-2 mt-2">
+                                                            {evidencias.map((file, idx) => (
+                                                                <div key={idx} className="badge bg-secondary p-2 d-flex align-items-center shadow-sm">
+                                                                    <i className="bi bi-file-image me-2"></i>
+                                                                    <span className="text-truncate" style={{maxWidth: '120px'}}>{file.name}</span>
+                                                                    {editable && <i className="bi bi-x-circle text-danger ms-2 cursor-pointer fs-6" onClick={() => removeEvidencia(idx)}></i>}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECCIÓN DE INSUMOS (SIN CAMBIOS) */}
+                            {/* SECCIÓN DE INSUMOS */}
                             <div className="card border-0 shadow-sm">
                                 <div className="card-body p-0">
                                     {editable && (
@@ -565,7 +629,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 {items.length > 0 ? items.map((item, idx) => (
                                                     <tr key={idx}>
                                                         <td className="ps-4">
-                                                            <div className="fw-bold text-dark">{item.nombre}</div>
+                                                            <div className="fw-bold text-dark">{item.nombre || item.insumo_nombre}</div>
+                                                            {item.origen_nombre && (
+                                                                <small className="text-muted d-block mt-1" style={{fontSize: '0.75rem'}}>
+                                                                    <i className="bi bi-diagram-2 text-primary me-1"></i>Ref: {item.origen_codigo || item.origen_nombre}
+                                                                </small>
+                                                            )}
                                                             <small className="text-muted font-monospace">{item.codigo_sku}</small>
                                                             {item.unidad_medida && <span className="badge bg-light text-dark border ms-2">{item.unidad_medida}</span>}
                                                         </td>
