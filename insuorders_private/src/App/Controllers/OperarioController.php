@@ -19,7 +19,7 @@ class OperarioController
         $userId = AuthMiddleware::verify(); 
 
         try {
-            $data = $this->service->obtenerMisDatos($userId); 
+            $data = $this->service->obtenerMisDatos($userId);
             echo json_encode(['success' => true, 'data' => $data]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -54,8 +54,8 @@ class OperarioController
 
             $accion = $data['accion'] ?? '';
             $msg = ($accion === 'RECHAZAR') 
-                ? "Entrega rechazada. Stock devuelto a bodega." 
-                : "Entrega aceptada correctamente.";
+                ? "Entrega(s) rechazada(s). Stock devuelto a bodega." 
+                : "Entrega(s) aceptada(s) correctamente.";
 
             echo json_encode(["success" => true, "message" => $msg]);
 

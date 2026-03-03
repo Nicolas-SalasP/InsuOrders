@@ -19,12 +19,11 @@ const MisMantenciones = () => {
     const [loadingDetalle, setLoadingDetalle] = useState(false);
     const [guardando, setGuardando] = useState(false);
     
-    // --- ESTADOS DE FILTRO ---
     const [filtroEstado, setFiltroEstado] = useState('pendientes');
     const [busqueda, setBusqueda] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
     const [filtroTecnico, setFiltroTecnico] = useState(null);
-    const [filtroUbicacion, setFiltroUbicacion] = useState(''); // <-- NUEVO ESTADO DE UBICACIÓN
+    const [filtroUbicacion, setFiltroUbicacion] = useState('');
 
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: '' });
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
@@ -32,6 +31,8 @@ const MisMantenciones = () => {
     const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
     const sigCanvas = useRef(null);
     const [enlargedImage, setEnlargedImage] = useState(null);
+
+    const esServicio = selectedOt && (!selectedOt.activo_id || selectedOt.codigo_interno === 'SERV');
 
     useEffect(() => {
         if (can('ope_mant')) {
@@ -76,8 +77,13 @@ const MisMantenciones = () => {
         setSelectedOt(ot);
         setLoadingDetalle(true);
         setActiveTab('info');
-        setDatosEnvio({ respuestas: [], firma: null, comentarios: '', archivos: [] });
-        sigCanvas.current?.clear();
+        
+        setDatosEnvio({ 
+            respuestas: [], 
+            firma: null, 
+            comentarios: ot.comentarios_finales || '', 
+            archivos: [] 
+        });
         setEnlargedImage(null);
 
         try {
@@ -126,29 +132,24 @@ const MisMantenciones = () => {
     };
 
     const otsFiltradas = ots.filter(ot => {
-        // Filtro por Técnico (Tarjetas de arriba)
         if (filtroTecnico) {
             const asignados = ot.asignados_ids ? ot.asignados_ids.toString().split(',') : [];
             if (!asignados.includes(filtroTecnico.toString())) return false;
         }
 
-        // Filtro por Estado
         const matchEstado =
             filtroEstado === 'pendientes' ? (ot.estado_id === 1 || ot.estado_id === 4) :
                 filtroEstado === 'proceso' ? ot.estado_id === 2 :
                     filtroEstado === 'terminado' ? ot.mi_completado === 1 || ot.estado_id === 5 : true;
 
-        // Filtro de Búsqueda de Texto General
         const texto = busqueda.toLowerCase();
         const matchTexto = ot.activo.toLowerCase().includes(texto) ||
+            (ot.titulo && ot.titulo.toLowerCase().includes(texto)) ||
             `${ot.solicitante_nombre} ${ot.solicitante_apellido}`.toLowerCase().includes(texto) ||
             ot.id.toString().includes(texto) ||
             (ot.asignados_nombres && ot.asignados_nombres.toLowerCase().includes(texto));
 
-        // Filtro por Fecha
         const matchFecha = filtroFecha ? ot.fecha_solicitud.startsWith(filtroFecha) : true;
-        
-        // NUEVO: Filtro por Destino / Ubicación
         const matchUbicacion = !filtroUbicacion || (ot.ubicacion && ot.ubicacion.toLowerCase().includes(filtroUbicacion.toLowerCase()));
 
         return matchEstado && matchTexto && matchFecha && matchUbicacion;
@@ -187,12 +188,7 @@ const MisMantenciones = () => {
     };
 
     const renderEvidencia = (evidenciaStr) => {
-        if (!evidenciaStr) return (
-            <div className="p-5 bg-light rounded border text-center text-muted h-100 d-flex flex-column align-items-center justify-content-center">
-                <i className="bi bi-image text-secondary opacity-50 display-4 mb-2"></i>
-                <span>Sin imagen adjunta</span>
-            </div>
-        );
+        if (!evidenciaStr) return null;
 
         let archivos = [];
         try {
@@ -223,9 +219,15 @@ const MisMantenciones = () => {
         );
     };
 
-    const iniciarGuardado = () => {
+    const iniciarGuardado = (isFinalizar = false) => {
         if (!selectedOt) return;
-        if (datosEnvio.firma) {
+
+        if (isFinalizar) {
+            if (!esServicio && !datosEnvio.firma) {
+                setMsg({ show: true, title: "Firma Requerida", text: "Debe firmar de conformidad para finalizar esta OT.", type: "warning" });
+                return;
+            }
+
             const faltantes = detallesOt.insumos.filter(i => parseFloat(i.stock_usuario || 0) < parseFloat(i.cantidad));
 
             if (faltantes.length > 0) {
@@ -236,16 +238,16 @@ const MisMantenciones = () => {
                 setConfirm({
                     show: true,
                     title: "⚠️ Stock Insuficiente",
-                    message: `No tienes suficiente stock en "Mis Insumos" para cubrir esta OT:\n\n${itemsLista}\n\n¿Estás seguro de finalizar? El sistema registrará el consumo de todas formas.`,
-                    action: procesarGuardado
+                    message: `No tienes suficiente stock en "Mis Insumos" para cubrir esta solicitud:\n\n${itemsLista}\n\n¿Estás seguro de finalizar? El sistema registrará el consumo de todas formas.`,
+                    action: () => procesarGuardado(true)
                 });
                 return;
             }
         }
-        procesarGuardado();
+        procesarGuardado(isFinalizar);
     };
 
-    const procesarGuardado = async () => {
+    const procesarGuardado = async (isFinalizar) => {
         setConfirm({ ...confirm, show: false });
         setGuardando(true);
 
@@ -255,6 +257,9 @@ const MisMantenciones = () => {
             formData.append('respuestas', JSON.stringify(datosEnvio.respuestas || []));
             if (datosEnvio.firma) formData.append('firma', datosEnvio.firma);
             if (datosEnvio.comentarios) formData.append('comentarios', datosEnvio.comentarios);
+            
+            formData.append('finalizar', isFinalizar ? 'true' : 'false');
+            
             if (datosEnvio.archivos && datosEnvio.archivos.length > 0) {
                 datosEnvio.archivos.forEach((file, index) => {
                     formData.append(`evidencia_${index}`, file);
@@ -266,16 +271,21 @@ const MisMantenciones = () => {
             });
 
             if (res.data.success) {
-                setMsg({ show: true, title: datosEnvio.firma ? '¡Trabajo Finalizado!' : 'Avance Guardado', text: 'Operación registrada correctamente.', type: 'success' });
-                if (datosEnvio.firma) {
+                setMsg({ show: true, title: isFinalizar ? '¡Trabajo Finalizado!' : 'Avance Guardado', text: 'Operación registrada correctamente.', type: 'success' });
+                
+                setDatosEnvio(prev => ({ ...prev, archivos: [] }));
+
+                if (isFinalizar) {
                     cargarMisOts();
                     setSelectedOt(null);
                 } else {
                     cargarMisOts();
+                    const updatedOt = ots.find(o => o.id === selectedOt.id) || selectedOt;
+                    handleSelectOt(updatedOt);
                 }
             }
         } catch (e) {
-            setMsg({ show: true, title: 'Error', text: e.response?.data?.message || 'No se pudo guardar el avance.', type: 'error' });
+            setMsg({ show: true, title: 'Error', text: e.response?.data?.message || 'No se pudo guardar.', type: 'error' });
         } finally {
             setGuardando(false);
         }
@@ -296,7 +306,6 @@ const MisMantenciones = () => {
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column bg-light position-relative">
             
-            {/* VISOR DE IMÁGENES A PANTALLA COMPLETA */}
             {enlargedImage && (
                 <div 
                     className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
@@ -326,10 +335,8 @@ const MisMantenciones = () => {
             <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={confirm.action} title={confirm.title} message={confirm.message} confirmText="Sí, Finalizar igual" cancelText="Cancelar" type="warning" />
 
             <div className="row g-0 flex-grow-1" style={{ minHeight: 0 }}>
-                {/* --- BARRA LATERAL IZQUIERDA --- */}
                 <div className={`col-12 col-md-4 col-lg-3 border-end bg-white d-flex flex-column shadow-sm z-1 ${selectedOt ? 'd-none d-md-flex' : 'd-flex'}`}>
                     
-                    {/* RESTAURADO: TARJETAS DE EQUIPO PARA EL JEFE */}
                     {esJefe && (
                         <div className="p-3 bg-light border-bottom" style={{ maxHeight: '35vh', overflowY: 'auto' }}>
                             <div className="d-flex justify-content-between align-items-center mb-2 sticky-top bg-light pt-1 pb-2" style={{ zIndex: 5 }}>
@@ -381,7 +388,6 @@ const MisMantenciones = () => {
                         </div>
                     )}
 
-                    {/* FILTROS LATERALES */}
                     <div className="p-4 border-bottom bg-white flex-shrink-0">
                         <h5 className="fw-bold mb-3 text-dark d-flex align-items-center">
                             <i className="bi bi-clipboard-data me-3 fs-4 text-primary"></i>
@@ -393,7 +399,6 @@ const MisMantenciones = () => {
                             <input type="text" className="form-control border-start-0 ps-0" placeholder="Título, #OT o Solicitante..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
                         </div>
 
-                        {/* NUEVO: FILTRO DE DESTINO/UBICACIÓN */}
                         <div className="input-group input-group-sm mb-3 shadow-sm">
                             <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-geo-alt"></i></span>
                             <input type="text" className="form-control border-start-0 ps-0" placeholder="Filtrar por Destino o Ubicación..." value={filtroUbicacion} onChange={(e) => setFiltroUbicacion(e.target.value)} />
@@ -420,13 +425,16 @@ const MisMantenciones = () => {
                                             className={`card w-100 mb-2 border-0 shadow-sm text-start card-hover transition-all ${isActive ? 'border-start border-5 border-primary bg-white' : 'bg-white'}`}
                                             onClick={() => handleSelectOt(ot)}>
                                             <div className="card-body p-3">
-                                                <div className="d-flex justify-content-between mb-2">
+                                                <div className="d-flex justify-content-between mb-1">
                                                     <span className={`badge ${isActive ? 'bg-primary' : 'bg-secondary'} bg-opacity-25 text-dark fw-bold`}>OT #{ot.id}</span>
                                                     <small className="text-muted">{new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
                                                 </div>
-                                                <h6 className="mb-1 fw-bold text-dark text-truncate">{ot.activo}</h6>
                                                 
-                                                {/* Mostrar la ubicación en la tarjetita para que sepan por qué se filtró */}
+                                                {/* TÍTULO DESTACADO */}
+                                                <h6 className="mb-1 fw-bold text-primary text-truncate">{ot.titulo || 'Sin Título'}</h6>
+                                                
+                                                <div className="fw-bold text-dark text-truncate small mb-1"><i className="bi bi-gear-fill me-1 text-muted"></i>{ot.activo}</div>
+                                                
                                                 {ot.ubicacion && (
                                                     <div className="small text-danger text-truncate mb-1"><i className="bi bi-geo-alt-fill me-1"></i>{ot.ubicacion}</div>
                                                 )}
@@ -440,7 +448,7 @@ const MisMantenciones = () => {
                                                         {ot.asignados_nombres ? `Asignado: ${ot.asignados_nombres}` : 'Sin técnicos'}
                                                     </div>
                                                 )}
-                                                <span className="badge bg-info text-dark bg-opacity-25 border border-info fw-normal">{ot.estado}</span>
+                                                <span className="badge bg-info text-dark bg-opacity-25 border border-info fw-normal mt-1">{ot.estado}</span>
                                             </div>
                                         </button>
                                     );
@@ -450,7 +458,6 @@ const MisMantenciones = () => {
                     </div>
                 </div>
 
-                {/* --- CONTENIDO PRINCIPAL DERECHO --- */}
                 <div className={`col-12 col-md-8 col-lg-9 d-flex flex-column position-relative ${!selectedOt ? 'd-none d-md-flex' : 'd-flex'}`} style={{ backgroundColor: '#f8f9fa' }}>
                     {selectedOt ? (
                         <>
@@ -461,26 +468,55 @@ const MisMantenciones = () => {
                                             <i className="bi bi-arrow-left display-6"></i>
                                         </button>
                                         <div className="text-truncate">
-                                            <h4 className="fw-bold mb-0 text-truncate">{selectedOt.activo}</h4>
-                                            <div className="text-muted small d-flex align-items-center">
-                                                <i className="bi bi-upc-scan me-1"></i> {selectedOt.codigo_interno}
-                                                <span className="mx-2">|</span>
+                                            {/* TÍTULO DESTACADO EN EL HEADER */}
+                                            <h4 className="fw-bold mb-0 text-truncate text-primary">{selectedOt.titulo || 'Sin Título'}</h4>
+                                            
+                                            <div className="text-dark fw-bold small d-flex align-items-center mt-1">
+                                                <i className="bi bi-gear-wide-connected me-1"></i> {selectedOt.activo}
+                                                <span className="mx-2 text-muted">|</span>
+                                                <i className="bi bi-upc-scan me-1 text-muted"></i> {selectedOt.codigo_interno}
+                                            </div>
+                                            <div className="text-muted small mt-1">
                                                 <i className="bi bi-person-fill me-1"></i> Solicita: {selectedOt.solicitante_nombre} {selectedOt.solicitante_apellido}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="ps-3">
-                                        <button
-                                            className={`btn btn-lg fw-bold px-4 shadow d-flex align-items-center ${datosEnvio.firma ? 'btn-danger' : 'btn-primary'}`}
-                                            onClick={iniciarGuardado}
-                                            disabled={guardando}
-                                        >
-                                            {guardando ? <span className="spinner-border spinner-border-sm me-2"></span> :
-                                                datosEnvio.firma ? <i className="bi bi-file-earmark-lock-fill me-2 fs-5"></i> : <i className="bi bi-save-fill me-2 fs-5"></i>
-                                            }
-                                            <span className="d-none d-sm-inline">{datosEnvio.firma ? 'FINALIZAR Y FIRMAR' : 'GUARDAR AVANCE'}</span>
-                                            <span className="d-inline d-sm-none">{datosEnvio.firma ? 'FINALIZAR' : 'GUARDAR'}</span>
-                                        </button>
+                                    
+                                    {/* LÓGICA DE BOTONES EXCLUSIVOS */}
+                                    <div className="ps-3 d-flex gap-2">
+                                        {esServicio ? (
+                                            <>
+                                                <button
+                                                    className="btn btn-outline-primary fw-bold px-3 shadow-sm d-flex align-items-center"
+                                                    onClick={() => iniciarGuardado(false)}
+                                                    disabled={guardando || parseInt(selectedOt.estado_id) === 5}
+                                                >
+                                                    {guardando ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-save-fill me-1 me-sm-2"></i>}
+                                                    <span className="d-none d-sm-inline">Guardar Avance</span>
+                                                </button>
+                                                <button
+                                                    className="btn btn-success fw-bold px-3 px-sm-4 shadow d-flex align-items-center"
+                                                    onClick={() => iniciarGuardado(true)}
+                                                    disabled={guardando || parseInt(selectedOt.estado_id) === 5}
+                                                >
+                                                    {guardando ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check-circle-fill me-1 me-sm-2"></i>}
+                                                    <span className="d-none d-sm-inline">Finalizar</span>
+                                                    <span className="d-inline d-sm-none">Fin</span>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                className={`btn btn-lg fw-bold px-4 shadow d-flex align-items-center ${datosEnvio.firma ? 'btn-danger' : 'btn-primary'}`}
+                                                onClick={() => iniciarGuardado(!!datosEnvio.firma)}
+                                                disabled={guardando || parseInt(selectedOt.estado_id) === 5}
+                                            >
+                                                {guardando ? <span className="spinner-border spinner-border-sm me-2"></span> :
+                                                    datosEnvio.firma ? <i className="bi bi-file-earmark-lock-fill me-2 fs-5"></i> : <i className="bi bi-save-fill me-2 fs-5"></i>
+                                                }
+                                                <span className="d-none d-sm-inline">{datosEnvio.firma ? 'FINALIZAR Y FIRMAR' : 'GUARDAR AVANCE'}</span>
+                                                <span className="d-inline d-sm-none">{datosEnvio.firma ? 'FINALIZAR' : 'GUARDAR'}</span>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -495,7 +531,7 @@ const MisMantenciones = () => {
                                         <li className="nav-item">
                                             <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 ${activeTab === 'checklist' ? 'active shadow-sm' : 'text-muted'}`}
                                                 onClick={() => setActiveTab('checklist')}>
-                                                <i className="bi bi-list-check me-2 fs-5"></i>Pauta
+                                                <i className="bi bi-list-check me-2 fs-5"></i>Avance / Cierre
                                             </button>
                                         </li>
                                         <li className="nav-item">
@@ -520,10 +556,7 @@ const MisMantenciones = () => {
                                 ) : (
                                     <div className="bg-white rounded-4 shadow-sm p-4 mx-auto" style={{ maxWidth: '1000px', minHeight: '100%' }}>
                                         
-                                        {/* PESTAÑA 1: INFO GENERAL CON BOTONES DE ESTADO */}
                                         <div className={activeTab === 'info' ? 'd-block' : 'd-none'}>
-                                            
-                                            {/* PANEL DE ESTADO MANUAL */}
                                             <div className="mb-5 p-4 bg-light rounded-4 border shadow-sm">
                                                 <h6 className="fw-bold text-dark text-uppercase mb-3">
                                                     <i className="bi bi-gear-fill text-primary me-2"></i> Cambiar Mi Estado
@@ -553,11 +586,11 @@ const MisMantenciones = () => {
                                                 </div>
                                                 {parseInt(selectedOt.estado_id) === 5 ? (
                                                     <small className="text-success mt-3 d-block fw-bold">
-                                                        <i className="bi bi-check-circle-fill me-1"></i> Esta tarea ya fue finalizada y firmada. No se puede revertir.
+                                                        <i className="bi bi-check-circle-fill me-1"></i> Esta tarea ya fue finalizada. No se puede revertir.
                                                     </small>
                                                 ) : (
                                                     <small className="text-muted mt-3 d-block">
-                                                        <i className="bi bi-info-circle me-1"></i> Actualiza esto si hubo un error automático o si debes pausar. <b>Para Finalizar la OT, usa el botón "Guardar Avance" y firma el trabajo.</b>
+                                                        <i className="bi bi-info-circle me-1"></i> Actualiza esto si debes pausar. <b>Para Finalizar, usa {esServicio ? 'el botón Finalizar' : 'el botón de la firma'} de arriba.</b>
                                                     </small>
                                                 )}
                                             </div>
@@ -589,85 +622,91 @@ const MisMantenciones = () => {
                                             </div>
                                         </div>
 
-                                        {/* PESTAÑA 2: CHECKLIST (PAUTA) O CIERRE DIRECTO */}
                                         <div className={activeTab === 'checklist' ? 'd-block' : 'd-none'}>
-                                            {selectedOt.plantilla_json ? (
-                                                <ChecklistRenderer
-                                                    plantilla={typeof selectedOt.plantilla_json === 'string' ? JSON.parse(selectedOt.plantilla_json) : selectedOt.plantilla_json}
-                                                    respuestasIniciales={detallesOt.respuestas}
-                                                    onChange={(data) => setDatosEnvio(data)}
-                                                />
-                                            ) : (
-                                                <div className="bg-white rounded border shadow-sm p-4 mb-4">
-                                                    <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
-                                                        <i className="bi bi-clipboard-check me-2 text-primary"></i>
-                                                        Cierre de Servicio General
-                                                    </h5>
-                                                    
-                                                    <div className="alert alert-light border d-flex align-items-center mb-4">
-                                                        <i className="bi bi-info-circle-fill fs-4 me-3 text-secondary"></i>
-                                                        <span className="small text-muted">Este trabajo no requiere pauta paso a paso. Adjunte evidencias, comente y firme para finalizar.</span>
-                                                    </div>
+                                            {/* RENDERIZAMOS SIEMPRE QUE ESTEMOS EN LA PESTAÑA PARA PREVENIR EL BUG DE CANVAS 0x0 */}
+                                            {activeTab === 'checklist' && (
+                                                selectedOt.plantilla_json ? (
+                                                    <ChecklistRenderer
+                                                        plantilla={typeof selectedOt.plantilla_json === 'string' ? JSON.parse(selectedOt.plantilla_json) : selectedOt.plantilla_json}
+                                                        respuestasIniciales={detallesOt.respuestas}
+                                                        onChange={(data) => setDatosEnvio(data)}
+                                                    />
+                                                ) : (
+                                                    <div className="bg-white rounded border shadow-sm p-4 mb-4">
+                                                        <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
+                                                            <i className="bi bi-clipboard-check me-2 text-primary"></i>
+                                                            Avance y Cierre de Tarea
+                                                        </h5>
 
-                                                    <div className="mb-4">
-                                                        <label className="form-label fw-bold text-muted small text-uppercase">1. Detalles del Trabajo Realizado</label>
-                                                        <textarea 
-                                                            className="form-control bg-light" 
-                                                            rows="4" 
-                                                            placeholder="Describa aquí lo que se reparó, cambió o solucionó..."
-                                                            value={datosEnvio.comentarios || ''}
-                                                            onChange={(e) => setDatosEnvio({ ...datosEnvio, comentarios: e.target.value })}
-                                                        ></textarea>
-                                                    </div>
+                                                        <div className="mb-4">
+                                                            <label className="form-label fw-bold text-muted small text-uppercase">1. Detalles del Trabajo Realizado</label>
+                                                            <textarea 
+                                                                className="form-control bg-light" 
+                                                                rows="4" 
+                                                                placeholder="Describa aquí lo que se reparó, cambió o solucionó..."
+                                                                value={datosEnvio.comentarios || ''}
+                                                                onChange={(e) => setDatosEnvio({ ...datosEnvio, comentarios: e.target.value })}
+                                                            ></textarea>
+                                                        </div>
 
-                                                    <div className="mb-4">
-                                                        <label className="form-label fw-bold text-muted small text-uppercase">2. Evidencia (Fotos / Videos)</label>
-                                                        <input 
-                                                            type="file" 
-                                                            className="form-control mb-2" 
-                                                            accept="image/*,video/*" 
-                                                            capture="environment" 
-                                                            multiple 
-                                                            onChange={handleFileChange} 
-                                                        />
-                                                        {datosEnvio.archivos && datosEnvio.archivos.length > 0 && (
-                                                            <div className="d-flex flex-wrap gap-2 mt-2">
-                                                                {datosEnvio.archivos.map((file, idx) => (
-                                                                    <span key={idx} className="badge bg-secondary d-flex align-items-center gap-2 p-2">
-                                                                        <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i> 
-                                                                        {file.name.substring(0,10)}... 
-                                                                        <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-2" 
-                                                                           onClick={() => setDatosEnvio(prev => ({...prev, archivos: prev.archivos.filter((_, i) => i !== idx)}))}></i>
-                                                                    </span>
-                                                                ))}
+                                                        <div className="mb-4">
+                                                            <label className="form-label fw-bold text-muted small text-uppercase">2. Evidencia (Fotos / Videos)</label>
+                                                            
+                                                            {selectedOt.evidencia_cierre && (
+                                                                <div className="mb-3 p-3 bg-light rounded border border-success border-opacity-25">
+                                                                    <span className="small text-success d-block mb-2 fw-bold"><i className="bi bi-check-circle-fill me-1"></i>Archivos Guardados Anteriormente:</span>
+                                                                    {renderEvidencia(selectedOt.evidencia_cierre)}
+                                                                </div>
+                                                            )}
+
+                                                            <input 
+                                                                type="file" 
+                                                                className="form-control mb-2" 
+                                                                accept="image/*,video/*" 
+                                                                capture="environment" 
+                                                                multiple 
+                                                                onChange={handleFileChange} 
+                                                            />
+                                                            {datosEnvio.archivos && datosEnvio.archivos.length > 0 && (
+                                                                <div className="d-flex flex-wrap gap-2 mt-2">
+                                                                    {datosEnvio.archivos.map((file, idx) => (
+                                                                        <span key={idx} className="badge bg-secondary d-flex align-items-center gap-2 p-2 shadow-sm">
+                                                                            <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i> 
+                                                                            {file.name.substring(0,10)}... 
+                                                                            <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-2" 
+                                                                               onClick={() => setDatosEnvio(prev => ({...prev, archivos: prev.archivos.filter((_, i) => i !== idx)}))}></i>
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* OCULTAR FIRMA SI ES SERVICIO */}
+                                                        {!esServicio && (
+                                                            <div className="mb-2">
+                                                                <div className="d-flex justify-content-between align-items-end mb-2">
+                                                                    <label className="form-label fw-bold text-muted small text-uppercase mb-0">3. Firma de Conformidad</label>
+                                                                    <button type="button" className="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onClick={() => {
+                                                                        sigCanvas.current?.clear();
+                                                                        setDatosEnvio({ ...datosEnvio, firma: null });
+                                                                    }}>
+                                                                        <i className="bi bi-eraser me-1"></i>Limpiar
+                                                                    </button>
+                                                                </div>
+                                                                <div className="border border-2 border-primary border-opacity-25 bg-white rounded-3 shadow-sm" style={{ height: '200px' }}>
+                                                                    <SignatureCanvas 
+                                                                        ref={sigCanvas}
+                                                                        canvasProps={{ className: 'w-100 h-100' }}
+                                                                        onEnd={() => setDatosEnvio({ ...datosEnvio, firma: sigCanvas.current.getTrimmedCanvas().toDataURL('image/png') })}
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         )}
-                                                        <small className="text-muted d-block mt-1"><i className="bi bi-arrows-collapse me-1"></i>Las imágenes se comprimirán automáticamente un 70%.</small>
                                                     </div>
-
-                                                    <div className="mb-2">
-                                                        <div className="d-flex justify-content-between align-items-end mb-2">
-                                                            <label className="form-label fw-bold text-muted small text-uppercase mb-0">3. Firma de Conformidad</label>
-                                                            <button type="button" className="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onClick={() => {
-                                                                sigCanvas.current?.clear();
-                                                                setDatosEnvio({ ...datosEnvio, firma: null });
-                                                            }}>
-                                                                <i className="bi bi-eraser me-1"></i>Limpiar
-                                                            </button>
-                                                        </div>
-                                                        <div className="border border-2 border-primary border-opacity-25 bg-white rounded-3 shadow-sm overflow-hidden" style={{ height: '200px' }}>
-                                                            <SignatureCanvas 
-                                                                ref={sigCanvas}
-                                                                canvasProps={{ className: 'w-100 h-100' }}
-                                                                onEnd={() => setDatosEnvio({ ...datosEnvio, firma: sigCanvas.current.getTrimmedCanvas().toDataURL('image/png') })}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                )
                                             )}
                                         </div>
 
-                                        {/* PESTAÑA 3: MATERIALES */}
                                         <div className={activeTab === 'materiales' ? 'd-block' : 'd-none'}>
                                             <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
                                                 <i className="bi bi-box-seam me-2 text-primary"></i>

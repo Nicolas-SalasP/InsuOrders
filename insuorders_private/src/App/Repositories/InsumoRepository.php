@@ -324,7 +324,7 @@ class InsumoRepository
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function registrarSalidaManual($data)
+public function registrarSalidaManual($data)
     {
         try {
             $this->db->beginTransaction();
@@ -337,7 +337,6 @@ class InsumoRepository
             $empleadoId = !empty($data['empleado_id']) ? $data['empleado_id'] : null;
             $ubicacionEnvioId = !empty($data['ubicacion_envio_id']) ? $data['ubicacion_envio_id'] : null;
 
-            // 1. Buscar ubicaciones con stock (Estrategia: Mayor cantidad primero)
             $stmtLoc = $this->db->prepare("SELECT ubicacion_id, cantidad FROM insumo_stock_ubicacion WHERE insumo_id = ? AND cantidad > 0 ORDER BY cantidad DESC");
             $stmtLoc->execute([$insumoId]);
             $stocks = $stmtLoc->fetchAll(PDO::FETCH_ASSOC);
@@ -347,38 +346,27 @@ class InsumoRepository
             }
 
             $cantidadRestante = $cantidad;
-            $idsGenerados = []; // Array para almacenar los IDs de los movimientos creados
+            $idsGenerados = []; 
 
             foreach ($stocks as $stock) {
-                if ($cantidadRestante <= 0)
-                    break;
+                if ($cantidadRestante <= 0) break;
 
                 $descuento = min($cantidadRestante, $stock['cantidad']);
 
-                // A. Descontar de la ubicación específica
                 $this->db->prepare("UPDATE insumo_stock_ubicacion SET cantidad = cantidad - :c WHERE insumo_id = :i AND ubicacion_id = :u")
                     ->execute([':c' => $descuento, ':i' => $insumoId, ':u' => $stock['ubicacion_id']]);
 
-                // B. Registrar el movimiento histórico
                 $obsFinal = $otId ? "Salida para OT #$otId: $observacion" : $observacion;
-
                 $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, ubicacion_id, empleado_id, ubicacion_envio_id, fecha) 
                            VALUES (:iid, 2, :cant, :uid, :obs, :ref, :ubi, :emp, :env, NOW())";
 
                 $this->db->prepare($sqlMov)->execute([
-                    ':iid' => $insumoId,
-                    ':cant' => $descuento,
-                    ':uid' => $usuarioId,
-                    ':obs' => $obsFinal,
-                    ':ref' => $otId,
-                    ':ubi' => $stock['ubicacion_id'],
-                    ':emp' => $empleadoId,
-                    ':env' => $ubicacionEnvioId
+                    ':iid' => $insumoId, ':cant' => $descuento, ':uid' => $usuarioId, 
+                    ':obs' => $obsFinal, ':ref' => $otId, ':ubi' => $stock['ubicacion_id'], 
+                    ':emp' => $empleadoId, ':env' => $ubicacionEnvioId
                 ]);
 
-                // Guardamos el ID para el PDF
                 $idsGenerados[] = $this->db->lastInsertId();
-
                 $cantidadRestante -= $descuento;
             }
 
@@ -386,23 +374,60 @@ class InsumoRepository
                 throw new Exception("Stock insuficiente para cubrir la salida total solicitada.");
             }
 
-            // 2. Actualizar stock maestro
             $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")
                 ->execute([$insumoId, $insumoId]);
 
-            // 3. Imputar a Orden de Trabajo (Si aplica)
             if ($otId) {
                 $this->imputarAOrdenTrabajo($otId, $insumoId, $cantidad);
             }
 
-            $this->db->commit();
+            if (!empty($empleadoId)) {
+                $stmtEmp = $this->db->prepare("SELECT id, nombre_completo, usuario_id FROM empleados WHERE id = :eid");
+                $stmtEmp->execute([':eid' => $empleadoId]);
+                $empleado = $stmtEmp->fetch(PDO::FETCH_ASSOC);
 
-            // Retornamos los IDs para que el Service se los pase al Controller
+                if (!$empleado) {
+                    $stmtEmp = $this->db->prepare("SELECT id, nombre_completo, usuario_id FROM empleados WHERE usuario_id = :uid");
+                    $stmtEmp->execute([':uid' => $empleadoId]);
+                    $empleado = $stmtEmp->fetch(PDO::FETCH_ASSOC);
+                }
+
+                if ($empleado) {
+                    $usuarioOperarioId = $empleado['usuario_id'];
+                    $receptorExterno = null;
+                    $fechaAceptacion = null;
+
+                    if (!empty($usuarioOperarioId)) {
+                        $estadoId = 1;
+                    } else {
+                        $estadoId = 2;
+                        $receptorExterno = $empleado['nombre_completo'];
+                        $fechaAceptacion = date('Y-m-d H:i:s');
+                    }
+
+                    $sqlEntrega = "INSERT INTO entregas_personal 
+                    (insumo_id, usuario_operario_id, receptor_externo, usuario_bodeguero_id, cantidad_entregada, cantidad_utilizada, estado_id, observacion, fecha_entrega, fecha_aceptacion, referencia_ot_id) 
+                    VALUES (:iid, :u_op, :ext, :u_bod, :cant, 0, :est, :obs, NOW(), :fecha_ac, :otid)";
+
+                    $this->db->prepare($sqlEntrega)->execute([
+                        ':iid' => $insumoId,
+                        ':u_op' => $usuarioOperarioId,
+                        ':ext' => $receptorExterno,
+                        ':u_bod' => $usuarioId,
+                        ':cant' => $cantidad,
+                        ':est' => $estadoId,
+                        ':obs' => $observacion,
+                        ':fecha_ac' => $fechaAceptacion,
+                        ':otid' => $otId
+                    ]);
+                }
+            }
+
+            $this->db->commit();
             return $idsGenerados;
 
         } catch (Exception $e) {
-            if ($this->db->inTransaction())
-                $this->db->rollBack();
+            if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
         }
     }

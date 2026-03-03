@@ -100,4 +100,9 @@ class MisMantencionesService
         }
         return $this->repository->actualizarEstadoOT($otId, $estadoId);
     }
+
+    public function guardarAvanceParcial($otId, $comentarios, $evidenciaStr)
+    {
+        return $this->repository->guardarAvanceParcial($otId, $comentarios, $evidenciaStr);
+    }
 }
