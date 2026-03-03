@@ -1,11 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
 import ConfirmModal from './ConfirmModal';
+import AuthContext from '../context/AuthContext';
 
 const BASE_URL = '/api';
 
 const ActivoModal = ({ show, onClose, activo, onSave }) => {
+    const { auth } = useContext(AuthContext);
+    
+    // EVALUACIÓN DE LECTURA (True si no tiene permisos para crear/editar)
+    const isReadOnly = auth.rol !== 'Admin' && !(auth.permisos && (auth.permisos.includes('activos_editar') || auth.permisos.includes('activos_crear')));
+
     const [tab, setTab] = useState('general');
 
     const [formData, setFormData] = useState({
@@ -87,9 +93,12 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 if(res.data.success) setListaCentros(res.data.data || []);
             }).catch(console.error);
             
-            api.get('/index.php/inventario').then(res => {
-                if(res.data.success) setInsumosList(res.data.data || []);
-            }).catch(console.error);
+            // CORRECCIÓN: Solo cargar inventario si el usuario puede editar. Evita Error 403
+            if (!isReadOnly) {
+                api.get('/index.php/inventario').then(res => {
+                    if(res.data.success) setInsumosList(res.data.data || []);
+                }).catch(console.error);
+            }
 
             api.get('/index.php/mantencion/activos').then(res => {
                 if(res.data.success) setListaActivos(res.data.data || []);
@@ -139,7 +148,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             setBusquedaInsumo('');
             setInsumoSeleccionado(null);
         }
-    }, [show, activo]);
+    }, [show, activo, isReadOnly]);
 
     const cargarGaleria = (id) => {
         api.get(`/index.php/mantencion/galeria?id=${id}`)
@@ -165,6 +174,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     const handleSubmitGeneral = async (e) => {
         e.preventDefault();
+        if (isReadOnly) return;
+        
         setSaving(true);
         try {
             const formDataObj = new FormData();
@@ -206,6 +217,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     };
 
     const handleAddKitItem = async () => {
+        if (isReadOnly) return;
         const cant = document.getElementById('nuevaCantidad').value;
         if (!insumoSeleccionado || !cant) return setMsgModal({show:true, title:'Error', message:'Faltan datos de insumo o cantidad', type:'warning'});
 
@@ -221,11 +233,12 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     };
 
     const handleDeleteKit = (id) => {
+        if (isReadOnly) return;
         api.delete(`/index.php/mantencion/kit?id=${id}`).then(() => cargarKit(activo.id)).catch(console.error);
     };
 
     const subirDoc = async () => {
-        if (!file || !activo) return;
+        if (!file || !activo || isReadOnly) return;
         const data = new FormData();
         data.append('activo_id', activo.id);
         data.append('documento', file);
@@ -240,6 +253,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     };
 
     const solicitarBorrarDoc = (id) => {
+        if (isReadOnly) return;
         setConfirmModal({
             show: true, id: id, title: 'Borrar Documento', message: '¿Estás seguro de borrar este archivo?',
             action: () => {
@@ -252,6 +266,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     };
 
     const handleDeleteImage = (id, type) => {
+        if (isReadOnly) return;
         setConfirmModal({
             show: true, id: id, title: 'Eliminar Imagen', message: `¿Seguro de eliminar esta imagen ${type === 'principal' ? 'principal' : 'de la galería'}?`,
             action: async () => {
@@ -280,14 +295,12 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             <MessageModal show={msgModal.show} onClose={() => setMsgModal({...msgModal, show: false})} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
             <ConfirmModal show={confirmModal.show} onClose={() => setConfirmModal({...confirmModal, show: false})} onConfirm={confirmModal.action} title={confirmModal.title} message={confirmModal.message} />
             
-            {/* VISOR DE IMÁGENES CORREGIDO CON SCROLL Y TECLA ESCAPE */}
             {zoomImage && (
                 <div 
                     className="position-fixed top-0 start-0 w-100 h-100" 
                     style={{ backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 1070, overflowX: 'auto', overflowY: 'auto' }} 
                     onClick={() => { setZoomImage(null); setZoomLevel(1); }}
                 >
-                    {/* Botones Fijos para que no se pierdan al hacer scroll */}
                     <div className="position-fixed top-0 start-50 translate-middle-x mt-4" style={{ zIndex: 1080 }} onClick={e => e.stopPropagation()}>
                         <div className="btn-group shadow-lg">
                             <button className="btn btn-light px-3" onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))} title="Acercar"><i className="bi bi-zoom-in fs-5"></i></button>
@@ -296,14 +309,13 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                         </div>
                     </div>
 
-                    {/* Contenedor que permite Scroll usando Height dinámico */}
                     <div className="d-flex" style={{ minWidth: '100%', minHeight: '100%', padding: '80px 20px', justifyContent: zoomLevel > 1 ? 'flex-start' : 'center', alignItems: zoomLevel > 1 ? 'flex-start' : 'center' }}>
                         <img 
                             src={zoomImage} 
                             alt="Zoom" 
                             className="shadow-lg rounded" 
                             style={{ 
-                                height: `${zoomLevel * 80}vh`, // Crece el contenedor físico activando scrollbars
+                                height: `${zoomLevel * 80}vh`, 
                                 objectFit: 'contain', 
                                 transition: 'height 0.2s ease', 
                                 cursor: zoomLevel > 1 ? 'zoom-out' : 'zoom-in',
@@ -323,7 +335,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
                     <div className="modal-content shadow-lg border-0">
                         <div className="modal-header bg-dark text-white border-bottom-0 py-3">
-                            <h5 className="modal-title fw-bold"><i className="bi bi-box me-2 text-warning"></i>{activo ? `Editar: ${activo.nombre}` : 'Nuevo Activo'}</h5>
+                            <h5 className="modal-title fw-bold">
+                                <i className={`bi ${isReadOnly ? 'bi-eye' : 'bi-box'} me-2 text-warning`}></i>
+                                {activo ? (isReadOnly ? `Detalles: ${activo.nombre}` : `Editar: ${activo.nombre}`) : 'Nuevo Activo'}
+                            </h5>
                             <button type="button" className="btn-close btn-close-white" onClick={onClose} disabled={saving}></button>
                         </div>
                         
@@ -342,6 +357,13 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
                             <div className="p-4 flex-grow-1 bg-white" style={{ minHeight: '60vh' }}>
                                 
+                                {isReadOnly && (
+                                    <div className="alert alert-warning py-2 small fw-bold shadow-sm border-warning d-flex align-items-center">
+                                        <i className="bi bi-shield-lock-fill fs-5 me-2"></i>
+                                        Estás en Modo Lectura. No puedes realizar modificaciones.
+                                    </div>
+                                )}
+
                                 <form onSubmit={handleSubmitGeneral} className={(tab === 'general' || tab === 'galeria') ? "d-flex flex-column h-100" : "d-none"}>
                                     
                                     <div className={tab === 'general' ? 'd-block' : 'd-none'}>
@@ -354,6 +376,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                     className="form-select border-primary shadow-sm" 
                                                     value={formData.activo_padre_id} 
                                                     onChange={e => setFormData({...formData, activo_padre_id: e.target.value})}
+                                                    disabled={isReadOnly}
                                                 >
                                                     <option value="">-- Ninguno (Es una máquina principal) --</option>
                                                     {listaActivos.filter(a => a.id !== activo?.id).map(a => (
@@ -362,36 +385,35 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                         </option>
                                                     ))}
                                                 </select>
-                                                <small className="text-muted fst-italic">Indique si pertenece a otra máquina.</small>
                                             </div>
 
-                                            <div className="col-md-6"><label className="form-label fw-bold text-muted small text-uppercase">Nombre del Activo <span className="text-danger">*</span></label><input type="text" className="form-control" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Interno <span className="text-danger">*</span></label><input type="text" className="form-control font-monospace" value={formData.codigo_interno} onChange={e => setFormData({...formData, codigo_interno: e.target.value})} required /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Fabricante</label><input type="text" className="form-control font-monospace" value={formData.codigo_maquina} onChange={e => setFormData({...formData, codigo_maquina: e.target.value})} /></div>
+                                            <div className="col-md-6"><label className="form-label fw-bold text-muted small text-uppercase">Nombre del Activo <span className="text-danger">*</span></label><input type="text" className="form-control fw-bold" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Interno <span className="text-danger">*</span></label><input type="text" className="form-control font-monospace" value={formData.codigo_interno} onChange={e => setFormData({...formData, codigo_interno: e.target.value})} required disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Fabricante</label><input type="text" className="form-control font-monospace" value={formData.codigo_maquina} onChange={e => setFormData({...formData, codigo_maquina: e.target.value})} disabled={isReadOnly} /></div>
                                             
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Tipo</label><input type="text" className="form-control" value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})} /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Marca</label><input type="text" className="form-control" value={formData.marca} onChange={e => setFormData({...formData, marca: e.target.value})} /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Modelo</label><input type="text" className="form-control" value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">N° Serie</label><input type="text" className="form-control" value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Tipo</label><input type="text" className="form-control" value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})} disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Marca</label><input type="text" className="form-control" value={formData.marca} onChange={e => setFormData({...formData, marca: e.target.value})} disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Modelo</label><input type="text" className="form-control" value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">N° Serie</label><input type="text" className="form-control" value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} disabled={isReadOnly} /></div>
 
-                                            <div className="col-md-4"><label className="form-label fw-bold text-muted small text-uppercase">Ubicación</label><input type="text" className="form-control" value={formData.ubicacion} onChange={e => setFormData({...formData, ubicacion: e.target.value})} /></div>
+                                            <div className="col-md-4"><label className="form-label fw-bold text-muted small text-uppercase">Ubicación</label><input type="text" className="form-control" value={formData.ubicacion} onChange={e => setFormData({...formData, ubicacion: e.target.value})} disabled={isReadOnly} /></div>
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold text-muted small text-uppercase">Centro de Costo</label>
-                                                <select className="form-select" value={formData.centro_costo} onChange={e => setFormData({...formData, centro_costo: e.target.value})}>
+                                                <select className="form-select" value={formData.centro_costo} onChange={e => setFormData({...formData, centro_costo: e.target.value})} disabled={isReadOnly}>
                                                     <option value="">Seleccione...</option>
                                                     {listaCentros.map(c => <option key={c.id} value={c.id}>{c.codigo} - {c.nombre}</option>)}
                                                 </select>
                                             </div>
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold text-muted small text-uppercase">Estado</label>
-                                                <select className="form-select fw-bold" value={formData.estado_activo} onChange={e => setFormData({...formData, estado_activo: e.target.value})}>
+                                                <select className="form-select fw-bold" value={formData.estado_activo} onChange={e => setFormData({...formData, estado_activo: e.target.value})} disabled={isReadOnly}>
                                                     <option value="OPERATIVO" className="text-success">🟢 Operativo</option>
                                                     <option value="FUERA DE SERVICIO" className="text-danger">🔴 Fuera de Servicio</option>
                                                     <option value="EN MANTENCION" className="text-warning">🟡 En Mantención</option>
                                                 </select>
                                             </div>
 
-                                            <div className="col-12"><label className="form-label fw-bold text-muted small text-uppercase">Descripción / Notas</label><textarea className="form-control" rows="3" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})}></textarea></div>
+                                            <div className="col-12"><label className="form-label fw-bold text-muted small text-uppercase">Descripción / Notas</label><textarea className="form-control" rows="3" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} disabled={isReadOnly}></textarea></div>
                                         </div>
                                     </div>
 
@@ -403,20 +425,20 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 {mainImagePreview ? (
                                                     <div className="position-relative border rounded shadow-sm w-100 mb-3 bg-light" style={{height:'180px', overflow:'hidden'}}>
                                                         <img src={mainImagePreview} className="w-100 h-100" style={{objectFit:'contain', cursor:'pointer'}} onClick={() => {setZoomImage(mainImagePreview); setZoomLevel(1);}} alt="Portada"/>
-                                                        {activo?.imagen_url && <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle shadow" onClick={() => handleDeleteImage(null, 'principal')} title="Eliminar Foto Principal"><i className="bi bi-trash"></i></button>}
+                                                        {!isReadOnly && activo?.imagen_url && <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle shadow" onClick={() => handleDeleteImage(null, 'principal')}><i className="bi bi-trash"></i></button>}
                                                     </div>
                                                 ) : (
                                                     <div className="border rounded d-flex align-items-center justify-content-center bg-light w-100 mb-3 text-muted" style={{height:'180px'}}>
                                                         <div className="text-center"><i className="bi bi-camera fs-1 d-block mb-1"></i>Sin portada</div>
                                                     </div>
                                                 )}
-                                                <input type="file" className="form-control form-control-sm" accept="image/*" onChange={(e) => {
+                                                {!isReadOnly && <input type="file" className="form-control form-control-sm" accept="image/*" onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if(file) {
                                                         setMainImage(file);
                                                         setMainImagePreview(URL.createObjectURL(file));
                                                     }
-                                                }}/>
+                                                }}/>}
                                             </div>
 
                                             {activo && (
@@ -430,105 +452,115 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                         {existingGallery.map(img => (
                                                             <div key={img.id} className="position-relative border rounded shadow-sm" style={{width:'100px', height:'100px', backgroundColor:'#fff'}}>
                                                                 <img src={`${BASE_URL}${img.imagen_url || img.url_imagen}`} className="w-100 h-100 rounded" style={{objectFit:'cover', cursor:'pointer'}} onClick={() => {setZoomImage(`${BASE_URL}${img.imagen_url || img.url_imagen}`); setZoomLevel(1);}} alt="Galeria" />
-                                                                <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-1 lh-1 shadow-sm" onClick={() => handleDeleteImage(img.id, 'galeria')}><i className="bi bi-x-circle-fill"></i></button>
+                                                                {!isReadOnly && <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-1 lh-1 shadow-sm" onClick={() => handleDeleteImage(img.id, 'galeria')}><i className="bi bi-x-circle-fill"></i></button>}
                                                             </div>
                                                         ))}
                                                         {existingGallery.length === 0 && <div className="text-muted small py-4 fst-italic w-100 text-center bg-light rounded border">No hay fotos adicionales guardadas.</div>}
                                                     </div>
 
-                                                    <label className="form-label fw-bold text-primary small"><i className="bi bi-plus-circle me-1"></i>Añadir nuevas fotos</label>
-                                                    <input type="file" className="form-control form-control-sm" accept="image/*" multiple onChange={(e) => {
-                                                        const files = Array.from(e.target.files);
-                                                        setGalleryItems(prev => [...prev, ...files]);
-                                                    }}/>
-                                                    
-                                                    {galleryItems.length > 0 && (
-                                                        <div className="mt-2 d-flex flex-wrap gap-2">
-                                                            {galleryItems.map((file, idx) => (
-                                                                <span key={idx} className="badge bg-success bg-opacity-10 text-success border border-success d-flex align-items-center">
-                                                                    <i className="bi bi-image me-1"></i> {file.name.substring(0, 15)}...
-                                                                    <i className="bi bi-x-circle-fill ms-2 cursor-pointer" onClick={() => setGalleryItems(prev => prev.filter((_, i) => i !== idx))}></i>
-                                                                </span>
-                                                            ))}
-                                                        </div>
+                                                    {!isReadOnly && (
+                                                        <>
+                                                            <label className="form-label fw-bold text-primary small"><i className="bi bi-plus-circle me-1"></i>Añadir nuevas fotos</label>
+                                                            <input type="file" className="form-control form-control-sm" accept="image/*" multiple onChange={(e) => {
+                                                                const files = Array.from(e.target.files);
+                                                                setGalleryItems(prev => [...prev, ...files]);
+                                                            }}/>
+                                                            
+                                                            {galleryItems.length > 0 && (
+                                                                <div className="mt-2 d-flex flex-wrap gap-2">
+                                                                    {galleryItems.map((file, idx) => (
+                                                                        <span key={idx} className="badge bg-success bg-opacity-10 text-success border border-success d-flex align-items-center">
+                                                                            <i className="bi bi-image me-1"></i> {file.name.substring(0, 15)}...
+                                                                            <i className="bi bi-x-circle-fill ms-2 cursor-pointer" onClick={() => setGalleryItems(prev => prev.filter((_, i) => i !== idx))}></i>
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             )}
                                         </div>
                                     </div>
 
-                                    <div className="text-end mt-auto pt-3 border-top position-sticky bottom-0 bg-white py-2" style={{zIndex: 10}}>
-                                        <button type="submit" className="btn btn-success fw-bold px-4 shadow-sm" disabled={saving}>
-                                            {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Guardando...</> : <><i className="bi bi-save me-2"></i>Guardar Activo</>}
-                                        </button>
-                                    </div>
+                                    {!isReadOnly && (
+                                        <div className="text-end mt-auto pt-3 border-top position-sticky bottom-0 bg-white py-2" style={{zIndex: 10}}>
+                                            <button type="submit" className="btn btn-success fw-bold px-4 shadow-sm" disabled={saving}>
+                                                {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Guardando...</> : <><i className="bi bi-save me-2"></i>Guardar Activo</>}
+                                            </button>
+                                        </div>
+                                    )}
                                 </form>
 
                                 {activo && (
                                     <div className={tab === 'kit' ? 'd-block' : 'd-none'}>
                                         <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-tools text-primary me-2"></i>Kit de Repuestos Sugeridos</h5>
-                                        <div className="alert alert-info border-info d-flex align-items-center p-3 shadow-sm">
-                                            <i className="bi bi-info-circle-fill fs-3 me-3 text-info"></i>
-                                            <div>Estos insumos se cargarán automáticamente al abrir una Solicitud de Mantención para este equipo.</div>
-                                        </div>
                                         
-                                        <div className="row g-2 mb-4 bg-light p-3 rounded border shadow-sm align-items-end">
-                                            <div className="col-12 col-md-7 position-relative" ref={wrapperRef}>
-                                                <label className="small fw-bold text-muted mb-1">Buscar Insumo / Repuesto</label>
-                                                <div className="input-group">
-                                                    <span className="input-group-text bg-white"><i className="bi bi-search text-muted"></i></span>
-                                                    <input 
-                                                        type="text" 
-                                                        className="form-control" 
-                                                        placeholder="Escriba nombre o SKU..."
-                                                        value={busquedaInsumo}
-                                                        onChange={e => {
-                                                            setBusquedaInsumo(e.target.value);
-                                                            setInsumoSeleccionado(null);
-                                                            setMostrarSugerencias(true);
-                                                        }}
-                                                        onFocus={() => setMostrarSugerencias(true)}
-                                                    />
+                                        {!isReadOnly && (
+                                            <>
+                                                <div className="alert alert-info border-info d-flex align-items-center p-3 shadow-sm">
+                                                    <i className="bi bi-info-circle-fill fs-3 me-3 text-info"></i>
+                                                    <div>Estos insumos se cargarán automáticamente al abrir una Solicitud de Mantención para este equipo.</div>
                                                 </div>
-                                                
-                                                {mostrarSugerencias && (
-                                                    <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1050, maxHeight: '220px', overflowY: 'auto', left: 0 }}>
-                                                        {insumosFiltrados.length > 0 ? insumosFiltrados.map(ins => (
-                                                            <li key={ins.id} 
-                                                                className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center"
-                                                                onMouseDown={(e) => {
-                                                                    e.preventDefault();
-                                                                    setInsumoSeleccionado(ins);
-                                                                    setBusquedaInsumo(`${ins.codigo_sku} - ${ins.nombre}`);
-                                                                    setMostrarSugerencias(false);
+                                                <div className="row g-2 mb-4 bg-light p-3 rounded border shadow-sm align-items-end">
+                                                    <div className="col-12 col-md-7 position-relative" ref={wrapperRef}>
+                                                        <label className="small fw-bold text-muted mb-1">Buscar Insumo / Repuesto</label>
+                                                        <div className="input-group">
+                                                            <span className="input-group-text bg-white"><i className="bi bi-search text-muted"></i></span>
+                                                            <input 
+                                                                type="text" 
+                                                                className="form-control" 
+                                                                placeholder="Escriba nombre o SKU..."
+                                                                value={busquedaInsumo}
+                                                                onChange={e => {
+                                                                    setBusquedaInsumo(e.target.value);
+                                                                    setInsumoSeleccionado(null);
+                                                                    setMostrarSugerencias(true);
                                                                 }}
-                                                            >
-                                                                <div>
-                                                                    <div className="fw-bold small text-dark">{ins.nombre}</div>
-                                                                    <small className="text-muted" style={{fontSize: '0.75rem'}}>{ins.codigo_sku}</small>
-                                                                </div>
-                                                                <span className={`badge rounded-pill ${parseFloat(ins.stock_actual) > 0 ? 'bg-success' : 'bg-danger'}`}>
-                                                                    Stock: {ins.stock_actual}
-                                                                </span>
-                                                            </li>
-                                                        )) : (
-                                                            <li className="list-group-item text-center text-muted small py-3">No se encontraron resultados</li>
+                                                                onFocus={() => setMostrarSugerencias(true)}
+                                                            />
+                                                        </div>
+                                                        
+                                                        {mostrarSugerencias && (
+                                                            <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1050, maxHeight: '220px', overflowY: 'auto', left: 0 }}>
+                                                                {insumosFiltrados.length > 0 ? insumosFiltrados.map(ins => (
+                                                                    <li key={ins.id} 
+                                                                        className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center"
+                                                                        onMouseDown={(e) => {
+                                                                            e.preventDefault();
+                                                                            setInsumoSeleccionado(ins);
+                                                                            setBusquedaInsumo(`${ins.codigo_sku} - ${ins.nombre}`);
+                                                                            setMostrarSugerencias(false);
+                                                                        }}
+                                                                    >
+                                                                        <div>
+                                                                            <div className="fw-bold small text-dark">{ins.nombre}</div>
+                                                                            <small className="text-muted" style={{fontSize: '0.75rem'}}>{ins.codigo_sku}</small>
+                                                                        </div>
+                                                                        <span className={`badge rounded-pill ${parseFloat(ins.stock_actual) > 0 ? 'bg-success' : 'bg-danger'}`}>
+                                                                            Stock: {ins.stock_actual}
+                                                                        </span>
+                                                                    </li>
+                                                                )) : (
+                                                                    <li className="list-group-item text-center text-muted small py-3">No se encontraron resultados</li>
+                                                                )}
+                                                            </ul>
                                                         )}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                            
-                                            <div className="col-8 col-md-3">
-                                                <label className="small fw-bold text-muted mb-1">Cant. Default</label>
-                                                <input type="number" id="nuevaCantidad" className="form-control text-center fw-bold" placeholder="0.0" min="0.1" step="0.1" />
-                                            </div>
-                                            
-                                            <div className="col-4 col-md-2">
-                                                <button type="button" className="btn btn-primary w-100 fw-bold shadow-sm" onClick={handleAddKitItem}>Agregar</button>
-                                            </div>
-                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="col-8 col-md-3">
+                                                        <label className="small fw-bold text-muted mb-1">Cant. Default</label>
+                                                        <input type="number" id="nuevaCantidad" className="form-control text-center fw-bold" placeholder="0.0" min="0.1" step="0.1" />
+                                                    </div>
+                                                    
+                                                    <div className="col-4 col-md-2">
+                                                        <button type="button" className="btn btn-primary w-100 fw-bold shadow-sm" onClick={handleAddKitItem}>Agregar</button>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
                                         
-                                        <div className="table-responsive">
+                                        <div className="table-responsive mt-3">
                                             {loadingKit ? <div className="text-center py-5"><div className="spinner-border text-primary"></div></div> : (
                                                 <table className="table table-hover align-middle border shadow-sm">
                                                     <thead className="table-light text-secondary small text-uppercase">
@@ -537,7 +569,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                             <th>SKU</th>
                                                             <th>Insumo</th>
                                                             <th className="text-center">Cantidad</th>
-                                                            <th className="text-end pe-3">Acción</th>
+                                                            {!isReadOnly && <th className="text-end pe-3">Acción</th>}
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -553,14 +585,17 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                                 <td className="font-monospace text-muted small">{k.insumo_sku}</td>
                                                                 <td className="fw-bold text-dark">{k.insumo_nombre || k.nombre}</td>
                                                                 <td className="text-center fw-bold text-success">{k.cantidad_sugerida || k.cantidad} <span className="small text-muted fw-normal">{k.unidad_medida}</span></td>
-                                                                <td className="text-end pe-3">
-                                                                    {k.activo_id === activo.id && (
-                                                                        <button className="btn btn-sm text-danger border-0" title="Quitar de este kit" onClick={() => handleDeleteKit(k.id)}><i className="bi bi-trash-fill fs-5"></i></button>
-                                                                    )}
-                                                                </td>
+                                                                
+                                                                {!isReadOnly && (
+                                                                    <td className="text-end pe-3">
+                                                                        {k.activo_id === activo.id && (
+                                                                            <button className="btn btn-sm text-danger border-0" title="Quitar de este kit" onClick={() => handleDeleteKit(k.id)}><i className="bi bi-trash-fill fs-5"></i></button>
+                                                                        )}
+                                                                    </td>
+                                                                )}
                                                             </tr>
                                                         ))}
-                                                        {kitItems.length === 0 && <tr><td colSpan="5" className="text-center py-5 text-muted fst-italic">No hay repuestos configurados.</td></tr>}
+                                                        {kitItems.length === 0 && <tr><td colSpan={isReadOnly ? 4 : 5} className="text-center py-5 text-muted fst-italic">No hay repuestos configurados.</td></tr>}
                                                     </tbody>
                                                 </table>
                                             )}
@@ -571,12 +606,15 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 {activo && (
                                     <div className={tab === 'docs' ? 'd-block' : 'd-none'}>
                                         <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-file-earmark-text text-primary me-2"></i>Manuales y Planos</h5>
-                                        <div className="input-group mb-4 shadow-sm">
-                                            <input type="file" id="fileInput" className="form-control bg-white" onChange={e => setFile(e.target.files[0])} />
-                                            <button type="button" className="btn btn-primary fw-bold px-4" onClick={subirDoc} disabled={!file}><i className="bi bi-cloud-upload me-2"></i>Subir Archivo</button>
-                                        </div>
                                         
-                                        <div className="card border-0 shadow-sm">
+                                        {!isReadOnly && (
+                                            <div className="input-group mb-4 shadow-sm">
+                                                <input type="file" id="fileInput" className="form-control bg-white" onChange={e => setFile(e.target.files[0])} />
+                                                <button type="button" className="btn btn-primary fw-bold px-4" onClick={subirDoc} disabled={!file}><i className="bi bi-cloud-upload me-2"></i>Subir Archivo</button>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="card border-0 shadow-sm mt-3">
                                             {loadingDocs ? <div className="text-center py-5"><div className="spinner-border text-primary"></div></div> : (
                                                 <div className="list-group list-group-flush border rounded">
                                                     {docs.map(d => (
@@ -585,7 +623,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                                 <i className="bi bi-file-earmark-pdf-fill me-3 text-danger fs-3"></i>
                                                                 <span className="fw-bold text-truncate">{d.nombre_archivo}</span>
                                                             </a>
-                                                            <button className="btn btn-sm text-danger flex-shrink-0" title="Borrar Documento" onClick={() => solicitarBorrarDoc(d.id)}><i className="bi bi-trash fs-5"></i></button>
+                                                            {!isReadOnly && <button className="btn btn-sm text-danger flex-shrink-0" title="Borrar Documento" onClick={() => solicitarBorrarDoc(d.id)}><i className="bi bi-trash fs-5"></i></button>}
                                                         </div>
                                                     ))}
                                                     {docs.length === 0 && <div className="text-center py-5 text-muted fst-italic">No hay documentos cargados.</div>}
