@@ -35,6 +35,7 @@ const Mantencion = () => {
 
     const [filtroOT, setFiltroOT] = useState('');
     const [filtroMaquina, setFiltroMaquina] = useState('');
+    const [filtroUbicacion, setFiltroUbicacion] = useState(''); // NUEVO: Filtro de ubicación
     const [filtroEstado, setFiltroEstado] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
 
@@ -247,6 +248,7 @@ const Mantencion = () => {
     const limpiarFiltros = () => {
         setFiltroOT('');
         setFiltroMaquina('');
+        setFiltroUbicacion(''); // Limpiar nueva ubicación
         setFiltroEstado('');
         setFiltroFecha('');
         setFiltroInsumo('');
@@ -303,12 +305,16 @@ const Mantencion = () => {
         const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
         const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
         const matchMaquina = !filtroMaquina || maquinaStr.toLowerCase().includes(filtroMaquina.toLowerCase());
+        
+        // Aplicando el filtro de Ubicación
+        const matchUbicacion = !filtroUbicacion || (s.ubicacion && s.ubicacion.toLowerCase().includes(filtroUbicacion.toLowerCase()));
+        
         const matchEstado = !filtroEstado || s.estado === filtroEstado;
         const fechaOT = s.fecha_solicitud ? s.fecha_solicitud.split(' ')[0] : '';
         const matchFecha = !filtroFecha || fechaOT === filtroFecha;
         const matchSinTecnico = !filtroSinTecnico || !s.asignados_nombres;
 
-        return matchOT && matchMaquina && matchEstado && matchFecha && matchSinTecnico;
+        return matchOT && matchMaquina && matchUbicacion && matchEstado && matchFecha && matchSinTecnico;
     }).sort((a, b) => {
         if (ordenOTAsc) {
             return parseInt(a.id) - parseInt(b.id); 
@@ -383,10 +389,16 @@ const Mantencion = () => {
                         <div className="col-md-2">
                             <input type="text" className="form-control" placeholder="# OT" value={filtroOT} onChange={e => setFiltroOT(e.target.value)} />
                         </div>
-                        <div className="col-md-3">
-                            <input type="text" className="form-control" placeholder="Buscar Máquina..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
+                        <div className="col-md-2">
+                            <input type="text" className="form-control" placeholder="Máquina/Activo..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
                         </div>
-                        <div className="col-md-3 position-relative" ref={wrapperRef}>
+                        
+                        {/* NUEVO CAMPO: Filtro por Ubicación */}
+                        <div className="col-md-2">
+                            <input type="text" className="form-control" placeholder="Ubicación (ej: HOR)..." value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)} />
+                        </div>
+
+                        <div className="col-md-2 position-relative" ref={wrapperRef}>
                             <div className="input-group">
                                 <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-primary'}`}>
                                     <i className="bi bi-box-seam"></i>
@@ -394,7 +406,7 @@ const Mantencion = () => {
                                 <input
                                     type="text"
                                     className="form-control border-start-0 ps-0"
-                                    placeholder="Filtrar por insumo..."
+                                    placeholder="Insumo..."
                                     value={busquedaInsumo}
                                     onChange={(e) => {
                                         setBusquedaInsumo(e.target.value);
@@ -430,7 +442,7 @@ const Mantencion = () => {
                             </select>
                         </div>
                         <div className="col-md-2 text-end">
-                            {(filtroOT || filtroMaquina || filtroEstado || filtroFecha || filtroInsumo || filtroSinTecnico || ordenOTAsc) && (
+                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado || filtroFecha || filtroInsumo || filtroSinTecnico || ordenOTAsc) && (
                                 <button className="btn btn-outline-secondary w-100" onClick={limpiarFiltros}>
                                     <i className="bi bi-x-lg me-1"></i> Limpiar
                                 </button>
@@ -498,7 +510,9 @@ const Mantencion = () => {
                                             <td className="ps-4 fw-bold">#{s.id}</td>
                                             <td>
                                                 <div className="fw-bold text-dark">{s.activo || 'General'}</div>
-                                                {s.activo_codigo && <small className="text-muted">{s.activo_codigo}</small>}
+                                                {s.activo_codigo && <small className="text-muted d-block">{s.activo_codigo}</small>}
+                                                {/* VISUALIZAR LA UBICACIÓN */}
+                                                {s.ubicacion && <span className="badge bg-light text-secondary border mt-1"><i className="bi bi-geo-alt me-1"></i>{s.ubicacion}</span>}
                                             </td>
                                             <td>
                                                 <div className="fw-bold text-dark">{s.titulo || ''}</div>

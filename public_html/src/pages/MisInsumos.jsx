@@ -54,6 +54,13 @@ const MisInsumos = () => {
             
             agrupados[key].saldo_total += parseFloat(item.saldo_actual);
             agrupados[key].entregas.push(item);
+            
+            // CORRECCIÓN: Pasamos todo a minúsculas para que no falle la búsqueda de la palabra
+            if (item.observacion && item.observacion.toLowerCase().includes('rechazad')) {
+                // Limpiamos el texto genérico para mostrar solo el motivo real
+                let motivoLimpio = item.observacion.split('Motivo:');
+                agrupados[key].observacion_rechazo = motivoLimpio.length > 1 ? motivoLimpio[1].trim() : item.observacion;
+            }
         });
 
         return Object.values(agrupados);
@@ -84,21 +91,22 @@ const MisInsumos = () => {
 
     // --- ACCIONES DE STOCK (Devolver) ---
     const iniciarDevolucion = (itemAgrupado) => { 
-        const cantInput = parseFloat(consumo[itemAgrupado.insumo_id]);
+        // CORRECCIÓN: Parseamos como Entero (Base 10) en lugar de Float
+        const cantInput = parseInt(consumo[itemAgrupado.insumo_id], 10);
         
-        if (!cantInput || cantInput <= 0) {
-            setMsg({ show: true, title: "Cantidad Inválida", text: "Ingresa una cantidad mayor a 0.", type: "warning" });
+        if (!cantInput || cantInput <= 0 || isNaN(cantInput)) {
+            setMsg({ show: true, title: "Cantidad Inválida", text: "Ingresa una cantidad entera válida mayor a 0.", type: "warning" });
             return;
         }
 
-        if (cantInput > parseFloat(itemAgrupado.saldo_total)) {
-            setMsg({ show: true, title: "Exceso", text: `No tienes suficiente stock (Max: ${itemAgrupado.saldo_total})`, type: "warning" });
+        if (cantInput > parseInt(itemAgrupado.saldo_total, 10)) {
+            setMsg({ show: true, title: "Exceso de stock", text: `No puedes devolver más de lo que tienes (Máximo: ${parseInt(itemAgrupado.saldo_total, 10)}).`, type: "warning" });
             return;
         }
         setConfirm({
             show: true,
             title: `Confirmar Devolución`,
-            message: `¿Vas a devolver ${cantInput} ${itemAgrupado.unidad_medida} de ${itemAgrupado.insumo} a bodega?`,
+            message: `¿Vas a devolver ${cantInput} ${itemAgrupado.unidad_medida}(s) de ${itemAgrupado.insumo} a la bodega?`,
             action: () => procesarStock('/operario/devolver', { 
                 insumo_id: itemAgrupado.insumo_id, 
                 cantidad: cantInput 
@@ -182,7 +190,7 @@ const MisInsumos = () => {
                                         
                                         <div className="d-flex justify-content-between align-items-center bg-light p-2 rounded mb-3">
                                             <span className="small fw-bold text-uppercase">Recibido:</span>
-                                            <span className="fs-5 fw-bold text-dark">{parseFloat(p.cantidad_entregada)} {p.unidad_medida}</span>
+                                            <span className="fs-5 fw-bold text-dark">{parseInt(p.cantidad_entregada, 10)} {p.unidad_medida}</span>
                                         </div>
 
                                         <div className="d-flex gap-2">
@@ -233,11 +241,11 @@ const MisInsumos = () => {
                                                         {i.codigo_sku}
                                                     </span>
                                                     <span className="badge bg-success bg-opacity-10 text-success border border-success fw-bold fs-6">
-                                                        {parseFloat(i.saldo_total)} {i.unidad_medida}
+                                                        {parseInt(i.saldo_total, 10)} {i.unidad_medida}
                                                     </span>
                                                 </div>
 
-                                                <h6 className="fw-bold mb-3 text-dark flex-grow-1" style={{ 
+                                                <h6 className="fw-bold mb-1 text-dark" style={{ 
                                                     display: '-webkit-box', 
                                                     WebkitLineClamp: 2, 
                                                     WebkitBoxOrient: 'vertical', 
@@ -247,18 +255,41 @@ const MisInsumos = () => {
                                                 }} title={i.insumo}>
                                                     {i.insumo}
                                                 </h6>
+                                                
+                                                {/* CORRECCIÓN: ALERTA DE RECHAZO CLARA Y FORMATEADA */}
+                                                <div className="flex-grow-1">
+                                                    {i.observacion_rechazo && (
+                                                        <div className="alert alert-danger p-2 small mt-2 mb-2 d-flex flex-column" style={{fontSize: '0.75rem'}}>
+                                                            <div className="fw-bold mb-1 text-danger">
+                                                                <i className="bi bi-exclamation-triangle-fill me-1"></i> Bodega rechazó tu devolución:
+                                                            </div>
+                                                            <span className="fst-italic text-dark">"{i.observacion_rechazo}"</span>
+                                                        </div>
+                                                    )}
+                                                </div>
 
                                                 <div className="mt-auto pt-3 border-top">
                                                     <div className="input-group mb-2 input-group-sm">
+                                                        {/* CORRECCIÓN: INPUT BLOQUEADO PARA ENTEROS */}
                                                         <input 
                                                             type="number" 
                                                             className="form-control text-center fw-bold" 
                                                             placeholder="0"
-                                                            min="0.1" 
-                                                            step="0.1" 
-                                                            max={i.saldo_total}
+                                                            min="1" 
+                                                            step="1" 
+                                                            max={parseInt(i.saldo_total, 10)}
                                                             value={consumo[i.insumo_id] || ''}
-                                                            onChange={e => setConsumo({...consumo, [i.insumo_id]: e.target.value})}
+                                                            onKeyDown={(e) => {
+                                                                // Bloquear coma y punto en el teclado
+                                                                if (e.key === '.' || e.key === ',') {
+                                                                    e.preventDefault();
+                                                                }
+                                                            }}
+                                                            onChange={e => {
+                                                                // Limpiar cualquier cosa que no sea un número (ej. si pegan un texto)
+                                                                const val = e.target.value.replace(/\D/g, '');
+                                                                setConsumo({...consumo, [i.insumo_id]: val});
+                                                            }}
                                                         />
                                                         <span className="input-group-text bg-white small text-muted">{i.unidad_medida}</span>
                                                     </div>
@@ -268,7 +299,7 @@ const MisInsumos = () => {
                                                         onClick={() => iniciarDevolucion(i)}
                                                         disabled={!consumo[i.insumo_id]}
                                                     >
-                                                        <i className="bi bi-arrow-return-left me-1"></i> Devolver
+                                                        <i className="bi bi-arrow-return-left me-1"></i> Devolver a Bodega
                                                     </button>
                                                 </div>
                                             </div>
@@ -284,4 +315,4 @@ const MisInsumos = () => {
     );
 };
 
-export default MisInsumos;  
+export default MisInsumos;

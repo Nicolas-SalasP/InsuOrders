@@ -99,11 +99,6 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
         if (!ubicacionId) return setMsgModal({ show: true, title: "Error", message: "Debe seleccionar la ubicación de destino", type: "warning" });
         if (esParaOT && !otSeleccionada) return setMsgModal({ show: true, title: "Error", message: "Debe seleccionar la OT correspondiente", type: "warning" });
 
-        const pdfWindow = window.open('', '_blank');
-        if (pdfWindow) {
-            pdfWindow.document.write('<html><body style="font-family:sans-serif;text-align:center;padding-top:50px;">Generando comprobante de entrega...</body></html>');
-        }
-
         setSaving(true);
         try {
             const res = await api.post('/index.php/inventario/salida', {
@@ -120,20 +115,10 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
             if (res.data.success) {
                 onSave();
                 onClose();
-                if (res.data.ids && res.data.ids.length > 0) {
-                    const ids = res.data.ids.join(',');
-                    if (pdfWindow) {
-                        pdfWindow.location.href = `${api.defaults.baseURL}/index.php/inventario/comprobante?ids=${ids}`;
-                    }
-                } else if (pdfWindow) {
-                    pdfWindow.close();
-                }
             } else {
-                if (pdfWindow) pdfWindow.close();
                 setMsgModal({ show: true, title: "Error", message: res.data.error || "Error al registrar salida", type: "error" });
             }
         } catch (error) {
-            if (pdfWindow) pdfWindow.close();
             setMsgModal({ show: true, title: "Error", message: error.response?.data?.error || "Error al registrar salida", type: "error" });
         } finally {
             setSaving(false);

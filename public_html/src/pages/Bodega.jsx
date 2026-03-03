@@ -8,9 +8,11 @@ import ModalOrganizarBodega from '../components/ModalOrganizarBodega';
 
 const Bodega = () => {
     const { auth } = useContext(AuthContext);
-    const [vista, setVista] = useState('salidas');
+    const [vista, setVista] = useState('salidas'); 
     const [pendientesAgrupados, setPendientesAgrupados] = useState({});
     const [porOrganizar, setPorOrganizar] = useState([]);
+    const [devoluciones, setDevoluciones] = useState([]); 
+    
     const [busqueda, setBusqueda] = useState('');
     const [loading, setLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -18,6 +20,8 @@ const Bodega = () => {
     const [entregaModal, setEntregaModal] = useState({ show: false, item: null });
     const [organizarModal, setOrganizarModal] = useState({ show: false, item: null });
     const [masivaModal, setMasivaModal] = useState({ show: false });
+    
+    const [rechazoModal, setRechazoModal] = useState({ show: false, devId: null, motivo: '' });
     const [selectedIds, setSelectedIds] = useState([]);
 
     const hasPermission = (permiso) => {
@@ -31,121 +35,127 @@ const Bodega = () => {
             const interval = setInterval(() => {
                 cargarDatos(true);
             }, 120000); 
-            
             return () => clearInterval(interval);
         } else {
             setLoading(false);
         }
     }, [vista]);
 
-    useEffect(() => {
-        setBusqueda('');
-    }, [vista]);
+    useEffect(() => { setBusqueda(''); }, [vista]);
 
     const cargarDatos = (isSilent = false) => {
         if (vista === 'salidas') cargarPendientes(isSilent);
-        else cargarPorOrganizar(isSilent);
+        else if (vista === 'entradas') cargarPorOrganizar(isSilent);
+        else if (vista === 'devoluciones') cargarDevoluciones(isSilent);
     };
 
     const cargarPendientes = async (isSilent = false) => {
         if (!isSilent) setLoading(true);
         else setIsRefreshing(true);
-
         try {
             const res = await api.get('/bodega/pendientes');
             if (res.data.success) {
                 const datos = Array.isArray(res.data.data) ? res.data.data : [];
-                
                 const grupos = datos.reduce((acc, item) => {
                     const id = item.ot_id;
                     if (!acc[id]) {
-                        acc[id] = {
-                            ot_id: id,
-                            solicitante: item.solicitante + ' ' + (item.solicitante_apellido || ''),
-                            maquina: item.maquina || 'General',
-                            fecha: item.fecha_solicitud,
-                            items: []
-                        };
+                        acc[id] = { ot_id: id, solicitante: item.solicitante + ' ' + (item.solicitante_apellido || ''), maquina: item.maquina || 'General', fecha: item.fecha_solicitud, items: [] };
                     }
                     acc[id].items.push(item);
                     return acc;
                 }, {});
                 setPendientesAgrupados(grupos);
             }
-        } catch (e) { 
-            console.error(e); 
-        } finally { 
-            setLoading(false);
-            setIsRefreshing(false);
-        }
+        } catch (e) { console.error(e); } 
+        finally { setLoading(false); setIsRefreshing(false); }
     };
 
     const cargarPorOrganizar = async (isSilent = false) => {
-        if (!isSilent) setLoading(true);
-        else setIsRefreshing(true);
-
+        if (!isSilent) setLoading(true); else setIsRefreshing(true);
         try {
             const res = await api.get('/bodega/por-organizar');
-            if (res.data.success) {
-                setPorOrganizar(Array.isArray(res.data.data) ? res.data.data : []);
-            }
-        } catch (e) { 
-            console.error(e); 
-        } finally { 
-            setLoading(false);
-            setIsRefreshing(false);
-        }
+            if (res.data.success) setPorOrganizar(Array.isArray(res.data.data) ? res.data.data : []);
+        } catch (e) { console.error(e); } 
+        finally { setLoading(false); setIsRefreshing(false); }
+    };
+
+    const cargarDevoluciones = async (isSilent = false) => {
+        if (!isSilent) setLoading(true); else setIsRefreshing(true);
+        try {
+            const res = await api.get('/bodega/devoluciones');
+            if (res.data.success) setDevoluciones(Array.isArray(res.data.data) ? res.data.data : []);
+        } catch (e) { console.error(e); } 
+        finally { setLoading(false); setIsRefreshing(false); }
     };
 
     const itemsPorOrganizarFiltrados = porOrganizar.filter(item => {
         if (!busqueda) return true;
         const termino = busqueda.toLowerCase();
-        return (
-            item.nombre.toLowerCase().includes(termino) || 
-            item.codigo_sku.toLowerCase().includes(termino)
-        );
+        return (item.nombre.toLowerCase().includes(termino) || item.codigo_sku.toLowerCase().includes(termino));
+    });
+    
+    const devolucionesFiltradas = devoluciones.filter(item => {
+        if (!busqueda) return true;
+        const termino = busqueda.toLowerCase();
+        return (item.insumo.toLowerCase().includes(termino) || item.tecnico_nombre.toLowerCase().includes(termino));
     });
 
-    const handleCheckItem = (id) => {
-        setSelectedIds(prev => 
-            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-        );
-    };
+    const handleCheckItem = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
 
     const getSelectedObjects = () => {
         const allItems = Object.values(pendientesAgrupados).flatMap(g => g.items);
         return allItems.filter(item => selectedIds.includes(item.detalle_id));
     };
 
-    // --- PROCESOS ---
-
     const procesarEntrega = async (detalleId, cantidad, receptorId) => {
         try {
-            await api.post('/bodega/entregar', {
-                detalle_id: detalleId,
-                cantidad_entregar: cantidad,
-                receptor_id: receptorId
-            });
+            await api.post('/bodega/entregar', { detalle_id: detalleId, cantidad_entregar: cantidad, receptor_id: receptorId });
             setEntregaModal({ show: false, item: null });
             setMsg({ show: true, title: "Entregado", text: "Entrega registrada exitosamente.", type: "success" });
             cargarPendientes(true);
-        } catch (error) {
-            setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error desconocido", type: "error" });
-        }
+        } catch (error) { setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error desconocido", type: "error" }); }
     };
 
     const procesarEntregaMasiva = async (itemsPayload, receptorId) => {
         try {
-            await api.post('/bodega/entregar-masivo', {
-                items: itemsPayload,
-                receptor_id: receptorId
-            });
+            await api.post('/bodega/entregar-masivo', { items: itemsPayload, receptor_id: receptorId });
             setMasivaModal({ show: false });
             setSelectedIds([]); 
             setMsg({ show: true, title: "Entrega Masiva", text: "Se han entregado los materiales seleccionados.", type: "success" });
             cargarPendientes(true);
+        } catch (error) { setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al procesar", type: "error" }); }
+    };
+
+    const aprobarDevolucion = async (id) => {
+        try {
+            setLoading(true);
+            await api.post('/bodega/devoluciones/aprobar', { devolucion_id: id });
+            setMsg({ show: true, title: "Aprobada", text: "Devolución aprobada. El stock ahora está 'Por Organizar'.", type: "success" });
+            cargarDevoluciones(true);
         } catch (error) {
-            setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al procesar entrega masiva", type: "error" });
+            setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al aprobar", type: "error" });
+            setLoading(false);
+        }
+    };
+
+    const procesarRechazo = async () => {
+        // AQUÍ SE REEMPLAZA EL ALERT POR EL SETMSG CON MODAL
+        if (!rechazoModal.motivo.trim()) {
+            setMsg({ show: true, title: "Atención", text: "Debe escribir un motivo para el rechazo.", type: "warning" });
+            return;
+        }
+        try {
+            setLoading(true);
+            await api.post('/bodega/devoluciones/rechazar', { 
+                devolucion_id: rechazoModal.devId,
+                motivo: rechazoModal.motivo 
+            });
+            setRechazoModal({ show: false, devId: null, motivo: '' });
+            setMsg({ show: true, title: "Rechazada", text: "Devolución rechazada. El stock volvió a la cuenta del técnico.", type: "success" });
+            cargarDevoluciones(true);
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al rechazar", type: "error" });
+            setLoading(false);
         }
     };
 
@@ -157,94 +167,69 @@ const Bodega = () => {
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
 
-            <ModalEntregaBodega 
-                show={entregaModal.show} 
-                item={entregaModal.item} 
-                onClose={() => setEntregaModal({ show: false, item: null })} 
-                onConfirm={procesarEntrega} 
-            />
+            <ModalEntregaBodega show={entregaModal.show} item={entregaModal.item} onClose={() => setEntregaModal({ show: false, item: null })} onConfirm={procesarEntrega} />
+            <ModalEntregaMasivaBodega show={masivaModal.show} selectedItems={getSelectedObjects()} onClose={() => setMasivaModal({ show: false })} onConfirm={procesarEntregaMasiva} />
+            {organizarModal.show && <ModalOrganizarBodega show={organizarModal.show} insumo={organizarModal.item} onClose={() => setOrganizarModal({ show: false, item: null })} onSave={() => cargarPorOrganizar(true)} />}
             
-            <ModalEntregaMasivaBodega 
-                show={masivaModal.show} 
-                selectedItems={getSelectedObjects()} 
-                onClose={() => setMasivaModal({ show: false })} 
-                onConfirm={procesarEntregaMasiva} 
-            />
-
-            {organizarModal.show && (
-                <ModalOrganizarBodega 
-                    show={organizarModal.show} 
-                    insumo={organizarModal.item} 
-                    onClose={() => setOrganizarModal({ show: false, item: null })} 
-                    onSave={() => cargarPorOrganizar(true)} 
-                />
+            {/* MODAL PARA MOTIVO DE RECHAZO */}
+            {rechazoModal.show && (
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-header bg-danger text-white">
+                                <h5 className="modal-title fw-bold"><i className="bi bi-x-circle me-2"></i>Rechazar Devolución</h5>
+                                <button type="button" className="btn-close btn-close-white" onClick={() => setRechazoModal({ show: false, devId: null, motivo: '' })}></button>
+                            </div>
+                            <div className="modal-body p-4">
+                                <p className="text-muted">El stock devuelto volverá a ser responsabilidad del técnico y se le notificará el rechazo.</p>
+                                <label className="fw-bold mb-2">Motivo del rechazo:</label>
+                                <textarea 
+                                    className="form-control" 
+                                    rows="3" 
+                                    placeholder="Ej: Material incompleto, dañado, etc."
+                                    value={rechazoModal.motivo}
+                                    onChange={(e) => setRechazoModal({ ...rechazoModal, motivo: e.target.value })}
+                                ></textarea>
+                            </div>
+                            <div className="modal-footer bg-light">
+                                <button type="button" className="btn btn-secondary" onClick={() => setRechazoModal({ show: false, devId: null, motivo: '' })}>Cancelar</button>
+                                <button type="button" className="btn btn-danger fw-bold" onClick={procesarRechazo}>Confirmar Rechazo</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
+
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
                 <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
                     <div className="d-flex align-items-center gap-2">
-                        <h4 className="mb-0 fw-bold text-dark me-3">
-                            <i className="bi bi-inboxes me-2"></i>Gestión de Bodega
-                        </h4>
+                        <h4 className="mb-0 fw-bold text-dark me-3"><i className="bi bi-inboxes me-2"></i>Gestión de Bodega</h4>
                         
-                        {isRefreshing && (
-                            <span className="badge bg-light text-secondary border animate__animated animate__fadeIn">
-                                <span className="spinner-border spinner-border-sm me-1" style={{width:'0.7rem', height:'0.7rem'}}></span>
-                                Actualizando...
-                            </span>
-                        )}
+                        {isRefreshing && <span className="badge bg-light text-secondary border"><span className="spinner-border spinner-border-sm me-1" style={{width:'0.7rem', height:'0.7rem'}}></span>Actualizando...</span>}
 
                         {vista === 'salidas' && selectedIds.length > 0 && hasPermission('bodega_despachar') && (
-                            <button 
-                                className="btn btn-success btn-sm shadow-sm animate__animated animate__fadeIn"
-                                onClick={() => setMasivaModal({ show: true })}
-                            >
-                                <i className="bi bi-check2-all me-1"></i> 
-                                Entregar Seleccionados ({selectedIds.length})
+                            <button className="btn btn-success btn-sm shadow-sm" onClick={() => setMasivaModal({ show: true })}>
+                                <i className="bi bi-check2-all me-1"></i> Entregar Seleccionados ({selectedIds.length})
                             </button>
                         )}
                     </div>
 
                     <div className="btn-group">
-                        <button 
-                            className={`btn ${vista === 'salidas' ? 'btn-dark' : 'btn-outline-dark'}`} 
-                            onClick={() => setVista('salidas')}
-                        >
-                            Despacho (Salidas)
-                        </button>
-                        <button 
-                            className={`btn ${vista === 'entradas' ? 'btn-dark' : 'btn-outline-dark'}`} 
-                            onClick={() => setVista('entradas')}
-                        >
-                            Organizar (Entradas)
-                        </button>
+                        <button className={`btn ${vista === 'salidas' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setVista('salidas')}>Despacho (Salidas)</button>
+                        <button className={`btn ${vista === 'entradas' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setVista('entradas')}>Organizar (Entradas)</button>
+                        <button className={`btn ${vista === 'devoluciones' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setVista('devoluciones')}>Devoluciones {devoluciones.length > 0 && <span className="badge bg-danger ms-1">{devoluciones.length}</span>}</button>
                     </div>
                 </div>
-                {vista === 'entradas' && (
+
+                {(vista === 'entradas' || vista === 'devoluciones') && (
                     <div className="bg-light px-3 pt-3 pb-2 border-bottom">
                         <div className="row">
                             <div className="col-md-4">
                                 <div className="input-group">
-                                    <span className="input-group-text bg-white border-end-0 text-muted">
-                                        <i className="bi bi-search"></i>
-                                    </span>
-                                    <input 
-                                        type="text" 
-                                        className="form-control border-start-0 ps-0" 
-                                        placeholder="Filtrar por SKU o Nombre..." 
-                                        value={busqueda}
-                                        onChange={(e) => setBusqueda(e.target.value)} 
-                                    />
-                                    {busqueda && (
-                                        <button className="btn btn-outline-secondary border-start-0 bg-white" onClick={() => setBusqueda('')}>
-                                            <i className="bi bi-x"></i>
-                                        </button>
-                                    )}
+                                    <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
+                                    <input type="text" className="form-control border-start-0 ps-0" placeholder="Buscar..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+                                    {busqueda && <button className="btn btn-outline-secondary border-start-0 bg-white" onClick={() => setBusqueda('')}><i className="bi bi-x"></i></button>}
                                 </div>
-                            </div>
-                            <div className="col-md-8 text-end align-self-center">
-                                <small className="text-muted">
-                                    Mostrando {itemsPorOrganizarFiltrados.length} de {porOrganizar.length} ítems
-                                </small>
                             </div>
                         </div>
                     </div>
@@ -252,14 +237,11 @@ const Bodega = () => {
 
                 <div className="card-body p-3 flex-grow-1 overflow-auto bg-light position-relative">
                     {loading ? (
-                        <div className="d-flex justify-content-center align-items-center h-100">
-                            <div className="spinner-border text-primary" role="status"></div>
-                        </div> 
+                        <div className="d-flex justify-content-center align-items-center h-100"><div className="spinner-border text-primary" role="status"></div></div> 
                     ) : (
                         vista === 'salidas' ? (
                             <div className="row g-3">
                                 {Object.keys(pendientesAgrupados).length === 0 && <div className="col-12 text-center py-5 text-muted">✅ Todo despachado</div>}
-                                
                                 {Object.values(pendientesAgrupados).map(grupo => (
                                     <div key={grupo.ot_id} className="col-12">
                                         <div className="card shadow-sm border-start border-5 border-warning">
@@ -289,35 +271,19 @@ const Bodega = () => {
                                                             <tr key={p.detalle_id} className={selectedIds.includes(p.detalle_id) ? "table-active" : ""}>
                                                                 <td className="text-center">
                                                                     {hasPermission('bodega_despachar') && (
-                                                                        <input 
-                                                                            type="checkbox" 
-                                                                            className="form-check-input"
-                                                                            checked={selectedIds.includes(p.detalle_id)}
-                                                                            onChange={() => handleCheckItem(p.detalle_id)}
-                                                                        />
+                                                                        <input type="checkbox" className="form-check-input" checked={selectedIds.includes(p.detalle_id)} onChange={() => handleCheckItem(p.detalle_id)} />
                                                                     )}
                                                                 </td>
                                                                 <td className="ps-2 fw-bold">{p.insumo}</td>
                                                                 <td className="text-muted small">{p.codigo_sku}</td>
-                                                                <td className="small text-muted">
-                                                                    <i className="bi bi-geo-alt me-1"></i>
-                                                                    {p.ubicacion || 'General'}
-                                                                </td>
-
+                                                                <td className="small text-muted"><i className="bi bi-geo-alt me-1"></i>{p.ubicacion || 'General'}</td>
                                                                 <td className="text-center text-muted small">{parseFloat(p.stock_actual)}</td>
                                                                 <td className="text-center fw-bold text-danger fs-5">
-                                                                    {parseFloat(p.cantidad_pendiente)} 
-                                                                    <small className="text-muted fs-6 ms-1">{p.unidad_medida}</small>
+                                                                    {parseFloat(p.cantidad_pendiente)} <small className="text-muted fs-6 ms-1">{p.unidad_medida}</small>
                                                                 </td>
                                                                 <td className="text-end pe-4">
                                                                     {hasPermission('bodega_despachar') && (
-                                                                        <button 
-                                                                            className="btn btn-outline-success btn-sm px-3" 
-                                                                            onClick={() => setEntregaModal({ show: true, item: p })}
-                                                                            title="Entrega Individual"
-                                                                        >
-                                                                            <i className="bi bi-box-seam"></i>
-                                                                        </button>
+                                                                        <button className="btn btn-outline-success btn-sm px-3" onClick={() => setEntregaModal({ show: true, item: p })} title="Entrega Individual"><i className="bi bi-box-seam"></i></button>
                                                                     )}
                                                                 </td>
                                                             </tr>
@@ -329,8 +295,7 @@ const Bodega = () => {
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            // VISTA: ENTRADAS
+                        ) : vista === 'entradas' ? (
                             <div className="card border-0 shadow-sm">
                                 <table className="table table-hover align-middle mb-0">
                                     <thead className="bg-light sticky-top">
@@ -352,10 +317,7 @@ const Bodega = () => {
                                                     <td className="text-center fw-bold text-danger">{parseFloat(p.por_organizar)}</td>
                                                     <td className="text-end pe-4">
                                                         {hasPermission('bodega_organizar') && (
-                                                            <button 
-                                                                className="btn btn-primary btn-sm fw-bold px-3" 
-                                                                onClick={() => setOrganizarModal({ show: true, item: p })}
-                                                            >
+                                                            <button className="btn btn-primary btn-sm fw-bold px-3" onClick={() => setOrganizarModal({ show: true, item: p })}>
                                                                 <i className="bi bi-arrow-down-square me-2"></i>Ubicación
                                                             </button>
                                                         )}
@@ -363,11 +325,51 @@ const Bodega = () => {
                                                 </tr>
                                             ))
                                         ) : (
-                                            <tr>
-                                                <td colSpan="5" className="text-center py-5 text-muted">
-                                                    {busqueda ? 'No se encontraron resultados con ese filtro.' : 'No hay ítems pendientes de organizar.'}
-                                                </td>
-                                            </tr>
+                                            <tr><td colSpan="5" className="text-center py-5 text-muted">No hay ítems por organizar.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="card border-0 shadow-sm">
+                                <table className="table table-hover align-middle mb-0">
+                                    <thead className="bg-light sticky-top">
+                                        <tr>
+                                            <th className="ps-4">Técnico</th>
+                                            <th>SKU</th>
+                                            <th>Insumo</th>
+                                            <th className="text-center">Cant. Devuelta</th>
+                                            <th>Fecha</th>
+                                            <th className="text-end pe-4">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {devolucionesFiltradas.length > 0 ? (
+                                            devolucionesFiltradas.map(dev => (
+                                                <tr key={dev.id}>
+                                                    <td className="ps-4">
+                                                        <div className="fw-bold text-dark">{dev.tecnico_nombre} {dev.tecnico_apellido}</div>
+                                                    </td>
+                                                    <td className="font-monospace text-muted">{dev.codigo_sku}</td>
+                                                    <td><div className="fw-bold">{dev.insumo}</div></td>
+                                                    <td className="text-center fw-bold text-warning fs-5">
+                                                        {parseFloat(dev.cantidad)} <small className="text-muted fs-6">{dev.unidad_medida}</small>
+                                                    </td>
+                                                    <td className="text-muted small">{new Date(dev.fecha).toLocaleString()}</td>
+                                                    <td className="text-end pe-4">
+                                                        <div className="btn-group shadow-sm">
+                                                            <button className="btn btn-success btn-sm fw-bold px-3" onClick={() => aprobarDevolucion(dev.id)} title="Aprobar Recepción">
+                                                                <i className="bi bi-check-lg"></i>
+                                                            </button>
+                                                            <button className="btn btn-danger btn-sm fw-bold px-3 border-start" onClick={() => setRechazoModal({ show: true, devId: dev.id, motivo: '' })} title="Rechazar y devolver al técnico">
+                                                                <i className="bi bi-x-lg"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr><td colSpan="6" className="text-center py-5 text-muted">No hay devoluciones pendientes.</td></tr>
                                         )}
                                     </tbody>
                                 </table>

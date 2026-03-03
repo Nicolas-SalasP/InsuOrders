@@ -18,16 +18,20 @@ const MisMantenciones = () => {
     const [loading, setLoading] = useState(true);
     const [loadingDetalle, setLoadingDetalle] = useState(false);
     const [guardando, setGuardando] = useState(false);
+    
+    // --- ESTADOS DE FILTRO ---
     const [filtroEstado, setFiltroEstado] = useState('pendientes');
     const [busqueda, setBusqueda] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
     const [filtroTecnico, setFiltroTecnico] = useState(null);
+    const [filtroUbicacion, setFiltroUbicacion] = useState(''); // <-- NUEVO ESTADO DE UBICACIÓN
+
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: '' });
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
     
     const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
     const sigCanvas = useRef(null);
-    const [enlargedImage, setEnlargedImage] = useState(null); // Estado para el visor de imágenes
+    const [enlargedImage, setEnlargedImage] = useState(null);
 
     useEffect(() => {
         if (can('ope_mant')) {
@@ -56,13 +60,7 @@ const MisMantenciones = () => {
 
             ids.forEach((id, index) => {
                 if (!stats[id]) {
-                    stats[id] = {
-                        id,
-                        nombre: nombres[index] || 'Técnico',
-                        pendientes: 0,
-                        proceso: 0,
-                        terminado: 0
-                    };
+                    stats[id] = { id, nombre: nombres[index] || 'Técnico', pendientes: 0, proceso: 0, terminado: 0 };
                 }
                 if (ot.estado_id === 1 || ot.estado_id === 4) stats[id].pendientes++;
                 else if (ot.estado_id === 2) stats[id].proceso++;
@@ -108,26 +106,52 @@ const MisMantenciones = () => {
         return mapa;
     };
 
+    const handleCambiarEstadoManual = async (nuevoEstadoId) => {
+        try {
+            setGuardando(true);
+            const res = await api.post('/mis-mantenciones/cambiar-estado', {
+                ot_id: selectedOt.id,
+                estado_id: nuevoEstadoId
+            });
+            if (res.data.success) {
+                setSelectedOt({ ...selectedOt, estado_id: parseInt(nuevoEstadoId) });
+                cargarMisOts();
+                setMsg({ show: true, title: "Éxito", text: "Estado actualizado correctamente", type: "success" });
+            }
+        } catch (e) {
+            setMsg({ show: true, title: "Error", text: e.response?.data?.message || "No se pudo cambiar el estado", type: "error" });
+        } finally {
+            setGuardando(false);
+        }
+    };
+
     const otsFiltradas = ots.filter(ot => {
+        // Filtro por Técnico (Tarjetas de arriba)
         if (filtroTecnico) {
             const asignados = ot.asignados_ids ? ot.asignados_ids.toString().split(',') : [];
             if (!asignados.includes(filtroTecnico.toString())) return false;
         }
 
+        // Filtro por Estado
         const matchEstado =
             filtroEstado === 'pendientes' ? (ot.estado_id === 1 || ot.estado_id === 4) :
                 filtroEstado === 'proceso' ? ot.estado_id === 2 :
                     filtroEstado === 'terminado' ? ot.mi_completado === 1 || ot.estado_id === 5 : true;
 
+        // Filtro de Búsqueda de Texto General
         const texto = busqueda.toLowerCase();
         const matchTexto = ot.activo.toLowerCase().includes(texto) ||
             `${ot.solicitante_nombre} ${ot.solicitante_apellido}`.toLowerCase().includes(texto) ||
             ot.id.toString().includes(texto) ||
             (ot.asignados_nombres && ot.asignados_nombres.toLowerCase().includes(texto));
 
+        // Filtro por Fecha
         const matchFecha = filtroFecha ? ot.fecha_solicitud.startsWith(filtroFecha) : true;
+        
+        // NUEVO: Filtro por Destino / Ubicación
+        const matchUbicacion = !filtroUbicacion || (ot.ubicacion && ot.ubicacion.toLowerCase().includes(filtroUbicacion.toLowerCase()));
 
-        return matchEstado && matchTexto && matchFecha;
+        return matchEstado && matchTexto && matchFecha && matchUbicacion;
     });
 
     const comprimirImagen = (file) => {
@@ -154,14 +178,10 @@ const MisMantenciones = () => {
     const handleFileChange = async (e) => {
         const files = Array.from(e.target.files);
         setGuardando(true); 
-        
         const processedFiles = await Promise.all(files.map(async (file) => {
-            if (file.type.startsWith('image/')) {
-                return await comprimirImagen(file);
-            }
+            if (file.type.startsWith('image/')) return await comprimirImagen(file);
             return file;
         }));
-        
         setDatosEnvio(prev => ({ ...prev, archivos: [...(prev.archivos || []), ...processedFiles] }));
         setGuardando(false);
     };
@@ -302,27 +322,14 @@ const MisMantenciones = () => {
                 </div>
             )}
 
-            <MessageModal
-                show={msg.show}
-                onClose={() => setMsg({ ...msg, show: false })}
-                title={msg.title}
-                message={msg.text}
-                type={msg.type}
-            />
-
-            <ConfirmModal
-                show={confirm.show}
-                onClose={() => setConfirm({ ...confirm, show: false })}
-                onConfirm={confirm.action}
-                title={confirm.title}
-                message={confirm.message}
-                confirmText="Sí, Finalizar igual"
-                cancelText="Cancelar"
-                type="warning"
-            />
+            <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
+            <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={confirm.action} title={confirm.title} message={confirm.message} confirmText="Sí, Finalizar igual" cancelText="Cancelar" type="warning" />
 
             <div className="row g-0 flex-grow-1" style={{ minHeight: 0 }}>
+                {/* --- BARRA LATERAL IZQUIERDA --- */}
                 <div className={`col-12 col-md-4 col-lg-3 border-end bg-white d-flex flex-column shadow-sm z-1 ${selectedOt ? 'd-none d-md-flex' : 'd-flex'}`}>
+                    
+                    {/* RESTAURADO: TARJETAS DE EQUIPO PARA EL JEFE */}
                     {esJefe && (
                         <div className="p-3 bg-light border-bottom" style={{ maxHeight: '35vh', overflowY: 'auto' }}>
                             <div className="d-flex justify-content-between align-items-center mb-2 sticky-top bg-light pt-1 pb-2" style={{ zIndex: 5 }}>
@@ -374,49 +381,28 @@ const MisMantenciones = () => {
                         </div>
                     )}
 
+                    {/* FILTROS LATERALES */}
                     <div className="p-4 border-bottom bg-white flex-shrink-0">
                         <h5 className="fw-bold mb-3 text-dark d-flex align-items-center">
                             <i className="bi bi-clipboard-data me-3 fs-4 text-primary"></i>
                             {filtroTecnico ? 'Tareas de Usuario' : 'Listado General'}
                         </h5>
+                        
                         <div className="input-group input-group-sm mb-2 shadow-sm">
                             <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
-                            <input
-                                type="text"
-                                className="form-control border-start-0 ps-0"
-                                placeholder="Título, solicitante o #OT..."
-                                value={busqueda}
-                                onChange={(e) => setBusqueda(e.target.value)}
-                            />
+                            <input type="text" className="form-control border-start-0 ps-0" placeholder="Título, #OT o Solicitante..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
                         </div>
+
+                        {/* NUEVO: FILTRO DE DESTINO/UBICACIÓN */}
                         <div className="input-group input-group-sm mb-3 shadow-sm">
-                            <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-calendar"></i></span>
-                            <input
-                                type="date"
-                                className="form-control border-start-0 ps-0"
-                                value={filtroFecha}
-                                onChange={(e) => setFiltroFecha(e.target.value)}
-                            />
+                            <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-geo-alt"></i></span>
+                            <input type="text" className="form-control border-start-0 ps-0" placeholder="Filtrar por Destino o Ubicación..." value={filtroUbicacion} onChange={(e) => setFiltroUbicacion(e.target.value)} />
                         </div>
+
                         <div className="btn-group w-100 shadow-sm" role="group">
-                            <button
-                                className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                onClick={() => setFiltroEstado('pendientes')}
-                            >
-                                Pendientes
-                            </button>
-                            <button
-                                className={`btn btn-sm ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                onClick={() => setFiltroEstado('proceso')}
-                            >
-                                En Proceso
-                            </button>
-                            <button
-                                className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                onClick={() => setFiltroEstado('terminado')}
-                            >
-                                Terminado
-                            </button>
+                            <button className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('pendientes')}>Pendientes</button>
+                            <button className={`btn btn-sm ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('proceso')}>En Proceso</button>
+                            <button className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('terminado')}>Terminado</button>
                         </div>
                     </div>
 
@@ -439,6 +425,12 @@ const MisMantenciones = () => {
                                                     <small className="text-muted">{new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
                                                 </div>
                                                 <h6 className="mb-1 fw-bold text-dark text-truncate">{ot.activo}</h6>
+                                                
+                                                {/* Mostrar la ubicación en la tarjetita para que sepan por qué se filtró */}
+                                                {ot.ubicacion && (
+                                                    <div className="small text-danger text-truncate mb-1"><i className="bi bi-geo-alt-fill me-1"></i>{ot.ubicacion}</div>
+                                                )}
+
                                                 <div className="small text-muted text-truncate mb-1">
                                                     <i className="bi bi-person-fill me-1"></i>Solicita: {ot.solicitante_nombre}
                                                 </div>
@@ -457,6 +449,8 @@ const MisMantenciones = () => {
                         )}
                     </div>
                 </div>
+
+                {/* --- CONTENIDO PRINCIPAL DERECHO --- */}
                 <div className={`col-12 col-md-8 col-lg-9 d-flex flex-column position-relative ${!selectedOt ? 'd-none d-md-flex' : 'd-flex'}`} style={{ backgroundColor: '#f8f9fa' }}>
                     {selectedOt ? (
                         <>
@@ -526,9 +520,49 @@ const MisMantenciones = () => {
                                 ) : (
                                     <div className="bg-white rounded-4 shadow-sm p-4 mx-auto" style={{ maxWidth: '1000px', minHeight: '100%' }}>
                                         
-                                        {/* PESTAÑA 1: INFO GENERAL */}
+                                        {/* PESTAÑA 1: INFO GENERAL CON BOTONES DE ESTADO */}
                                         <div className={activeTab === 'info' ? 'd-block' : 'd-none'}>
-                                            <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
+                                            
+                                            {/* PANEL DE ESTADO MANUAL */}
+                                            <div className="mb-5 p-4 bg-light rounded-4 border shadow-sm">
+                                                <h6 className="fw-bold text-dark text-uppercase mb-3">
+                                                    <i className="bi bi-gear-fill text-primary me-2"></i> Cambiar Mi Estado
+                                                </h6>
+                                                <div className="d-flex flex-wrap gap-2">
+                                                    <button 
+                                                        className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 1 ? 'btn-warning text-dark border-warning' : 'btn-white border text-muted'}`}
+                                                        onClick={() => handleCambiarEstadoManual(1)}
+                                                        disabled={guardando || parseInt(selectedOt.estado_id) === 1 || parseInt(selectedOt.estado_id) === 5}
+                                                    >
+                                                        <i className="bi bi-hourglass-split me-2"></i>Pendiente
+                                                    </button>
+                                                    <button 
+                                                        className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 2 ? 'btn-primary border-primary' : 'btn-white border text-muted'}`}
+                                                        onClick={() => handleCambiarEstadoManual(2)}
+                                                        disabled={guardando || parseInt(selectedOt.estado_id) === 2 || parseInt(selectedOt.estado_id) === 5}
+                                                    >
+                                                        <i className="bi bi-tools me-2"></i>En Proceso
+                                                    </button>
+                                                    <button 
+                                                        className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 4 ? 'btn-danger border-danger' : 'btn-white border text-muted'}`}
+                                                        onClick={() => handleCambiarEstadoManual(4)}
+                                                        disabled={guardando || parseInt(selectedOt.estado_id) === 4 || parseInt(selectedOt.estado_id) === 5}
+                                                    >
+                                                        <i className="bi bi-pause-circle-fill me-2"></i>Pausada
+                                                    </button>
+                                                </div>
+                                                {parseInt(selectedOt.estado_id) === 5 ? (
+                                                    <small className="text-success mt-3 d-block fw-bold">
+                                                        <i className="bi bi-check-circle-fill me-1"></i> Esta tarea ya fue finalizada y firmada. No se puede revertir.
+                                                    </small>
+                                                ) : (
+                                                    <small className="text-muted mt-3 d-block">
+                                                        <i className="bi bi-info-circle me-1"></i> Actualiza esto si hubo un error automático o si debes pausar. <b>Para Finalizar la OT, usa el botón "Guardar Avance" y firma el trabajo.</b>
+                                                    </small>
+                                                )}
+                                            </div>
+
+                                            <h5 className="fw-bold mb-4 text-dark border-bottom pb-2 mt-4">
                                                 <i className="bi bi-journal-text me-2 text-primary"></i>
                                                 Detalles del Requerimiento
                                             </h5>
@@ -702,7 +736,7 @@ const MisMantenciones = () => {
                         <div className="h-100 d-flex flex-column align-items-center justify-content-center text-muted p-4 text-center" style={{ backgroundColor: '#f8f9fa' }}>
                             <img src="https://cdn-icons-png.flaticon.com/512/7693/7693327.png" alt="Select Task" style={{ width: '150px', opacity: 0.5 }} className="mb-4 grayscale" />
                             <h3 className="fw-bold text-dark">¡Listo para trabajar!</h3>
-                            <p className="lead mb-0">Selecciona una tarea del panel izquierdo para comenzar tu pauta.</p>
+                            <p className="lead mb-0">Selecciona una tarea del panel izquierdo para comenzar.</p>
                         </div>
                     )}
                 </div>

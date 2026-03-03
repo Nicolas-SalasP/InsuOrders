@@ -65,6 +65,10 @@ class ExportController
                     $this->sheetCompras($spreadsheet, $sheetIndex);
                     $filename = "Compras_" . date('Ymd_Hi') . ".xlsx";
                     break;
+                case 'compras_pendientes':
+                    $this->sheetComprasPendientes($spreadsheet, $sheetIndex);
+                    $filename = "Analisis_Pendientes_Compra_" . date('Ymd_Hi') . ".xlsx";
+                    break;
                 case 'usuarios':
                     $this->sheetUsuarios($spreadsheet, $sheetIndex);
                     $filename = "Usuarios_" . date('Ymd_Hi') . ".xlsx";
@@ -544,6 +548,28 @@ class ExportController
                 $d['precio_unitario'],
                 $d['total_linea'],
                 $d['recepcionado_por']
+            ]
+        );
+    }
+
+    private function sheetComprasPendientes(Spreadsheet $s, $idx)
+    {
+        $sheet = $this->getSheet($s, $idx);
+        $sheet->setTitle('Análisis de Pendientes');
+        $data = (new OrdenCompraRepository())->getPendientesMantencion();
+
+        $this->fillSheet(
+            $sheet,
+            ['SKU', 'Insumo', 'Stock Actual', 'Déficit (A Comprar)', 'Unidad de Medida', 'OTs Relacionadas', 'Nivel de Urgencia'],
+            $data,
+            fn($d) => [
+                $d['codigo_sku'],
+                $d['nombre'],
+                $d['stock_actual'],
+                $d['cantidad_total'],
+                $d['unidad_medida'],
+                $d['lista_ots'],
+                $d['es_urgente'] == 1 ? '🚨 URGENTE / CRÍTICO' : 'Normal'
             ]
         );
     }

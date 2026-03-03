@@ -187,7 +187,7 @@ class OperarioRepository
         $sqlInventario = "SELECT e.id, e.cantidad_entregada, e.cantidad_utilizada, 
                             (e.cantidad_entregada - e.cantidad_utilizada) as saldo_actual,
                             i.nombre as insumo, i.codigo_sku, i.unidad_medida,
-                            e.referencia_ot_id as ot_id, e.insumo_id
+                            e.referencia_ot_id as ot_id, e.insumo_id, e.observacion 
                         FROM entregas_personal e
                         JOIN insumos i ON e.insumo_id = i.id
                         WHERE e.usuario_operario_id = :uid AND e.estado_id = 2
@@ -307,25 +307,12 @@ class OperarioRepository
 
                 $pendiente -= $aDevolver;
             }
-            $sqlRestock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                        VALUES (:iid, :uid, :cant) 
-                        ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
-            $this->db->prepare($sqlRestock)->execute([
+            $sqlDev = "INSERT INTO devoluciones_pendientes (insumo_id, usuario_id, cantidad) 
+                    VALUES (:iid, :uid, :cant)";
+            $this->db->prepare($sqlDev)->execute([
                 ':iid' => $insumoId,
-                ':uid' => $bodegaId,
-                ':cant' => $cantidad,
-                ':cant_upd' => $cantidad
-            ]);
-            $obs = "Devolución voluntaria de operario";
-            $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
-                    VALUES (:iid, 1, :cant, :uid, :obs, :ubi, NOW())";
-
-            $this->db->prepare($sqlMov)->execute([
-                ':iid' => $insumoId,
-                ':cant' => $cantidad,
                 ':uid' => $usuarioId,
-                ':obs' => $obs,
-                ':ubi' => $bodegaId
+                ':cant' => $cantidad
             ]);
 
             $this->db->commit();
