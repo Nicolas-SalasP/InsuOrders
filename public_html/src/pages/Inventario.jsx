@@ -8,12 +8,7 @@ import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
 import ModalCargaMasiva from '../components/ModalCargaMasiva';
 
-const getBaseUrl = () => {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}/INSUORDERS/public_html`;
-};
-
-const BASE_URL_IMAGENES = getBaseUrl();
+const BASE_URL = '/api';
 
 const Inventario = () => {
     const { auth } = useContext(AuthContext);
@@ -24,11 +19,16 @@ const Inventario = () => {
     const [filtroCategoria, setFiltroCategoria] = useState('');
     const [filtroUbicacion, setFiltroUbicacion] = useState('');
     const [orden, setOrden] = useState('');
+    
     const [showInsumoModal, setShowInsumoModal] = useState(false);
     const [insumoEditar, setInsumoEditar] = useState(null);
     const [entradaModal, setEntradaModal] = useState({ show: false, insumo: null });
     const [salidaModal, setSalidaModal] = useState({ show: false, insumo: null });
     const [showImport, setShowImport] = useState(false);
+
+    const [zoomImage, setZoomImage] = useState(null); 
+    const [zoomLevel, setZoomLevel] = useState(1);
+
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, id: null, titulo: '', mensaje: '' });
 
@@ -36,6 +36,19 @@ const Inventario = () => {
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
         return auth.permisos && auth.permisos.includes(permiso);
     };
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setZoomImage(null);
+                setZoomLevel(1);
+            }
+        };
+        if (zoomImage) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [zoomImage]);
 
     useEffect(() => {
         cargarDatos();
@@ -106,8 +119,6 @@ const Inventario = () => {
             .finally(() => setLoading(false));
     };
 
-    // --- LÓGICA DE ORDENAMIENTO ---
-
     const toggleSku = () => {
         if (orden === 'sku_asc') setOrden('sku_desc');
         else setOrden('sku_asc');
@@ -169,8 +180,42 @@ const Inventario = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
+            {zoomImage && (
+                <div 
+                    className="position-fixed top-0 start-0 w-100 h-100" 
+                    style={{ backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 1070, overflowX: 'auto', overflowY: 'auto' }} 
+                    onClick={() => { setZoomImage(null); setZoomLevel(1); }}
+                >
+                    <div className="position-fixed top-0 start-50 translate-middle-x mt-4" style={{ zIndex: 1080 }} onClick={e => e.stopPropagation()}>
+                        <div className="btn-group shadow-lg">
+                            <button className="btn btn-light px-3" onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))} title="Acercar"><i className="bi bi-zoom-in fs-5"></i></button>
+                            <button className="btn btn-light px-3" onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 0.5))} title="Alejar"><i className="bi bi-zoom-out fs-5"></i></button>
+                            <button className="btn btn-danger fw-bold px-3" onClick={() => { setZoomImage(null); setZoomLevel(1); }} title="Cerrar"><i className="bi bi-x-lg me-1"></i> ESC</button>
+                        </div>
+                    </div>
 
-            {/* MODALES GLOBALES */}
+                    <div className="d-flex" style={{ minWidth: '100%', minHeight: '100%', padding: '80px 20px', justifyContent: zoomLevel > 1 ? 'flex-start' : 'center', alignItems: zoomLevel > 1 ? 'flex-start' : 'center' }}>
+                        <img 
+                            src={zoomImage} 
+                            alt="Zoom" 
+                            className="shadow-lg rounded" 
+                            style={{ 
+                                height: `${zoomLevel * 80}vh`, 
+                                objectFit: 'contain', 
+                                transition: 'height 0.2s ease', 
+                                cursor: zoomLevel > 1 ? 'zoom-out' : 'zoom-in',
+                                margin: zoomLevel > 1 ? 'auto' : '0' 
+                            }} 
+                            onClick={e => {
+                                e.stopPropagation();
+                                if (zoomLevel > 1) setZoomLevel(1);
+                                else setZoomLevel(2);
+                            }} 
+                        />
+                    </div>
+                </div>
+            )}
+
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
 
             <ConfirmModal
@@ -322,7 +367,7 @@ const Inventario = () => {
                                             <td style={{ width: '80px', textAlign: 'center' }}>
                                                 {item.imagen_url ? (
                                                     <img
-                                                        src={`${BASE_URL_IMAGENES}${item.imagen_url}`}
+                                                        src={`${BASE_URL}${item.imagen_url}`}
                                                         alt="Prod"
                                                         style={{
                                                             width: '50px',
@@ -330,13 +375,16 @@ const Inventario = () => {
                                                             objectFit: 'cover',
                                                             borderRadius: '4px',
                                                             border: '1px solid #ddd',
-                                                            cursor: 'pointer'
+                                                            cursor: 'zoom-in'
                                                         }}
                                                         onError={(e) => {
                                                             e.target.onerror = null;
                                                             e.target.src = 'https://via.placeholder.com/50?text=Error';
                                                         }}
-                                                        onClick={() => window.open(`${BASE_URL_IMAGENES}${item.imagen_url}`, '_blank')}
+                                                        onClick={() => {
+                                                            setZoomImage(`${BASE_URL}${item.imagen_url}`);
+                                                            setZoomLevel(1);
+                                                        }}
                                                     />
                                                 ) : (
                                                     <span className="text-muted small">Sin img</span>

@@ -41,7 +41,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [insumosList, setInsumosList] = useState([]);
     const [loadingKit, setLoadingKit] = useState(false);
     
-    // --- ESTADOS PARA BUSCADOR DE INSUMOS ---
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
     const [insumoSeleccionado, setInsumoSeleccionado] = useState(null);
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
@@ -56,7 +55,20 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
     const [confirmModal, setConfirmModal] = useState({ show: false, id: null, action: null, title: '', message: '' });
 
-    // Cerrar buscador de insumos al hacer clic afuera
+    // CERRAR ZOOM CON TECLA ESCAPE
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setZoomImage(null);
+                setZoomLevel(1);
+            }
+        };
+        if (zoomImage) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [zoomImage]);
+
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -71,17 +83,14 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         if (show) {
             setTab('general');
             
-            // 1. Cargar Centros de Costo
             api.get('/index.php/mantencion/centros-costo').then(res => {
                 if(res.data.success) setListaCentros(res.data.data || []);
             }).catch(console.error);
             
-            // 2. CORRECCIÓN: Cargar TODO EL INVENTARIO (No los filtros de compras)
             api.get('/index.php/inventario').then(res => {
                 if(res.data.success) setInsumosList(res.data.data || []);
             }).catch(console.error);
 
-            // 3. Cargar todos los activos para el selector de Sub-Equipo
             api.get('/index.php/mantencion/activos').then(res => {
                 if(res.data.success) setListaActivos(res.data.data || []);
             }).catch(console.error);
@@ -165,7 +174,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
             if (mainImage) formDataObj.append('imagen_principal', mainImage);
             
-            // CORRECCIÓN GALERÍA: Usar los nombres de variable exactos que espera MantencionService.php
             galleryItems.forEach((file) => {
                 formDataObj.append('galeria_files[]', file);
                 formDataObj.append('galeria_tipos[]', 'General');
@@ -258,7 +266,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         });
     };
 
-    // Filtro para el buscador interactivo de insumos
     const insumosFiltrados = busquedaInsumo
         ? insumosList.filter(i =>
             i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase()) ||
@@ -273,15 +280,41 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             <MessageModal show={msgModal.show} onClose={() => setMsgModal({...msgModal, show: false})} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
             <ConfirmModal show={confirmModal.show} onClose={() => setConfirmModal({...confirmModal, show: false})} onConfirm={confirmModal.action} title={confirmModal.title} message={confirmModal.message} />
             
+            {/* VISOR DE IMÁGENES CORREGIDO CON SCROLL Y TECLA ESCAPE */}
             {zoomImage && (
-                <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 1070 }} onClick={() => setZoomImage(null)}>
-                    <div className="position-relative text-center p-4">
-                        <div className="btn-group position-absolute top-0 start-50 translate-middle-x mt-3" onClick={e => e.stopPropagation()}>
-                            <button className="btn btn-light" onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 3))}><i className="bi bi-zoom-in"></i></button>
-                            <button className="btn btn-light" onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 0.5))}><i className="bi bi-zoom-out"></i></button>
-                            <button className="btn btn-danger" onClick={() => setZoomImage(null)}><i className="bi bi-x-lg"></i></button>
+                <div 
+                    className="position-fixed top-0 start-0 w-100 h-100" 
+                    style={{ backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 1070, overflowX: 'auto', overflowY: 'auto' }} 
+                    onClick={() => { setZoomImage(null); setZoomLevel(1); }}
+                >
+                    {/* Botones Fijos para que no se pierdan al hacer scroll */}
+                    <div className="position-fixed top-0 start-50 translate-middle-x mt-4" style={{ zIndex: 1080 }} onClick={e => e.stopPropagation()}>
+                        <div className="btn-group shadow-lg">
+                            <button className="btn btn-light px-3" onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))} title="Acercar"><i className="bi bi-zoom-in fs-5"></i></button>
+                            <button className="btn btn-light px-3" onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 0.5))} title="Alejar"><i className="bi bi-zoom-out fs-5"></i></button>
+                            <button className="btn btn-danger fw-bold px-3" onClick={() => { setZoomImage(null); setZoomLevel(1); }} title="Cerrar"><i className="bi bi-x-lg me-1"></i> ESC</button>
                         </div>
-                        <img src={zoomImage} alt="Zoom" className="img-fluid shadow-lg rounded mt-5" style={{ maxHeight: '80vh', maxWidth: '90vw', transform: `scale(${zoomLevel})`, transition: 'transform 0.2s ease', objectFit: 'contain' }} onClick={e => e.stopPropagation()} />
+                    </div>
+
+                    {/* Contenedor que permite Scroll usando Height dinámico */}
+                    <div className="d-flex" style={{ minWidth: '100%', minHeight: '100%', padding: '80px 20px', justifyContent: zoomLevel > 1 ? 'flex-start' : 'center', alignItems: zoomLevel > 1 ? 'flex-start' : 'center' }}>
+                        <img 
+                            src={zoomImage} 
+                            alt="Zoom" 
+                            className="shadow-lg rounded" 
+                            style={{ 
+                                height: `${zoomLevel * 80}vh`, // Crece el contenedor físico activando scrollbars
+                                objectFit: 'contain', 
+                                transition: 'height 0.2s ease', 
+                                cursor: zoomLevel > 1 ? 'zoom-out' : 'zoom-in',
+                                margin: zoomLevel > 1 ? 'auto' : '0' 
+                            }} 
+                            onClick={e => {
+                                e.stopPropagation();
+                                if (zoomLevel > 1) setZoomLevel(1);
+                                else setZoomLevel(2);
+                            }} 
+                        />
                     </div>
                 </div>
             )}
@@ -296,7 +329,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                         
                         <div className="modal-body p-0 d-flex flex-column flex-md-row">
                             
-                            {/* MENU VERTICAL */}
                             <div className="bg-light border-end p-3 d-flex flex-column gap-2" style={{ minWidth: '220px' }}>
                                 <button className={`btn text-start fw-bold w-100 shadow-sm ${tab === 'general' ? 'btn-primary' : 'btn-white border text-muted'}`} onClick={() => setTab('general')}><i className="bi bi-info-circle me-2"></i>Datos Generales</button>
                                 {activo && (
@@ -312,10 +344,8 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 
                                 <form onSubmit={handleSubmitGeneral} className={(tab === 'general' || tab === 'galeria') ? "d-flex flex-column h-100" : "d-none"}>
                                     
-                                    {/* TAB 1: DATOS GENERALES */}
                                     <div className={tab === 'general' ? 'd-block' : 'd-none'}>
                                         <div className="row g-3">
-                                            
                                             <div className="col-12 mb-2">
                                                 <label className="form-label fw-bold text-muted small text-uppercase">
                                                     <i className="bi bi-diagram-2 me-1"></i> Sub-Equipo De (Opcional)
@@ -365,7 +395,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                         </div>
                                     </div>
 
-                                    {/* TAB 2: GALERÍA DE FOTOS */}
                                     <div className={tab === 'galeria' ? 'd-block' : 'd-none'}>
                                         <h5 className="fw-bold mb-4 border-bottom pb-2"><i className="bi bi-images text-primary me-2"></i>Gestión de Fotografías</h5>
                                         <div className="row g-4">
@@ -435,7 +464,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                     </div>
                                 </form>
 
-                                {/* TAB 3: KIT DE MANTENCION (CON BUSCADOR MEJORADO Y INVENTARIO FULL) */}
                                 {activo && (
                                     <div className={tab === 'kit' ? 'd-block' : 'd-none'}>
                                         <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-tools text-primary me-2"></i>Kit de Repuestos Sugeridos</h5>
@@ -463,7 +491,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                     />
                                                 </div>
                                                 
-                                                {/* LISTA DESPLEGABLE BUSCADOR */}
                                                 {mostrarSugerencias && (
                                                     <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1050, maxHeight: '220px', overflowY: 'auto', left: 0 }}>
                                                         {insumosFiltrados.length > 0 ? insumosFiltrados.map(ins => (
@@ -541,7 +568,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                     </div>
                                 )}
 
-                                {/* TAB 4: DOCUMENTOS */}
                                 {activo && (
                                     <div className={tab === 'docs' ? 'd-block' : 'd-none'}>
                                         <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-file-earmark-text text-primary me-2"></i>Manuales y Planos</h5>
