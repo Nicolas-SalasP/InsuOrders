@@ -20,7 +20,7 @@ class MisMantencionesController
         try {
             AuthMiddleware::hasPermission('ope_mant');
             $userId = AuthMiddleware::verify();
-            
+
             $data = $this->service->listarMisOts($userId);
             echo json_encode(["success" => true, "data" => $data]);
         } catch (Exception $e) {
@@ -29,29 +29,31 @@ class MisMantencionesController
         }
     }
 
-public function guardar()
+    public function guardar()
     {
         try {
             AuthMiddleware::hasPermission('ope_mant');
-            $userId = AuthMiddleware::verify(); 
+            $userId = AuthMiddleware::verify();
 
             $input = [];
             if (!empty($_POST)) {
                 $input = $_POST;
                 $input['respuestas'] = json_decode($_POST['respuestas'] ?? '[]', true);
             } else {
-                $input = json_decode(file_get_contents("php://input"), true); 
+                $input = json_decode(file_get_contents("php://input"), true);
             }
 
-            $otId = $input['ot_id'] ?? null; 
-            $checklistData = $input['respuestas'] ?? []; 
-            $firma = $input['firma'] ?? null; 
-            $comentarios = $input['comentarios'] ?? null; 
+            $otId = $input['ot_id'] ?? null;
+            $checklistData = $input['respuestas'] ?? [];
+            $firma = $input['firma'] ?? null;
+            $comentarios = $input['comentarios'] ?? null;
+            $finalizar = filter_var($input['finalizar'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
             $evidenciaUrls = [];
             if (!empty($_FILES)) {
                 $uploadDir = __DIR__ . '/../../public_html/api/uploads/cierre/';
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+                if (!is_dir($uploadDir))
+                    mkdir($uploadDir, 0777, true);
 
                 foreach ($_FILES as $key => $file) {
                     if (strpos($key, 'evidencia_') === 0 && $file['error'] === UPLOAD_ERR_OK) {
@@ -64,42 +66,45 @@ public function guardar()
                 }
             }
 
-            if (!$this->service->repository->inTransaction()) { 
-                $this->service->repository->beginTransaction(); 
+            if (!$this->service->repository->inTransaction()) {
+                $this->service->repository->beginTransaction();
             }
 
-            $itemsChecklist = isset($checklistData['respuestas']) ? $checklistData['respuestas'] : $checklistData; 
+            $itemsChecklist = isset($checklistData['respuestas']) ? $checklistData['respuestas'] : $checklistData;
             $this->service->guardarAvance($otId, $itemsChecklist);
-            
             $this->service->registrarInicioTrabajo($otId);
 
-            if ($firma) {
+            $evidenciasStr = !empty($evidenciaUrls) ? json_encode($evidenciaUrls) : null;
+
+            if ($finalizar) {
                 $this->service->ejecutarDescuentos($otId, $userId);
-                $evidenciasStr = !empty($evidenciaUrls) ? json_encode($evidenciaUrls) : null;
-                $this->service->guardarCierre($otId, $firma, $comentarios, $evidenciasStr); 
-
-                $datosReporte = $this->service->getDatosReporte($otId); 
-                $pdfService = new PDFService(); 
-
-                $pdfUrl = $pdfService->generarReporteFinalOT( 
-                    $datosReporte['header'],
-                    $itemsChecklist,
-                    $datosReporte['detalles'],
-                    $firma,
-                    $comentarios
-                );
-
-                $this->service->guardarUrlPdf($otId, $pdfUrl); 
+                $this->service->guardarCierre($otId, $firma, $comentarios, $evidenciasStr);
+                if ($firma) {
+                    $datosReporte = $this->service->getDatosReporte($otId);
+                    $pdfService = new PDFService();
+                    $pdfUrl = $pdfService->generarReporteFinalOT(
+                        $datosReporte['header'],
+                        $itemsChecklist,
+                        $datosReporte['detalles'],
+                        $firma,
+                        $comentarios
+                    );
+                    $this->service->guardarUrlPdf($otId, $pdfUrl);
+                }
+            } else {
+                if ($comentarios || $evidenciasStr) {
+                    $this->service->guardarAvanceParcial($otId, $comentarios, $evidenciasStr);
+                }
             }
 
-            $this->service->repository->commit(); 
-            echo json_encode(["success" => true, "message" => "Guardado correctamente."]); 
+            $this->service->repository->commit();
+            echo json_encode(["success" => true, "message" => $finalizar ? "Servicio Finalizado" : "Avance guardado correctamente."]);
 
         } catch (Exception $e) {
-            if ($this->service->repository->inTransaction()) { 
-                $this->service->repository->rollBack(); 
+            if ($this->service->repository->inTransaction()) {
+                $this->service->repository->rollBack();
             }
-            http_response_code(400); 
+            http_response_code(400);
             echo json_encode(["success" => false, "message" => "Error en proceso: " . $e->getMessage()]);
         }
     }
@@ -111,8 +116,9 @@ public function guardar()
             $userId = AuthMiddleware::verify();
 
             $otId = $_GET['id'] ?? null;
-            if (!$otId) throw new Exception("Falta ID");
-            
+            if (!$otId)
+                throw new Exception("Falta ID");
+
             $data = $this->service->getDetalleCompletoOt($otId, $userId);
             echo json_encode(["success" => true, "data" => $data]);
         } catch (Exception $e) {
@@ -126,13 +132,14 @@ public function guardar()
         try {
             AuthMiddleware::hasPermission('ope_mant');
             $input = json_decode(file_get_contents("php://input"), true);
-            
+
             $otId = $input['ot_id'] ?? null;
             $nuevoEstadoId = $input['estado_id'] ?? null;
 
-            if (!$otId || !$nuevoEstadoId) throw new Exception("Datos incompletos.");
-            
-            if ((int)$nuevoEstadoId === 5) {
+            if (!$otId || !$nuevoEstadoId)
+                throw new Exception("Datos incompletos.");
+
+            if ((int) $nuevoEstadoId === 5) {
                 throw new Exception("Para finalizar la orden debe utilizar el proceso de firma.");
             }
 

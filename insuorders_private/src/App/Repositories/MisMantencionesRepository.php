@@ -16,9 +16,9 @@ class MisMantencionesRepository
 
     public function getOtsAsignadas($userId)
     {
-        $sql = "SELECT DISTINCT ot.id, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
+        $sql = "SELECT DISTINCT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
                 ot.estado_id, e.nombre as estado,
-                ot.imagen_url, ot.ubicacion,
+                ot.imagen_url, ot.ubicacion, ot.comentarios_finales, ot.evidencia_cierre,
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
                 a.plantilla_json,
@@ -40,18 +40,16 @@ class MisMantencionesRepository
 
     public function getAllOtsWithAsignados()
     {
-        $sql = "SELECT ot.id, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
+        $sql = "SELECT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
                 ot.estado_id, e.nombre as estado,
-                ot.imagen_url, ot.ubicacion,
+                ot.imagen_url, ot.ubicacion, ot.comentarios_finales, ot.evidencia_cierre,
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
                 a.plantilla_json,
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
                 IFNULL(GROUP_CONCAT(DISTINCT tec.id ORDER BY tec.id ASC), '') as asignados_ids,
                 IFNULL(GROUP_CONCAT(DISTINCT CONCAT(tec.nombre, ' ', tec.apellido) ORDER BY tec.id ASC SEPARATOR ', '), '') as asignados_nombres,
-                
                 0 as mi_completado
-
             FROM solicitudes_ot ot
             LEFT JOIN ot_asignaciones oa ON ot.id = oa.solicitud_id
             LEFT JOIN usuarios tec ON oa.usuario_id = tec.id
@@ -116,19 +114,23 @@ class MisMantencionesRepository
     public function guardarCierre($otId, $firmaBase64, $comentarios, $evidenciaStr = null)
     {
         $sql = "UPDATE solicitudes_ot SET 
-            firma_tecnico = :firma, 
             comentarios_finales = :com,
-            evidencia_cierre = :evi,
             estado_id = 5, 
-            fecha_cierre = NOW() 
-            WHERE id = :id";
+            fecha_cierre = NOW()";
+        $params = [':com' => $comentarios, ':id' => $otId];
 
-        $this->db->prepare($sql)->execute([
-            ':firma' => $firmaBase64,
-            ':com' => $comentarios,
-            ':evi' => $evidenciaStr,
-            ':id' => $otId
-        ]);
+        if ($firmaBase64 !== null) {
+            $sql .= ", firma_tecnico = :firma";
+            $params[':firma'] = $firmaBase64;
+        }
+
+        if ($evidenciaStr !== null) {
+            $sql .= ", evidencia_cierre = :evi";
+            $params[':evi'] = $this->appendEvidencia($otId, $evidenciaStr);
+        }
+
+        $sql .= " WHERE id = :id";
+        $this->db->prepare($sql)->execute($params);
     }
 
     public function guardarUrlPdf($otId, $url)
@@ -230,10 +232,38 @@ class MisMantencionesRepository
         ]);
     }
 
+    private function appendEvidencia($otId, $nuevasEvidenciasStr) {
+        $stmt = $this->db->prepare("SELECT evidencia_cierre FROM solicitudes_ot WHERE id = ?");
+        $stmt->execute([$otId]);
+        $actual = $stmt->fetchColumn();
+        
+        $arrActual = [];
+        if ($actual) {
+            $decoded = json_decode($actual, true);
+            $arrActual = is_array($decoded) ? $decoded : [$actual];
+        }
+        $arrNuevas = json_decode($nuevasEvidenciasStr, true) ?: [];
+        return json_encode(array_merge($arrActual, $arrNuevas));
+    }
+
     public function iniciarTrabajoEnOrden($otId)
     {
         $stmt = $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = ? AND estado_id IN (1, 4)");
         return $stmt->execute([$otId]);
+    }
+
+    public function guardarAvanceParcial($otId, $comentarios, $evidenciaStr = null)
+    {
+        $sql = "UPDATE solicitudes_ot SET comentarios_finales = :com";
+        $params = [':com' => $comentarios, ':id' => $otId];
+
+        if ($evidenciaStr !== null) {
+            $sql .= ", evidencia_cierre = :evi";
+            $params[':evi'] = $this->appendEvidencia($otId, $evidenciaStr);
+        }
+
+        $sql .= " WHERE id = :id";
+        $this->db->prepare($sql)->execute($params);
     }
 
     public function beginTransaction()
