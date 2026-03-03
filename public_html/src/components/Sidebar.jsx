@@ -16,11 +16,15 @@ const Sidebar = ({ onClose }) => {
     const [showNotifDetails, setShowNotifDetails] = useState(false);
     const dropdownRef = useRef(null);
 
-    // --- LÓGICA DE ROLES ---
+    // --- LÓGICA DE ROLES CORREGIDA ---
     const isAdmin = auth.rol === 'Admin' || auth.rol_id === 1;
-    // Es Cliente "Puro" si tiene el permiso Y NO es admin
     const hasPermisoCliente = auth.permisos && auth.permisos.includes('acceso_cliente');
-    const isClientePuro = hasPermisoCliente && !isAdmin;
+    
+    // Verificamos si el usuario tiene ALGÚN permiso interno (además del de cliente)
+    const hasInternalPerms = auth.permisos && auth.permisos.some(p => p !== 'acceso_cliente');
+
+    // Es Cliente "Puro" SOLO si no es admin y NO tiene permisos internos
+    const isClientePuro = hasPermisoCliente && !isAdmin && !hasInternalPerms;
 
     const can = (permisoRequerido) => {
         if (isAdmin) return true;
@@ -42,7 +46,7 @@ const Sidebar = ({ onClose }) => {
     // --- EFECTOS ---
     useEffect(() => {
         const checkData = async () => {
-            if (isClientePuro) return; // Clientes puros no ven notificaciones de sistema
+            if (isClientePuro) return; 
             try {
                 const res = await api.get('/index.php/notifications');
                 if (res.data.success) {
@@ -88,7 +92,7 @@ const Sidebar = ({ onClose }) => {
                 </div>
             </NavLink>
         );
-        // ... (Lógica de items de notificación igual que antes) ...
+        
         if (can('compras_ver') && notificaciones.compras.mensajes.length > 0) {
             notificaciones.compras.mensajes.forEach((msg, idx) => {
                 hasItems = true;
@@ -162,9 +166,8 @@ const Sidebar = ({ onClose }) => {
                 <ul className="nav nav-pills flex-column mb-auto gap-1">
 
                     {/* === SECCIÓN CLIENTES === */}
-                    {(isClientePuro || isAdmin) && (
+                    {(hasPermisoCliente || isAdmin) && (
                         <>
-                            {/* Título de Sección "Clientes" */}
                             <li className="nav-item mt-2">
                                 <div className="ps-3 mb-1 text-uppercase text-white-50 fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>
                                     Clientes
@@ -175,15 +178,13 @@ const Sidebar = ({ onClose }) => {
                                     <i className="bi bi-person-workspace me-2"></i> Mis Solicitudes
                                 </NavLink>
                             </li>
-                            {/* Separador si es Admin para que no se mezcle */}
                             {isAdmin && <hr className="border-secondary my-3 opacity-50" />}
                         </>
                     )}
 
                     {/* === SECCIÓN GESTIÓN INTERNA (Staff/Admin) === */}
-                    {!isClientePuro && (
+                    {(hasInternalPerms || isAdmin) && (
                         <>
-                            {/* Título opcional para unificar el menú principal si quieres */}
                             {isAdmin && (
                                 <li className="nav-item">
                                     <div className="ps-3 mb-1 text-uppercase text-white-50 fw-bold" style={{ fontSize: '0.75rem', letterSpacing: '1px' }}>

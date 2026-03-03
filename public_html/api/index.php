@@ -197,32 +197,39 @@ try {
             break;
 
         case 'mantencion/centros-costo':
-            AuthMiddleware::verify(['Admin', 'Jefe Mantención']);
+            AuthMiddleware::verify();
             (new MantencionController())->centrosCosto();
             break;
 
         case 'mantencion/kit':
-            AuthMiddleware::hasPermission('mant_crear');
             $c = new MantencionController();
-            if ($method === 'GET')
+            if ($method === 'GET') {
+                AuthMiddleware::verify(); 
                 $c->getKit();
-            elseif ($method === 'POST')
+            } elseif ($method === 'POST') {
+                AuthMiddleware::hasPermission('mant_crear');
                 $c->saveKit();
-            elseif ($method === 'PUT')
+            } elseif ($method === 'PUT') {
+                AuthMiddleware::hasPermission('mant_crear');
                 $c->updateKitQty();
-            elseif ($method === 'DELETE')
+            } elseif ($method === 'DELETE') {
+                AuthMiddleware::hasPermission('mant_crear');
                 $c->removeKitItem();
+            }
             break;
 
         case 'mantencion/docs':
-            AuthMiddleware::hasPermission('mant_editar');
             $c = new MantencionController();
-            if ($method === 'GET')
+            if ($method === 'GET') {
+                AuthMiddleware::verify();
                 $c->listDocs();
-            elseif ($method === 'POST')
+            } elseif ($method === 'POST') {
+                AuthMiddleware::hasPermission('mant_editar');
                 $c->uploadDoc();
-            elseif ($method === 'DELETE')
+            } elseif ($method === 'DELETE') {
+                AuthMiddleware::hasPermission('mant_editar');
                 $c->deleteDoc();
+            }
             break;
 
         case 'mantencion/galeria':
@@ -459,7 +466,7 @@ try {
             $uid = AuthMiddleware::hasPermission('bodega_organizar');
             (new BodegaController())->aprobarDevolucion($uid);
             break;
-        
+
         case 'bodega/devoluciones/rechazar':
             $uid = AuthMiddleware::hasPermission('bodega_organizar');
             (new BodegaController())->rechazarDevolucion($uid);
@@ -511,7 +518,7 @@ try {
             if ($method === 'GET')
                 (new MisMantencionesController())->detalle();
             break;
-            
+
         case 'mis-mantenciones/cambiar-estado':
             if ($method === 'POST')
                 (new MisMantencionesController())->actualizarEstadoManual();

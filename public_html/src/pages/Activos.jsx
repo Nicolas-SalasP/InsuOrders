@@ -57,7 +57,8 @@ const Activos = () => {
         (a.codigo_maquina && a.codigo_maquina.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const handleEdit = (activo) => { 
+    // FUNCIÓN UNIFICADA PARA ABRIR MODAL
+    const handleOpenModal = (activo) => { 
         setActivoSeleccionado(activo); 
         setShowModal(true); 
     };
@@ -164,7 +165,8 @@ const Activos = () => {
                 type={confirm.type} 
             />
             
-            {(hasPermission('activos_crear') || hasPermission('activos_editar')) && (
+            {/* SE MUESTRA SI TIENE PERMISO DE EDITAR, CREAR O DETALLE */}
+            {(hasPermission('activos_crear') || hasPermission('activos_editar') || hasPermission('activos_detalle')) && (
                 <ActivoModal show={showModal} onClose={() => setShowModal(false)} activo={activoSeleccionado} onSave={cargarActivos} />
             )}
             
@@ -286,6 +288,18 @@ const Activos = () => {
                                             )}
                                         </td>
                                         <td className="text-end pe-4">
+                                            
+                                            {/* BOTON VER DETALLE: Se muestra si tiene activos_detalle O activos_editar */}
+                                            {(hasPermission('activos_detalle') || hasPermission('activos_editar')) && (
+                                                <button 
+                                                    className="btn btn-sm btn-outline-primary me-2" 
+                                                    onClick={() => handleOpenModal(a)} 
+                                                    title={hasPermission('activos_editar') ? "Editar Activo" : "Ver Detalle y Kit"}
+                                                >
+                                                    <i className={hasPermission('activos_editar') ? "bi bi-pencil" : "bi bi-eye"}></i>
+                                                </button>
+                                            )}
+
                                             {hasPermission('activos_editar') && (
                                                 <>
                                                     <button 
@@ -294,10 +308,6 @@ const Activos = () => {
                                                         title="Diseñar Pauta de Mantención (Checklist)"
                                                     >
                                                         <i className="bi bi-clipboard-check"></i>
-                                                    </button>
-
-                                                    <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(a)} title="Editar Datos del Activo">
-                                                        <i className="bi bi-pencil"></i>
                                                     </button>
 
                                                     <button className="btn btn-sm btn-outline-danger" onClick={() => handleEliminar(a.id)} title="Eliminar Activo">
