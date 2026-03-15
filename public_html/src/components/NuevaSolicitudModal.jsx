@@ -20,7 +20,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     // --- ESTADOS DEL FORMULARIO ---
     const [modo, setModo] = useState('maquina');
     const [activoId, setActivoId] = useState('');
-    const [subActivoId, setSubActivoId] = useState(''); // <-- NUEVO ESTADO SUB-ACTIVO
+    const [subActivoId, setSubActivoId] = useState('');
     const [solicitanteId, setSolicitanteId] = useState('');
     const [centroCostoOT, setCentroCostoOT] = useState('');
     const [observacion, setObservacion] = useState('');
@@ -36,11 +36,17 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [showDropdownAsignados, setShowDropdownAsignados] = useState(false);
     const dropdownRef = useRef(null);
 
-    // --- UI / BÚSQUEDA ---
+    // --- UI / BÚSQUEDA GENERAL ---
     const [busqueda, setBusqueda] = useState('');
     const [mostrarLista, setMostrarLista] = useState(false);
     const wrapperRef = useRef(null);
     const [loading, setLoading] = useState(false);
+
+    // --- ESTADOS NUEVOS: BUSCADOR DE MÁQUINAS ---
+    const [busquedaActivo, setBusquedaActivo] = useState('');
+    const [mostrarListaActivo, setMostrarListaActivo] = useState(false);
+    const [activoNombreSeleccionado, setActivoNombreSeleccionado] = useState('');
+    const wrapperRefActivo = useRef(null);
 
     // --- EVIDENCIAS ---
     const [evidencias, setEvidencias] = useState([]);
@@ -56,8 +62,16 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     };
 
     const editable = esEditable(otEditar?.estado);
-    const subActivosDisponibles = activos.filter(a => a.activo_padre_id && String(a.activo_padre_id) === String(activoId));
+    
+    // FILTROS DE ACTIVOS
     const activosPrincipales = activos.filter(a => !a.activo_padre_id);
+    const subActivosDisponibles = activos.filter(a => a.activo_padre_id && String(a.activo_padre_id) === String(activoId));
+    
+    const activosFiltrados = activosPrincipales.filter(act =>
+        (act.nombre || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
+        (act.codigo_maquina || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
+        (act.codigo_interno || '').toLowerCase().includes(busquedaActivo.toLowerCase())
+    );
 
     useEffect(() => {
         if (show) cargarDatosMaestros();
@@ -71,10 +85,13 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setShowDropdownAsignados(false);
             }
+            if (wrapperRefActivo.current && !wrapperRefActivo.current.contains(event.target)) {
+                setMostrarListaActivo(false);
+            }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [wrapperRef, dropdownRef]);
+    }, [wrapperRef, dropdownRef, wrapperRefActivo]);
 
     const cargarDatosMaestros = async () => {
         try {
@@ -121,7 +138,11 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const resetearFormulario = () => {
         setModo('maquina');
         setActivoId('');
-        setSubActivoId(''); // RESETEAR SUB-ACTIVO
+        setSubActivoId('');
+        setActivoNombreSeleccionado('');
+        setBusquedaActivo('');
+        setMostrarListaActivo(false);
+        
         setObservacion('');
         setBusqueda('');
         setSolicitanteId('');
@@ -141,11 +162,13 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             if (otEditar.activo_id) {
                 setModo('maquina');
                 setActivoId(otEditar.activo_id);
-                setSubActivoId(otEditar.sub_activo_id || ''); // CARGAR SUB-ACTIVO
+                setSubActivoId(otEditar.sub_activo_id || ''); 
+                setActivoNombreSeleccionado(`${otEditar.activo_codigo || ''} - ${otEditar.activo || 'Máquina'}`);
             } else {
                 setModo('servicio');
                 setActivoId('');
-                setSubActivoId(''); // LIMPIAR SUB-ACTIVO
+                setSubActivoId('');
+                setActivoNombreSeleccionado('');
                 setSolicitanteId(otEditar.usuario_solicitante_id || '');
                 setCentroCostoOT(otEditar.centro_costo_ot || '');
             }
@@ -212,11 +235,14 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         return nombres.join(', ');
     };
 
-    // CAMBIO DE MÁQUINA PRINCIPAL
-    const handleActivoChange = async (e) => {
-        const id = e.target.value;
+    // --- NUEVO: MANEJADOR DE SELECCIÓN INTELIGENTE DE MÁQUINA ---
+    const handleSeleccionarActivo = async (act) => {
+        const id = act.id;
         setActivoId(id);
-        setSubActivoId(''); // Resetear sub-activo al cambiar de máquina principal
+        setActivoNombreSeleccionado(`${act.codigo_interno || act.codigo_maquina} - ${act.nombre}`);
+        setMostrarListaActivo(false);
+        setBusquedaActivo('');
+        setSubActivoId('');
 
         if (id && !otEditar && modo === 'maquina') {
             try {
@@ -241,8 +267,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const handleSubActivoChange = async (e) => {
         const subId = e.target.value;
         setSubActivoId(subId);
-
-        // Si selecciona un sub-activo, buscamos si tiene un kit propio
         if (subId && !otEditar && modo === 'maquina') {
             try {
                 const res = await api.get(`/index.php/mantencion/kit?id=${subId}`);
@@ -367,7 +391,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             const payload = {
                 id: otEditar ? otEditar.id : null,
                 activo_id: modo === 'maquina' ? activoId : null,
-                sub_activo_id: modo === 'maquina' && subActivoId ? subActivoId : null, // ENVIAMOS SUB-ACTIVO
+                sub_activo_id: modo === 'maquina' && subActivoId ? subActivoId : null,
                 observacion: observacion,
                 prioridad: prioridad,
                 ubicacion: ubicacion,
@@ -451,12 +475,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                     <div className="btn-group shadow-sm" role="group">
                                         <button type="button"
                                             className={`btn fw-bold px-4 ${modo === 'maquina' ? 'btn-primary' : 'btn-outline-primary bg-white'}`}
-                                            onClick={() => { setModo('maquina'); setActivoId(''); setSubActivoId(''); setItems([]); }}>
+                                            onClick={() => { setModo('maquina'); setActivoId(''); setSubActivoId(''); setItems([]); setActivoNombreSeleccionado(''); }}>
                                             <i className="bi bi-gear-fill me-2"></i>Maquinaria
                                         </button>
                                         <button type="button"
                                             className={`btn fw-bold px-4 ${modo === 'servicio' ? 'btn-success' : 'btn-outline-success bg-white'}`}
-                                            onClick={() => { setModo('servicio'); setActivoId(''); setSubActivoId(''); setItems([]); }}>
+                                            onClick={() => { setModo('servicio'); setActivoId(''); setSubActivoId(''); setItems([]); setActivoNombreSeleccionado(''); }}>
                                             <i className="bi bi-people-fill me-2"></i>Servicio / Área
                                         </button>
                                     </div>
@@ -470,20 +494,53 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                             {/* SELECTORES DE MÁQUINA Y SUB-ACTIVO */}
                                             {modo === 'maquina' ? (
                                                 <>
-                                                    <div className="mb-3">
+                                                    <div className="mb-3 position-relative" ref={wrapperRefActivo}>
                                                         <label className="form-label fw-bold small text-muted text-uppercase">Máquina Principal</label>
-                                                        <select className="form-select border-primary shadow-sm fw-bold"
-                                                            value={activoId}
-                                                            onChange={handleActivoChange}
-                                                            disabled={!!otEditar && subActivosDisponibles.length === 0}
-                                                        >
-                                                            <option value="">-- Seleccione Máquina --</option>
-                                                            {activosPrincipales.map(a => (
-                                                                <option key={a.id} value={a.id}>
-                                                                    {a.codigo_interno} - {a.nombre}
-                                                                </option>
-                                                            ))}
-                                                        </select>
+                                                        
+                                                        {activoNombreSeleccionado ? (
+                                                            <div className="input-group shadow-sm">
+                                                                <span className="input-group-text bg-primary text-white border-primary"><i className="bi bi-gear-fill"></i></span>
+                                                                <input type="text" className="form-control fw-bold border-primary text-primary bg-white" value={activoNombreSeleccionado} readOnly />
+                                                                <button className="btn btn-outline-danger" type="button" onClick={() => { 
+                                                                    if(!editable) return;
+                                                                    setActivoId(''); 
+                                                                    setSubActivoId(''); 
+                                                                    setActivoNombreSeleccionado(''); 
+                                                                    setMostrarListaActivo(true); 
+                                                                }} disabled={!editable}>
+                                                                    <i className="bi bi-x-lg"></i>
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="position-relative">
+                                                                <div className="input-group shadow-sm">
+                                                                    <span className="input-group-text bg-white border-primary text-primary"><i className="bi bi-search"></i></span>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="form-control border-primary"
+                                                                        placeholder="Escriba código o nombre de la máquina..."
+                                                                        value={busquedaActivo}
+                                                                        onChange={e => { setBusquedaActivo(e.target.value); setMostrarListaActivo(true); }}
+                                                                        onFocus={() => setMostrarListaActivo(true)}
+                                                                        disabled={!editable}
+                                                                    />
+                                                                </div>
+                                                                {mostrarListaActivo && (
+                                                                    <ul className="list-group position-absolute w-100 shadow mt-1 bg-white border border-primary" style={{ zIndex: 1060, maxHeight: '200px', overflowY: 'auto' }}>
+                                                                        {activosFiltrados.length > 0 ? (
+                                                                            activosFiltrados.map(act => (
+                                                                                <li key={act.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarActivo(act)}>
+                                                                                    <div className="fw-bold text-dark">{act.nombre}</div>
+                                                                                    <small className="text-muted"><i className="bi bi-upc-scan me-1"></i>{act.codigo_interno || act.codigo_maquina}</small>
+                                                                                </li>
+                                                                            ))
+                                                                        ) : (
+                                                                            <li className="list-group-item text-muted small text-center">No se encontraron equipos</li>
+                                                                        )}
+                                                                    </ul>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     {/* SELECTOR DE SUB-ACTIVO (CONDICIONAL) */}
@@ -568,7 +625,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     </select>
                                                 </div>
                                                 <div className="col-6">
-                                                    {/* --- SELECTOR DE UBICACIÓN ACTUALIZADO --- */}
+                                                    {/* --- SELECTOR DE UBICACIÓN --- */}
                                                     <label className="form-label small text-muted">Ubicación / Área</label>
                                                     <select 
                                                         className="form-select shadow-sm" 

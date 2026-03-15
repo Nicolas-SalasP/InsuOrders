@@ -19,7 +19,13 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
     const [otSeleccionada, setOtSeleccionada] = useState('');
     const [loadingOTs, setLoadingOTs] = useState(false);
 
+    // --- ESTADOS NUEVOS PARA BUSCADOR DE OT ---
+    const [busquedaOT, setBusquedaOT] = useState('');
+    const [mostrarListaOT, setMostrarListaOT] = useState(false);
+    const [otNombreSeleccionada, setOtNombreSeleccionada] = useState('');
+
     const wrapperRef = useRef(null);
+    const wrapperRefOT = useRef(null); // Ref para el buscador de OTs
     const [saving, setSaving] = useState(false);
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
 
@@ -31,8 +37,14 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
             setObservacion('');
             setBusqueda('');
             setUbicacionId('');
+            
+            // Reset OTs
             setEsParaOT(false);
             setOtSeleccionada('');
+            setOtNombreSeleccionada('');
+            setBusquedaOT('');
+            setMostrarListaOT(false);
+            
             setSaving(false);
 
             api.get('/index.php/personal')
@@ -69,15 +81,19 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
         }
     };
 
+    // Detectar clics fuera de los buscadores para cerrarlos
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 setMostrarLista(false);
             }
+            if (wrapperRefOT.current && !wrapperRefOT.current.contains(event.target)) {
+                setMostrarListaOT(false);
+            }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [wrapperRef]);
+    }, [wrapperRef, wrapperRefOT]);
 
     const personalFiltrado = personal.filter(p =>
         (p.nombre_completo || '').toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -89,6 +105,20 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
         setNombreSeleccionado(p.nombre_completo);
         setMostrarLista(false);
         setBusqueda('');
+    };
+
+    // Filtro para buscador de OTs
+    const otsFiltradas = listaOTs.filter(ot =>
+        String(ot.id).includes(busquedaOT) ||
+        (ot.titulo || '').toLowerCase().includes(busquedaOT.toLowerCase()) ||
+        (ot.maquina || '').toLowerCase().includes(busquedaOT.toLowerCase())
+    );
+
+    const handleSeleccionarOT = (ot) => {
+        setOtSeleccionada(ot.id);
+        setOtNombreSeleccionada(`#${ot.id} - ${ot.titulo || 'Sin Título'} (${ot.maquina || 'General'})`);
+        setMostrarListaOT(false);
+        setBusquedaOT('');
     };
 
     const handleSubmit = async (e) => {
@@ -237,7 +267,10 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                             checked={esParaOT}
                                             onChange={(e) => {
                                                 setEsParaOT(e.target.checked);
-                                                if (!e.target.checked) setOtSeleccionada('');
+                                                if (!e.target.checked) {
+                                                    setOtSeleccionada('');
+                                                    setOtNombreSeleccionada('');
+                                                }
                                             }}
                                         />
                                         <label className="form-check-label fw-bold text-primary" htmlFor="checkOT">
@@ -245,25 +278,49 @@ const ModalSalida = ({ show, onClose, onSave, insumo }) => {
                                         </label>
                                     </div>
 
+                                    {/* BUSCADOR DE OT */}
                                     {esParaOT && (
-                                        <div className="mt-3 animate__animated animate__fadeIn">
+                                        <div className="mt-3 animate__animated animate__fadeIn position-relative" ref={wrapperRefOT}>
                                             {loadingOTs ? (
                                                 <div className="text-center small text-muted"><span className="spinner-border spinner-border-sm me-2"></span>Cargando OTs...</div>
+                                            ) : otNombreSeleccionada ? (
+                                                <div className="input-group shadow-sm">
+                                                    <span className="input-group-text bg-primary text-white border-primary"><i className="bi bi-file-earmark-text"></i></span>
+                                                    <input type="text" className="form-control fw-bold border-primary text-primary bg-white" value={otNombreSeleccionada} readOnly />
+                                                    <button className="btn btn-outline-danger" type="button" onClick={() => { setOtSeleccionada(''); setOtNombreSeleccionada(''); setMostrarListaOT(true); }}>
+                                                        <i className="bi bi-x-lg"></i>
+                                                    </button>
+                                                </div>
                                             ) : (
-                                                <select
-                                                    className="form-select border-primary"
-                                                    value={otSeleccionada}
-                                                    onChange={(e) => setOtSeleccionada(e.target.value)}
-                                                    required={esParaOT}
-                                                >
-                                                    <option value="">-- Seleccionar OT --</option>
-                                                    {listaOTs.map(ot => (
-                                                        <option key={ot.id} value={ot.id}>
-                                                            #{ot.id} - {ot.titulo} ({ot.maquina || 'General'})
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                <div className="position-relative">
+                                                    <div className="input-group shadow-sm">
+                                                        <span className="input-group-text bg-white border-primary text-primary"><i className="bi bi-search"></i></span>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control border-primary"
+                                                            placeholder="Escriba #OT, nombre de máquina o título..."
+                                                            value={busquedaOT}
+                                                            onChange={e => { setBusquedaOT(e.target.value); setMostrarListaOT(true); }}
+                                                            onFocus={() => setMostrarListaOT(true)}
+                                                        />
+                                                    </div>
+                                                    {mostrarListaOT && (
+                                                        <ul className="list-group position-absolute w-100 shadow mt-1 bg-white border border-primary" style={{ zIndex: 1060, maxHeight: '200px', overflowY: 'auto' }}>
+                                                            {otsFiltradas.length > 0 ? (
+                                                                otsFiltradas.map(ot => (
+                                                                    <li key={ot.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarOT(ot)}>
+                                                                        <div className="fw-bold text-dark">#{ot.id} - {ot.titulo || 'Sin Título'}</div>
+                                                                        <small className="text-muted"><i className="bi bi-gear-fill me-1"></i>{ot.maquina || 'General'}</small>
+                                                                    </li>
+                                                                ))
+                                                            ) : (
+                                                                <li className="list-group-item text-muted small text-center">No se encontraron OTs</li>
+                                                            )}
+                                                        </ul>
+                                                    )}
+                                                </div>
                                             )}
+                                            
                                             <div className="form-text small mt-2 text-muted">
                                                 <i className="bi bi-info-circle me-1"></i>
                                                 Se marcará como "Entregado" en la OT seleccionada.

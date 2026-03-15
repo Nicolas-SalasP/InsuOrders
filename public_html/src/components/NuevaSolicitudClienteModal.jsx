@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../api/axiosConfig';
 
 const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
@@ -18,6 +18,12 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
 
     const [loading, setLoading] = useState(false);
 
+    // --- ESTADOS PARA BUSCADOR INTELIGENTE DE ACTIVOS ---
+    const [busquedaActivo, setBusquedaActivo] = useState('');
+    const [mostrarListaActivo, setMostrarListaActivo] = useState(false);
+    const [activoNombreSeleccionado, setActivoNombreSeleccionado] = useState('');
+    const wrapperRefActivo = useRef(null);
+
     useEffect(() => {
         if (show) {
             cargarActivos();
@@ -25,11 +31,26 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
         }
     }, [show]);
 
+    // Cerrar lista desplegable al hacer clic fuera
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wrapperRefActivo.current && !wrapperRefActivo.current.contains(event.target)) {
+                setMostrarListaActivo(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRefActivo]);
+
     const resetForm = () => {
         setTipoTrabajo('general'); 
         setForm({ titulo: '', descripcion: '', activo_id: '', prioridad: 'MEDIA', imagenes: [], ubicacion: '' });
         setSuccessId(null);
         setShowUrgentConfirm(false);
+        // Reset buscador
+        setBusquedaActivo('');
+        setMostrarListaActivo(false);
+        setActivoNombreSeleccionado('');
     };
 
     const cargarActivos = async () => {
@@ -37,6 +58,20 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
             const res = await api.get('/index.php/cliente/activos');
             if (res.data.success) setActivos(res.data.data);
         } catch (e) { console.error(e); }
+    };
+
+    // Lógica de Filtro para las máquinas
+    const activosFiltrados = activos.filter(act =>
+        (act.nombre || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
+        (act.codigo_maquina || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
+        (act.codigo_interno || '').toLowerCase().includes(busquedaActivo.toLowerCase())
+    );
+
+    const handleSeleccionarActivo = (act) => {
+        setForm({ ...form, activo_id: act.id });
+        setActivoNombreSeleccionado(`${act.nombre} (${act.codigo_maquina || act.codigo_interno})`);
+        setMostrarListaActivo(false);
+        setBusquedaActivo('');
     };
 
     const comprimirImagen = (file) => {
@@ -84,6 +119,12 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
 
     const handlePreSubmit = (e) => {
         e.preventDefault();
+        
+        if (tipoTrabajo === 'activo' && !form.activo_id) {
+            alert("Por favor busque y seleccione una máquina de la lista.");
+            return;
+        }
+
         if (form.prioridad === 'CRITICO') {
             setShowUrgentConfirm(true);
         } else {
@@ -235,14 +276,46 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                     </div>
 
                                     {tipoTrabajo === 'activo' && (
-                                        <div className="mb-3 p-3 bg-light rounded border border-primary border-opacity-25">
+                                        <div className="mb-3 p-3 bg-light rounded border border-primary border-opacity-25" ref={wrapperRefActivo}>
                                             <label className="form-label fw-bold text-primary small text-uppercase">Selecciona la Máquina</label>
-                                            <select className="form-select border-primary" value={form.activo_id} required={tipoTrabajo === 'activo'} onChange={(e) => setForm({...form, activo_id: e.target.value})}>
-                                                <option value="">-- Buscar Equipo --</option>
-                                                {activos.map(act => (
-                                                    <option key={act.id} value={act.id}>{act.nombre} ({act.codigo_maquina})</option>
-                                                ))}
-                                            </select>
+                                            
+                                            {activoNombreSeleccionado ? (
+                                                <div className="input-group shadow-sm">
+                                                    <span className="input-group-text bg-primary text-white border-primary"><i className="bi bi-gear-fill"></i></span>
+                                                    <input type="text" className="form-control fw-bold border-primary text-primary bg-white" value={activoNombreSeleccionado} readOnly />
+                                                    <button className="btn btn-outline-danger" type="button" onClick={() => { setForm({ ...form, activo_id: '' }); setActivoNombreSeleccionado(''); setMostrarListaActivo(true); }}>
+                                                        <i className="bi bi-x-lg"></i>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="position-relative">
+                                                    <div className="input-group shadow-sm">
+                                                        <span className="input-group-text bg-white border-primary text-primary"><i className="bi bi-search"></i></span>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control border-primary"
+                                                            placeholder="Escriba código o nombre de la máquina..."
+                                                            value={busquedaActivo}
+                                                            onChange={e => { setBusquedaActivo(e.target.value); setMostrarListaActivo(true); }}
+                                                            onFocus={() => setMostrarListaActivo(true)}
+                                                        />
+                                                    </div>
+                                                    {mostrarListaActivo && (
+                                                        <ul className="list-group position-absolute w-100 shadow mt-1 bg-white border border-primary" style={{ zIndex: 1060, maxHeight: '200px', overflowY: 'auto' }}>
+                                                            {activosFiltrados.length > 0 ? (
+                                                                activosFiltrados.map(act => (
+                                                                    <li key={act.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarActivo(act)}>
+                                                                        <div className="fw-bold text-dark">{act.nombre}</div>
+                                                                        <small className="text-muted"><i className="bi bi-upc-scan me-1"></i>{act.codigo_maquina || act.codigo_interno}</small>
+                                                                    </li>
+                                                                ))
+                                                            ) : (
+                                                                <li className="list-group-item text-muted small text-center">No se encontraron equipos</li>
+                                                            )}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -252,7 +325,7 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                             <div className="small text-muted">Usa esta opción para: <strong>Pintura, Fontanería, Electricidad, Muebles, Aseo profundo, etc.</strong></div>
                                         </div>
                                     )}
-                                    
+
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Ubicación del trabajo</label>
                                         <select 
@@ -262,7 +335,7 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                             required
                                         >
                                             <option value="">-- Seleccione Ubicación --</option>
-                                            <optgroup label="🏢 Insuban ">
+                                            <optgroup label="🏢 Insuban">
                                                 <option value="Planta 1">Planta 1</option>
                                                 <option value="Planta 2">Planta 2</option>
                                                 <option value="Patio">Patio</option>
