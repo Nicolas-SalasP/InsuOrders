@@ -124,4 +124,21 @@ class MantenedoresController
     {
         $this->handleDelete(fn($id) => $this->service->eliminarUbicacionEnvio($id), "Ubicación de envío desactivada");
     }
+
+    // --- TIPOS DE PERMISOS DE TRABAJO ---
+    public function getTiposPermiso()
+    {
+        $soloActivos = isset($_GET['type']) && $_GET['type'] === 'activos';
+        echo json_encode(["success" => true, "data" => $this->service->obtenerTiposPermiso($soloActivos)]);
+    }
+
+    public function saveTipoPermiso()
+    {
+        $this->handleSave(fn($data) => $this->service->guardarTipoPermiso($data), "Permiso de trabajo guardado");
+    }
+
+    public function deleteTipoPermiso()
+    {
+        $this->handleDelete(fn($id) => $this->service->eliminarTipoPermiso($id), "Permiso de trabajo desactivado");
+    }
 }

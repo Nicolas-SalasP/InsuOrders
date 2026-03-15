@@ -34,6 +34,11 @@ class MantencionController
         echo json_encode(["success" => true, "data" => $this->service->obtenerDetalleOT($id)]);
     }
 
+    public function tiposPermiso()
+    {
+        echo json_encode(["success" => true, "data" => $this->service->listarTiposPermiso()]);
+    }
+
     public function store($usuarioId)
     {
         $data = json_decode(file_get_contents("php://input"), true);
@@ -55,7 +60,10 @@ class MantencionController
                 'ubicacion' => $data['ubicacion'] ?? null,
                 'usuario_solicitante_id' => !empty($data['usuario_solicitante_id']) ? $data['usuario_solicitante_id'] : $usuarioId,
                 'asignados' => $data['asignados'] ?? [],
-                'items' => $data['items'] ?? []
+                'items' => $data['items'] ?? [],
+                'requiere_permiso' => $data['requiere_permiso'] ?? 0,
+                'tipo_permiso_id' => $data['tipo_permiso_id'] ?? null,
+                'descripcion_permiso' => $data['descripcion_permiso'] ?? null
             ];
 
             $id = $this->service->crearOT($payload, $usuarioId);

@@ -207,4 +207,42 @@ class MantenedoresRepository
     {
         $this->db->prepare("UPDATE ubicaciones_envio SET activo = 0 WHERE id = ?")->execute([$id]);
     }
+
+    // =========================================================================
+    // TIPOS DE PERMISOS DE TRABAJO
+    // =========================================================================
+    public function getTiposPermiso($soloActivos = false)
+    {
+        $sql = "SELECT * FROM tipos_permiso_trabajo";
+        if ($soloActivos) {
+            $sql .= " WHERE activo = 1";
+        }
+        $sql .= " ORDER BY nombre ASC";
+        
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function saveTipoPermiso($data)
+    {
+        if (!empty($data['id'])) {
+            $sql = "UPDATE tipos_permiso_trabajo SET nombre=:n, descripcion=:d, activo=:a WHERE id=:id";
+            $this->db->prepare($sql)->execute([
+                ':n'  => $data['nombre'],
+                ':d'  => $data['descripcion'] ?? null,
+                ':a'  => $data['activo'] ?? 1,
+                ':id' => $data['id']
+            ]);
+        } else {
+            $sql = "INSERT INTO tipos_permiso_trabajo (nombre, descripcion, activo) VALUES (:n, :d, 1)";
+            $this->db->prepare($sql)->execute([
+                ':n' => $data['nombre'],
+                ':d' => $data['descripcion'] ?? null
+            ]);
+        }
+    }
+
+    public function deleteTipoPermiso($id)
+    {
+        $this->db->prepare("UPDATE tipos_permiso_trabajo SET activo = 0 WHERE id = ?")->execute([$id]);
+    }
 }

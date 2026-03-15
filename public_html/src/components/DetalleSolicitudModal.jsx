@@ -170,6 +170,31 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                             ) : detalle ? (
                                 <div className="container-fluid p-0">
 
+                                    {/* --- ALERTA DE PREVENCIÓN DE RIESGOS (PERMISOS DE TRABAJO) --- */}
+                                    {Number(detalle.requiere_permiso) === 1 && (
+                                        <div className="alert shadow-sm mb-4" style={{ backgroundColor: '#fff3cd', borderLeft: '6px solid #dc3545', color: '#856404', padding: '1rem' }}>
+                                            <div className="d-flex align-items-center">
+                                                <div className="me-3">
+                                                    <i className="bi bi-exclamation-triangle-fill text-danger" style={{ fontSize: '2.5rem' }}></i>
+                                                </div>
+                                                <div>
+                                                    <h5 className="alert-heading fw-bold text-danger mb-1">ATENCIÓN: TRABAJO CON RIESGO</h5>
+                                                    <p className="mb-1" style={{ fontSize: '0.95rem' }}>
+                                                        Esta tarea requiere un Permiso de <strong>{detalle.tipo_permiso_nombre || 'Trabajo Seguro'}</strong>.
+                                                    </p>
+                                                    <p className="mb-0 fw-bold">
+                                                        <i className="bi bi-arrow-right-circle-fill me-1 text-danger"></i>
+                                                        Acción requerida: Solicitar y autorizar este permiso con Prevención de Riesgos antes de iniciar.
+                                                    </p>
+                                                    {detalle.descripcion_permiso && (
+                                                        <div className="mt-2 p-2 bg-white rounded text-dark border border-warning" style={{ fontSize: '0.9rem' }}>
+                                                            <strong><i className="bi bi-info-circle-fill text-warning me-1"></i> Nota del Supervisor:</strong> {detalle.descripcion_permiso}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     {/* --- 1. AVANCE DEL EQUIPO --- */}
                                     <div className="card mb-3 border-primary shadow-sm">
                                         <div className="card-header bg-primary bg-opacity-10 text-primary fw-bold d-flex justify-content-between align-items-center">

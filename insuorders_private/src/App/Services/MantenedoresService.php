@@ -114,4 +114,23 @@ class MantenedoresService
     {
         $this->repo->deleteUbicacionEnvio($id);
     }
+
+    // --- TIPOS DE PERMISOS DE TRABAJO ---
+    public function obtenerTiposPermiso($soloActivos = false)
+    {
+        return $this->repo->getTiposPermiso($soloActivos);
+    }
+
+    public function guardarTipoPermiso($data)
+    {
+        if (empty($data['nombre'])) {
+            throw new Exception("El nombre del permiso es obligatorio.");
+        }
+        $this->repo->saveTipoPermiso($data);
+    }
+
+    public function eliminarTipoPermiso($id)
+    {
+        $this->repo->deleteTipoPermiso($id);
+    }
 }

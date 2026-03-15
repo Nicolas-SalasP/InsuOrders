@@ -8,8 +8,14 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [activos, setActivos] = useState([]);
     const [insumos, setInsumos] = useState([]);
     const [centrosCosto, setCentrosCosto] = useState([]);
-    const [personal, setPersonal] = useState([]); // Todos (para solicitante)
-    const [tecnicos, setTecnicos] = useState([]); // Solo Técnicos (para asignar)
+    const [personal, setPersonal] = useState([]);
+    const [tecnicos, setTecnicos] = useState([]);
+
+    // --- PERMISOS DE TRABAJO ---
+    const [tiposPermiso, setTiposPermiso] = useState([]);
+    const [requierePermiso, setRequierePermiso] = useState(false);
+    const [tipoPermisoId, setTipoPermisoId] = useState('');
+    const [descripcionPermiso, setDescripcionPermiso] = useState('');
 
     // --- ESTADOS DEL FORMULARIO ---
     const [modo, setModo] = useState('maquina');
@@ -71,17 +77,18 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         try {
             setItems([]);
             setLoading(true);
-
-            const [resActivos, resInsumos, resCC, resPersonal] = await Promise.all([
+            const [resActivos, resInsumos, resCC, resPersonal, resPermisos] = await Promise.all([
                 api.get('/index.php/mantencion/activos'),
                 api.get('/index.php/inventario'),
                 api.get('/index.php/mantencion/centros-costo'),
-                api.get('/index.php/personal') 
+                api.get('/index.php/personal'),
+                api.get('/index.php/mantencion/tipos-permiso') 
             ]);
 
             setActivos(resActivos.data.data || []);
             setInsumos(resInsumos.data.data || []);
             setCentrosCosto(resCC.data.success ? resCC.data.data : []);
+            setTiposPermiso(resPermisos.data.success ? resPermisos.data.data : []);
             
             const listaEmpleados = resPersonal.data.success ? resPersonal.data.data : [];
             setPersonal(listaEmpleados); 
@@ -120,6 +127,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setAsignados([]); 
         setItems([]);
         setEvidencias([]);
+        setRequierePermiso(false);
+        setTipoPermisoId('');
+        setDescripcionPermiso('');
     };
 
     const cargarDatosEdicion = async () => {
@@ -136,6 +146,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             setObservacion(otEditar.descripcion_trabajo || '');
             setPrioridad(otEditar.prioridad || 'Media');
             setUbicacion(otEditar.ubicacion || '');
+            setRequierePermiso(otEditar.requiere_permiso == 1);
+            setTipoPermisoId(otEditar.tipo_permiso_id || '');
+            setDescripcionPermiso(otEditar.descripcion_permiso || '');
 
             if (otEditar.asignados_ids) {
                 const ids = String(otEditar.asignados_ids).split(',').map(Number);
@@ -288,6 +301,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         if (items.length === 0 && !observacion.trim()) {
             return setMsgModal({ show: true, title: "OT Vacía", message: "Debe agregar una descripción o al menos un insumo.", type: "warning" });
         }
+        if (requierePermiso && !tipoPermisoId) {
+            return setMsgModal({ show: true, title: "Permiso Incompleto", message: "Ha indicado que requiere permiso de trabajo, por favor seleccione el tipo.", type: "warning" });
+        }
 
         const itemsConStock = items.filter(i => (i.estado_linea === 'NUEVO' || i.estado_linea === 'PENDIENTE') && i.stock_actual >= i.cantidad && i.cantidad > 0);
 
@@ -325,7 +341,10 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 area_negocio: null,
                 centro_costo_ot: modo === 'servicio' ? centroCostoOT : null,
                 origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio',
-                asignados: asignados
+                asignados: asignados,
+                requiere_permiso: requierePermiso ? 1 : 0,
+                tipo_permiso_id: requierePermiso ? tipoPermisoId : null,
+                descripcion_permiso: requierePermiso ? descripcionPermiso : ''
             };
 
             if (otEditar) {
@@ -575,6 +594,64 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* PREVENCIÓN DE RIESGOS (PERMISOS DE TRABAJO) */}
+                            <div className="col-12 mt-3 mb-4">
+                                <div className={`card border-${requierePermiso ? 'danger' : 'warning'} shadow-sm transition-all`}>
+                                    <div className="card-body bg-light">
+                                        <div className="form-check form-switch mb-2">
+                                            <input 
+                                                className="form-check-input" 
+                                                type="checkbox" 
+                                                id="checkPermiso" 
+                                                checked={requierePermiso}
+                                                onChange={(e) => {
+                                                    setRequierePermiso(e.target.checked);
+                                                    if(!e.target.checked) {
+                                                        setTipoPermisoId('');
+                                                        setDescripcionPermiso('');
+                                                    }
+                                                }}
+                                                disabled={!editable}
+                                                style={{ cursor: editable ? 'pointer' : 'default' }}
+                                            />
+                                            <label className="form-check-label fw-bold text-dark ms-2" htmlFor="checkPermiso" style={{ cursor: editable ? 'pointer' : 'default' }}>
+                                                ¿Requiere Permiso de Trabajo Seguro? (Prevención de Riesgos)
+                                            </label>
+                                        </div>
+                                        
+                                        {requierePermiso && (
+                                            <div className="row mt-3 animate__animated animate__fadeIn">
+                                                <div className="col-md-6 mb-3">
+                                                    <label className="form-label fw-bold text-secondary text-uppercase" style={{ fontSize: '0.8rem' }}>Tipo de Permiso Requerido <span className="text-danger">*</span></label>
+                                                    <select 
+                                                        className="form-select border-danger shadow-sm"
+                                                        value={tipoPermisoId}
+                                                        onChange={(e) => setTipoPermisoId(e.target.value)}
+                                                        disabled={!editable}
+                                                    >
+                                                        <option value="">Seleccione un permiso...</option>
+                                                        {tiposPermiso.map(tp => (
+                                                            <option key={tp.id} value={tp.id}>{tp.nombre}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="col-md-6 mb-3">
+                                                    <label className="form-label fw-bold text-secondary text-uppercase" style={{ fontSize: '0.8rem' }}>Descripción / Detalle</label>
+                                                    <textarea 
+                                                        className="form-control shadow-sm" 
+                                                        rows="2" 
+                                                        placeholder="Ej: Se requiere soldadura en estructura base..."
+                                                        value={descripcionPermiso}
+                                                        onChange={(e) => setDescripcionPermiso(e.target.value)}
+                                                        disabled={!editable}
+                                                    ></textarea>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

@@ -26,6 +26,7 @@ class MantencionRepository
                 COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id,
                 t.nombre as tecnico_nombre, t.apellido as tecnico_apellido,
+                tpt.nombre as tipo_permiso_nombre,
                 (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') FROM ot_asignaciones oa JOIN usuarios usr ON oa.usuario_id = usr.id WHERE oa.solicitud_id = s.id) as asignados_nombres,
                 (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids
                 FROM solicitudes_ot s 
@@ -33,6 +34,7 @@ class MantencionRepository
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id 
                 JOIN estados_solicitud e ON s.estado_id = e.id 
                 LEFT JOIN usuarios t ON s.asignado_a = t.id 
+                LEFT JOIN tipos_permiso_trabajo tpt ON s.tipo_permiso_id = tpt.id
                 WHERE 1=1";
 
         $params = [];
@@ -329,13 +331,19 @@ class MantencionRepository
     {
         $sql = "SELECT s.*, s.asignado_a, u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, 
                 CASE WHEN s.activo_id IS NOT NULL THEN a.nombre ELSE CONCAT('SERVICIO: ', COALESCE(s.area_negocio, 'General')) END as activo, 
-                COALESCE(a.codigo_interno, 'SERV') as activo_codigo, e.nombre as estado 
-                FROM solicitudes_ot s JOIN usuarios u ON s.usuario_solicitante_id = u.id 
-                LEFT JOIN activos a ON s.activo_id = a.id JOIN estados_solicitud e ON s.estado_id = e.id WHERE s.id = :id";
+                COALESCE(a.codigo_interno, 'SERV') as activo_codigo, e.nombre as estado,
+                tpt.nombre as tipo_permiso_nombre
+                FROM solicitudes_ot s 
+                JOIN usuarios u ON s.usuario_solicitante_id = u.id 
+                LEFT JOIN activos a ON s.activo_id = a.id 
+                JOIN estados_solicitud e ON s.estado_id = e.id 
+                LEFT JOIN tipos_permiso_trabajo tpt ON s.tipo_permiso_id = tpt.id
+                WHERE s.id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+    
     public function getDetallesOT($id)
     {
         $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.cantidad_entregada, d.estado_linea, 
@@ -383,8 +391,8 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
 
-            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud) 
-                    VALUES (:uid, :aid, :desc, :orig, :area, :cc, :ext, 1, NOW())";
+            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, requiere_permiso, tipo_permiso_id, descripcion_permiso) 
+                    VALUES (:uid, :aid, :desc, :orig, :area, :cc, :ext, 1, NOW(), :req_perm, :tipo_perm, :desc_perm)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':uid' => $data['usuario_id'],
@@ -393,7 +401,10 @@ class MantencionRepository
                 ':orig' => $data['origen_tipo'],
                 ':area' => $data['area_negocio'],
                 ':cc' => $data['centro_costo_ot'],
-                ':ext' => $data['solicitante_externo']
+                ':ext' => $data['solicitante_externo'],
+                ':req_perm' => !empty($data['requiere_permiso']) ? 1 : 0,
+                ':tipo_perm' => !empty($data['tipo_permiso_id']) ? $data['tipo_permiso_id'] : null,
+                ':desc_perm' => $data['descripcion_permiso'] ?? null
             ]);
             $otId = $this->db->lastInsertId();
 
@@ -442,13 +453,20 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
 
-            $sql = "UPDATE solicitudes_ot SET activo_id=:aid, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot WHERE id=:id";
+            $sql = "UPDATE solicitudes_ot SET 
+                    activo_id=:aid, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot,
+                    requiere_permiso=:req_perm, tipo_permiso_id=:tipo_perm, descripcion_permiso=:desc_perm
+                    WHERE id=:id";
+
             $this->db->prepare($sql)->execute([
                 ':aid' => !empty($data['activo_id']) ? $data['activo_id'] : null,
                 ':desc' => $data['observacion'],
                 ':se' => $data['solicitante_externo'] ?: null,
                 ':cc' => $data['centro_costo_ot'] ?: null,
                 ':ot' => $data['origen_tipo'],
+                ':req_perm' => !empty($data['requiere_permiso']) ? 1 : 0,
+                ':tipo_perm' => !empty($data['tipo_permiso_id']) ? $data['tipo_permiso_id'] : null,
+                ':desc_perm' => $data['descripcion_permiso'] ?? null,
                 ':id' => $id
             ]);
 
@@ -691,5 +709,11 @@ class MantencionRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function getTiposPermiso()
+    {
+        $sql = "SELECT * FROM tipos_permiso_trabajo WHERE activo = 1 ORDER BY nombre ASC";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 }

@@ -30,6 +30,11 @@ class MantencionService
         return $this->repo->getAll($_GET);
     }
 
+    public function listarTiposPermiso()
+    {
+        return $this->repo->getTiposPermiso();
+    }
+
     public function obtenerDetalleOT($id)
     {
         $header = $this->repo->getOTHeader($id);
@@ -50,11 +55,18 @@ class MantencionService
         if (empty($data['items']) && empty($data['activo_id'])) {
             throw new Exception("Debe seleccionar un activo o agregar insumos manuales.");
         }
+        if (!empty($data['requiere_permiso']) && empty($data['tipo_permiso_id'])) {
+            throw new Exception("Ha indicado que requiere permiso de trabajo, por favor seleccione el tipo de permiso.");
+        }
         return $this->repo->createOT($data);
     }
 
     public function editarOT($id, $data)
     {
+        if (!empty($data['requiere_permiso']) && empty($data['tipo_permiso_id'])) {
+            throw new Exception("Ha indicado que requiere permiso de trabajo, por favor seleccione el tipo de permiso.");
+        }
+        
         $resultado = $this->repo->updateOT($id, $data);
         if ($this->cronogramaRepo) {
             $this->cronogramaRepo->syncByOT($id, $data);

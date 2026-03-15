@@ -87,10 +87,11 @@ const MisMantenciones = () => {
         setEnlargedImage(null);
 
         try {
-            const res = await api.get(`/mis-mantenciones/detalle?id=${ot.id}`);
+            const res = await api.get(`/index.php/mantencion?detalle=true&id=${ot.id}`);
             if (res.data.success) {
+                setSelectedOt({ ...ot, ...res.data.data });
                 setDetallesOt({
-                    insumos: res.data.data.insumos,
+                    insumos: res.data.data.items || [],
                     respuestas: formatearRespuestas(res.data.data.respuestas)
                 });
             }
@@ -420,17 +421,25 @@ const MisMantenciones = () => {
                             ) : (
                                 otsFiltradas.map(ot => {
                                     const isActive = selectedOt?.id === ot.id;
+                                    const requierePermiso = Number(ot.requiere_permiso) === 1;
+                                    
                                     return (
                                         <button key={ot.id}
                                             className={`card w-100 mb-2 border-0 shadow-sm text-start card-hover transition-all ${isActive ? 'border-start border-5 border-primary bg-white' : 'bg-white'}`}
                                             onClick={() => handleSelectOt(ot)}>
-                                            <div className="card-body p-3">
-                                                <div className="d-flex justify-content-between mb-1">
-                                                    <span className={`badge ${isActive ? 'bg-primary' : 'bg-secondary'} bg-opacity-25 text-dark fw-bold`}>OT #{ot.id}</span>
+                                            <div className="card-body p-3 position-relative">
+                                                <div className="d-flex justify-content-between mb-1 align-items-center">
+                                                    <div>
+                                                        <span className={`badge ${isActive ? 'bg-primary' : 'bg-secondary'} bg-opacity-25 text-dark fw-bold`}>OT #{ot.id}</span>
+                                                        {requierePermiso && (
+                                                            <span className="badge bg-danger ms-1 shadow-sm blink-badge" style={{ fontSize: '0.65rem' }}>
+                                                                <i className="bi bi-shield-exclamation me-1"></i>RIESGO
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <small className="text-muted">{new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
                                                 </div>
                                                 
-                                                {/* TÍTULO DESTACADO */}
                                                 <h6 className="mb-1 fw-bold text-primary text-truncate">{ot.titulo || 'Sin Título'}</h6>
                                                 
                                                 <div className="fw-bold text-dark text-truncate small mb-1"><i className="bi bi-gear-fill me-1 text-muted"></i>{ot.activo}</div>
@@ -468,7 +477,6 @@ const MisMantenciones = () => {
                                             <i className="bi bi-arrow-left display-6"></i>
                                         </button>
                                         <div className="text-truncate">
-                                            {/* TÍTULO DESTACADO EN EL HEADER */}
                                             <h4 className="fw-bold mb-0 text-truncate text-primary">{selectedOt.titulo || 'Sin Título'}</h4>
                                             
                                             <div className="text-dark fw-bold small d-flex align-items-center mt-1">
@@ -482,7 +490,6 @@ const MisMantenciones = () => {
                                         </div>
                                     </div>
                                     
-                                    {/* LÓGICA DE BOTONES EXCLUSIVOS */}
                                     <div className="ps-3 d-flex gap-2">
                                         {esServicio ? (
                                             <>
@@ -519,8 +526,21 @@ const MisMantenciones = () => {
                                         )}
                                     </div>
                                 </div>
+                                {Number(selectedOt.requiere_permiso) === 1 && (
+                                    <div className="bg-warning bg-opacity-25 border-top border-bottom border-warning p-2 d-flex align-items-center px-4">
+                                        <i className="bi bi-exclamation-triangle-fill text-danger fs-4 me-3 blink-badge"></i>
+                                        <div>
+                                            <div className="fw-bold text-danger text-uppercase mb-0" style={{ fontSize: '0.85rem' }}>
+                                                Atención: Permiso de {selectedOt.tipo_permiso_nombre || 'Trabajo Seguro'} Requerido
+                                            </div>
+                                            <div className="small text-dark fw-medium">
+                                                Debes gestionar la firma con Prevención de Riesgos antes de comenzar la tarea.
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
-                                <div className="px-3 px-md-4">
+                                <div className="px-3 px-md-4 mt-2 mb-2">
                                     <ul className="nav nav-pills nav-fill gap-2 p-1 bg-light rounded-pill" role="tablist" style={{ maxWidth: '600px' }}>
                                         <li className="nav-item">
                                             <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 ${activeTab === 'info' ? 'active shadow-sm' : 'text-muted'}`}
@@ -604,7 +624,7 @@ const MisMantenciones = () => {
                                                     <div className="mb-4">
                                                         <label className="text-muted small fw-bold text-uppercase mb-1">Descripción del Problema</label>
                                                         <div className="p-3 bg-light rounded border">
-                                                            {selectedOt.descripcion_solicitud || 'Sin descripción proporcionada.'}
+                                                            {selectedOt.descripcion_solicitud || selectedOt.descripcion_trabajo || 'Sin descripción proporcionada.'}
                                                         </div>
                                                     </div>
                                                     <div className="mb-4">
@@ -614,6 +634,12 @@ const MisMantenciones = () => {
                                                             <span className="fs-6 fw-medium">{selectedOt.ubicacion || 'No especificada'}</span>
                                                         </div>
                                                     </div>
+                                                    {selectedOt.descripcion_permiso && (
+                                                        <div className="mb-4 p-3 bg-warning bg-opacity-10 border border-warning rounded">
+                                                            <label className="text-warning small fw-bold text-uppercase mb-1"><i className="bi bi-shield-exclamation me-1"></i>Nota de Prevención</label>
+                                                            <div className="text-dark">{selectedOt.descripcion_permiso}</div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="col-md-5">
                                                     <label className="text-muted small fw-bold text-uppercase mb-1">Evidencia (Cliente)</label>
@@ -623,7 +649,6 @@ const MisMantenciones = () => {
                                         </div>
 
                                         <div className={activeTab === 'checklist' ? 'd-block' : 'd-none'}>
-                                            {/* RENDERIZAMOS SIEMPRE QUE ESTEMOS EN LA PESTAÑA PARA PREVENIR EL BUG DE CANVAS 0x0 */}
                                             {activeTab === 'checklist' && (
                                                 selectedOt.plantilla_json ? (
                                                     <ChecklistRenderer
@@ -674,14 +699,13 @@ const MisMantenciones = () => {
                                                                             <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i> 
                                                                             {file.name.substring(0,10)}... 
                                                                             <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-2" 
-                                                                               onClick={() => setDatosEnvio(prev => ({...prev, archivos: prev.archivos.filter((_, i) => i !== idx)}))}></i>
+                                                                            onClick={() => setDatosEnvio(prev => ({...prev, archivos: prev.archivos.filter((_, i) => i !== idx)}))}></i>
                                                                         </span>
                                                                     ))}
                                                                 </div>
                                                             )}
                                                         </div>
 
-                                                        {/* OCULTAR FIRMA SI ES SERVICIO */}
                                                         {!esServicio && (
                                                             <div className="mb-2">
                                                                 <div className="d-flex justify-content-between align-items-end mb-2">
@@ -789,6 +813,14 @@ styles.innerHTML = `
     .card-hover:hover { transform: translateX(5px); background-color: #f8f9fa !important; cursor: pointer; }
     .grayscale { filter: grayscale(100%); }
     .transition-all { transition: all 0.3s ease; }
+    @keyframes blink-animation {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+    }
+    .blink-badge {
+    animation: blink-animation 1.5s infinite;
+    }
 `;
 document.head.appendChild(styles);
 
