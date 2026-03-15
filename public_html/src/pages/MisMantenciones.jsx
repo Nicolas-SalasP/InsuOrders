@@ -461,7 +461,14 @@ const MisMantenciones = () => {
 
                                                 <h6 className="mb-1 fw-bold text-primary text-truncate">{ot.titulo || 'Sin Título'}</h6>
 
-                                                <div className="fw-bold text-dark text-truncate small mb-1"><i className="bi bi-gear-fill me-1 text-muted"></i>{ot.activo}</div>
+                                                <div className="fw-bold text-dark text-truncate small mb-1">
+                                                    <i className="bi bi-gear-fill me-1 text-muted"></i>{ot.activo}
+                                                </div>
+                                                {ot.sub_activo_nombre && (
+                                                    <div className="small text-primary text-truncate mb-1 fw-bold">
+                                                        <i className="bi bi-arrow-return-right me-1"></i>{ot.sub_activo_nombre}
+                                                    </div>
+                                                )}
 
                                                 {ot.ubicacion && (
                                                     <div className="small text-danger text-truncate mb-1"><i className="bi bi-geo-alt-fill me-1"></i>{ot.ubicacion}</div>
@@ -498,10 +505,14 @@ const MisMantenciones = () => {
                                         <div className="text-truncate">
                                             <h4 className="fw-bold mb-0 text-truncate text-primary">{selectedOt.titulo || 'Sin Título'}</h4>
 
-                                            <div className="text-dark fw-bold small d-flex align-items-center mt-1">
-                                                <i className="bi bi-gear-wide-connected me-1"></i> {selectedOt.activo}
-                                                <span className="mx-2 text-muted">|</span>
-                                                <i className="bi bi-upc-scan me-1 text-muted"></i> {selectedOt.codigo_interno}
+                                            <div className="text-dark fw-bold small d-flex flex-wrap align-items-center mt-1 gap-2">
+                                                <span><i className="bi bi-gear-wide-connected me-1"></i> {selectedOt.activo}</span>
+                                                {selectedOt.sub_activo_nombre && (
+                                                    <span className="text-primary bg-primary bg-opacity-10 px-2 py-1 rounded">
+                                                        <i className="bi bi-diagram-3-fill me-1"></i> ↳ {selectedOt.sub_activo_nombre}
+                                                    </span>
+                                                )}
+                                                <span className="text-muted"><i className="bi bi-upc-scan me-1"></i> {selectedOt.codigo_interno}</span>
                                             </div>
                                             <div className="text-muted small mt-1">
                                                 <i className="bi bi-person-fill me-1"></i> Solicita: {selectedOt.solicitante_nombre} {selectedOt.solicitante_apellido}

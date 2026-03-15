@@ -24,6 +24,7 @@ class MantencionRepository
         $sql = "SELECT s.*, 
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(s.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'N/A') as activo_codigo, 
+                sa.nombre as sub_activo_nombre,
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id,
                 t.nombre as tecnico_nombre, t.apellido as tecnico_apellido,
                 tpt.nombre as tipo_permiso_nombre,
@@ -31,6 +32,7 @@ class MantencionRepository
                 (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids
                 FROM solicitudes_ot s 
                 LEFT JOIN activos a ON s.activo_id = a.id 
+                LEFT JOIN activos sa ON s.sub_activo_id = sa.id
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id 
                 JOIN estados_solicitud e ON s.estado_id = e.id 
                 LEFT JOIN usuarios t ON s.asignado_a = t.id 
@@ -332,10 +334,12 @@ class MantencionRepository
         $sql = "SELECT s.*, s.asignado_a, u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, 
                 CASE WHEN s.activo_id IS NOT NULL THEN a.nombre ELSE CONCAT('SERVICIO: ', COALESCE(s.area_negocio, 'General')) END as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as activo_codigo, e.nombre as estado,
+                sa.nombre as sub_activo_nombre,
                 tpt.nombre as tipo_permiso_nombre
                 FROM solicitudes_ot s 
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id 
                 LEFT JOIN activos a ON s.activo_id = a.id 
+                LEFT JOIN activos sa ON s.sub_activo_id = sa.id
                 JOIN estados_solicitud e ON s.estado_id = e.id 
                 LEFT JOIN tipos_permiso_trabajo tpt ON s.tipo_permiso_id = tpt.id
                 WHERE s.id = :id";
@@ -391,12 +395,13 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
 
-            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, requiere_permiso, tipo_permiso_id, descripcion_permiso, prioridad, ubicacion) 
-                    VALUES (:uid, :aid, :desc, :orig, :area, :cc, :ext, 1, NOW(), :req_perm, :tipo_perm, :desc_perm, :prio, :ubi)";
+            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, sub_activo_id, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, requiere_permiso, tipo_permiso_id, descripcion_permiso, prioridad, ubicacion) 
+                    VALUES (:uid, :aid, :subaid, :desc, :orig, :area, :cc, :ext, 1, NOW(), :req_perm, :tipo_perm, :desc_perm, :prio, :ubi)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':uid' => $data['usuario_id'],
                 ':aid' => !empty($data['activo_id']) ? $data['activo_id'] : null,
+                ':subaid' => !empty($data['sub_activo_id']) ? $data['sub_activo_id'] : null,
                 ':desc' => $data['observacion'],
                 ':orig' => $data['origen_tipo'],
                 ':area' => $data['area_negocio'],
@@ -456,13 +461,14 @@ class MantencionRepository
                 $this->db->beginTransaction();
             
             $sql = "UPDATE solicitudes_ot SET 
-                    activo_id=:aid, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot,
+                    activo_id=:aid, sub_activo_id=:subaid, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot,
                     requiere_permiso=:req_perm, tipo_permiso_id=:tipo_perm, descripcion_permiso=:desc_perm,
                     prioridad=:prio, ubicacion=:ubi
                     WHERE id=:id";
                     
             $this->db->prepare($sql)->execute([
                 ':aid' => !empty($data['activo_id']) ? $data['activo_id'] : null,
+                ':subaid' => !empty($data['sub_activo_id']) ? $data['sub_activo_id'] : null,
                 ':desc' => $data['observacion'],
                 ':se' => $data['solicitante_externo'] ?: null,
                 ':cc' => $data['centro_costo_ot'] ?: null,

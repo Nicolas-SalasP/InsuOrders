@@ -264,10 +264,18 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                         <div className="col-md-6 mb-3 mb-md-0">
                                             <div className="card h-100 border-0 shadow-sm">
                                                 <div className="card-body">
-                                                    <small className="text-muted text-uppercase fw-bold">Máquina / Servicio</small>
+                                                    <small className="text-muted text-uppercase fw-bold">Máquina Principal</small>
                                                     <div className="fs-5 text-dark fw-bold">{detalle.activo}</div>
-                                                    <div className="text-secondary small mb-3">{detalle.activo_codigo}</div>
+                                                    <div className="text-secondary small mb-2">{detalle.activo_codigo}</div>
 
+                                                    {detalle.sub_activo_nombre && (
+                                                        <div className="mt-2 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded shadow-sm">
+                                                            <small className="text-primary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>
+                                                                <i className="bi bi-diagram-3-fill me-1"></i> Sub-Activo / Componente
+                                                            </small>
+                                                            <div className="fs-6 text-dark fw-bold mt-1">↳ {detalle.sub_activo_nombre}</div>
+                                                        </div>
+                                                    )}
                                                     <small className="text-muted text-uppercase fw-bold d-block mt-2">Ubicación / Referencia</small>
                                                     <div className="d-flex align-items-center mt-1 bg-light p-2 rounded border">
                                                         <i className="bi bi-geo-alt-fill text-danger me-2 fs-5"></i>

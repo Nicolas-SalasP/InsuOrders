@@ -51,6 +51,7 @@ class MantencionController
             $payload = [
                 'usuario_id' => $usuarioId,
                 'activo_id' => $data['activo_id'] ?? null,
+                'sub_activo_id' => $data['sub_activo_id'] ?? null,
                 'observacion' => $data['observacion'] ?? '',
                 'origen_tipo' => $data['origen_tipo'] ?? 'Interna',
                 'area_negocio' => $data['area_negocio'] ?? null,
