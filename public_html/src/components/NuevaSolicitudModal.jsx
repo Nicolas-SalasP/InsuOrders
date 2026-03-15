@@ -23,15 +23,15 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [solicitanteId, setSolicitanteId] = useState('');
     const [centroCostoOT, setCentroCostoOT] = useState('');
     const [observacion, setObservacion] = useState('');
-    
+
     // NUEVOS CAMPOS
     const [prioridad, setPrioridad] = useState('Media');
     const [ubicacion, setUbicacion] = useState('');
 
     const [items, setItems] = useState([]);
-    
+
     // --- ESTADO MULTI-ASIGNACIÓN ---
-    const [asignados, setAsignados] = useState([]); 
+    const [asignados, setAsignados] = useState([]);
     const [showDropdownAsignados, setShowDropdownAsignados] = useState(false);
     const dropdownRef = useRef(null);
 
@@ -82,17 +82,17 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 api.get('/index.php/inventario'),
                 api.get('/index.php/mantencion/centros-costo'),
                 api.get('/index.php/personal'),
-                api.get('/index.php/mantencion/tipos-permiso') 
+                api.get('/index.php/mantencion/tipos-permiso')
             ]);
 
             setActivos(resActivos.data.data || []);
             setInsumos(resInsumos.data.data || []);
             setCentrosCosto(resCC.data.success ? resCC.data.data : []);
             setTiposPermiso(resPermisos.data.success ? resPermisos.data.data : []);
-            
+
             const listaEmpleados = resPersonal.data.success ? resPersonal.data.data : [];
-            setPersonal(listaEmpleados); 
-            
+            setPersonal(listaEmpleados);
+
             const soloTecnicos = listaEmpleados.filter(e => {
                 if (!e.usuario_id) return false;
                 if (!e.cargo || e.cargo.trim() === '') return false;
@@ -124,7 +124,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setCentroCostoOT('');
         setPrioridad('Media');
         setUbicacion('');
-        setAsignados([]); 
+        setAsignados([]);
         setItems([]);
         setEvidencias([]);
         setRequierePermiso(false);
@@ -200,7 +200,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             .map(t => {
                 const nombreFull = t.nombre_completo || t.nombre || '';
                 const partes = nombreFull.split(' ');
-                if (partes.length >= 2) return `${partes[0]} ${partes[2] || partes[1]}`; 
+                if (partes.length >= 2) return `${partes[0]} ${partes[2] || partes[1]}`;
                 return nombreFull;
             });
         return nombres.join(', ');
@@ -286,7 +286,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         const files = Array.from(e.target.files);
         setEvidencias(prev => [...prev, ...files]);
     };
-    
+
     const removeEvidencia = (index) => {
         setEvidencias(prev => prev.filter((_, i) => i !== index));
     };
@@ -337,7 +337,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 prioridad: prioridad,
                 ubicacion: ubicacion,
                 items: itemsFormateados,
-                usuario_solicitante_id: solicitanteId || null, 
+                usuario_solicitante_id: solicitanteId || null,
                 area_negocio: null,
                 centro_costo_ot: modo === 'servicio' ? centroCostoOT : null,
                 origen_tipo: modo === 'maquina' ? 'Interna' : 'Servicio',
@@ -454,11 +454,11 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     <h6 className="text-success fw-bold border-bottom pb-2 mb-3"><i className="bi bi-person-badge me-2"></i>Datos del Servicio</h6>
                                                     <div className="mb-3">
                                                         <label className="form-label small text-muted">Solicitante</label>
-                                                        <select 
-                                                            className="form-select" 
-                                                            value={solicitanteId || ''} 
-                                                            onChange={e => setSolicitanteId(e.target.value)} 
-                                                            disabled={!editable} 
+                                                        <select
+                                                            className="form-select"
+                                                            value={solicitanteId || ''}
+                                                            onChange={e => setSolicitanteId(e.target.value)}
+                                                            disabled={!editable}
                                                         >
                                                             <option value="">Seleccione Solicitante...</option>
                                                             {otEditar && otEditar.usuario_solicitante_id && !personal.some(p => p.usuario_id == otEditar.usuario_solicitante_id) && (
@@ -475,10 +475,10 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     </div>
                                                     <div className="mb-2">
                                                         <label className="form-label small text-muted">Centro de Costo</label>
-                                                        <select 
-                                                            className="form-select fw-bold" 
-                                                            value={centroCostoOT || ''} 
-                                                            onChange={e => setCentroCostoOT(e.target.value)} 
+                                                        <select
+                                                            className="form-select fw-bold"
+                                                            value={centroCostoOT || ''}
+                                                            onChange={e => setCentroCostoOT(e.target.value)}
                                                             disabled={!editable}
                                                         >
                                                             <option value="">Seleccione Centro...</option>
@@ -493,10 +493,10 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                             <div className="row g-2 mb-3">
                                                 <div className="col-6">
                                                     <label className="form-label small text-muted">Prioridad</label>
-                                                    <select 
-                                                        className={`form-select shadow-sm fw-bold ${prioridad === 'Critico' ? 'text-danger border-danger' : ''}`} 
-                                                        value={prioridad} 
-                                                        onChange={e => setPrioridad(e.target.value)} 
+                                                    <select
+                                                        className={`form-select shadow-sm fw-bold ${prioridad === 'Critico' ? 'text-danger border-danger' : ''}`}
+                                                        value={prioridad}
+                                                        onChange={e => setPrioridad(e.target.value)}
                                                         disabled={!editable}
                                                     >
                                                         <option value="Baja">Baja</option>
@@ -508,14 +508,27 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 </div>
                                                 <div className="col-6">
                                                     <label className="form-label small text-muted">Ubicación / Área</label>
-                                                    <input 
-                                                        type="text" 
-                                                        className="form-control shadow-sm" 
-                                                        placeholder="Ej: Planta 1, Sector B..." 
-                                                        value={ubicacion} 
-                                                        onChange={e => setUbicacion(e.target.value)} 
-                                                        disabled={!editable} 
-                                                    />
+                                                    <select
+                                                        className="form-select shadow-sm"
+                                                        value={ubicacion}
+                                                        onChange={e => setUbicacion(e.target.value)}
+                                                        disabled={!editable}
+                                                    >
+                                                        <option value="">-- Seleccione Ubicación --</option>
+                                                        <optgroup label="🏢 Insuban">
+                                                            <option value="Planta 1">Planta 1</option>
+                                                            <option value="Planta 2">Planta 2</option>
+                                                            <option value="Patio">Patio</option>
+                                                            <option value="Hor">Hor</option>
+                                                            <option value="Lavanderia">Lavandería</option>
+                                                            <option value="Taller de Mantencion">Taller de Mantención</option>
+                                                        </optgroup>
+                                                        <optgroup label="🚚 Externos">
+                                                            <option value="Comafri">Comafri</option>
+                                                            <option value="Coexca">Coexca</option>
+                                                            <option value="Camer">Camer</option>
+                                                        </optgroup>
+                                                    </select>
                                                 </div>
                                             </div>
 
@@ -523,30 +536,30 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                             <div className="mb-2" ref={dropdownRef}>
                                                 <label className="form-label fw-bold small text-primary text-uppercase">Asignar Técnicos (Multi-Selección)</label>
                                                 <div className="dropdown w-100">
-                                                    <button 
-                                                        className="form-select text-start d-flex justify-content-between align-items-center border-info shadow-sm" 
+                                                    <button
+                                                        className="form-select text-start d-flex justify-content-between align-items-center border-info shadow-sm"
                                                         type="button"
                                                         onClick={() => setShowDropdownAsignados(!showDropdownAsignados)}
                                                         disabled={!editable}
                                                     >
-                                                        <span className="text-truncate" style={{maxWidth: '90%'}}>
+                                                        <span className="text-truncate" style={{ maxWidth: '90%' }}>
                                                             {getNombresAsignados()}
                                                         </span>
                                                         <i className="bi bi-chevron-down small"></i>
                                                     </button>
-                                                    
+
                                                     {showDropdownAsignados && (
-                                                        <div className="dropdown-menu show w-100 p-2 shadow border-info" style={{maxHeight: '250px', overflowY: 'auto'}}>
+                                                        <div className="dropdown-menu show w-100 p-2 shadow border-info" style={{ maxHeight: '250px', overflowY: 'auto' }}>
                                                             {tecnicos.length > 0 ? tecnicos.map(t => {
                                                                 const uid = t.usuario_id ? parseInt(t.usuario_id) : parseInt(t.id);
                                                                 return (
                                                                     <div key={uid} className="form-check py-1 px-3 hover-bg-light rounded cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleTecnico(t); }}>
-                                                                        <input 
-                                                                            className="form-check-input cursor-pointer" 
-                                                                            type="checkbox" 
+                                                                        <input
+                                                                            className="form-check-input cursor-pointer"
+                                                                            type="checkbox"
                                                                             id={`tec-${uid}`}
                                                                             checked={asignados.includes(uid)}
-                                                                            onChange={() => {}} 
+                                                                            onChange={() => { }}
                                                                         />
                                                                         <label className="form-check-label w-100 cursor-pointer user-select-none" htmlFor={`tec-${uid}`}>
                                                                             {t.nombre_completo} <small className="text-muted ms-1">({t.cargo})</small>
@@ -571,7 +584,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     placeholder="Describa el problema o requerimiento detalladamente..."
                                                     disabled={!editable}
                                                 ></textarea>
-                                                
+
                                                 {/* EVIDENCIAS */}
                                                 <div className="mt-3">
                                                     <label className="form-label fw-bold small text-muted text-uppercase">
@@ -585,7 +598,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                             {evidencias.map((file, idx) => (
                                                                 <div key={idx} className="badge bg-secondary p-2 d-flex align-items-center shadow-sm">
                                                                     <i className="bi bi-file-image me-2"></i>
-                                                                    <span className="text-truncate" style={{maxWidth: '120px'}}>{file.name}</span>
+                                                                    <span className="text-truncate" style={{ maxWidth: '120px' }}>{file.name}</span>
                                                                     {editable && <i className="bi bi-x-circle text-danger ms-2 cursor-pointer fs-6" onClick={() => removeEvidencia(idx)}></i>}
                                                                 </div>
                                                             ))}
@@ -603,14 +616,14 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                 <div className={`card border-${requierePermiso ? 'danger' : 'warning'} shadow-sm transition-all`}>
                                     <div className="card-body bg-light">
                                         <div className="form-check form-switch mb-2">
-                                            <input 
-                                                className="form-check-input" 
-                                                type="checkbox" 
-                                                id="checkPermiso" 
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                id="checkPermiso"
                                                 checked={requierePermiso}
                                                 onChange={(e) => {
                                                     setRequierePermiso(e.target.checked);
-                                                    if(!e.target.checked) {
+                                                    if (!e.target.checked) {
                                                         setTipoPermisoId('');
                                                         setDescripcionPermiso('');
                                                     }
@@ -622,12 +635,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 ¿Requiere Permiso de Trabajo Seguro? (Prevención de Riesgos)
                                             </label>
                                         </div>
-                                        
+
                                         {requierePermiso && (
                                             <div className="row mt-3 animate__animated animate__fadeIn">
                                                 <div className="col-md-6 mb-3">
                                                     <label className="form-label fw-bold text-secondary text-uppercase" style={{ fontSize: '0.8rem' }}>Tipo de Permiso Requerido <span className="text-danger">*</span></label>
-                                                    <select 
+                                                    <select
                                                         className="form-select border-danger shadow-sm"
                                                         value={tipoPermisoId}
                                                         onChange={(e) => setTipoPermisoId(e.target.value)}
@@ -641,9 +654,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 </div>
                                                 <div className="col-md-6 mb-3">
                                                     <label className="form-label fw-bold text-secondary text-uppercase" style={{ fontSize: '0.8rem' }}>Descripción / Detalle</label>
-                                                    <textarea 
-                                                        className="form-control shadow-sm" 
-                                                        rows="2" 
+                                                    <textarea
+                                                        className="form-control shadow-sm"
+                                                        rows="2"
                                                         placeholder="Ej: Se requiere soldadura en estructura base..."
                                                         value={descripcionPermiso}
                                                         onChange={(e) => setDescripcionPermiso(e.target.value)}
@@ -708,7 +721,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                         <td className="ps-4">
                                                             <div className="fw-bold text-dark">{item.nombre || item.insumo_nombre}</div>
                                                             {item.origen_nombre && (
-                                                                <small className="text-muted d-block mt-1" style={{fontSize: '0.75rem'}}>
+                                                                <small className="text-muted d-block mt-1" style={{ fontSize: '0.75rem' }}>
                                                                     <i className="bi bi-diagram-2 text-primary me-1"></i>Ref: {item.origen_codigo || item.origen_nombre}
                                                                 </small>
                                                             )}

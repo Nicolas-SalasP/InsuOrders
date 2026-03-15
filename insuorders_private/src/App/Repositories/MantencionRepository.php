@@ -391,8 +391,8 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
 
-            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, requiere_permiso, tipo_permiso_id, descripcion_permiso) 
-                    VALUES (:uid, :aid, :desc, :orig, :area, :cc, :ext, 1, NOW(), :req_perm, :tipo_perm, :desc_perm)";
+            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, requiere_permiso, tipo_permiso_id, descripcion_permiso, prioridad, ubicacion) 
+                    VALUES (:uid, :aid, :desc, :orig, :area, :cc, :ext, 1, NOW(), :req_perm, :tipo_perm, :desc_perm, :prio, :ubi)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':uid' => $data['usuario_id'],
@@ -404,7 +404,9 @@ class MantencionRepository
                 ':ext' => $data['solicitante_externo'],
                 ':req_perm' => !empty($data['requiere_permiso']) ? 1 : 0,
                 ':tipo_perm' => !empty($data['tipo_permiso_id']) ? $data['tipo_permiso_id'] : null,
-                ':desc_perm' => $data['descripcion_permiso'] ?? null
+                ':desc_perm' => $data['descripcion_permiso'] ?? null,
+                ':prio' => $data['prioridad'] ?? 'Media',
+                ':ubi' => $data['ubicacion'] ?? null
             ]);
             $otId = $this->db->lastInsertId();
 
@@ -452,12 +454,13 @@ class MantencionRepository
         try {
             if (!$inTransaction)
                 $this->db->beginTransaction();
-
+            
             $sql = "UPDATE solicitudes_ot SET 
                     activo_id=:aid, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot,
-                    requiere_permiso=:req_perm, tipo_permiso_id=:tipo_perm, descripcion_permiso=:desc_perm
+                    requiere_permiso=:req_perm, tipo_permiso_id=:tipo_perm, descripcion_permiso=:desc_perm,
+                    prioridad=:prio, ubicacion=:ubi
                     WHERE id=:id";
-
+                    
             $this->db->prepare($sql)->execute([
                 ':aid' => !empty($data['activo_id']) ? $data['activo_id'] : null,
                 ':desc' => $data['observacion'],
@@ -467,6 +470,8 @@ class MantencionRepository
                 ':req_perm' => !empty($data['requiere_permiso']) ? 1 : 0,
                 ':tipo_perm' => !empty($data['tipo_permiso_id']) ? $data['tipo_permiso_id'] : null,
                 ':desc_perm' => $data['descripcion_permiso'] ?? null,
+                ':prio' => $data['prioridad'] ?? 'Media',
+                ':ubi' => $data['ubicacion'] ?? null,
                 ':id' => $id
             ]);
 

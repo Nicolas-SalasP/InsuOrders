@@ -252,16 +252,30 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                             <div className="small text-muted">Usa esta opción para: <strong>Pintura, Fontanería, Electricidad, Muebles, Aseo profundo, etc.</strong></div>
                                         </div>
                                     )}
-
+                                    
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Ubicación del trabajo</label>
-                                        <input 
-                                            type="text" 
-                                            className="form-control" 
-                                            placeholder="Ej: Sala de reuniones piso 2, Bodega principal, etc." 
+                                        <select 
+                                            className="form-select" 
                                             value={form.ubicacion} 
                                             onChange={(e) => setForm({...form, ubicacion: e.target.value})} 
-                                        />
+                                            required
+                                        >
+                                            <option value="">-- Seleccione Ubicación --</option>
+                                            <optgroup label="🏢 Insuban ">
+                                                <option value="Planta 1">Planta 1</option>
+                                                <option value="Planta 2">Planta 2</option>
+                                                <option value="Patio">Patio</option>
+                                                <option value="Hor">Hor</option>
+                                                <option value="Lavanderia">Lavandería</option>
+                                                <option value="Taller de Mantencion">Taller de Mantención</option>
+                                            </optgroup>
+                                            <optgroup label="🚚 Externos">
+                                                <option value="Comafri">Comafri</option>
+                                                <option value="Coexca">Coexca</option>
+                                                <option value="Camer">Camer</option>
+                                            </optgroup>
+                                        </select>
                                     </div>
 
                                     <div className="mb-3">
