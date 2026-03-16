@@ -51,7 +51,7 @@ class MisMantencionesController
 
             $evidenciaUrls = [];
             if (!empty($_FILES)) {
-                $uploadDir = __DIR__ . '/../../public_html/api/uploads/cierre/';
+                $uploadDir = __DIR__ . '/../../../../public_html/uploads/cierre/';
                 if (!is_dir($uploadDir))
                     mkdir($uploadDir, 0777, true);
 

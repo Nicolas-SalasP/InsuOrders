@@ -68,6 +68,9 @@ class ClienteRepository
                     e.nombre as estado,
                     e.id as estado_id,
                     a.nombre as activo_nombre,
+                    s.fecha_cierre,
+                    s.comentarios_finales,
+                    s.evidencia_cierre,
                     (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') 
                     FROM ot_asignaciones oa 
                     JOIN usuarios usr ON oa.usuario_id = usr.id 
