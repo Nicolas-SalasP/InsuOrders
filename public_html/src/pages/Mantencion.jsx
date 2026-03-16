@@ -182,8 +182,11 @@ const Mantencion = () => {
             setOpenMenuId(null);
         } else {
             const rect = event.currentTarget.getBoundingClientRect();
-            const top = rect.bottom + window.scrollY + 2;
-            const left = (rect.left + window.scrollX) - 130; 
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const dropUp = spaceBelow < 250; 
+            const top = dropUp ? (rect.top + window.scrollY - 200) : (rect.bottom + window.scrollY + 2);
+            const left = (rect.left + window.scrollX) - 130;
+            
             setMenuPos({ top, left });
             setOpenMenuId(id);
         }

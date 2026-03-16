@@ -245,7 +245,7 @@ class ExportController
     {
         $sheet = $this->getSheet($s, $idx);
         $sheet->setTitle('Solicitudes OT');
-        $data = (new MantencionRepository())->getSolicitudes();
+        $data = (new MantencionRepository())->getAll();
 
         $this->fillSheet(
             $sheet,

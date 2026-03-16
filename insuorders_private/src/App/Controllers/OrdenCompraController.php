@@ -149,21 +149,20 @@ class OrdenCompraController
 
     public function uploadFile()
     {
-        AuthMiddleware::verify();
-        $id = $_POST['orden_id'] ?? null;
-        $file = $_FILES['archivo'] ?? null;
-
-        if (!$id || !$file) {
-            http_response_code(400);
-            echo json_encode(["success" => false, "message" => "Faltan datos"]);
-            return;
-        }
-
         try {
+            AuthMiddleware::verify();
+            $id = $_POST['id'] ?? null;
+            $file = $_FILES['archivo'] ?? null;
+
+            if (!$id || !$file) {
+                throw new Exception("Faltan datos. ID: " . ($id ?: 'No recibido') . ", Archivo: " . ($file ? 'Recibido' : 'No recibido'));
+            }
+
             $url = $this->service->subirArchivo($id, $file);
-            echo json_encode(["success" => true, "url" => $url]);
+
+            echo json_encode(["success" => true, "message" => "Archivo subido correctamente", "url" => $url]);
         } catch (Exception $e) {
-            http_response_code(500);
+            http_response_code(400);
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
