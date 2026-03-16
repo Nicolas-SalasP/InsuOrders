@@ -16,17 +16,20 @@ class MisMantencionesRepository
 
     public function getOtsAsignadas($userId)
     {
-        $sql = "SELECT DISTINCT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
+        $sql = "SELECT DISTINCT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, 
+                ot.fecha_solicitud, ot.fecha_requerida, ot.prioridad, ot.requiere_permiso,
                 ot.estado_id, e.nombre as estado,
                 ot.imagen_url, ot.ubicacion, ot.comentarios_finales, ot.evidencia_cierre,
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
+                ot.sub_activo_id, sa.nombre as sub_activo_nombre,
                 a.plantilla_json,
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
                 oa.completado as mi_completado
             FROM solicitudes_ot ot
             JOIN ot_asignaciones oa ON ot.id = oa.solicitud_id
             LEFT JOIN activos a ON ot.activo_id = a.id 
+            LEFT JOIN activos sa ON ot.sub_activo_id = sa.id
             JOIN estados_solicitud e ON ot.estado_id = e.id
             JOIN usuarios u ON ot.usuario_solicitante_id = u.id
             WHERE oa.usuario_id = :uid 
@@ -40,11 +43,13 @@ class MisMantencionesRepository
 
     public function getAllOtsWithAsignados()
     {
-        $sql = "SELECT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, ot.fecha_solicitud, 
+        $sql = "SELECT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, 
+                ot.fecha_solicitud, ot.fecha_requerida, ot.prioridad, ot.requiere_permiso,
                 ot.estado_id, e.nombre as estado,
                 ot.imagen_url, ot.ubicacion, ot.comentarios_finales, ot.evidencia_cierre,
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
+                ot.sub_activo_id, sa.nombre as sub_activo_nombre,
                 a.plantilla_json,
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
                 IFNULL(GROUP_CONCAT(DISTINCT tec.id ORDER BY tec.id ASC), '') as asignados_ids,
@@ -54,6 +59,7 @@ class MisMantencionesRepository
             LEFT JOIN ot_asignaciones oa ON ot.id = oa.solicitud_id
             LEFT JOIN usuarios tec ON oa.usuario_id = tec.id
             LEFT JOIN activos a ON ot.activo_id = a.id 
+            LEFT JOIN activos sa ON ot.sub_activo_id = sa.id
             JOIN estados_solicitud e ON ot.estado_id = e.id
             JOIN usuarios u ON ot.usuario_solicitante_id = u.id
             WHERE ot.estado_id != 6 

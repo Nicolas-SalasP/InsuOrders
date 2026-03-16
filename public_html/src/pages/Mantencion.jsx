@@ -35,7 +35,7 @@ const Mantencion = () => {
 
     const [filtroOT, setFiltroOT] = useState('');
     const [filtroMaquina, setFiltroMaquina] = useState('');
-    const [filtroUbicacion, setFiltroUbicacion] = useState(''); // NUEVO: Filtro de ubicación
+    const [filtroUbicacion, setFiltroUbicacion] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
 
@@ -49,6 +49,7 @@ const Mantencion = () => {
     const [ordenOTAsc, setOrdenOTAsc] = useState(false);
 
     const wrapperRef = useRef(null);
+    const todayStr = new Date().toISOString().split('T')[0];
 
     useEffect(() => {
         cargarListaInsumos();
@@ -248,7 +249,7 @@ const Mantencion = () => {
     const limpiarFiltros = () => {
         setFiltroOT('');
         setFiltroMaquina('');
-        setFiltroUbicacion(''); // Limpiar nueva ubicación
+        setFiltroUbicacion('');
         setFiltroEstado('');
         setFiltroFecha('');
         setFiltroInsumo('');
@@ -257,14 +258,6 @@ const Mantencion = () => {
         setFiltroSinTecnico(false);
         setOrdenOTAsc(false);
         cargarSolicitudes();
-    };
-
-    const getBadge = (estado) => {
-        if (estado === 'Pendiente') return 'bg-warning text-dark';
-        if (estado === 'En Proceso') return 'bg-primary';
-        if (estado === 'Completada') return 'bg-success';
-        if (estado === 'Anulada' || estado === 'Cancelada') return 'bg-danger';
-        return 'bg-secondary';
     };
 
     const isCritico = (prio) => {
@@ -305,11 +298,18 @@ const Mantencion = () => {
         const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
         const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
         const matchMaquina = !filtroMaquina || maquinaStr.toLowerCase().includes(filtroMaquina.toLowerCase());
-        
-        // Aplicando el filtro de Ubicación
         const matchUbicacion = !filtroUbicacion || (s.ubicacion && s.ubicacion.toLowerCase().includes(filtroUbicacion.toLowerCase()));
         
-        const matchEstado = !filtroEstado || s.estado === filtroEstado;
+        // LÓGICA DE ESTADO INTELIGENTE PARA EL FILTRO:
+        // Si el usuario filtra por "Pendiente", NO debe traer las que en realidad son "Programadas".
+        let estadoVirtual = s.estado;
+        const reqStr = s.fecha_requerida ? s.fecha_requerida.substring(0, 10) : null;
+        if (reqStr && reqStr > todayStr && (s.estado_id === 1 || s.estado_id === 4)) {
+            estadoVirtual = 'Programada';
+        }
+        
+        const matchEstado = !filtroEstado || estadoVirtual === filtroEstado || s.estado === filtroEstado;
+        
         const fechaOT = s.fecha_solicitud ? s.fecha_solicitud.split(' ')[0] : '';
         const matchFecha = !filtroFecha || fechaOT === filtroFecha;
         const matchSinTecnico = !filtroSinTecnico || !s.asignados_nombres;
@@ -393,7 +393,6 @@ const Mantencion = () => {
                             <input type="text" className="form-control" placeholder="Máquina/Activo..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
                         </div>
                         
-                        {/* NUEVO CAMPO: Filtro por Ubicación */}
                         <div className="col-md-2">
                             <input type="text" className="form-control" placeholder="Ubicación (ej: HOR)..." value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)} />
                         </div>
@@ -435,7 +434,8 @@ const Mantencion = () => {
                         <div className="col-md-2">
                             <select className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
                                 <option value="">Estado: Todos</option>
-                                <option value="Pendiente">Pendiente</option>
+                                <option value="Pendiente">Pendiente (Hoy)</option>
+                                <option value="Programada">Programadas (Futuro)</option>
                                 <option value="En Proceso">En Proceso</option>
                                 <option value="Completada">Completada</option>
                                 <option value="Anulada">Anulada</option>
@@ -484,7 +484,7 @@ const Mantencion = () => {
                                     <th>Máquina / Activo</th>
                                     <th>Descripción</th>
                                     <th>Solicitante</th>
-                                    <th>Fecha</th>
+                                    <th className="py-3 px-3">Fecha Prog / Creación</th>
                                     <th>Prioridad</th>
                                     <th>Estado</th>
                                     <th className="text-end pe-4" style={{ minWidth: '200px' }}>Acciones</th>
@@ -493,6 +493,22 @@ const Mantencion = () => {
                             <tbody>
                                 {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => {
                                     const critico = isCritico(s.prioridad);
+
+                                    // LÓGICA VISUAL: ESTADO PROGRAMADA O PENDIENTE NORMAL
+                                    const reqStr = s.fecha_requerida ? s.fecha_requerida.substring(0, 10) : null;
+                                    const isFutura = reqStr && reqStr > todayStr;
+                                    
+                                    let estadoTexto = s.estado;
+                                    let badgeClass = 'bg-warning text-dark';
+                                    
+                                    if (isFutura && (parseInt(s.estado_id) === 1 || parseInt(s.estado_id) === 4)) {
+                                        estadoTexto = 'PROGRAMADA';
+                                        badgeClass = 'bg-primary text-white shadow-sm';
+                                    } else {
+                                        if (s.estado === 'En Proceso') badgeClass = 'bg-info text-dark';
+                                        else if (s.estado === 'Completada') badgeClass = 'bg-success text-white';
+                                        else if (s.estado === 'Anulada' || s.estado === 'Cancelada') badgeClass = 'bg-danger text-white';
+                                    }
 
                                     const rowStyle = critico ? {
                                         '--bs-table-bg': '#ffe6e6',
@@ -511,7 +527,9 @@ const Mantencion = () => {
                                             <td>
                                                 <div className="fw-bold text-dark">{s.activo || 'General'}</div>
                                                 {s.activo_codigo && <small className="text-muted d-block">{s.activo_codigo}</small>}
-                                                {/* VISUALIZAR LA UBICACIÓN */}
+                                                {s.sub_activo_nombre && (
+                                                    <small className="text-primary fw-bold d-block"><i className="bi bi-arrow-return-right me-1"></i>{s.sub_activo_nombre}</small>
+                                                )}
                                                 {s.ubicacion && <span className="badge bg-light text-secondary border mt-1"><i className="bi bi-geo-alt me-1"></i>{s.ubicacion}</span>}
                                             </td>
                                             <td>
@@ -528,9 +546,24 @@ const Mantencion = () => {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td>{new Date(s.fecha_solicitud).toLocaleDateString()}</td>
+                                            
+                                            {/* LÓGICA VISUAL DE FECHA PROGRAMADA vs FECHA CREACIÓN */}
+                                            <td className="small px-3">
+                                                {isFutura ? (
+                                                    <span className="badge bg-primary text-white shadow-sm fw-bold px-2 py-1">
+                                                        <i className="bi bi-calendar-event me-1"></i>
+                                                        {new Date(s.fecha_requerida + 'T00:00:00').toLocaleDateString()}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted fw-medium">
+                                                        <i className="bi bi-clock-history me-1"></i>
+                                                        {new Date(s.fecha_solicitud).toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                            </td>
+
                                             <td>{getPriorityBadge(s.prioridad)}</td>
-                                            <td><span className={`badge ${getBadge(s.estado)}`}>{s.estado}</span></td>
+                                            <td><span className={`badge ${badgeClass}`}>{estadoTexto}</span></td>
 
                                             <td className="text-end pe-4">
                                                 <div className="d-flex justify-content-end align-items-center gap-2">

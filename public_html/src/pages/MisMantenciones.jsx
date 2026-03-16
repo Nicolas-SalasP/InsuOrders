@@ -132,16 +132,21 @@ const MisMantenciones = () => {
         }
     };
 
-    const otsFiltradas = ots.filter(ot => {
+    const todayStr = new Date().toISOString().split('T')[0]; 
+
+    const otsFiltradasRaw = ots.filter(ot => {
         if (filtroTecnico) {
             const asignados = ot.asignados_ids ? ot.asignados_ids.toString().split(',') : [];
             if (!asignados.includes(filtroTecnico.toString())) return false;
         }
 
+        const reqStr = ot.fecha_requerida ? ot.fecha_requerida.substring(0, 10) : null;
+
         const matchEstado =
-            filtroEstado === 'pendientes' ? (ot.estado_id === 1 || ot.estado_id === 4) :
-                filtroEstado === 'proceso' ? ot.estado_id === 2 :
-                    filtroEstado === 'terminado' ? ot.mi_completado === 1 || ot.estado_id === 5 : true;
+            filtroEstado === 'pendientes' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (!reqStr || reqStr <= todayStr)) :
+            filtroEstado === 'futuras' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (reqStr && reqStr > todayStr)) :
+            filtroEstado === 'proceso' ? ot.estado_id === 2 :
+            filtroEstado === 'terminado' ? (ot.mi_completado === 1 || ot.estado_id === 5) : true;
 
         const texto = busqueda.toLowerCase();
         const matchTexto = ot.activo.toLowerCase().includes(texto) ||
@@ -155,6 +160,27 @@ const MisMantenciones = () => {
 
         return matchEstado && matchTexto && matchFecha && matchUbicacion;
     });
+
+    let otsAMostrar = [];
+
+    if (filtroEstado === 'futuras') {
+        const agrupadas = {};
+        otsFiltradasRaw.forEach(ot => {
+            const key = `${ot.activo_id || 'general'}-${ot.titulo}`;
+            if (!agrupadas[key]) {
+                agrupadas[key] = ot;
+            } else {
+                if (new Date(ot.fecha_requerida) < new Date(agrupadas[key].fecha_requerida)) {
+                    agrupadas[key] = ot;
+                }
+            }
+        });
+        otsAMostrar = Object.values(agrupadas).sort((a, b) => new Date(a.fecha_requerida) - new Date(b.fecha_requerida));
+    } else if (filtroEstado === 'terminado') {
+        otsAMostrar = otsFiltradasRaw.sort((a, b) => new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud));
+    } else {
+        otsAMostrar = otsFiltradasRaw.sort((a, b) => new Date(a.fecha_solicitud) - new Date(b.fecha_solicitud));
+    }
 
     const comprimirImagen = (file) => {
         return new Promise((resolve) => {
@@ -389,45 +415,17 @@ const MisMantenciones = () => {
                         </div>
                     )}
 
-                    <div className="p-4 border-bottom bg-white flex-shrink-0">
-                        <h5 className="fw-bold mb-3 text-dark d-flex align-items-center">
-                            <i className="bi bi-clipboard-data me-3 fs-4 text-primary"></i>
-                            {filtroTecnico ? 'Tareas de Usuario' : 'Listado General'}
-                        </h5>
-
+                    <div className="p-3 border-bottom bg-white flex-shrink-0">
                         <div className="input-group input-group-sm mb-2 shadow-sm">
                             <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
                             <input type="text" className="form-control border-start-0 ps-0" placeholder="Título, #OT o Solicitante..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
                         </div>
 
-                        <div className="input-group input-group-sm mb-3 shadow-sm">
-                            <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-geo-alt"></i></span>
-                            <select
-                                className="form-select border-start-0 ps-0 text-muted"
-                                value={filtroUbicacion}
-                                onChange={(e) => setFiltroUbicacion(e.target.value)}
-                            >
-                                <option value="">Todas las ubicaciones...</option>
-                                <optgroup label="🏢 Insuban ">
-                                    <option value="Planta 1">Planta 1</option>
-                                    <option value="Planta 2">Planta 2</option>
-                                    <option value="Patio">Patio</option>
-                                    <option value="Hor">Hor</option>
-                                    <option value="Lavanderia">Lavandería</option>
-                                    <option value="Taller de Mantencion">Taller de Mantención</option>
-                                </optgroup>
-                                <optgroup label="🚚 Externos">
-                                    <option value="Comafri">Comafri</option>
-                                    <option value="Coexca">Coexca</option>
-                                    <option value="Camer">Camer</option>
-                                </optgroup>
-                            </select>
-                        </div>
-
-                        <div className="btn-group w-100 shadow-sm" role="group">
-                            <button className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('pendientes')}>Pendientes</button>
+                        <div className="btn-group w-100 shadow-sm mt-2" role="group">
+                            <button className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('pendientes')}>Hoy/Atrás</button>
+                            <button className={`btn btn-sm ${filtroEstado === 'futuras' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('futuras')}>Programadas</button>
                             <button className={`btn btn-sm ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('proceso')}>En Proceso</button>
-                            <button className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('terminado')}>Terminado</button>
+                            <button className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('terminado')}>Historial</button>
                         </div>
                     </div>
 
@@ -435,12 +433,24 @@ const MisMantenciones = () => {
                         {loading ? (
                             <div className="p-5 text-center"><span className="spinner-border text-primary"></span></div>
                         ) : (
-                            otsFiltradas.length === 0 ? (
-                                <div className="p-5 text-center text-muted small">No se encontraron tareas con estos filtros.</div>
+                            otsAMostrar.length === 0 ? (
+                                <div className="p-5 text-center text-muted small">No se encontraron tareas en esta categoría.</div>
                             ) : (
-                                otsFiltradas.map(ot => {
+                                otsAMostrar.map(ot => {
                                     const isActive = selectedOt?.id === ot.id;
                                     const requierePermiso = Number(ot.requiere_permiso) === 1;
+
+                                    // LÓGICA DE BADGE INTELIGENTE "PROGRAMADA"
+                                    const reqStr = ot.fecha_requerida ? ot.fecha_requerida.substring(0, 10) : null;
+                                    const isFutura = reqStr && reqStr > todayStr;
+                                    
+                                    let estadoTexto = ot.estado;
+                                    let badgeClass = 'bg-info text-dark bg-opacity-25 border border-info';
+                                    
+                                    if (isFutura && parseInt(ot.estado_id) === 1) {
+                                        estadoTexto = 'PROGRAMADA';
+                                        badgeClass = 'bg-primary text-white border border-primary shadow-sm';
+                                    }
 
                                     return (
                                         <button key={ot.id}
@@ -456,10 +466,18 @@ const MisMantenciones = () => {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <small className="text-muted">{new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
+                                                    <div className="text-end">
+                                                        {isFutura ? (
+                                                            <span className="badge bg-primary text-white shadow-sm" style={{ fontSize: '0.7rem' }}>
+                                                                <i className="bi bi-calendar-event me-1"></i>Prog: {new Date(ot.fecha_requerida.substring(0, 10) + 'T00:00:00').toLocaleDateString()}
+                                                            </span>
+                                                        ) : (
+                                                            <small className="text-muted" style={{ fontSize: '0.7rem' }}>Creada: {new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
+                                                        )}
+                                                    </div>
                                                 </div>
 
-                                                <h6 className="mb-1 fw-bold text-primary text-truncate">{ot.titulo || 'Sin Título'}</h6>
+                                                <h6 className="mb-1 fw-bold text-primary text-truncate mt-1">{ot.titulo || 'Sin Título'}</h6>
 
                                                 <div className="fw-bold text-dark text-truncate small mb-1">
                                                     <i className="bi bi-gear-fill me-1 text-muted"></i>{ot.activo}
@@ -477,13 +495,7 @@ const MisMantenciones = () => {
                                                 <div className="small text-muted text-truncate mb-1">
                                                     <i className="bi bi-person-fill me-1"></i>Solicita: {ot.solicitante_nombre}
                                                 </div>
-                                                {esJefe && (
-                                                    <div className={`small text-truncate fst-italic mb-2 ${ot.asignados_nombres ? 'text-primary' : 'text-muted opacity-75'}`}>
-                                                        <i className={`bi ${ot.asignados_nombres ? 'bi-tools' : 'bi-exclamation-circle'} me-1`}></i>
-                                                        {ot.asignados_nombres ? `Asignado: ${ot.asignados_nombres}` : 'Sin técnicos'}
-                                                    </div>
-                                                )}
-                                                <span className="badge bg-info text-dark bg-opacity-25 border border-info fw-normal mt-1">{ot.estado}</span>
+                                                <span className={`badge ${badgeClass} fw-bold mt-1`} style={{ letterSpacing: '0.5px' }}>{estadoTexto}</span>
                                             </div>
                                         </button>
                                     );

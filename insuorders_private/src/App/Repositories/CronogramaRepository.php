@@ -17,10 +17,12 @@ class CronogramaRepository
     {
         $sql = "SELECT c.*, 
                     a.nombre as activo_nombre, a.codigo_interno as activo_codigo,
+                    sa.nombre as sub_activo_nombre, sa.codigo_interno as sub_activo_codigo,
                     i.nombre as insumo_nombre, i.codigo_sku as insumo_sku,
                     s.id as ot_id, s.estado_id as ot_estado
                 FROM cronograma_mantencion c
                 LEFT JOIN activos a ON c.activo_id = a.id
+                LEFT JOIN activos sa ON c.sub_activo_id = sa.id
                 LEFT JOIN insumos i ON c.insumo_id = i.id
                 LEFT JOIN solicitudes_ot s ON c.solicitud_ot_id = s.id
                 WHERE 1=1";
@@ -55,20 +57,39 @@ class CronogramaRepository
             $evento['items'] = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
             $evento['insumos'] = $evento['items'];
         }
+        return $evento;
+    }
 
+    public function getByOtId($otId)
+    {
+        $stmt = $this->db->prepare("SELECT * FROM cronograma_mantencion WHERE solicitud_ot_id = ?");
+        $stmt->execute([$otId]);
+        $evento = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($evento) {
+            $stmtItems = $this->db->prepare("
+                SELECT ci.insumo_id as id, ci.insumo_id, i.nombre, i.codigo_sku, ci.cantidad, i.stock_actual 
+                FROM cronograma_insumos ci 
+                JOIN insumos i ON ci.insumo_id = i.id 
+                WHERE ci.cronograma_id = ?
+            ");
+            $stmtItems->execute([$evento['id']]);
+            $evento['items'] = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+        }
         return $evento;
     }
 
     public function create($data)
     {
         $sql = "INSERT INTO cronograma_mantencion 
-            (tipo_evento, activo_id, insumo_id, titulo, descripcion, fecha_programada, hora_programada, cantidad, monto_estimado, estado, icono, color, solicitud_ot_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            (tipo_evento, activo_id, sub_activo_id, insumo_id, titulo, descripcion, fecha_programada, hora_programada, cantidad, monto_estimado, estado, icono, color, solicitud_ot_id, frecuencia, unidad_frecuencia) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             $data['tipo_evento'],
             $data['activo_id'] ?: null,
+            $data['sub_activo_id'] ?: null,
             $data['insumo_id'] ?: null,
             $data['titulo'],
             $data['descripcion'] ?? null,
@@ -79,7 +100,9 @@ class CronogramaRepository
             $data['estado'] ?? 'PROCESADO',
             $data['icono'] ?? 'bi-tools',
             $data['color'] ?? '#0d6efd',
-            $data['solicitud_ot_id'] ?? null
+            $data['solicitud_ot_id'] ?? null,
+            $data['frecuencia'] ?? null,
+            $data['unidad_frecuencia'] ?? null
         ]);
         return $this->db->lastInsertId();
     }
@@ -87,14 +110,15 @@ class CronogramaRepository
     public function update($id, $data)
     {
         $sql = "UPDATE cronograma_mantencion SET 
-                activo_id = ?, insumo_id = ?, titulo = ?, descripcion = ?, 
+                activo_id = ?, sub_activo_id = ?, insumo_id = ?, titulo = ?, descripcion = ?, 
                 fecha_programada = ?, hora_programada = ?, cantidad = ?, monto_estimado = ?, 
-                estado = ?, icono = ?, color = ?
+                estado = ?, icono = ?, color = ?, frecuencia = ?, unidad_frecuencia = ?
                 WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
             $data['activo_id'] ?: null,
+            $data['sub_activo_id'] ?: null,
             $data['insumo_id'] ?: null,
             $data['titulo'],
             $data['descripcion'] ?? null,
@@ -105,6 +129,8 @@ class CronogramaRepository
             $data['estado'],
             $data['icono'],
             $data['color'],
+            $data['frecuencia'] ?? null,
+            $data['unidad_frecuencia'] ?? null,
             $id
         ]);
     }
@@ -114,9 +140,7 @@ class CronogramaRepository
         $stmt = $this->db->prepare("INSERT INTO cronograma_insumos (cronograma_id, insumo_id, cantidad) VALUES (?, ?, ?)");
         foreach ($items as $it) {
             $iid = $it['insumo_id'] ?? $it['id'] ?? null;
-            if ($iid) {
-                $stmt->execute([$cronogramaId, $iid, $it['cantidad']]);
-            }
+            if ($iid) $stmt->execute([$cronogramaId, $iid, $it['cantidad']]);
         }
     }
 

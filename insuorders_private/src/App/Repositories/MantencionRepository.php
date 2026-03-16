@@ -347,7 +347,7 @@ class MantencionRepository
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
-    
+
     public function getDetallesOT($id)
     {
         $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.cantidad_entregada, d.estado_linea, 
@@ -395,18 +395,20 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
 
-            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, sub_activo_id, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, requiere_permiso, tipo_permiso_id, descripcion_permiso, prioridad, ubicacion) 
-                    VALUES (:uid, :aid, :subaid, :desc, :orig, :area, :cc, :ext, 1, NOW(), :req_perm, :tipo_perm, :desc_perm, :prio, :ubi)";
+            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, sub_activo_id, titulo, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, fecha_requerida, requiere_permiso, tipo_permiso_id, descripcion_permiso, prioridad, ubicacion) 
+                    VALUES (:uid, :aid, :subaid, :tit, :desc, :orig, :area, :cc, :ext, 1, NOW(), :freq, :req_perm, :tipo_perm, :desc_perm, :prio, :ubi)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':uid' => $data['usuario_id'],
                 ':aid' => !empty($data['activo_id']) ? $data['activo_id'] : null,
                 ':subaid' => !empty($data['sub_activo_id']) ? $data['sub_activo_id'] : null,
-                ':desc' => $data['observacion'],
-                ':orig' => $data['origen_tipo'],
-                ':area' => $data['area_negocio'],
-                ':cc' => $data['centro_costo_ot'],
-                ':ext' => $data['solicitante_externo'],
+                ':tit' => !empty($data['titulo']) ? $data['titulo'] : null,
+                ':desc' => $data['observacion'] ?? '',
+                ':orig' => $data['origen_tipo'] ?? 'Interna',
+                ':area' => $data['area_negocio'] ?? null,
+                ':cc' => $data['centro_costo_ot'] ?? null,
+                ':ext' => $data['solicitante_externo'] ?? null,
+                ':freq' => !empty($data['fecha_requerida']) ? $data['fecha_requerida'] : null,
                 ':req_perm' => !empty($data['requiere_permiso']) ? 1 : 0,
                 ':tipo_perm' => !empty($data['tipo_permiso_id']) ? $data['tipo_permiso_id'] : null,
                 ':desc_perm' => $data['descripcion_permiso'] ?? null,
@@ -459,25 +461,27 @@ class MantencionRepository
         try {
             if (!$inTransaction)
                 $this->db->beginTransaction();
-            
+
             $sql = "UPDATE solicitudes_ot SET 
-                    activo_id=:aid, sub_activo_id=:subaid, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot,
+                    activo_id=:aid, sub_activo_id=:subaid, titulo=:tit, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot,
                     requiere_permiso=:req_perm, tipo_permiso_id=:tipo_perm, descripcion_permiso=:desc_perm,
-                    prioridad=:prio, ubicacion=:ubi
+                    prioridad=:prio, ubicacion=:ubi, fecha_requerida=:freq
                     WHERE id=:id";
-                    
+
             $this->db->prepare($sql)->execute([
                 ':aid' => !empty($data['activo_id']) ? $data['activo_id'] : null,
                 ':subaid' => !empty($data['sub_activo_id']) ? $data['sub_activo_id'] : null,
-                ':desc' => $data['observacion'],
+                ':tit' => !empty($data['titulo']) ? $data['titulo'] : null,
+                ':desc' => $data['observacion'] ?? '',
                 ':se' => $data['solicitante_externo'] ?: null,
                 ':cc' => $data['centro_costo_ot'] ?: null,
-                ':ot' => $data['origen_tipo'],
+                ':ot' => $data['origen_tipo'] ?? 'Interna',
                 ':req_perm' => !empty($data['requiere_permiso']) ? 1 : 0,
                 ':tipo_perm' => !empty($data['tipo_permiso_id']) ? $data['tipo_permiso_id'] : null,
                 ':desc_perm' => $data['descripcion_permiso'] ?? null,
                 ':prio' => $data['prioridad'] ?? 'Media',
                 ':ubi' => $data['ubicacion'] ?? null,
+                ':freq' => !empty($data['fecha_requerida']) ? $data['fecha_requerida'] : null,
                 ':id' => $id
             ]);
 
