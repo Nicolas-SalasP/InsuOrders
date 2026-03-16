@@ -13,7 +13,7 @@ Este proyecto garantiza la trazabilidad operativa, desde que un cliente solicita
     * Panel dedicado para Técnicos (`Mis Mantenciones`) con control de stock personal y adjunto de evidencias (fotos/videos).
     * Cierre de OT con firma digital y generación automática de reportes en PDF.
 * **📅 Mantenimiento Preventivo (Cronograma):**
-   * Programación y proyección inteligente de tareas periódicas a futuro (meses o años) sin saturar las vistas del día a día.
+    * Programación y proyección inteligente de tareas periódicas a futuro (meses o años) sin saturar las vistas del día a día.
 * **📦 Bodega e Inventario:**
     * Control estricto de stock de insumos.
     * Entregas de material al personal (Técnicos) y validación de déficit.
@@ -26,26 +26,28 @@ Este proyecto garantiza la trazabilidad operativa, desde que un cliente solicita
     * Interfaz exclusiva para que los solicitantes creen tickets y sigan el estado de sus requerimientos en tiempo real.
     * Acceso al reporte final del técnico con fecha de cierre y evidencias multimedia.
 * **🔒 Roles y Permisos Dinámicos:**
-    * Control de acceso granular (Administrador, Jefe de Mantención, Técnico, Bodeguero, Cliente, etc.). Por ejemplo: modo "solo lectura" para técnicos al visualizar activos.
+    * Control de acceso granular (Administrador, Jefe de Mantención, Técnico, Bodeguero, Cliente, etc.). 
+    * Modos de "solo lectura" adaptables a cada vista según el rol.
 
 ---
 
 ## 🏗️ Arquitectura y Tecnologías
 
-El proyecto está dividido en dos capas principales desacopladas:
+El proyecto está dividido en dos capas principales totalmente desacopladas por seguridad y escalabilidad:
 
-### Frontend (`/public_html`)
-Desarrollado como una Single Page Application (SPA).
-* **Framework:** React.js + Vite
+### Frontend + API Pública (`/public_html`)
+Desarrollado como una Single Page Application (SPA) y actúa como la capa expuesta a Internet.
+* **Framework:** React.js + Vite.
 * **Estilos:** Bootstrap 5, Bootstrap Icons, CSS personalizado.
 * **Librerías clave:** `axios` (peticiones HTTP), `react-router-dom` (navegación), `sweetalert2` (alertas), `react-signature-canvas` (firma digital).
+* **API Router:** Contiene la carpeta `/api` con su propio `.htaccess` y un `index.php` que actúa como puente seguro hacia el core privado.
 
-### Backend API (`/insuorders_private`)
-API RESTful construida de forma nativa con PHP, siguiendo el patrón de diseño por capas (Controladores, Servicios, Repositorios).
+### Backend Privado (`/insuorders_private`)
+API RESTful construida de forma nativa con PHP, siguiendo el patrón de diseño por capas (Controladores, Servicios, Repositorios). **Esta carpeta no debe ser accesible públicamente por el servidor web.**
 * **Lenguaje:** PHP 8+
 * **Base de Datos:** MySQL (concepción relacional usando PDO).
-* **Generación de Archivos:** TCPDF / FPDF (Reportes PDF), PhpSpreadsheet (Exportación Excel).
-* **Autenticación:** Basada en tokens/sesiones seguras (JWT/Cookies) gestionadas por middleware propio.
+* **Dependencias (Composer):** Utiliza librerías como TCPDF (Reportes PDF), PhpSpreadsheet (Exportación Excel) y JWT.
+* **Autenticación:** Basada en tokens seguros gestionados por middleware propio.
 
 ---
 
@@ -55,40 +57,42 @@ API RESTful construida de forma nativa con PHP, siguiendo el patrón de diseño 
 * Servidor web (Apache/Nginx).
 * PHP 8.0 o superior.
 * MySQL 5.7+ o MariaDB.
+* Composer (Para dependencias PHP).
 * Node.js (v16+) y npm (para compilar el frontend).
 
 ### 2. Configuración de la Base de Datos
 1.  Crea una base de datos vacía en tu gestor MySQL (ej: `insuban_db`).
 2.  Importa el script SQL incluido en la raíz del proyecto (`insuban_db.sql`).
 
-### 3. Configuración del Backend (API)
-1.  Ubica la carpeta `insuorders_private/src/App/Config/`.
-2.  Edita o verifica el archivo `Config.php` para apuntar a tus credenciales de base de datos locales:
+### 3. Configuración del Backend (API Privada)
+1.  Abre una terminal, navega a la carpeta `insuorders_private/` e instala las dependencias de PHP:
+    ```bash
+    composer install
+    ```
+2.  Ubica la carpeta `insuorders_private/src/App/Config/`.
+3.  Edita o verifica el archivo `Config.php` para apuntar a tus credenciales de base de datos locales:
     ```php
     define('DB_HOST', 'localhost');
     define('DB_NAME', 'insuban_db');
     define('DB_USER', 'tu_usuario');
     define('DB_PASS', 'tu_contraseña');
     ```
-3.  Asegúrate de que las carpetas de subida de archivos (`public_html/uploads/cierre/` y `public_html/uploads/ordenes/`) tengan permisos de escritura (`chmod 777` en entornos locales o `755` en producción).
+4.  Asegúrate de que la carpeta pública de archivos (`public_html/uploads/`) tenga permisos de escritura (`chmod 777` en entornos locales o `755` en producción) para guardar fotos y PDFs.
 
 ### 4. Configuración del Frontend
-1.  Abre una terminal y navega a la carpeta del frontend: `cd public_html`.
-2.  Instala las dependencias:
+1.  Abre una terminal y navega a la carpeta pública: `cd public_html`.
+2.  Instala las dependencias de Node:
     ```bash
     npm install
     ```
-3.  Verifica la URL base de tu API en `src/api/axiosConfig.js`. Por defecto apunta a tu servidor local:
+3.  Verifica la URL base de tu API en `public_html/src/api/axiosConfig.js`. Por defecto apunta a tu servidor local:
     ```javascript
-    baseURL: 'http://localhost/api' // Ajusta según tu VirtualHost o entorno
+    baseURL: 'http://localhost/api' // Ajusta según tu entorno
     ```
 4.  Inicia el servidor de desarrollo de Vite:
     ```bash
     npm run dev
     ```
-
-### 5. Despliegue a Producción
-Para desplegar el frontend, ejecuta `npm run build` dentro de `public_html`. Esto generará una carpeta `dist/` con los archivos estáticos optimizados. Configura tu servidor para servir el `index.html` de esta carpeta y rutea todas las peticiones de `/api/*` hacia el archivo `index.php` del backend.
 
 ---
 
@@ -96,22 +100,37 @@ Para desplegar el frontend, ejecuta `npm run build` dentro de `public_html`. Est
 
 ```text
 /
-├── insuban_db.sql                # Dump de la base de datos
-├── public_html/                  # Frontend (React) y Assets públicos
-│   ├── src/
-│   │   ├── api/                  # Configuración de Axios
-│   │   ├── components/           # Modales, Sidebar, Layout, etc.
-│   │   ├── context/              # AuthContext (Estado global)
+├── insuban_db.sql                # Dump principal de la base de datos
+├── public_html/                  # Frontend (React) y acceso público de la API
+│   ├── api/                      # Router de la API pública
+│   │   ├── .htaccess             # Redirección limpia de rutas de la API
+│   │   └── index.php             # Front Controller (puente hacia insuorders_private)
+│   ├── assets/                   # Recursos estáticos globales (ej: imágenes, logos)
+│   │   └── img/
+│   ├── public/                   # Archivos estáticos de Vite (favicon, .htaccess frontend)
+│   ├── src/                      # Código fuente de React (SPA)
+│   │   ├── api/                  # Configuración de Axios (axiosConfig.js)
+│   │   ├── assets/               # Recursos estáticos propios de React
+│   │   ├── components/           # Componentes reutilizables, UI y modales
+│   │   ├── context/              # AuthContext (Estado global de sesión)
 │   │   ├── hooks/                # Custom hooks (ej: usePermission)
-│   │   └── pages/                # Vistas principales (Compras, Mantencion, etc.)
-│   ├── uploads/                  # Directorio destino de imágenes/pdf (cierre, ordenes)
-│   └── package.json              # Dependencias de Node
-└── insuorders_private/           # Backend (PHP)
+│   │   ├── pages/                # Vistas principales (Compras, Mantencion, etc.)
+│   │   ├── App.jsx               # Enrutador principal (React Router)
+│   │   └── main.jsx              # Punto de montaje de React
+│   ├── uploads/                  # Directorio destino de archivos (cierre, ordenes)
+│   ├── index.html                # Plantilla HTML base
+│   ├── package.json              # Dependencias de Node (React, Vite, Bootstrap)
+│   └── vite.config.js            # Configuración de empaquetado del frontend
+└── insuorders_private/           # Backend (PHP Core - Protegido, fuera del acceso web)
+    ├── composer.json             # Declaración de dependencias PHP
+    ├── composer.lock             # Versiones fijadas de dependencias PHP
     └── src/
-        └── App/
-            ├── Config/           # Conexión a BD y constantes
-            ├── Controllers/      # Endpoints de la API
-            ├── Database/         # Conexión PDO
-            ├── Middleware/       # Verificación de Tokens/Permisos
-            ├── Repositories/     # Consultas SQL directas (Modelos)
-            └── Services/         # Lógica de Negocio, Generación PDF/Excel
+        ├── App/                  # Lógica de la aplicación
+        │   ├── Config/           # Conexión a BD y variables constantes
+        │   ├── Controllers/      # Endpoints de la API
+        │   ├── Database/         # Manejador de conexión PDO
+        │   ├── Middleware/       # Verificación de Tokens y Permisos
+        │   ├── Repositories/     # Consultas SQL directas (Data Access Layer)
+        │   └── Services/         # Lógica de Negocio y Generación PDF/Excel
+        └── core/                 # Inicialización del núcleo
+            └── init.php          # Carga de clases, autoloader y configuración base
