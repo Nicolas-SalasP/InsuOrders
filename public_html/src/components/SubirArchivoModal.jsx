@@ -12,11 +12,13 @@ const SubirArchivoModal = ({ show, onClose, ordenId, currentUrl, onSave }) => {
         if (!file || !ordenId) return;
         setLoading(true);
         const formData = new FormData();
-        formData.append('orden_id', ordenId);
+        formData.append('id', ordenId);
         formData.append('archivo', file);
 
         try {
-            const res = await api.post('/index.php/compras/upload', formData);
+            const res = await api.post('/index.php/compras/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             if (res.data.success) {
                 onSave();
                 onClose();

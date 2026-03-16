@@ -253,6 +253,10 @@ try {
             }
             break;
 
+        case 'mantencion/tipos-permiso':
+            AuthMiddleware::verify();
+            (new MantencionController())->tiposPermiso();
+            break;
 
         // --- INVENTARIO ---
         case 'insumos':
@@ -662,6 +666,14 @@ try {
                 $controller->saveUbicacionEnvio();
             if ($method === 'DELETE')
                 $controller->deleteUbicacionEnvio();
+            break;
+        
+        case 'mantenedores/tipos-permiso':
+            AuthMiddleware::verify();
+            $c = new MantenedoresController();
+            if ($method === 'GET') $c->getTiposPermiso();
+            elseif ($method === 'POST' || $method === 'PUT') $c->saveTipoPermiso();
+            elseif ($method === 'DELETE') $c->deleteTipoPermiso();
             break;
 
         // --- PERSONAL ---

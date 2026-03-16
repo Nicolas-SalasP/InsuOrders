@@ -11,6 +11,7 @@ import SectorModal from '../components/SectorModal';
 import UbicacionModal from '../components/UbicacionModal';
 import UbicacionEnvioModal from '../components/UbicacionEnvioModal';
 import CategoriaModal from '../components/CategoriaModal';
+import TipoPermisoModal from '../components/TipoPermisoModal';
 
 const AdminMantenedores = () => {
     const { can } = usePermission();
@@ -26,6 +27,7 @@ const AdminMantenedores = () => {
     const [ubicacionesEnvio, setUbicacionesEnvio] = useState([]);
     const [categorias, setCategorias] = useState([]); 
     const [usuarios, setUsuarios] = useState([]);
+    const [tiposPermiso, setTiposPermiso] = useState([]);
 
     // Control de Modales
     const [modales, setModales] = useState({
@@ -35,7 +37,8 @@ const AdminMantenedores = () => {
         sector: { show: false, data: null },
         ubicacion: { show: false, data: null },
         ubicacionEnvio: { show: false, data: null },
-        categoria: { show: false, data: null }
+        categoria: { show: false, data: null },
+        tipoPermiso: { show: false, data: null }
     });
 
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
@@ -87,6 +90,10 @@ const AdminMantenedores = () => {
                 const res = await api.get('/index.php/categorias');
                 if (res.data.success) setCategorias(res.data.data);
             }
+            else if (activeTab === 'permisos') {
+                const res = await api.get('/index.php/mantenedores/tipos-permiso');
+                if (res.data.success) setTiposPermiso(res.data.data);
+            }
         } catch (error) {
             console.error("Error cargando datos", error);
         } finally {
@@ -133,6 +140,7 @@ const AdminMantenedores = () => {
             <UbicacionModal show={modales.ubicacion.show} onClose={() => cerrarModal('ubicacion')} onSave={cargarDatos} ubicacion={modales.ubicacion.data} sectores={sectores} />
             <UbicacionEnvioModal show={modales.ubicacionEnvio.show} onClose={() => cerrarModal('ubicacionEnvio')} onSave={cargarDatos} data={modales.ubicacionEnvio.data} />
             <CategoriaModal show={modales.categoria.show} onClose={() => cerrarModal('categoria')} onSave={cargarDatos} data={modales.categoria.data} />
+            <TipoPermisoModal show={modales.tipoPermiso.show} onClose={() => cerrarModal('tipoPermiso')} onSave={cargarDatos} data={modales.tipoPermiso.data} />
 
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <div>
@@ -142,16 +150,17 @@ const AdminMantenedores = () => {
             </div>
 
             <div className="card shadow-sm border-0">
-                <div className="card-header bg-white pt-3 px-3 pb-0 border-bottom">
-                    <ul className="nav nav-tabs card-header-tabs border-0">
+                <div className="card-header bg-white pt-3 px-3 pb-0 border-bottom overflow-auto">
+                    <ul className="nav nav-tabs card-header-tabs border-0 flex-nowrap" style={{ whiteSpace: 'nowrap' }}>
                         {[
                             {id: 'empleados', label: 'Empleados', show: true},
                             {id: 'centros', label: 'Centros Costo', show: true},
                             {id: 'areas', label: 'Áreas', show: true},
-                            {id: 'sectores', label: 'Sectores (Bodegas)', show: true},
+                            {id: 'sectores', label: 'Sectores', show: true},
                             {id: 'ubicaciones', label: 'Estanterías', show: true},
-                            {id: 'lugares_envio', label: 'Lugares de Envío', show: true},
-                            {id: 'categorias', label: 'Categorías', show: can('ver_categorias')}
+                            {id: 'lugares_envio', label: 'Destinos Envío', show: true},
+                            {id: 'permisos', label: 'Permisos Trabajo', show: true}, // NUEVA PESTAÑA
+                            {id: 'categorias', label: 'Categorías Insumos', show: can('ver_categorias')}
                         ].filter(t => t.show).map(tab => (
                             <li className="nav-item" key={tab.id}>
                                 <button 
@@ -364,6 +373,49 @@ const AdminMantenedores = () => {
                                 </div>
                             )}
 
+                            {/* --- PERMISOS DE TRABAJO --- */}
+                            {activeTab === 'permisos' && (
+                                <div className="animate__animated animate__fadeIn">
+                                    <TableHeader title="Tipos de Permisos de Trabajo" btnAction={() => abrirModal('tipoPermiso')} btnLabel="Nuevo Permiso" />
+                                    <div className="table-responsive rounded border">
+                                        <table className="table table-hover align-middle mb-0">
+                                            <thead className="bg-light text-secondary small text-uppercase">
+                                                <tr>
+                                                    <th className="ps-4">Nombre del Permiso</th>
+                                                    <th>Descripción</th>
+                                                    <th className="text-center">Estado</th>
+                                                    <th className="text-end pe-4">Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {tiposPermiso.map(p => (
+                                                    <tr key={p.id} className={p.activo == 0 ? 'bg-light text-muted' : ''}>
+                                                        <td className="ps-4 fw-bold text-danger">
+                                                            <i className="bi bi-shield-exclamation me-2"></i>{p.nombre}
+                                                        </td>
+                                                        <td className="small">{p.descripcion || '-'}</td>
+                                                        <td className="text-center">
+                                                            {p.activo == 1 
+                                                                ? <span className="badge bg-success bg-opacity-10 text-success rounded-pill">Activo</span> 
+                                                                : <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">Inactivo</span>}
+                                                        </td>
+                                                        <td className="text-end pe-4">
+                                                            <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('tipoPermiso', p)} title="Editar"><i className="bi bi-pencil-square"></i></button>
+                                                            {p.activo == 1 && (
+                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('tipos-permiso', p.id)} title="Desactivar"><i className="bi bi-trash"></i></button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {tiposPermiso.length === 0 && (
+                                                    <tr><td colSpan="4" className="text-center py-4 text-muted">No hay permisos de trabajo registrados</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* --- CATEGORÍAS --- */}
                             {activeTab === 'categorias' && (
                                 <div className="animate__animated animate__fadeIn">
@@ -385,15 +437,9 @@ const AdminMantenedores = () => {
                                                 {categorias.map(cat => (
                                                     <tr key={cat.id}>
                                                         <td className="ps-4">
-                                                            {/* Diseño tipo "Código" de estantería */}
-                                                            <span className="badge bg-light text-dark border font-monospace">
-                                                                #{cat.id}
-                                                            </span>
+                                                            <span className="badge bg-light text-dark border font-monospace">#{cat.id}</span>
                                                         </td>
-                                                        <td className="fw-bold text-primary">
-                                                            {/* Diseño tipo "Nombre" de estantería */}
-                                                            {cat.nombre}
-                                                        </td>
+                                                        <td className="fw-bold text-primary">{cat.nombre}</td>
                                                         <td className="text-end pe-4">
                                                             {can('editar_categorias') && (
                                                                 <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('categoria', cat)} title="Editar">

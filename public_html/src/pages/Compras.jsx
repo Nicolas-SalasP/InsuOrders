@@ -176,7 +176,19 @@ const Compras = () => {
     const handleActionMenuClick = (e, oc) => {
         e.stopPropagation();
         const rect = e.currentTarget.getBoundingClientRect();
-        setActionMenu({ show: true, top: rect.bottom + window.scrollY + 2, left: rect.right - 180, id: oc.id, url: oc.url_archivo, estado: oc.estado });
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const dropUp = spaceBelow < 200;
+        const top = dropUp ? (rect.top + window.scrollY - 150) : (rect.bottom + window.scrollY + 2);
+        const left = rect.right - 180;
+
+        setActionMenu({ 
+            show: true, 
+            top: top, 
+            left: left, 
+            id: oc.id, 
+            url: oc.url_archivo, 
+            estado: oc.estado 
+        });
     };
 
     const closeActionMenu = () => { setActionMenu({ ...actionMenu, show: false }); };

@@ -164,8 +164,6 @@ const Activos = () => {
                 confirmText={confirm.confirmText} 
                 type={confirm.type} 
             />
-            
-            {/* SE MUESTRA SI TIENE PERMISO DE EDITAR, CREAR O DETALLE */}
             {(hasPermission('activos_crear') || hasPermission('activos_editar') || hasPermission('activos_detalle')) && (
                 <ActivoModal show={showModal} onClose={() => setShowModal(false)} activo={activoSeleccionado} onSave={cargarActivos} />
             )}
@@ -288,8 +286,6 @@ const Activos = () => {
                                             )}
                                         </td>
                                         <td className="text-end pe-4">
-                                            
-                                            {/* BOTON VER DETALLE: Se muestra si tiene activos_detalle O activos_editar */}
                                             {(hasPermission('activos_detalle') || hasPermission('activos_editar')) && (
                                                 <button 
                                                     className="btn btn-sm btn-outline-primary me-2" 

@@ -48,7 +48,9 @@ class CronogramaController
         try {
             $data['activo_id'] = !empty($data['activo_id']) ? $data['activo_id'] : null;
             $data['insumo_id'] = !empty($data['insumo_id']) ? $data['insumo_id'] : null;
+            
             $id = $this->service->crear($data, $userId);
+            
             echo json_encode(["success" => true, "id" => $id, "message" => "Evento agendado y OT generada"]);
         } catch (Exception $e) {
             http_response_code(500);

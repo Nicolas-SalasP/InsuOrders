@@ -8,9 +8,10 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
         descripcion: '',
         fecha_programada: initialDate || '',
         activo_id: '',
-        color: mode === 'COMPRA' ? '#198754' : '#0d6efd', // Verde si es compra, Azul si es mantención
+        sub_activo_id: '', 
+        color: mode === 'COMPRA' ? '#198754' : '#0d6efd',
         icono: mode === 'COMPRA' ? 'bi-cart-fill' : 'bi-tools',
-        tipo_evento: mode // 'MANTENCION' o 'COMPRA'
+        tipo_evento: mode 
     });
     
     const [items, setItems] = useState([]);
@@ -18,12 +19,20 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
     const [insumos, setInsumos] = useState([]);
     const [busqueda, setBusqueda] = useState('');
 
-    // Helper para saber si estamos en modo compra
+    const [repetir, setRepetir] = useState(false);
+    const [frecuencia, setFrecuencia] = useState(1);
+    const [unidadFrecuencia, setUnidadFrecuencia] = useState('MESES');
+    const [proyeccionCantidad, setProyeccionCantidad] = useState(1);
+    const [proyeccionUnidad, setProyeccionUnidad] = useState('years');
+
     const isCompra = formData.tipo_evento === 'COMPRA';
+
+    const activosPrincipales = activos.filter(a => !a.activo_padre_id);
+    const subActivosDisponibles = activos.filter(a => a.activo_padre_id && String(a.activo_padre_id) === String(formData.activo_id));
 
     const listaIconos = [
         { icon: 'bi-tools', label: 'Herramienta' },
-        { icon: 'bi-cart-fill', label: 'Compra' }, // Agregado para compras
+        { icon: 'bi-cart-fill', label: 'Compra' },
         { icon: 'bi-oil-can', label: 'Aceite' },
         { icon: 'bi-shield-check', label: 'Seguridad' },
         { icon: 'bi-lightning-charge', label: 'Energía' },
@@ -35,6 +44,13 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
     useEffect(() => {
         if (show) {
+            setRepetir(false);
+            setFrecuencia(1);
+            setUnidadFrecuencia('MESES');
+            setProyeccionCantidad(1);
+            setProyeccionUnidad('years');
+            setBusqueda('');
+
             api.get('/index.php/mantencion/activos').then(res => setActivos(res.data.data || []));
             api.get('/index.php/inventario').then(res => setInsumos(res.data.data || []));
 
@@ -48,7 +64,8 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                 titulo: data.titulo,
                                 descripcion: data.descripcion,
                                 fecha_programada: data.fecha_programada,
-                                activo_id: data.activo_id,
+                                activo_id: data.activo_id || '',
+                                sub_activo_id: data.sub_activo_id || '',
                                 color: data.color || (data.tipo_evento === 'COMPRA' ? '#198754' : '#0d6efd'),
                                 icono: data.icono || (data.tipo_evento === 'COMPRA' ? 'bi-cart-fill' : 'bi-tools'),
                                 tipo_evento: data.tipo_evento
@@ -57,8 +74,8 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                             if (data.items) {
                                 const loadedItems = data.items.map(i => ({
                                     insumo_id: i.insumo_id || i.id,
-                                    nombre: i.nombre,
-                                    codigo_sku: i.codigo_sku,
+                                    nombre: i.insumo_nombre || i.nombre,
+                                    codigo_sku: i.insumo_sku || i.codigo_sku,
                                     cantidad: Math.floor(i.cantidad),
                                     stock_actual: Math.floor(i.stock_actual)
                                 }));
@@ -69,7 +86,6 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                     .catch(e => console.error("Error cargando detalles del evento", e));
             }
             else if (eventData) {
-                // Caso: Click en fecha vacía (Nuevo)
                 setFormData({ 
                     ...formData, 
                     ...eventData,
@@ -82,19 +98,21 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
         }
     }, [show, eventData, mode]);
 
-    const cargarKitActivo = async (activoId) => {
-        if (!activoId || readOnly || isCompra) return; // Si es compra no cargamos kit de mantención
+    const cargarKitActivo = async (idBuscar) => {
+        if (!idBuscar || readOnly || isCompra) return; 
         try {
-            const res = await api.get(`/index.php/mantencion/kit?id=${activoId}`);
+            const res = await api.get(`/index.php/mantencion/kit?id=${idBuscar}`);
             if (res.data.success && res.data.data.length > 0) {
                 const kitItems = res.data.data.map(i => ({
-                    insumo_id: i.id,
-                    nombre: i.nombre,
-                    codigo_sku: i.codigo_sku,
+                    insumo_id: i.id || i.insumo_id,
+                    nombre: i.insumo_nombre || i.nombre,
+                    codigo_sku: i.insumo_sku || i.codigo_sku,
                     cantidad: Math.floor(i.cantidad),
                     stock_actual: i.stock_actual
                 }));
                 setItems(kitItems);
+            } else {
+                setItems([]);
             }
         } catch (e) { console.error("Error al cargar kit", e); }
     };
@@ -117,7 +135,15 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
         if (readOnly) return;
 
         try {
-            const payload = { ...formData, items };
+            const payload = { 
+                ...formData,
+                items,
+                frecuencia: repetir ? frecuencia : null,
+                unidad_frecuencia: repetir ? unidadFrecuencia : null,
+                proyeccion_cantidad: repetir ? proyeccionCantidad : null,
+                proyeccion_unidad: repetir ? proyeccionUnidad : null
+            };
+
             if (eventData?.id) {
                 await api.put('/index.php/cronograma', { ...payload, id: eventData.id });
             } else {
@@ -163,7 +189,6 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
             <div className="modal-dialog modal-lg shadow-lg my-4">
                 <form className="modal-content border-0 rounded-4 overflow-hidden" onSubmit={handleSubmit}>
 
-                    {/* CABECERA DINÁMICA (Mantención = Dark / Compra = Success) */}
                     <div className={`p-3 text-white border-bottom border-secondary ${readOnly ? 'bg-secondary' : (isCompra ? 'bg-success' : 'bg-dark')}`}>
                         <div className="d-flex justify-content-between align-items-start">
                             <div>
@@ -177,22 +202,12 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                     }
                                 </h5>
                                 <div className="d-flex gap-2 flex-wrap align-items-center">
-                                    {/* Fecha */}
                                     <span className={`badge rounded-pill fw-normal ${isCompra ? 'bg-black bg-opacity-25' : 'bg-primary'}`}>
                                         <i className="bi bi-calendar3 me-1"></i>{formData.fecha_programada}
                                     </span>
-                                    
-                                    {/* Código Activo */}
                                     {activoSelect && (
                                         <span className="badge bg-light text-dark rounded-pill fw-normal">
                                             {activoSelect.codigo_interno}
-                                        </span>
-                                    )}
-
-                                    {/* --- NUEVO: OT (Solo si existe y NO es compra) --- */}
-                                    {eventData?.solicitud_ot_id && !isCompra && (
-                                        <span className="badge bg-warning text-dark rounded-pill fw-normal border border-warning">
-                                            OT #{eventData.solicitud_ot_id}
                                         </span>
                                     )}
                                 </div>
@@ -228,10 +243,7 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                 <label className="form-label fw-bold text-dark small">ICONO VISUAL</label>
                                 <div className={`d-flex flex-wrap gap-1 p-2 border rounded ${readOnly ? 'bg-light' : 'bg-light'}`} style={{ minHeight: '38px' }}>
                                     {listaIconos.map((obj) => (
-                                        <button
-                                            key={obj.icon}
-                                            type="button"
-                                            title={obj.label}
+                                        <button key={obj.icon} type="button" title={obj.label}
                                             className={`btn btn-sm d-flex align-items-center justify-content-center ${formData.icono === obj.icon ? (isCompra ? 'btn-success' : 'btn-primary') : 'btn-white border'}`}
                                             style={{ width: '32px', height: '32px' }}
                                             onClick={() => !readOnly && setFormData({ ...formData, icono: obj.icon })}
@@ -245,45 +257,91 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
                             <div className="col-12 col-md-6">
                                 <label className="form-label fw-bold text-dark small">
-                                    {isCompra ? 'ASOCIAR A ACTIVO (Opcional)' : 'ASIGNAR A MAQUINARIA'}
+                                    {isCompra ? 'ASOCIAR A ACTIVO (Opcional)' : 'MÁQUINA PRINCIPAL'}
                                 </label>
-                                <select className="form-select" 
-                                    required={!isCompra} // Obligatorio solo en Mantención
+                                <select className="form-select fw-bold" 
+                                    required={!isCompra}
                                     value={formData.activo_id}
-                                    onChange={e => { setFormData({ ...formData, activo_id: e.target.value }); cargarKitActivo(e.target.value); }}
+                                    onChange={e => { 
+                                        setFormData({ ...formData, activo_id: e.target.value, sub_activo_id: '' }); 
+                                        cargarKitActivo(e.target.value); 
+                                    }}
                                     disabled={readOnly}
                                 >
-                                    <option value="">{isCompra ? '-- Ninguno (Compra General) --' : 'Seleccione un activo...'}</option>
-                                    {activos.map(a => <option key={a.id} value={a.id}>{a.codigo_interno} - {a.nombre}</option>)}
+                                    <option value="">{isCompra ? '-- Ninguno --' : 'Seleccione máquina...'}</option>
+                                    {activosPrincipales.map(a => <option key={a.id} value={a.id}>{a.codigo_interno} - {a.nombre}</option>)}
                                 </select>
                             </div>
 
                             <div className="col-12 col-md-6">
                                 <label className="form-label fw-bold text-dark small">COLOR EN CALENDARIO</label>
                                 <div className="input-group">
-                                    <input type="color" className="form-control form-control-color"
-                                        style={{ maxWidth: '50px' }}
-                                        value={formData.color} 
-                                        onChange={e => setFormData({ ...formData, color: e.target.value })} 
-                                        disabled={readOnly}
-                                    />
-                                    <input type="text" className="form-control font-monospace"
-                                        value={formData.color.toUpperCase()}
-                                        onChange={e => setFormData({ ...formData, color: e.target.value })}
-                                        maxLength="7" 
-                                        disabled={readOnly}
-                                    />
+                                    <input type="color" className="form-control form-control-color" style={{ maxWidth: '50px' }} value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} disabled={readOnly}/>
+                                    <input type="text" className="form-control font-monospace" value={formData.color.toUpperCase()} onChange={e => setFormData({ ...formData, color: e.target.value })} maxLength="7" disabled={readOnly}/>
                                 </div>
                             </div>
 
-                            <div className="col-12">
+                            {!isCompra && subActivosDisponibles.length > 0 && (
+                                <div className="col-12 col-md-6 animate__animated animate__fadeIn">
+                                    <label className="form-label fw-bold text-primary small">
+                                        <i className="bi bi-diagram-3-fill me-1"></i> COMPONENTE (SUB-ACTIVO)
+                                    </label>
+                                    <select className="form-select border-primary shadow-sm"
+                                        value={formData.sub_activo_id}
+                                        onChange={e => {
+                                            setFormData({ ...formData, sub_activo_id: e.target.value });
+                                            if (e.target.value) cargarKitActivo(e.target.value);
+                                        }}
+                                        disabled={readOnly}
+                                    >
+                                        <option value="">-- Aplica a máquina completa --</option>
+                                        {subActivosDisponibles.map(sa => <option key={sa.id} value={sa.id}>↳ {sa.codigo_interno} - {sa.nombre}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            {!readOnly && formData.tipo_evento === 'MANTENCION' && !eventData?.id && (
+                                <div className="col-12 mt-2">
+                                    <div className="form-check form-switch mb-2">
+                                        <input className="form-check-input" type="checkbox" id="repetirSwitch" checked={repetir} onChange={e => setRepetir(e.target.checked)} />
+                                        <label className="form-check-label fw-bold text-primary" htmlFor="repetirSwitch">Programar Mantenimiento Periódico</label>
+                                    </div>
+                                    {repetir && (
+                                        <div className="bg-primary bg-opacity-10 p-3 rounded border border-primary border-opacity-25 animate__animated animate__fadeIn">
+                                            <div className="row g-2 align-items-center mb-3">
+                                                <div className="col-auto"><span className="small fw-bold text-dark">Repetir cada:</span></div>
+                                                <div className="col-auto">
+                                                    <input type="number" className="form-control form-control-sm fw-bold text-center border-primary" style={{width:'70px'}} min="1" value={frecuencia} onChange={e => setFrecuencia(e.target.value)} />
+                                                </div>
+                                                <div className="col-auto">
+                                                    <select className="form-select form-select-sm fw-bold border-primary" value={unidadFrecuencia} onChange={e => setUnidadFrecuencia(e.target.value)}>
+                                                        <option value="DIAS">Días</option>
+                                                        <option value="SEMANAS">Semanas</option>
+                                                        <option value="MESES">Meses</option>
+                                                        <option value="ANIOS">Años</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="row g-2 align-items-center border-top border-primary border-opacity-25 pt-2">
+                                                <div className="col-auto"><span className="small fw-bold text-dark">Proyectar tareas para los próximos:</span></div>
+                                                <div className="col-auto">
+                                                    <input type="number" className="form-control form-control-sm fw-bold text-center bg-white" style={{width:'70px'}} min="1" value={proyeccionCantidad} onChange={e => setProyeccionCantidad(e.target.value)} />
+                                                </div>
+                                                <div className="col-auto">
+                                                    <select className="form-select form-select-sm fw-bold bg-white" value={proyeccionUnidad} onChange={e => setProyeccionUnidad(e.target.value)}>
+                                                        <option value="months">Meses</option>
+                                                        <option value="years">Años</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="col-12 mt-3">
                                 <label className="form-label fw-bold text-dark small">DESCRIPCIÓN / OBSERVACIONES</label>
-                                <textarea className="form-control" rows="2"
-                                    value={formData.descripcion} 
-                                    onChange={e => setFormData({ ...formData, descripcion: e.target.value })}
-                                    placeholder="Detalles adicionales..."
-                                    disabled={readOnly}
-                                ></textarea>
+                                <textarea className="form-control" rows="2" value={formData.descripcion} onChange={e => setFormData({ ...formData, descripcion: e.target.value })} placeholder="Detalles adicionales..." disabled={readOnly}></textarea>
                             </div>
 
                             <div className="col-12 mt-3">
@@ -297,9 +355,7 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                         <div className="position-relative">
                                             <div className="input-group mb-2">
                                                 <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                                                <input type="text" className="form-control"
-                                                    placeholder="Buscar SKU o Nombre..."
-                                                    value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+                                                <input type="text" className="form-control" placeholder="Buscar SKU o Nombre..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
                                             </div>
 
                                             {busqueda && (

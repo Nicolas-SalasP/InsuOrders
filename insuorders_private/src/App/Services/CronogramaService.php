@@ -15,7 +15,7 @@ class CronogramaService
     public function __construct()
     {
         $this->repo = new CronogramaRepository();
-        $this->mantencionRepo = new MantencionRepository(); 
+        $this->mantencionRepo = new MantencionRepository();
         $this->db = Database::getConnection();
     }
 
@@ -48,20 +48,28 @@ class CronogramaService
     {
         try {
             $inTransaction = $this->db->inTransaction();
-            if (!$inTransaction) $this->db->beginTransaction();
+            if (!$inTransaction)
+                $this->db->beginTransaction();
 
-            $otData = [
-                'usuario_id' => $usuarioId,
-                'activo_id' => $data['activo_id'],
-                'observacion' => "MANTENCION PROGRAMADA: " . $data['titulo'],
-                'origen_tipo' => 'Preventiva',
-                'area_negocio' => 'MANTENCION',
-                'centro_costo_ot' => '6400',
-                'solicitante_externo' => 'CRONOGRAMA',
-                'items' => $data['items'] ?? []
-            ];
+            $otId = null;
 
-            $otId = $this->mantencionRepo->createOT($otData);
+            if (($data['tipo_evento'] ?? 'MANTENCION') === 'MANTENCION') {
+                $otData = [
+                    'usuario_id' => $usuarioId,
+                    'activo_id' => $data['activo_id'] ?? null,
+                    'sub_activo_id' => $data['sub_activo_id'] ?? null,
+                    'titulo' => "PREVENTIVO: " . $data['titulo'],
+                    'observacion' => $data['descripcion'] ?? "Mantenimiento preventivo programado",
+                    'origen_tipo' => 'Preventiva',
+                    'area_negocio' => 'MANTENCION',
+                    'centro_costo_ot' => '6400',
+                    'solicitante_externo' => 'CRONOGRAMA',
+                    'fecha_requerida' => $data['fecha_programada'],
+                    'items' => $data['items'] ?? []
+                ];
+
+                $otId = $this->mantencionRepo->createOT($otData);
+            }
 
             $data['solicitud_ot_id'] = $otId;
             $id = $this->repo->create($data);
@@ -70,45 +78,62 @@ class CronogramaService
                 $this->repo->addInsumos($id, $data['items']);
             }
 
-            if ($generarFuturo && !empty($data['activo_id']) && $data['tipo_evento'] === 'MANTENCION') {
-                $activo = $this->mantencionRepo->getActivoById($data['activo_id']);
-                
-                if ($activo && !empty($activo['frecuencia_mantencion']) && $activo['frecuencia_mantencion'] > 0) {
-                    $frecuencia = (int)$activo['frecuencia_mantencion'];
-                    $unidad = strtoupper($activo['unidad_frecuencia']);
-                    
-                    try {
-                        $fechaInicial = new \DateTime($data['fecha_programada']);
-                        $fechaLimite = (clone $fechaInicial)->modify('+1 year');
-                        $fechaIterativa = clone $fechaInicial;
+            if ($generarFuturo && !empty($data['frecuencia']) && !empty($data['unidad_frecuencia'])) {
+                $frecuencia = (int) $data['frecuencia'];
+                $unidad = strtoupper($data['unidad_frecuencia']);
 
-                        while (true) {
-                            switch ($unidad) {
-                                case 'DIAS': $fechaIterativa->modify("+$frecuencia days"); break;
-                                case 'SEMANAS': $fechaIterativa->modify("+$frecuencia weeks"); break;
-                                case 'MESES': $fechaIterativa->modify("+$frecuencia months"); break;
-                                case 'ANIOS': $fechaIterativa->modify("+$frecuencia years"); break;
-                                default: break 2;
-                            }
+                $proyCant = !empty($data['proyeccion_cantidad']) ? (int) $data['proyeccion_cantidad'] : 1;
+                $proyUnidad = !empty($data['proyeccion_unidad']) ? $data['proyeccion_unidad'] : 'years';
 
-                            if ($fechaIterativa > $fechaLimite) {
+                if ($proyUnidad === 'years' && $proyCant > 5)
+                    $proyCant = 5;
+                if ($proyUnidad === 'months' && $proyCant > 60)
+                    $proyCant = 60;
+
+                try {
+                    $fechaInicial = new \DateTime($data['fecha_programada']);
+                    $fechaLimite = (clone $fechaInicial)->modify("+{$proyCant} {$proyUnidad}");
+                    $fechaIterativa = clone $fechaInicial;
+
+                    while (true) {
+                        switch ($unidad) {
+                            case 'DIAS':
+                                $fechaIterativa->modify("+$frecuencia days");
                                 break;
-                            }
-
-                            $dataFutura = $data;
-                            $dataFutura['fecha_programada'] = $fechaIterativa->format('Y-m-d');
-                            $this->crear($dataFutura, $usuarioId, false);
+                            case 'SEMANAS':
+                                $fechaIterativa->modify("+$frecuencia weeks");
+                                break;
+                            case 'MESES':
+                                $fechaIterativa->modify("+$frecuencia months");
+                                break;
+                            case 'ANIOS':
+                            case 'AÑOS':
+                                $fechaIterativa->modify("+$frecuencia years");
+                                break;
+                            default:
+                                break 2;
                         }
 
-                    } catch (Exception $e) {
+                        if ($fechaIterativa > $fechaLimite) {
+                            break;
+                        }
+
+                        $dataFutura = $data;
+                        $dataFutura['fecha_programada'] = $fechaIterativa->format('Y-m-d');
+                        $this->crear($dataFutura, $usuarioId, false);
                     }
+
+                } catch (Exception $e) {
+                    error_log("Error calculando fechas futuras: " . $e->getMessage());
                 }
             }
 
-            if (!$inTransaction) $this->db->commit();
+            if (!$inTransaction)
+                $this->db->commit();
             return $id;
         } catch (Exception $e) {
-            if (!$inTransaction) $this->db->rollBack();
+            if (!$inTransaction)
+                $this->db->rollBack();
             throw $e;
         }
     }
@@ -119,7 +144,8 @@ class CronogramaService
             $this->db->beginTransaction();
 
             $eventoActual = $this->repo->findById($id);
-            if (!$eventoActual) throw new Exception("Evento no encontrado");
+            if (!$eventoActual)
+                throw new Exception("Evento no encontrado");
 
             $this->validarEdicion($eventoActual);
 
@@ -131,14 +157,14 @@ class CronogramaService
 
             if (!empty($eventoActual['solicitud_ot_id'])) {
                 $otId = $eventoActual['solicitud_ot_id'];
-                
+
                 $headerOT = $this->mantencionRepo->getOTHeader($otId);
                 $itemsOT = $this->mantencionRepo->getDetallesOT($otId);
 
                 $itemsFinales = [];
                 $insumosEnCronograma = [];
-
                 $mapaItemsOT = [];
+
                 foreach ($itemsOT as $it) {
                     $mapaItemsOT[$it['id']] = $it;
                 }
@@ -148,16 +174,13 @@ class CronogramaService
                         $insumoId = $itemCron['insumo_id'] ?? $itemCron['id'] ?? null;
                         if ($insumoId) {
                             $insumosEnCronograma[] = $insumoId;
-                            
                             $linea = [
                                 'insumo_id' => $insumoId,
                                 'cantidad' => $itemCron['cantidad']
                             ];
-
                             if (isset($mapaItemsOT[$insumoId])) {
                                 $linea['id_linea'] = $mapaItemsOT[$insumoId]['detalle_id'];
                             }
-                            
                             $itemsFinales[] = $linea;
                         }
                     }
@@ -174,14 +197,17 @@ class CronogramaService
 
                 $otUpdateData = [
                     'activo_id' => $data['activo_id'],
-                    'observacion' => "MANTENCION PROGRAMADA (EDITADO): " . $data['titulo'],
+                    'sub_activo_id' => $data['sub_activo_id'] ?? null, // <-- ESTO FALTABA
+                    'titulo' => "MANTENIMIENTO (EDITADO): " . $data['titulo'],
+                    'observacion' => $data['descripcion'] ?? "Mantenimiento preventivo programado",
                     'origen_tipo' => $headerOT['origen_tipo'] ?? 'Preventiva',
                     'area_negocio' => $headerOT['area_negocio'] ?? 'MANTENCION',
                     'centro_costo_ot' => $headerOT['centro_costo_ot'] ?? '6400',
                     'solicitante_externo' => $headerOT['solicitante_externo'] ?? 'CRONOGRAMA',
+                    'fecha_requerida' => $data['fecha_programada'],
                     'items' => $itemsFinales
                 ];
-                
+
                 $this->mantencionRepo->updateOT($otId, $otUpdateData);
             }
 
@@ -199,7 +225,8 @@ class CronogramaService
             $this->db->beginTransaction();
             $evento = $this->repo->findById($id);
 
-            if (!$evento) throw new Exception("Evento no existe");
+            if (!$evento)
+                throw new Exception("Evento no existe");
             $this->validarEdicion($evento);
 
             if (!empty($evento['solicitud_ot_id'])) {
@@ -213,5 +240,10 @@ class CronogramaService
             $this->db->rollBack();
             throw $e;
         }
+    }
+
+    public function syncByOT($otId, $otData)
+    {
+        $this->repo->syncByOT($otId, $otData);
     }
 }

@@ -91,6 +91,34 @@ const PortalCliente = () => {
         );
     };
 
+    const renderEvidenciaCierre = (evidenciaStr) => {
+        if (!evidenciaStr) return null;
+        let archivos = [];
+        try {
+            archivos = JSON.parse(evidenciaStr);
+            if (!Array.isArray(archivos)) archivos = [evidenciaStr];
+        } catch (e) {
+            archivos = [evidenciaStr];
+        }
+        return (
+            <div className="d-flex gap-2 mt-2 pb-2 overflow-auto custom-scrollbar" style={{ whiteSpace: 'nowrap' }}>
+                {archivos.map((url, idx) => {
+                    const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                    return isVideo ? (
+                        <div key={idx} className="position-relative flex-shrink-0" style={{ width: '80px', height: '60px' }}>
+                            <video src={`/api/${url}`} className="w-100 h-100 rounded border shadow-sm bg-dark object-fit-cover"></video>
+                            <div className="position-absolute top-50 start-50 translate-middle text-white text-opacity-75">
+                                <i className="bi bi-play-circle-fill fs-4"></i>
+                            </div>
+                        </div>
+                    ) : (
+                        <img key={idx} src={`/api/${url}`} alt={`Evidencia Cierre ${idx+1}`} className="rounded border shadow-sm cursor-pointer flex-shrink-0 image-hover" style={{ width: '80px', height: '60px', objectFit: 'cover' }} onClick={() => setEnlargedImage(`/api/${url}`)} />
+                    );
+                })}
+            </div>
+        );
+    };
+
     return (
         <div className="container-fluid p-4 bg-light min-vh-100">
             
@@ -234,6 +262,27 @@ const PortalCliente = () => {
                                         {sol.descripcion}
                                     </div>
                                     {renderEvidencia(sol.imagen_url)}
+
+                                    {/* REPORTE DEL TÉCNICO (SOLO SI ESTÁ TERMINADA) */}
+                                    {parseInt(sol.estado_id) === 5 && (
+                                        <div className="mt-3 p-3 bg-success bg-opacity-10 border border-success border-opacity-25 rounded shadow-sm">
+                                            <h6 className="fw-bold text-success mb-2" style={{ fontSize: '0.85rem' }}><i className="bi bi-check-circle-fill me-2"></i>Reporte de Finalización</h6>
+                                            <div className="small text-dark mb-2">
+                                                <span className="fw-bold me-1">Fecha de Cierre:</span> 
+                                                {sol.fecha_cierre ? new Date(sol.fecha_cierre).toLocaleString() : 'No registrada'}
+                                            </div>
+                                            <div className="small text-dark mb-2">
+                                                <span className="fw-bold d-block mb-1">Detalles del Trabajo:</span>
+                                                <div className="p-2 bg-white rounded border" style={{ fontSize: '0.8rem' }}>{sol.comentarios_finales || 'Sin comentarios del técnico.'}</div>
+                                            </div>
+                                            {sol.evidencia_cierre && (
+                                                <div className="mt-2">
+                                                    <span className="fw-bold small text-dark d-block">Evidencia del Técnico:</span>
+                                                    {renderEvidenciaCierre(sol.evidencia_cierre)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                 </div>
                                 <div className="card-footer bg-light border-top-0 text-muted small d-flex justify-content-between align-items-center py-3 px-4">

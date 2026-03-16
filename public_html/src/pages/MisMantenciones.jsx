@@ -18,7 +18,7 @@ const MisMantenciones = () => {
     const [loading, setLoading] = useState(true);
     const [loadingDetalle, setLoadingDetalle] = useState(false);
     const [guardando, setGuardando] = useState(false);
-    
+
     const [filtroEstado, setFiltroEstado] = useState('pendientes');
     const [busqueda, setBusqueda] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
@@ -27,7 +27,7 @@ const MisMantenciones = () => {
 
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: '' });
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
-    
+
     const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
     const sigCanvas = useRef(null);
     const [enlargedImage, setEnlargedImage] = useState(null);
@@ -77,20 +77,21 @@ const MisMantenciones = () => {
         setSelectedOt(ot);
         setLoadingDetalle(true);
         setActiveTab('info');
-        
-        setDatosEnvio({ 
-            respuestas: [], 
-            firma: null, 
-            comentarios: ot.comentarios_finales || '', 
-            archivos: [] 
+
+        setDatosEnvio({
+            respuestas: [],
+            firma: null,
+            comentarios: ot.comentarios_finales || '',
+            archivos: []
         });
         setEnlargedImage(null);
 
         try {
-            const res = await api.get(`/mis-mantenciones/detalle?id=${ot.id}`);
+            const res = await api.get(`/index.php/mantencion?detalle=true&id=${ot.id}`);
             if (res.data.success) {
+                setSelectedOt({ ...ot, ...res.data.data });
                 setDetallesOt({
-                    insumos: res.data.data.insumos,
+                    insumos: res.data.data.items || [],
                     respuestas: formatearRespuestas(res.data.data.respuestas)
                 });
             }
@@ -131,16 +132,21 @@ const MisMantenciones = () => {
         }
     };
 
-    const otsFiltradas = ots.filter(ot => {
+    const todayStr = new Date().toISOString().split('T')[0]; 
+
+    const otsFiltradasRaw = ots.filter(ot => {
         if (filtroTecnico) {
             const asignados = ot.asignados_ids ? ot.asignados_ids.toString().split(',') : [];
             if (!asignados.includes(filtroTecnico.toString())) return false;
         }
 
+        const reqStr = ot.fecha_requerida ? ot.fecha_requerida.substring(0, 10) : null;
+
         const matchEstado =
-            filtroEstado === 'pendientes' ? (ot.estado_id === 1 || ot.estado_id === 4) :
-                filtroEstado === 'proceso' ? ot.estado_id === 2 :
-                    filtroEstado === 'terminado' ? ot.mi_completado === 1 || ot.estado_id === 5 : true;
+            filtroEstado === 'pendientes' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (!reqStr || reqStr <= todayStr)) :
+            filtroEstado === 'futuras' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (reqStr && reqStr > todayStr)) :
+            filtroEstado === 'proceso' ? ot.estado_id === 2 :
+            filtroEstado === 'terminado' ? (ot.mi_completado === 1 || ot.estado_id === 5) : true;
 
         const texto = busqueda.toLowerCase();
         const matchTexto = ot.activo.toLowerCase().includes(texto) ||
@@ -154,6 +160,27 @@ const MisMantenciones = () => {
 
         return matchEstado && matchTexto && matchFecha && matchUbicacion;
     });
+
+    let otsAMostrar = [];
+
+    if (filtroEstado === 'futuras') {
+        const agrupadas = {};
+        otsFiltradasRaw.forEach(ot => {
+            const key = `${ot.activo_id || 'general'}-${ot.titulo}`;
+            if (!agrupadas[key]) {
+                agrupadas[key] = ot;
+            } else {
+                if (new Date(ot.fecha_requerida) < new Date(agrupadas[key].fecha_requerida)) {
+                    agrupadas[key] = ot;
+                }
+            }
+        });
+        otsAMostrar = Object.values(agrupadas).sort((a, b) => new Date(a.fecha_requerida) - new Date(b.fecha_requerida));
+    } else if (filtroEstado === 'terminado') {
+        otsAMostrar = otsFiltradasRaw.sort((a, b) => new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud));
+    } else {
+        otsAMostrar = otsFiltradasRaw.sort((a, b) => new Date(a.fecha_solicitud) - new Date(b.fecha_solicitud));
+    }
 
     const comprimirImagen = (file) => {
         return new Promise((resolve) => {
@@ -178,7 +205,7 @@ const MisMantenciones = () => {
 
     const handleFileChange = async (e) => {
         const files = Array.from(e.target.files);
-        setGuardando(true); 
+        setGuardando(true);
         const processedFiles = await Promise.all(files.map(async (file) => {
             if (file.type.startsWith('image/')) return await comprimirImagen(file);
             return file;
@@ -205,13 +232,13 @@ const MisMantenciones = () => {
                     return isVideo ? (
                         <video key={idx} src={`/api/${url}`} controls className="rounded border shadow-sm bg-dark" style={{ height: '120px', maxWidth: '100%' }}></video>
                     ) : (
-                        <img 
-                            key={idx} 
-                            src={`/api/${url}`} 
-                            alt={`Evidencia ${idx+1}`} 
-                            className="rounded border shadow-sm cursor-pointer" 
-                            style={{ height: '120px', width: '120px', objectFit: 'cover' }} 
-                            onClick={() => setEnlargedImage(`/api/${url}`)} 
+                        <img
+                            key={idx}
+                            src={`/api/${url}`}
+                            alt={`Evidencia ${idx + 1}`}
+                            className="rounded border shadow-sm cursor-pointer"
+                            style={{ height: '120px', width: '120px', objectFit: 'cover' }}
+                            onClick={() => setEnlargedImage(`/api/${url}`)}
                         />
                     );
                 })}
@@ -257,9 +284,9 @@ const MisMantenciones = () => {
             formData.append('respuestas', JSON.stringify(datosEnvio.respuestas || []));
             if (datosEnvio.firma) formData.append('firma', datosEnvio.firma);
             if (datosEnvio.comentarios) formData.append('comentarios', datosEnvio.comentarios);
-            
+
             formData.append('finalizar', isFinalizar ? 'true' : 'false');
-            
+
             if (datosEnvio.archivos && datosEnvio.archivos.length > 0) {
                 datosEnvio.archivos.forEach((file, index) => {
                     formData.append(`evidencia_${index}`, file);
@@ -272,7 +299,7 @@ const MisMantenciones = () => {
 
             if (res.data.success) {
                 setMsg({ show: true, title: isFinalizar ? '¡Trabajo Finalizado!' : 'Avance Guardado', text: 'Operación registrada correctamente.', type: 'success' });
-                
+
                 setDatosEnvio(prev => ({ ...prev, archivos: [] }));
 
                 if (isFinalizar) {
@@ -305,27 +332,27 @@ const MisMantenciones = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column bg-light position-relative">
-            
+
             {enlargedImage && (
-                <div 
-                    className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
-                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999 }} 
+                <div
+                    className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999 }}
                     onClick={() => setEnlargedImage(null)}
                 >
                     <div className="position-relative text-center p-3" style={{ maxWidth: '100%', maxHeight: '100%' }}>
-                        <button 
-                            className="btn btn-light position-absolute top-0 end-0 m-4 rounded-circle shadow-sm d-flex justify-content-center align-items-center" 
+                        <button
+                            className="btn btn-light position-absolute top-0 end-0 m-4 rounded-circle shadow-sm d-flex justify-content-center align-items-center"
                             style={{ zIndex: 10000, width: '45px', height: '45px', transform: 'translate(25%, -25%)' }}
                             onClick={() => setEnlargedImage(null)}
                         >
                             <i className="bi bi-x-lg text-dark fw-bold fs-5"></i>
                         </button>
-                        <img 
-                            src={enlargedImage} 
-                            alt="Ampliación" 
-                            className="img-fluid rounded shadow-lg" 
+                        <img
+                            src={enlargedImage}
+                            alt="Ampliación"
+                            className="img-fluid rounded shadow-lg"
                             style={{ maxHeight: '90vh', maxWidth: '100%', objectFit: 'contain' }}
-                            onClick={(e) => e.stopPropagation()} 
+                            onClick={(e) => e.stopPropagation()}
                         />
                     </div>
                 </div>
@@ -336,7 +363,7 @@ const MisMantenciones = () => {
 
             <div className="row g-0 flex-grow-1" style={{ minHeight: 0 }}>
                 <div className={`col-12 col-md-4 col-lg-3 border-end bg-white d-flex flex-column shadow-sm z-1 ${selectedOt ? 'd-none d-md-flex' : 'd-flex'}`}>
-                    
+
                     {esJefe && (
                         <div className="p-3 bg-light border-bottom" style={{ maxHeight: '35vh', overflowY: 'auto' }}>
                             <div className="d-flex justify-content-between align-items-center mb-2 sticky-top bg-light pt-1 pb-2" style={{ zIndex: 5 }}>
@@ -388,26 +415,17 @@ const MisMantenciones = () => {
                         </div>
                     )}
 
-                    <div className="p-4 border-bottom bg-white flex-shrink-0">
-                        <h5 className="fw-bold mb-3 text-dark d-flex align-items-center">
-                            <i className="bi bi-clipboard-data me-3 fs-4 text-primary"></i>
-                            {filtroTecnico ? 'Tareas de Usuario' : 'Listado General'}
-                        </h5>
-                        
+                    <div className="p-3 border-bottom bg-white flex-shrink-0">
                         <div className="input-group input-group-sm mb-2 shadow-sm">
                             <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
                             <input type="text" className="form-control border-start-0 ps-0" placeholder="Título, #OT o Solicitante..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
                         </div>
 
-                        <div className="input-group input-group-sm mb-3 shadow-sm">
-                            <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-geo-alt"></i></span>
-                            <input type="text" className="form-control border-start-0 ps-0" placeholder="Filtrar por Destino o Ubicación..." value={filtroUbicacion} onChange={(e) => setFiltroUbicacion(e.target.value)} />
-                        </div>
-
-                        <div className="btn-group w-100 shadow-sm" role="group">
-                            <button className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('pendientes')}>Pendientes</button>
+                        <div className="btn-group w-100 shadow-sm mt-2" role="group">
+                            <button className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('pendientes')}>Hoy/Atrás</button>
+                            <button className={`btn btn-sm ${filtroEstado === 'futuras' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('futuras')}>Programadas</button>
                             <button className={`btn btn-sm ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('proceso')}>En Proceso</button>
-                            <button className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('terminado')}>Terminado</button>
+                            <button className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('terminado')}>Historial</button>
                         </div>
                     </div>
 
@@ -415,26 +433,61 @@ const MisMantenciones = () => {
                         {loading ? (
                             <div className="p-5 text-center"><span className="spinner-border text-primary"></span></div>
                         ) : (
-                            otsFiltradas.length === 0 ? (
-                                <div className="p-5 text-center text-muted small">No se encontraron tareas con estos filtros.</div>
+                            otsAMostrar.length === 0 ? (
+                                <div className="p-5 text-center text-muted small">No se encontraron tareas en esta categoría.</div>
                             ) : (
-                                otsFiltradas.map(ot => {
+                                otsAMostrar.map(ot => {
                                     const isActive = selectedOt?.id === ot.id;
+                                    const requierePermiso = Number(ot.requiere_permiso) === 1;
+
+                                    // LÓGICA DE BADGE INTELIGENTE "PROGRAMADA"
+                                    const reqStr = ot.fecha_requerida ? ot.fecha_requerida.substring(0, 10) : null;
+                                    const isFutura = reqStr && reqStr > todayStr;
+                                    
+                                    let estadoTexto = ot.estado;
+                                    let badgeClass = 'bg-info text-dark bg-opacity-25 border border-info';
+                                    
+                                    if (isFutura && parseInt(ot.estado_id) === 1) {
+                                        estadoTexto = 'PROGRAMADA';
+                                        badgeClass = 'bg-primary text-white border border-primary shadow-sm';
+                                    }
+
                                     return (
                                         <button key={ot.id}
                                             className={`card w-100 mb-2 border-0 shadow-sm text-start card-hover transition-all ${isActive ? 'border-start border-5 border-primary bg-white' : 'bg-white'}`}
                                             onClick={() => handleSelectOt(ot)}>
-                                            <div className="card-body p-3">
-                                                <div className="d-flex justify-content-between mb-1">
-                                                    <span className={`badge ${isActive ? 'bg-primary' : 'bg-secondary'} bg-opacity-25 text-dark fw-bold`}>OT #{ot.id}</span>
-                                                    <small className="text-muted">{new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
+                                            <div className="card-body p-3 position-relative">
+                                                <div className="d-flex justify-content-between mb-1 align-items-center">
+                                                    <div>
+                                                        <span className={`badge ${isActive ? 'bg-primary' : 'bg-secondary'} bg-opacity-25 text-dark fw-bold`}>OT #{ot.id}</span>
+                                                        {requierePermiso && (
+                                                            <span className="badge bg-danger ms-1 shadow-sm blink-badge" style={{ fontSize: '0.65rem' }}>
+                                                                <i className="bi bi-shield-exclamation me-1"></i>RIESGO
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-end">
+                                                        {isFutura ? (
+                                                            <span className="badge bg-primary text-white shadow-sm" style={{ fontSize: '0.7rem' }}>
+                                                                <i className="bi bi-calendar-event me-1"></i>Prog: {new Date(ot.fecha_requerida.substring(0, 10) + 'T00:00:00').toLocaleDateString()}
+                                                            </span>
+                                                        ) : (
+                                                            <small className="text-muted" style={{ fontSize: '0.7rem' }}>Creada: {new Date(ot.fecha_solicitud).toLocaleDateString()}</small>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                
-                                                {/* TÍTULO DESTACADO */}
-                                                <h6 className="mb-1 fw-bold text-primary text-truncate">{ot.titulo || 'Sin Título'}</h6>
-                                                
-                                                <div className="fw-bold text-dark text-truncate small mb-1"><i className="bi bi-gear-fill me-1 text-muted"></i>{ot.activo}</div>
-                                                
+
+                                                <h6 className="mb-1 fw-bold text-primary text-truncate mt-1">{ot.titulo || 'Sin Título'}</h6>
+
+                                                <div className="fw-bold text-dark text-truncate small mb-1">
+                                                    <i className="bi bi-gear-fill me-1 text-muted"></i>{ot.activo}
+                                                </div>
+                                                {ot.sub_activo_nombre && (
+                                                    <div className="small text-primary text-truncate mb-1 fw-bold">
+                                                        <i className="bi bi-arrow-return-right me-1"></i>{ot.sub_activo_nombre}
+                                                    </div>
+                                                )}
+
                                                 {ot.ubicacion && (
                                                     <div className="small text-danger text-truncate mb-1"><i className="bi bi-geo-alt-fill me-1"></i>{ot.ubicacion}</div>
                                                 )}
@@ -442,13 +495,7 @@ const MisMantenciones = () => {
                                                 <div className="small text-muted text-truncate mb-1">
                                                     <i className="bi bi-person-fill me-1"></i>Solicita: {ot.solicitante_nombre}
                                                 </div>
-                                                {esJefe && (
-                                                    <div className={`small text-truncate fst-italic mb-2 ${ot.asignados_nombres ? 'text-primary' : 'text-muted opacity-75'}`}>
-                                                        <i className={`bi ${ot.asignados_nombres ? 'bi-tools' : 'bi-exclamation-circle'} me-1`}></i>
-                                                        {ot.asignados_nombres ? `Asignado: ${ot.asignados_nombres}` : 'Sin técnicos'}
-                                                    </div>
-                                                )}
-                                                <span className="badge bg-info text-dark bg-opacity-25 border border-info fw-normal mt-1">{ot.estado}</span>
+                                                <span className={`badge ${badgeClass} fw-bold mt-1`} style={{ letterSpacing: '0.5px' }}>{estadoTexto}</span>
                                             </div>
                                         </button>
                                     );
@@ -468,21 +515,23 @@ const MisMantenciones = () => {
                                             <i className="bi bi-arrow-left display-6"></i>
                                         </button>
                                         <div className="text-truncate">
-                                            {/* TÍTULO DESTACADO EN EL HEADER */}
                                             <h4 className="fw-bold mb-0 text-truncate text-primary">{selectedOt.titulo || 'Sin Título'}</h4>
-                                            
-                                            <div className="text-dark fw-bold small d-flex align-items-center mt-1">
-                                                <i className="bi bi-gear-wide-connected me-1"></i> {selectedOt.activo}
-                                                <span className="mx-2 text-muted">|</span>
-                                                <i className="bi bi-upc-scan me-1 text-muted"></i> {selectedOt.codigo_interno}
+
+                                            <div className="text-dark fw-bold small d-flex flex-wrap align-items-center mt-1 gap-2">
+                                                <span><i className="bi bi-gear-wide-connected me-1"></i> {selectedOt.activo}</span>
+                                                {selectedOt.sub_activo_nombre && (
+                                                    <span className="text-primary bg-primary bg-opacity-10 px-2 py-1 rounded">
+                                                        <i className="bi bi-diagram-3-fill me-1"></i> ↳ {selectedOt.sub_activo_nombre}
+                                                    </span>
+                                                )}
+                                                <span className="text-muted"><i className="bi bi-upc-scan me-1"></i> {selectedOt.codigo_interno}</span>
                                             </div>
                                             <div className="text-muted small mt-1">
                                                 <i className="bi bi-person-fill me-1"></i> Solicita: {selectedOt.solicitante_nombre} {selectedOt.solicitante_apellido}
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    {/* LÓGICA DE BOTONES EXCLUSIVOS */}
+
                                     <div className="ps-3 d-flex gap-2">
                                         {esServicio ? (
                                             <>
@@ -519,8 +568,21 @@ const MisMantenciones = () => {
                                         )}
                                     </div>
                                 </div>
+                                {Number(selectedOt.requiere_permiso) === 1 && (
+                                    <div className="bg-warning bg-opacity-25 border-top border-bottom border-warning p-2 d-flex align-items-center px-4">
+                                        <i className="bi bi-exclamation-triangle-fill text-danger fs-4 me-3 blink-badge"></i>
+                                        <div>
+                                            <div className="fw-bold text-danger text-uppercase mb-0" style={{ fontSize: '0.85rem' }}>
+                                                Atención: Permiso de {selectedOt.tipo_permiso_nombre || 'Trabajo Seguro'} Requerido
+                                            </div>
+                                            <div className="small text-dark fw-medium">
+                                                Debes gestionar la firma con Prevención de Riesgos antes de comenzar la tarea.
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
-                                <div className="px-3 px-md-4">
+                                <div className="px-3 px-md-4 mt-2 mb-2">
                                     <ul className="nav nav-pills nav-fill gap-2 p-1 bg-light rounded-pill" role="tablist" style={{ maxWidth: '600px' }}>
                                         <li className="nav-item">
                                             <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 ${activeTab === 'info' ? 'active shadow-sm' : 'text-muted'}`}
@@ -555,28 +617,28 @@ const MisMantenciones = () => {
                                     </div>
                                 ) : (
                                     <div className="bg-white rounded-4 shadow-sm p-4 mx-auto" style={{ maxWidth: '1000px', minHeight: '100%' }}>
-                                        
+
                                         <div className={activeTab === 'info' ? 'd-block' : 'd-none'}>
                                             <div className="mb-5 p-4 bg-light rounded-4 border shadow-sm">
                                                 <h6 className="fw-bold text-dark text-uppercase mb-3">
                                                     <i className="bi bi-gear-fill text-primary me-2"></i> Cambiar Mi Estado
                                                 </h6>
                                                 <div className="d-flex flex-wrap gap-2">
-                                                    <button 
+                                                    <button
                                                         className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 1 ? 'btn-warning text-dark border-warning' : 'btn-white border text-muted'}`}
                                                         onClick={() => handleCambiarEstadoManual(1)}
                                                         disabled={guardando || parseInt(selectedOt.estado_id) === 1 || parseInt(selectedOt.estado_id) === 5}
                                                     >
                                                         <i className="bi bi-hourglass-split me-2"></i>Pendiente
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 2 ? 'btn-primary border-primary' : 'btn-white border text-muted'}`}
                                                         onClick={() => handleCambiarEstadoManual(2)}
                                                         disabled={guardando || parseInt(selectedOt.estado_id) === 2 || parseInt(selectedOt.estado_id) === 5}
                                                     >
                                                         <i className="bi bi-tools me-2"></i>En Proceso
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 4 ? 'btn-danger border-danger' : 'btn-white border text-muted'}`}
                                                         onClick={() => handleCambiarEstadoManual(4)}
                                                         disabled={guardando || parseInt(selectedOt.estado_id) === 4 || parseInt(selectedOt.estado_id) === 5}
@@ -604,7 +666,7 @@ const MisMantenciones = () => {
                                                     <div className="mb-4">
                                                         <label className="text-muted small fw-bold text-uppercase mb-1">Descripción del Problema</label>
                                                         <div className="p-3 bg-light rounded border">
-                                                            {selectedOt.descripcion_solicitud || 'Sin descripción proporcionada.'}
+                                                            {selectedOt.descripcion_solicitud || selectedOt.descripcion_trabajo || 'Sin descripción proporcionada.'}
                                                         </div>
                                                     </div>
                                                     <div className="mb-4">
@@ -614,6 +676,12 @@ const MisMantenciones = () => {
                                                             <span className="fs-6 fw-medium">{selectedOt.ubicacion || 'No especificada'}</span>
                                                         </div>
                                                     </div>
+                                                    {selectedOt.descripcion_permiso && (
+                                                        <div className="mb-4 p-3 bg-warning bg-opacity-10 border border-warning rounded">
+                                                            <label className="text-warning small fw-bold text-uppercase mb-1"><i className="bi bi-shield-exclamation me-1"></i>Nota de Prevención</label>
+                                                            <div className="text-dark">{selectedOt.descripcion_permiso}</div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="col-md-5">
                                                     <label className="text-muted small fw-bold text-uppercase mb-1">Evidencia (Cliente)</label>
@@ -623,7 +691,6 @@ const MisMantenciones = () => {
                                         </div>
 
                                         <div className={activeTab === 'checklist' ? 'd-block' : 'd-none'}>
-                                            {/* RENDERIZAMOS SIEMPRE QUE ESTEMOS EN LA PESTAÑA PARA PREVENIR EL BUG DE CANVAS 0x0 */}
                                             {activeTab === 'checklist' && (
                                                 selectedOt.plantilla_json ? (
                                                     <ChecklistRenderer
@@ -640,9 +707,9 @@ const MisMantenciones = () => {
 
                                                         <div className="mb-4">
                                                             <label className="form-label fw-bold text-muted small text-uppercase">1. Detalles del Trabajo Realizado</label>
-                                                            <textarea 
-                                                                className="form-control bg-light" 
-                                                                rows="4" 
+                                                            <textarea
+                                                                className="form-control bg-light"
+                                                                rows="4"
                                                                 placeholder="Describa aquí lo que se reparó, cambió o solucionó..."
                                                                 value={datosEnvio.comentarios || ''}
                                                                 onChange={(e) => setDatosEnvio({ ...datosEnvio, comentarios: e.target.value })}
@@ -651,7 +718,7 @@ const MisMantenciones = () => {
 
                                                         <div className="mb-4">
                                                             <label className="form-label fw-bold text-muted small text-uppercase">2. Evidencia (Fotos / Videos)</label>
-                                                            
+
                                                             {selectedOt.evidencia_cierre && (
                                                                 <div className="mb-3 p-3 bg-light rounded border border-success border-opacity-25">
                                                                     <span className="small text-success d-block mb-2 fw-bold"><i className="bi bi-check-circle-fill me-1"></i>Archivos Guardados Anteriormente:</span>
@@ -659,29 +726,28 @@ const MisMantenciones = () => {
                                                                 </div>
                                                             )}
 
-                                                            <input 
-                                                                type="file" 
-                                                                className="form-control mb-2" 
-                                                                accept="image/*,video/*" 
-                                                                capture="environment" 
-                                                                multiple 
-                                                                onChange={handleFileChange} 
+                                                            <input
+                                                                type="file"
+                                                                className="form-control mb-2"
+                                                                accept="image/*,video/*"
+                                                                capture="environment"
+                                                                multiple
+                                                                onChange={handleFileChange}
                                                             />
                                                             {datosEnvio.archivos && datosEnvio.archivos.length > 0 && (
                                                                 <div className="d-flex flex-wrap gap-2 mt-2">
                                                                     {datosEnvio.archivos.map((file, idx) => (
                                                                         <span key={idx} className="badge bg-secondary d-flex align-items-center gap-2 p-2 shadow-sm">
-                                                                            <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i> 
-                                                                            {file.name.substring(0,10)}... 
-                                                                            <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-2" 
-                                                                               onClick={() => setDatosEnvio(prev => ({...prev, archivos: prev.archivos.filter((_, i) => i !== idx)}))}></i>
+                                                                            <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i>
+                                                                            {file.name.substring(0, 10)}...
+                                                                            <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-2"
+                                                                                onClick={() => setDatosEnvio(prev => ({ ...prev, archivos: prev.archivos.filter((_, i) => i !== idx) }))}></i>
                                                                         </span>
                                                                     ))}
                                                                 </div>
                                                             )}
                                                         </div>
 
-                                                        {/* OCULTAR FIRMA SI ES SERVICIO */}
                                                         {!esServicio && (
                                                             <div className="mb-2">
                                                                 <div className="d-flex justify-content-between align-items-end mb-2">
@@ -694,7 +760,7 @@ const MisMantenciones = () => {
                                                                     </button>
                                                                 </div>
                                                                 <div className="border border-2 border-primary border-opacity-25 bg-white rounded-3 shadow-sm" style={{ height: '200px' }}>
-                                                                    <SignatureCanvas 
+                                                                    <SignatureCanvas
                                                                         ref={sigCanvas}
                                                                         canvasProps={{ className: 'w-100 h-100' }}
                                                                         onEnd={() => setDatosEnvio({ ...datosEnvio, firma: sigCanvas.current.getTrimmedCanvas().toDataURL('image/png') })}
@@ -789,6 +855,14 @@ styles.innerHTML = `
     .card-hover:hover { transform: translateX(5px); background-color: #f8f9fa !important; cursor: pointer; }
     .grayscale { filter: grayscale(100%); }
     .transition-all { transition: all 0.3s ease; }
+    @keyframes blink-animation {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+    }
+    .blink-badge {
+    animation: blink-animation 1.5s infinite;
+    }
 `;
 document.head.appendChild(styles);
 
