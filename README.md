@@ -8,19 +8,25 @@ Este proyecto garantiza la trazabilidad operativa, desde que un cliente solicita
 
 ## ✨ Características Principales
 
-* **📋 Gestión de Órdenes de Trabajo (OTs):** * Ciclo de vida completo: Creación, Asignación, En Proceso, Pausada y Finalizada.
+* **📋 Gestión de Órdenes de Trabajo (OTs):**
+    * Ciclo de vida completo: Creación, Asignación, En Proceso, Pausada y Finalizada.
     * Panel dedicado para Técnicos (`Mis Mantenciones`) con control de stock personal y adjunto de evidencias (fotos/videos).
     * Cierre de OT con firma digital y generación automática de reportes en PDF.
-* **📅 Mantenimiento Preventivo (Cronograma):** * Programación y proyección inteligente de tareas periódicas a futuro (meses o años) sin saturar las vistas del día a día.
-* **📦 Bodega e Inventario:** * Control estricto de stock de insumos.
+* **📅 Mantenimiento Preventivo (Cronograma):**
+   * Programación y proyección inteligente de tareas periódicas a futuro (meses o años) sin saturar las vistas del día a día.
+* **📦 Bodega e Inventario:**
+    * Control estricto de stock de insumos.
     * Entregas de material al personal (Técnicos) y validación de déficit.
     * Asignación de "Kits de Mantenimiento" a Máquinas/Activos y Sub-activos.
-* **🛒 Módulo de Compras:** * Creación de Órdenes de Compra (OC) manuales o automáticas basadas en el déficit de stock.
+* **🛒 Módulo de Compras:**
+    * Creación de Órdenes de Compra (OC) manuales o automáticas basadas en el déficit de stock.
     * Recepción de compras (Total o Parcial) con actualización automática del inventario.
     * Gestión de facturas/documentos y exportación.
-* **👥 Portal Cliente:** * Interfaz exclusiva para que los solicitantes creen tickets y sigan el estado de sus requerimientos en tiempo real.
+* **👥 Portal Cliente:**
+    * Interfaz exclusiva para que los solicitantes creen tickets y sigan el estado de sus requerimientos en tiempo real.
     * Acceso al reporte final del técnico con fecha de cierre y evidencias multimedia.
-* **🔒 Roles y Permisos Dinámicos:** * Control de acceso granular (Administrador, Jefe de Mantención, Técnico, Bodeguero, Cliente, etc.). Por ejemplo: modo "solo lectura" para técnicos al visualizar activos.
+* **🔒 Roles y Permisos Dinámicos:**
+    * Control de acceso granular (Administrador, Jefe de Mantención, Técnico, Bodeguero, Cliente, etc.). Por ejemplo: modo "solo lectura" para técnicos al visualizar activos.
 
 ---
 
