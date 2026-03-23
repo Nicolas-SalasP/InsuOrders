@@ -235,7 +235,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         return nombres.join(', ');
     };
 
-    // --- NUEVO: MANEJADOR DE SELECCIÓN INTELIGENTE DE MÁQUINA ---
+    // MANEJADOR DE SELECCIÓN INTELIGENTE DE MÁQUINA
     const handleSeleccionarActivo = async (act) => {
         const id = act.id;
         setActivoId(id);
@@ -251,8 +251,8 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                     setConfirmModal({
                         show: true,
                         title: "Kit de Mantención Detectado",
-                        message: `Esta máquina tiene un kit con ${res.data.data.length} insumos. ¿Deseas cargarlos?`,
-                        action: () => cargarKitEnItems(res.data.data)
+                        message: `Esta máquina tiene un kit con ${res.data.data.length} insumos base. ¿Deseas cargarlos?`,
+                        action: () => cargarKitEnItems(res.data.data, false)
                     });
                 } else {
                     setItems([]);
@@ -274,8 +274,8 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                     setConfirmModal({
                         show: true,
                         title: "Kit Específico de Componente",
-                        message: `Este componente específico tiene un kit con ${res.data.data.length} repuestos. ¿Deseas cargarlos y reemplazar los actuales?`,
-                        action: () => cargarKitEnItems(res.data.data)
+                        message: `Este componente tiene un kit con ${res.data.data.length} repuestos. ¿Deseas agregarlos a la orden actual?`,
+                        action: () => cargarKitEnItems(res.data.data, true)
                     });
                 }
             } catch (e) {
@@ -285,20 +285,30 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     };
 
     // FUNCIÓN PARA CARGAR LOS ITEMS DEL KIT AL STATE
-    const cargarKitEnItems = (dataKit) => {
+    const cargarKitEnItems = (dataKit, append = false) => {
         const kitItems = dataKit.map(k => ({
             id_producto: k.insumo_id || k.id,
             id_linea: null,
-            nombre: k.nombre_insumo || k.nombre,
-            codigo_sku: k.codigo_sku,
+            nombre: k.insumo_nombre || k.nombre_insumo || k.nombre || 'Insumo sin nombre',
+            codigo_sku: k.insumo_sku || k.codigo_sku || 'N/A',
             stock_actual: parseFloat(k.stock_actual || 0),
-            unidad_medida: k.unidad_medida,
-            cantidad: parseFloat(k.cantidad || 1),
+            unidad_medida: k.unidad_medida || 'UN',
+            cantidad: parseFloat(k.cantidad || k.cantidad_sugerida || 1),
             estado_linea: 'NUEVO',
             origen_nombre: k.origen_nombre,
             origen_codigo: k.origen_codigo
         }));
-        setItems(kitItems);
+
+        if (append) {
+            setItems(prev => {
+                const nuevosNoDuplicados = kitItems.filter(nk => 
+                    !prev.some(p => String(p.id_producto) === String(nk.id_producto))
+                );
+                return [...prev, ...nuevosNoDuplicados];
+            });
+        } else {
+            setItems(kitItems);
+        }
         setConfirmModal({ show: false });
     };
 
@@ -844,7 +854,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                                     <i className="bi bi-diagram-2 text-primary me-1"></i>Ref: {item.origen_codigo || item.origen_nombre}
                                                                 </small>
                                                             )}
-                                                            <small className="text-muted font-monospace">{item.codigo_sku}</small>
+                                                            <small className="text-muted font-monospace">{item.codigo_sku || 'S/SKU'}</small>
                                                             {item.unidad_medida && <span className="badge bg-light text-dark border ms-2">{item.unidad_medida}</span>}
                                                         </td>
                                                         <td>

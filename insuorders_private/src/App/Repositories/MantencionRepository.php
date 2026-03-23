@@ -294,13 +294,13 @@ class MantencionRepository
                 FROM activos_insumos ai 
                 JOIN insumos i ON ai.insumo_id = i.id 
                 JOIN activos a ON ai.activo_id = a.id
-                WHERE ai.activo_id = :id1 
-                OR ai.activo_id IN (SELECT id FROM activos WHERE activo_padre_id = :id2)";
+                WHERE ai.activo_id = :id";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id1' => $activoId, ':id2' => $activoId]);
+        $stmt->execute([':id' => $activoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
     public function addInsumoToKit($activoId, $insumoId, $cant)
     {
         $check = $this->db->prepare("SELECT id FROM activos_insumos WHERE activo_id=:a AND insumo_id=:i");
