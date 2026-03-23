@@ -375,6 +375,13 @@ try {
                 (new OrdenCompraController())->omitir();
             }
             break;
+        
+        case 'compras/cerrar':
+            AuthMiddleware::verify('compras_recepcionar');
+            if ($method === 'POST') {
+                (new OrdenCompraController())->cerrarManualmente();
+            }
+            break;
 
         // --- PROVEEDORES ---
         case 'proveedores':

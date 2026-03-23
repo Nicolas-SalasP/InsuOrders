@@ -232,4 +232,25 @@ class OrdenCompraController
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
+
+    public function cerrarManualmente()
+    {
+        AuthMiddleware::verify();
+        $input = json_decode(file_get_contents("php://input"), true);
+        $id = $input['id'] ?? null;
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID no proporcionado']);
+            return;
+        }
+
+        try {
+            $this->service->cerrarOrdenParcial($id);
+            echo json_encode(['success' => true, 'message' => 'Orden cerrada por recepción parcial exitosamente.']);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

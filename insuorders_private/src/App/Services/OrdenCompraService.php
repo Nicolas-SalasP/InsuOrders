@@ -103,7 +103,8 @@ public function crearOrden($data, $usuarioId)
                     'insumo_id' => $insumoId,
                     'cantidad' => $item['cantidad'],
                     'precio' => $item['precio'],
-                    'total' => $subtotal
+                    'total' => $subtotal,
+                    'nota_linea' => $item['nota_linea'] ?? null
                 ];
             }
 
@@ -255,5 +256,20 @@ public function crearOrden($data, $usuarioId)
         }
         
         return $resultado;
+    }
+
+    public function cerrarOrdenParcial($id)
+    {
+        $orden = $this->repo->getById($id);
+        if (!$orden) {
+            throw new Exception("Orden no encontrada.");
+        }
+        
+        $estadoActual = $orden['cabecera']['estado_id'];
+        if (in_array($estadoActual, [4, 5, 6])) {
+            throw new Exception("La orden ya se encuentra en un estado inmutable (Cerrada o Anulada).");
+        }
+        
+        $this->repo->forzarCierre($id);
     }
 }

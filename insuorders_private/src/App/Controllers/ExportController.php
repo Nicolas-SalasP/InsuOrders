@@ -402,7 +402,7 @@ class ExportController
         $c = $data['cabecera'];
 
         $sheet->setCellValue('A1', 'ORDEN DE COMPRA #' . $id);
-        $sheet->mergeCells('A1:E1');
+        $sheet->mergeCells('A1:F1');
         $sheet->getStyle('A1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 16, 'color' => ['argb' => 'FF1F4E78']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
@@ -418,13 +418,13 @@ class ExportController
         $sheet->setCellValue('E4', $c['estado_nombre'] ?? 'N/A');
 
         $row = 7;
-        $headers = ['SKU', 'Insumo', 'Cantidad', 'Precio Unit.', 'Total'];
+        $headers = ['SKU', 'Insumo', 'Nota / Detalle', 'Cantidad', 'Precio Unit.', 'Total'];
         $col = 'A';
         foreach ($headers as $h) {
             $sheet->setCellValue($col . $row, $h);
             $col++;
         }
-        $sheet->getStyle("A$row:E$row")->applyFromArray([
+        $sheet->getStyle("A$row:F$row")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['argb' => Color::COLOR_WHITE]],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E78']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
@@ -434,23 +434,24 @@ class ExportController
         foreach ($data['detalles'] as $d) {
             $sheet->setCellValue("A$row", $d['codigo_sku']);
             $sheet->setCellValue("B$row", $d['insumo']);
-            $sheet->setCellValue("C$row", $d['cantidad_solicitada']);
-            $sheet->setCellValue("D$row", $d['precio_unitario']);
-            $sheet->setCellValue("E$row", $d['total_linea']);
+            $sheet->setCellValue("C$row", $d['nota_linea'] ?? '');
+            $sheet->setCellValue("D$row", $d['cantidad_solicitada']);
+            $sheet->setCellValue("E$row", $d['precio_unitario']);
+            $sheet->setCellValue("F$row", $d['total_linea']);
             $row++;
         }
 
-        $sheet->setCellValue("D$row", 'TOTAL NETO:');
-        $sheet->setCellValue("E$row", $c['monto_neto']);
+        $sheet->setCellValue("E$row", 'TOTAL NETO:');
+        $sheet->setCellValue("F$row", $c['monto_neto']);
         $row++;
-        $sheet->setCellValue("D$row", 'IVA:');
-        $sheet->setCellValue("E$row", $c['impuesto'] ?? $c['monto_impuesto'] ?? 0);
+        $sheet->setCellValue("E$row", 'IVA:');
+        $sheet->setCellValue("F$row", $c['impuesto'] ?? $c['monto_impuesto'] ?? 0);
         $row++;
-        $sheet->setCellValue("D$row", 'TOTAL:');
-        $sheet->setCellValue("E$row", $c['monto_total']);
-        $sheet->getStyle("D" . ($row - 2) . ":E$row")->getFont()->setBold(true);
+        $sheet->setCellValue("E$row", 'TOTAL:');
+        $sheet->setCellValue("F$row", $c['monto_total']);
+        $sheet->getStyle("E" . ($row - 2) . ":F$row")->getFont()->setBold(true);
 
-        foreach (range('A', 'E') as $col)
+        foreach (range('A', 'F') as $col)
             $sheet->getColumnDimension($col)->setAutoSize(true);
     }
 
