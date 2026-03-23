@@ -258,14 +258,12 @@ const MisMantenciones = () => {
             const faltantes = detallesOt.insumos.filter(i => parseFloat(i.stock_usuario || 0) < parseFloat(i.cantidad));
 
             if (faltantes.length > 0) {
-                const itemsLista = faltantes.map(f =>
-                    `• ${f.nombre} (Pide: ${parseFloat(f.cantidad)}, Tienes: ${parseFloat(f.stock_usuario || 0)})`
-                ).join('\n');
+                const cantidadInsumosFaltantes = faltantes.length;
 
                 setConfirm({
                     show: true,
                     title: "⚠️ Stock Insuficiente",
-                    message: `No tienes suficiente stock en "Mis Insumos" para cubrir esta solicitud:\n\n${itemsLista}\n\n¿Estás seguro de finalizar? El sistema registrará el consumo de todas formas.`,
+                    message: `No tienes suficiente stock en "Mis Insumos" para cubrir esta solicitud.\n\nSe detectaron ${cantidadInsumosFaltantes} tipo(s) de repuesto(s) con stock pendiente.\n\n¿Estás seguro de finalizar? El sistema registrará el consumo de todas formas.`,
                     action: () => procesarGuardado(true)
                 });
                 return;
@@ -273,7 +271,6 @@ const MisMantenciones = () => {
         }
         procesarGuardado(isFinalizar);
     };
-
     const procesarGuardado = async (isFinalizar) => {
         setConfirm({ ...confirm, show: false });
         setGuardando(true);
