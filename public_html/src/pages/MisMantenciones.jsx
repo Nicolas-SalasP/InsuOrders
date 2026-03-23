@@ -105,7 +105,7 @@ const MisMantenciones = () => {
 
     const formatearRespuestas = (lista) => {
         const mapa = {};
-        if (lista) {
+        if (lista && Array.isArray(lista)) {
             lista.forEach(r => {
                 mapa[r.item_key] = { valor: r.valor, observacion: r.observacion };
             });
@@ -132,7 +132,7 @@ const MisMantenciones = () => {
         }
     };
 
-    const todayStr = new Date().toISOString().split('T')[0]; 
+    const todayStr = new Date().toISOString().split('T')[0];
 
     const otsFiltradasRaw = ots.filter(ot => {
         if (filtroTecnico) {
@@ -144,9 +144,9 @@ const MisMantenciones = () => {
 
         const matchEstado =
             filtroEstado === 'pendientes' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (!reqStr || reqStr <= todayStr)) :
-            filtroEstado === 'futuras' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (reqStr && reqStr > todayStr)) :
-            filtroEstado === 'proceso' ? ot.estado_id === 2 :
-            filtroEstado === 'terminado' ? (ot.mi_completado === 1 || ot.estado_id === 5) : true;
+                filtroEstado === 'futuras' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (reqStr && reqStr > todayStr)) :
+                    filtroEstado === 'proceso' ? ot.estado_id === 2 :
+                        filtroEstado === 'terminado' ? (ot.mi_completado === 1 || ot.estado_id === 5) : true;
 
         const texto = busqueda.toLowerCase();
         const matchTexto = ot.activo.toLowerCase().includes(texto) ||
@@ -228,6 +228,7 @@ const MisMantenciones = () => {
         return (
             <div className="d-flex flex-wrap gap-2 mt-1">
                 {archivos.map((url, idx) => {
+                    if (!url || typeof url !== 'string' || url === 'null') return null;     
                     const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
                     return isVideo ? (
                         <video key={idx} src={`/api/${url}`} controls className="rounded border shadow-sm bg-dark" style={{ height: '120px', maxWidth: '100%' }}></video>
@@ -326,6 +327,17 @@ const MisMantenciones = () => {
             </div>
         );
     }
+
+    const getPlantillaSegura = (plantillaStr) => {
+        if (!plantillaStr) return null;
+        if (typeof plantillaStr !== 'string') return plantillaStr;
+        try {
+            return JSON.parse(plantillaStr);
+        } catch (e) {
+            console.error("Plantilla JSON corrupta ignorada:", e);
+            return null;
+        }
+    };
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column bg-light position-relative">
@@ -440,10 +452,10 @@ const MisMantenciones = () => {
                                     // LÓGICA DE BADGE INTELIGENTE "PROGRAMADA"
                                     const reqStr = ot.fecha_requerida ? ot.fecha_requerida.substring(0, 10) : null;
                                     const isFutura = reqStr && reqStr > todayStr;
-                                    
+
                                     let estadoTexto = ot.estado;
                                     let badgeClass = 'bg-info text-dark bg-opacity-25 border border-info';
-                                    
+
                                     if (isFutura && parseInt(ot.estado_id) === 1) {
                                         estadoTexto = 'PROGRAMADA';
                                         badgeClass = 'bg-primary text-white border border-primary shadow-sm';
@@ -691,7 +703,7 @@ const MisMantenciones = () => {
                                             {activeTab === 'checklist' && (
                                                 selectedOt.plantilla_json ? (
                                                     <ChecklistRenderer
-                                                        plantilla={typeof selectedOt.plantilla_json === 'string' ? JSON.parse(selectedOt.plantilla_json) : selectedOt.plantilla_json}
+                                                        plantilla={getPlantillaSegura(selectedOt.plantilla_json)}
                                                         respuestasIniciales={detallesOt.respuestas}
                                                         onChange={(data) => setDatosEnvio(data)}
                                                     />
