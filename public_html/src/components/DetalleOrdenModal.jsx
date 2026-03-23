@@ -97,7 +97,14 @@ const DetalleOrdenModal = ({ show, onHide, ordenId, onDownloadPdf, onExportExcel
                                 {orden.detalles?.map((item, idx) => (
                                     <tr key={idx}>
                                         <td className="font-monospace">{item.codigo_sku}</td>
-                                        <td className="fw-bold">{item.insumo}</td>
+                                        <td>
+                                            <div className="fw-bold">{item.insumo}</div>
+                                            {item.nota_linea && (
+                                                <div className="text-muted fst-italic mt-1" style={{ fontSize: '0.75rem' }}>
+                                                    <i className="bi bi-info-circle me-1"></i>{item.nota_linea}
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="text-center fw-bold">{parseFloat(item.cantidad_solicitada)} <span className="text-muted fw-normal small">{item.unidad_medida}</span></td>
                                         <td className="text-end">${parseInt(item.precio_unitario).toLocaleString()}</td>
                                         <td className="text-end fw-bold">${parseInt(item.total_linea).toLocaleString()}</td>

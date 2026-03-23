@@ -49,7 +49,8 @@ class OrdenCompraRepository
         if (!empty($filtros['estado'])) {
             if (is_array($filtros['estado'])) {
                 $estadosStr = implode("','", array_map(function ($s) {
-                    return htmlspecialchars($s); }, $filtros['estado']));
+                    return htmlspecialchars($s);
+                }, $filtros['estado']));
                 $sql .= " AND e.nombre IN ('$estadosStr')";
             } else {
                 $sql .= " AND e.nombre = :estado";
@@ -187,14 +188,15 @@ class OrdenCompraRepository
 
     public function addDetalle($item)
     {
-        $sql = "INSERT INTO detalle_orden_compra (orden_compra_id, insumo_id, cantidad_solicitada, precio_unitario, total_linea) 
-                VALUES (:oc_id, :insumo, :cant, :precio, :total)";
+        $sql = "INSERT INTO detalle_orden_compra (orden_compra_id, insumo_id, cantidad_solicitada, precio_unitario, total_linea, nota_linea) 
+            VALUES (:oc_id, :insumo, :cant, :precio, :total, :nota)";
         $this->db->prepare($sql)->execute([
             ':oc_id' => $item['orden_id'],
             ':insumo' => $item['insumo_id'],
             ':cant' => $item['cantidad'],
             ':precio' => $item['precio'],
-            ':total' => $item['total']
+            ':total' => $item['total'],
+            ':nota' => $item['nota_linea'] ?? null
         ]);
     }
 
@@ -324,7 +326,8 @@ class OrdenCompraRepository
 
     public function archivarSolicitudesPendientes($idsArray)
     {
-        if (empty($idsArray)) return false;
+        if (empty($idsArray))
+            return false;
         $placeholders = implode(',', array_fill(0, count($idsArray), '?'));
         $sql = "UPDATE detalle_solicitud 
                 SET estado_linea = 'OMITIDO' 
@@ -336,10 +339,11 @@ class OrdenCompraRepository
 
     public function obtenerDatosParaNotificar($idsArray)
     {
-        if (empty($idsArray)) return [];
-        
+        if (empty($idsArray))
+            return [];
+
         $placeholders = implode(',', array_fill(0, count($idsArray), '?'));
-        
+
         $sql = "SELECT 
                     ds.id, 
                     i.nombre as nombre_insumo, 

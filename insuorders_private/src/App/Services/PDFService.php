@@ -3,43 +3,49 @@ namespace App\Services;
 
 use FPDF;
 
-class PDFService extends FPDF {
+class PDFService extends FPDF
+{
     private $orden = [];
     private $colores = [
-        'primary'   => [51, 102, 153],
+        'primary' => [51, 102, 153],
         'secondary' => [100, 100, 100],
         'table_header' => [230, 230, 230],
-        'total_bg'  => [240, 240, 240] 
+        'total_bg' => [240, 240, 240]
     ];
     private $empresa = [
         'nombre' => 'Procesadora Insuban Spa.',
-        'rut'    => '78.730.890-2',
-        'giro'   => 'ELABORACION Y CONSERVACION DE CARNE Y PRODUCTOS CARNICOS',
-        'dir'    => 'Antillanca Norte 391, Pudahuel',
-        'web'    => 'www.insuban.cl',
-        'mail'   => 'operaciones@insuban.cl'
+        'rut' => '78.730.890-2',
+        'giro' => 'ELABORACION Y CONSERVACION DE CARNE Y PRODUCTOS CARNICOS',
+        'dir' => 'Antillanca Norte 391, Pudahuel',
+        'web' => 'www.insuban.cl',
+        'mail' => 'operaciones@insuban.cl'
     ];
 
-    public function setOrdenData($orden) {
+    public function setOrdenData($orden)
+    {
         $this->orden = $orden;
         $this->SetTitle('OC #' . $orden['id'] . ' - ' . $this->txt($orden['proveedor']), true);
     }
 
-    private function txt($str) {
+    private function txt($str)
+    {
         return iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $str ?? '');
     }
 
-    private function fmt($valor) {
+    private function fmt($valor)
+    {
         $moneda = $this->orden['moneda'] ?? 'CLP';
         if ($moneda === 'CLP') {
-            return '$' . number_format((float)$valor, 0, '', '.');
+            return '$' . number_format((float) $valor, 0, '', '.');
         }
-        return number_format((float)$valor, 2, '.', ',');
+        return number_format((float) $valor, 2, '.', ',');
     }
 
     // --- CABECERA DE PÁGINA ---
-    function Header() {
-        if (empty($this->orden)) return;
+    function Header()
+    {
+        if (empty($this->orden))
+            return;
 
         // 1. Franja Decorativa Superior
         $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
@@ -49,7 +55,7 @@ class PDFService extends FPDF {
         $logoPath = __DIR__ . '/../../../../public_html/assets/img/LogoInsuban_SinFondo.png';
         $yStart = 15;
         if (file_exists($logoPath)) {
-            $this->Image($logoPath, 10, 8, 55); 
+            $this->Image($logoPath, 10, 8, 55);
             $yStart = 25;
         }
 
@@ -58,29 +64,29 @@ class PDFService extends FPDF {
         $this->SetFont('Arial', 'B', 12);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(90, 5, $this->txt($this->empresa['nombre']), 0, 1);
-        
+
         $this->SetFont('Arial', 'B', 8);
         $this->SetTextColor(50);
         $this->Cell(90, 4, 'RUT: ' . $this->empresa['rut'], 0, 1);
-        
+
         $this->SetFont('Arial', '', 8);
         $this->Cell(90, 4, $this->txt($this->empresa['giro']), 0, 1);
         $this->Cell(90, 4, $this->txt($this->empresa['dir']), 0, 1);
-        
+
         $emailContacto = !empty($this->orden['creador_email']) ? $this->orden['creador_email'] : $this->empresa['mail'];
         $this->Cell(90, 4, $emailContacto, 0, 1);
 
         // 4. Datos Orden
         $this->SetY(10);
         $this->SetX(110);
-        
+
         $this->SetFont('Arial', 'B', 20);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(90, 10, 'ORDEN DE COMPRA', 0, 1, 'R');
-        
+
         $this->SetTextColor(0);
         $this->SetFont('Arial', 'B', 9);
-        
+
         $xLabel = 140;
         $yDat = 25;
 
@@ -105,7 +111,7 @@ class PDFService extends FPDF {
         $this->SetFont('Arial', 'B', 9);
         $this->Cell(30, 5, 'EMITIDO POR:', 0, 0, 'R');
         $this->SetFont('Arial', '', 9);
-        $creador = ($this->orden['creador_nombre'] ?? '') . ' ' . substr(($this->orden['creador_apellido'] ?? ''), 0, 1) . '.'; 
+        $creador = ($this->orden['creador_nombre'] ?? '') . ' ' . substr(($this->orden['creador_apellido'] ?? ''), 0, 1) . '.';
         $this->Cell(30, 5, $this->txt($creador), 0, 1, 'R');
 
         if (!empty($this->orden['numero_cotizacion'])) {
@@ -118,21 +124,21 @@ class PDFService extends FPDF {
         }
 
         // 5. Datos Proveedor
-        $this->SetY(60); 
+        $this->SetY(60);
         $this->SetFont('Arial', 'B', 10);
         $this->SetFillColor($this->colores['table_header'][0], $this->colores['table_header'][1], $this->colores['table_header'][2]);
         $this->Cell(0, 6, '  DATOS DEL PROVEEDOR', 0, 1, 'L', true);
-        
+
         $this->Ln(2);
-        
+
         // Fila 1: Razón Social y RUT
         $yProv = $this->GetY();
         $this->SetFont('Arial', 'B', 9);
         $this->Cell(28, 5, 'RAZON SOCIAL:', 0, 0);
-        
+
         $this->SetFont('Arial', '', 9);
         $provNombre = mb_convert_case($this->orden['proveedor'] ?? '', MB_CASE_UPPER, "UTF-8");
-        
+
         $xCurrent = $this->GetX();
         $this->MultiCell(110, 5, $this->txt($provNombre), 0, 'L');
         $yAfterName = $this->GetY();
@@ -151,7 +157,8 @@ class PDFService extends FPDF {
         $this->Cell(28, 5, 'DIRECCION:', 0, 0);
         $this->SetFont('Arial', '', 9);
         $provDir = mb_convert_case($this->orden['proveedor_direccion'] ?? '', MB_CASE_TITLE, "UTF-8");
-        if (strlen($provDir) > 90) $provDir = substr($provDir, 0, 87) . '...';
+        if (strlen($provDir) > 90)
+            $provDir = substr($provDir, 0, 87) . '...';
         $this->Cell(110, 5, $this->txt($provDir), 0, 1);
 
         // Fila 3: Contacto y Teléfono
@@ -171,7 +178,8 @@ class PDFService extends FPDF {
     }
 
     // --- PIE DE PÁGINA ---
-    function Footer() {
+    function Footer()
+    {
         $this->SetY(-15);
         $this->SetFont('Arial', 'I', 8);
         $this->SetTextColor(128);
@@ -179,20 +187,23 @@ class PDFService extends FPDF {
     }
 
     // --- CUERPO DEL PDF ---
-    public function generarPDF($detalles) {
+    public function generarPDF($detalles)
+    {
         $this->AliasNbPages();
         $this->AddPage();
-        
+
         // 1. Cabecera Tabla
         $this->SetFont('Arial', 'B', 8);
         $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->SetTextColor(255);
-        
-        $w = [110, 15, 15, 25, 25]; 
+
+        $w = [110, 15, 15, 25, 25];
         $header = ['DESCRIPCION DETALLADA', 'CANT', 'UNID', 'PRECIO UNIT.', 'TOTAL'];
-        
+
         foreach ($header as $i => $h) {
-            $align = ($i >= 3) ? 'R' : 'C'; if($i==0) $align='L';
+            $align = ($i >= 3) ? 'R' : 'C';
+            if ($i == 0)
+                $align = 'L';
             $this->Cell($w[$i], 8, $this->txt($h), 0, 0, $align, true);
         }
         $this->Ln();
@@ -204,9 +215,10 @@ class PDFService extends FPDF {
 
         foreach ($detalles as $row) {
             $this->SetFillColor(245, 245, 245);
-            
+
             $desc = $this->txt($row['insumo']);
-            if (strlen($desc) > 85) $desc = substr($desc, 0, 82) . '...';
+            if (strlen($desc) > 85)
+                $desc = substr($desc, 0, 82) . '...';
 
             // Salto de Página
             if ($this->GetY() > 230) {
@@ -215,7 +227,9 @@ class PDFService extends FPDF {
                 $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
                 $this->SetTextColor(255);
                 foreach ($header as $i => $h) {
-                    $align = ($i >= 3) ? 'R' : 'C'; if($i==0) $align='L';
+                    $align = ($i >= 3) ? 'R' : 'C';
+                    if ($i == 0)
+                        $align = 'L';
                     $this->Cell($w[$i], 8, $this->txt($h), 0, 0, $align, true);
                 }
                 $this->Ln();
@@ -228,11 +242,28 @@ class PDFService extends FPDF {
             $this->Cell($w[2], 7, $this->txt($row['unidad_medida']), 0, 0, 'C', $fill);
             $this->Cell($w[3], 7, $this->fmt($row['precio_unitario']), 0, 0, 'R', $fill);
             $this->Cell($w[4], 7, $this->fmt($row['total_linea']), 0, 1, 'R', $fill);
-            
+            if (!empty($row['nota_linea'])) {
+                $this->SetFont('Arial', 'I', 7);
+                $this->SetTextColor(80, 80, 80);
+                $x = $this->GetX();
+                $y = $this->GetY();
+
+                // MultiCell maneja saltos de línea automáticos si el texto es muy largo
+                $this->MultiCell($w[0], 4, $this->txt("Nota: " . $row['nota_linea']), 0, 'L', $fill);
+
+                // Rellenar visualmente las columnas de la derecha para no romper el diseño zebra
+                $altoNota = $this->GetY() - $y;
+                $this->SetXY($x + $w[0], $y);
+                $this->Cell($w[1] + $w[2] + $w[3] + $w[4], $altoNota, '', 0, 1, 'C', $fill);
+
+                // Restaurar estilos base
+                $this->SetFont('Arial', '', 8);
+                $this->SetTextColor(0);
+            }
+
             $fill = !$fill;
-            $this->Ln();
         }
-        
+
         $this->SetDrawColor(200);
         $this->Line(10, $this->GetY(), 200, $this->GetY());
 
@@ -240,11 +271,11 @@ class PDFService extends FPDF {
         if ($this->GetY() > 210) {
             $this->AddPage();
         }
-        
+
         // Posición Fija desde el fondo
         $this->SetY(-55);
 
-        $xStart = 135; 
+        $xStart = 135;
         $wLabel = 30;
         $wVal = 35;
 
@@ -281,18 +312,23 @@ class PDFService extends FPDF {
         $this->SetFont('Arial', '', 7);
         $this->SetTextColor(100);
         $this->Cell(100, 4, 'CONDICIONES GENERALES:', 0, 1);
-        $this->MultiCell(90, 3, 
-            "1. Sirvase citar el Nro de Orden en Facturas y Guias.\n".
-            "2. Horario Recepcion: Lun a Vie 07:00 a 17:00 hrs.\n".
-            "3. La facturacion debe ser a nombre de Procesadora Insuban Spa.", 
-            0, 'L');
+        $this->MultiCell(
+            90,
+            3,
+            "1. Sirvase citar el Nro de Orden en Facturas y Guias.\n" .
+            "2. Horario Recepcion: Lun a Vie 07:00 a 17:00 hrs.\n" .
+            "3. La facturacion debe ser a nombre de Procesadora Insuban Spa.",
+            0,
+            'L'
+        );
 
         return $this->Output('S');
     }
 
-    public function generarPdfEntrega($ot, $entregas) {
+    public function generarPdfEntrega($ot, $entregas)
+    {
         // Configurar datos para que el Header() funcione
-        $this->orden = $ot; 
+        $this->orden = $ot;
         $this->AliasNbPages();
         $this->AddPage();
 
@@ -308,7 +344,7 @@ class PDFService extends FPDF {
         $this->SetFont('Arial', 'B', 10);
         $this->SetTextColor(0);
         $this->Cell(0, 7, ' DETALLE DE RECEPCION', 1, 1, 'L', true);
-        
+
         $this->SetFont('Arial', '', 9);
         $this->Ln(2);
 
@@ -347,9 +383,10 @@ class PDFService extends FPDF {
         } else {
             foreach ($entregas as $row) {
                 $this->SetFillColor(245);
-                
+
                 $desc = $this->txt($row['nombre'] ?? $row['insumo']);
-                if (strlen($desc) > 50) $desc = substr($desc, 0, 47) . '...';
+                if (strlen($desc) > 50)
+                    $desc = substr($desc, 0, 47) . '...';
 
                 $cant = floatval($row['cantidad_entregada'] ?? $row['cantidad']);
 
@@ -370,7 +407,7 @@ class PDFService extends FPDF {
 
         $this->SetXY(20, $this->GetY() + 2);
         $this->Cell(60, 4, 'ENTREGADO POR (BODEGA)', 0, 0, 'C');
-        
+
         $this->SetXY(130, $this->GetY());
         $this->Cell(60, 4, 'RECIBIDO CONFORME (TECNICO)', 0, 0, 'C');
 
@@ -378,7 +415,8 @@ class PDFService extends FPDF {
     }
 
     // ---  MÉTODO PARA GENERAR EL PDF DE LA OT ---
-    public function generarPdfOT($ot, $detalles) {
+    public function generarPdfOT($ot, $detalles)
+    {
         $this->AliasNbPages();
         $this->AddPage();
 
@@ -437,7 +475,7 @@ class PDFService extends FPDF {
         $this->SetTextColor(255);
 
         // Anchos de columnas
-        $w = [25, 80, 25, 25, 35]; 
+        $w = [25, 80, 25, 25, 35];
         $h = ['SKU', 'DESCRIPCION', 'SOLIC.', 'ENTREG.', 'ESTADO'];
 
         foreach ($h as $i => $val) {
@@ -456,7 +494,8 @@ class PDFService extends FPDF {
                 $this->SetFillColor(245, 245, 245);
 
                 $desc = $this->txt($row['nombre']);
-                if (strlen($desc) > 45) $desc = substr($desc, 0, 42) . '...';
+                if (strlen($desc) > 45)
+                    $desc = substr($desc, 0, 42) . '...';
 
                 // Usamos floatval para limpiar ceros innecesarios (10.00 -> 10)
                 $cantSolicitada = floatval($row['cantidad']);
@@ -477,7 +516,7 @@ class PDFService extends FPDF {
         // 4. Firmas
         $this->SetY(-50);
         $this->SetFont('Arial', 'B', 8);
-        
+
         $this->Cell(60, 5, 'SOLICITADO POR', 0, 0, 'C');
         $this->Cell(70, 5, '', 0, 0);
         $this->Cell(60, 5, 'AUTORIZADO POR', 0, 1, 'C');
@@ -492,13 +531,14 @@ class PDFService extends FPDF {
     // Genera el PDF de una Cotización (Sin precios, para cliente)
     // -----------------------------------------------------------
 
-public function generarCotizacion($cotizacion)
+    public function generarCotizacion($cotizacion)
     {
         // 1. SUPRIMIR ERRORES DEPRECATED EN TIEMPO DE EJECUCIÓN
         error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
 
         // 2. LIMPIAR BUFFER (CRÍTICO)
-        if (ob_get_length()) ob_end_clean();
+        if (ob_get_length())
+            ob_end_clean();
 
         $this->AliasNbPages();
         $this->AddPage();
@@ -520,11 +560,11 @@ public function generarCotizacion($cotizacion)
         $this->SetFont('Arial', 'B', 12);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(90, 5, $this->txt($this->empresa['nombre']), 0, 1);
-        
+
         $this->SetFont('Arial', 'B', 8);
         $this->SetTextColor(50);
         $this->Cell(90, 4, 'RUT: ' . $this->empresa['rut'], 0, 1);
-        
+
         $this->SetFont('Arial', '', 8);
         $this->Cell(90, 4, $this->txt($this->empresa['giro']), 0, 1);
         $this->Cell(90, 4, $this->txt($this->empresa['dir']), 0, 1);
@@ -533,14 +573,14 @@ public function generarCotizacion($cotizacion)
         // 4. Datos Cotización (Cabecera Derecha)
         $this->SetY(10);
         $this->SetX(110);
-        
+
         $this->SetFont('Arial', 'B', 18);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(90, 10, $this->txt('SOLICITUD DE COTIZACIÓN'), 0, 1, 'R');
-        
+
         $this->SetTextColor(0);
         $this->SetFont('Arial', 'B', 9);
-        
+
         $xLabel = 140;
         $yDat = 25;
 
@@ -574,7 +614,7 @@ public function generarCotizacion($cotizacion)
         $this->SetFont('Arial', 'B', 9);
         $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->SetTextColor(255);
-        
+
         $this->Cell(10, 8, '#', 0, 0, 'C', true);
         $this->Cell(150, 8, $this->txt('DESCRIPCION DEL PRODUCTO / INSUMO'), 0, 0, 'L', true);
         $this->Cell(30, 8, 'CANTIDAD', 0, 1, 'C', true);
@@ -583,9 +623,9 @@ public function generarCotizacion($cotizacion)
         $this->SetTextColor(0);
         $i = 1;
         $fill = false;
-        
+
         foreach ($cotizacion['items'] as $item) {
-            $this->SetFillColor(245, 245, 245); 
+            $this->SetFillColor(245, 245, 245);
 
             $nombre = $this->txt($item['nombre_item']);
             if (!empty($item['codigo_sku'])) {
@@ -595,11 +635,11 @@ public function generarCotizacion($cotizacion)
             // Calculamos altura dinámica
             $cellWidth = 150;
             $cellHeight = 7;
-            
+
             if ($this->GetStringWidth($nombre) < $cellWidth) {
                 $line = 1;
             } else {
-                $line = 2; 
+                $line = 2;
             }
             $height = $line * $cellHeight;
 
@@ -618,21 +658,21 @@ public function generarCotizacion($cotizacion)
             }
 
             $this->Cell(10, $height, $i++, 0, 0, 'C', $fill);
-            
+
             $x = $this->GetX();
             $y = $this->GetY();
-            
+
             $this->MultiCell($cellWidth, $cellHeight, $nombre, 0, 'L', $fill);
-            
+
             $this->SetXY($x + $cellWidth, $y);
 
             $this->Cell(30, $height, number_format($item['cantidad'], 2), 0, 1, 'C', $fill);
-            
+
             $fill = !$fill;
             // Línea separadora
             $this->SetDrawColor(230);
             $this->Line(10, $this->GetY(), 200, $this->GetY());
-            
+
             // Salto explícito
             $this->Ln();
         }
@@ -643,7 +683,7 @@ public function generarCotizacion($cotizacion)
             $this->SetFont('Arial', 'B', 9);
             $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
             $this->Cell(0, 6, $this->txt('OBSERVACIONES / INSTRUCCIONES:'), 0, 1);
-            
+
             $this->SetFont('Arial', '', 9);
             $this->SetTextColor(0);
             $this->MultiCell(0, 6, $this->txt($cotizacion['observacion']), 0, 'L');
@@ -656,7 +696,8 @@ public function generarCotizacion($cotizacion)
     // -----------------------------------------------------------
     // REPORTE FINAL DE MANTENCIÓN (Checklist + Firma + Cierre)
     // -----------------------------------------------------------
-    public function generarReporteFinalOT($ot, $checklist, $insumos, $firmaBase64, $comentarios) {
+    public function generarReporteFinalOT($ot, $checklist, $insumos, $firmaBase64, $comentarios)
+    {
         $this->orden = $ot; // Para que el Header() funcione y saque datos si los necesita
         $this->AliasNbPages();
         $this->AddPage();
@@ -672,16 +713,16 @@ public function generarCotizacion($cotizacion)
         $this->SetFillColor(240, 240, 240);
         $this->SetFont('Arial', 'B', 10);
         $this->Cell(0, 7, '1. IDENTIFICACION DEL TRABAJO', 1, 1, 'L', true);
-        
+
         $this->SetFont('Arial', '', 9);
         $this->SetTextColor(0);
-        
+
         // Fila 1
         $this->Cell(30, 6, 'Folio OT:', 0, 0, 'L');
         $this->Cell(65, 6, '# ' . $ot['id'], 0, 0, 'L');
         $this->Cell(30, 6, 'Fecha Solicitud:', 0, 0, 'L');
         $this->Cell(65, 6, date('d/m/Y', strtotime($ot['fecha_solicitud'])), 0, 1, 'L');
-        
+
         // Fila 2
         $this->Cell(30, 6, 'Activo/Equipo:', 0, 0, 'L');
         $this->Cell(65, 6, $this->txt($ot['activo']), 0, 0, 'L');
@@ -693,37 +734,40 @@ public function generarCotizacion($cotizacion)
         // Asumiendo que asignado_a es un ID, aquí idealmente deberías pasar el nombre. 
         // Si $ot ya trae el nombre del técnico (haciendo JOIN en el repo), úsalo.
         $this->Cell(160, 6, $this->txt($ot['asignado_nombre'] ?? 'Técnico Asignado'), 0, 1, 'L');
-        
+
         $this->Ln(5);
 
         // 3. Checklist
         $this->SetFont('Arial', 'B', 10);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(0, 7, '2. PAUTA DE MANTENCION (CHECKLIST)', 1, 1, 'L', true);
-        
+
         $this->SetFont('Arial', 'B', 8);
         $this->SetTextColor(0);
         $this->SetFillColor(230);
-        
+
         // Cabecera Tabla Checklist
         $this->Cell(90, 6, mb_convert_encoding('Punto de Revisión / Tarea', 'ISO-8859-1'), 1, 0, 'L', true);
         $this->Cell(30, 6, 'Estado', 1, 0, 'C', true);
         $this->Cell(70, 6, mb_convert_encoding('Observación', 'ISO-8859-1'), 1, 1, 'L', true);
-        
+
         $this->SetFont('Arial', '', 8);
-        
+
         if (!empty($checklist)) {
             foreach ($checklist as $key => $item) {
                 // Formatear valores
                 $valor = strtoupper($item['valor']);
-                if ($valor == 'SI' || $valor == 'BUENO') $this->SetTextColor(0, 128, 0); // Verde
-                elseif ($valor == 'NO' || $valor == 'MALO') $this->SetTextColor(192, 0, 0); // Rojo
-                else $this->SetTextColor(0);
+                if ($valor == 'SI' || $valor == 'BUENO')
+                    $this->SetTextColor(0, 128, 0); // Verde
+                elseif ($valor == 'NO' || $valor == 'MALO')
+                    $this->SetTextColor(192, 0, 0); // Rojo
+                else
+                    $this->SetTextColor(0);
 
                 // Calcular altura dinámica para la observación
                 $obs = $this->txt($item['observacion'] ?? '');
                 $keyText = $this->txt($key); // O $item['label'] si lo tienes guardado
-                
+
                 // Imprimir celda
                 $this->Cell(90, 6, $keyText, 1, 0, 'L');
                 $this->Cell(30, 6, $this->txt($valor), 1, 0, 'C');
@@ -736,16 +780,17 @@ public function generarCotizacion($cotizacion)
         $this->Ln(5);
 
         // 4. Insumos Utilizados (Segunda Hoja si es necesario)
-        if ($this->GetY() > 220) $this->AddPage();
+        if ($this->GetY() > 220)
+            $this->AddPage();
 
         $this->SetFont('Arial', 'B', 10);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(0, 7, '3. REPUESTOS E INSUMOS UTILIZADOS', 1, 1, 'L', true);
-        
+
         $this->SetFont('Arial', 'B', 8);
         $this->SetTextColor(0);
         $this->SetFillColor(230);
-        
+
         $this->Cell(30, 6, 'SKU', 1, 0, 'C', true);
         $this->Cell(100, 6, mb_convert_encoding('Descripción', 'ISO-8859-1'), 1, 0, 'L', true);
         $this->Cell(30, 6, 'Cant. Utilizada', 1, 0, 'C', true);
@@ -765,31 +810,32 @@ public function generarCotizacion($cotizacion)
         $this->Ln(5);
 
         // 5. Comentarios y Cierre
-        if ($this->GetY() > 200) $this->AddPage();
+        if ($this->GetY() > 200)
+            $this->AddPage();
 
         $this->SetFont('Arial', 'B', 10);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(0, 7, '4. OBSERVACIONES FINALES', 1, 1, 'L', true);
-        
+
         $this->SetFont('Arial', '', 9);
         $this->SetTextColor(0);
         $this->MultiCell(0, 6, $this->txt($comentarios ?: 'Sin comentarios adicionales.'), 1, 'L');
-        
+
         $this->Ln(15);
 
         // 6. Firmas
         $this->SetY(-60); // Pie de página fijo o flotante
-        
+
         // -- FIRMA TECNICO --
         $xTecnico = 20;
         $yFirma = $this->GetY();
-        
+
         // Imagen de firma
         if ($firmaBase64) {
             $imgFile = $this->saveBase64Image($firmaBase64);
             if ($imgFile) {
                 // (archivo, x, y, w, h)
-                $this->Image($imgFile, $xTecnico + 10, $yFirma - 25, 40, 0); 
+                $this->Image($imgFile, $xTecnico + 10, $yFirma - 25, 40, 0);
                 unlink($imgFile);
             }
         }
@@ -801,43 +847,48 @@ public function generarCotizacion($cotizacion)
         $this->SetFont('Arial', 'B', 8);
         $this->SetXY($xTecnico, $yFirma + 2);
         $this->Cell(60, 4, mb_convert_encoding('FIRMA TÉCNICO RESPONSABLE', 'ISO-8859-1'), 0, 0, 'C');
-        
+
         $this->SetXY(130, $yFirma + 2);
         $this->Cell(60, 4, mb_convert_encoding('V°B° SUPERVISOR / JEFE PLANTA', 'ISO-8859-1'), 0, 0, 'C');
-        
+
         $fileName = 'OT_FINAL_' . $ot['id'] . '_' . time() . '.pdf';
         $path = __DIR__ . '/../../../../public_html/uploads/pdfs/';
-        
-        if (!is_dir($path)) mkdir($path, 0777, true);
-        
+
+        if (!is_dir($path))
+            mkdir($path, 0777, true);
+
         $this->Output('F', $path . $fileName);
-        
+
         return '/uploads/pdfs/' . $fileName;
     }
 
     // Auxiliar para convertir base64 a archivo temporal
-    private function saveBase64Image($base64String) {
+    private function saveBase64Image($base64String)
+    {
         $split = explode(',', $base64String);
-        if (count($split) < 2) return null;
-        
+        if (count($split) < 2)
+            return null;
+
         $data = base64_decode($split[1]);
         $tmpFile = sys_get_temp_dir() . '/firma_' . uniqid() . '.png';
         file_put_contents($tmpFile, $data);
         return $tmpFile;
     }
 
-// -----------------------------------------------------------
+    // -----------------------------------------------------------
     // VALE DE SALIDA DE BODEGA 
     // -----------------------------------------------------------
-    public function generarComprobanteEntrega($datos) {
-        if (ob_get_length()) ob_end_clean();
+    public function generarComprobanteEntrega($datos)
+    {
+        if (ob_get_length())
+            ob_end_clean();
 
         // Seteamos datos mínimos para que el Header() automático no de error
         // Usamos el ID del primer movimiento como N° de Registro
         $head = $datos[0];
         $this->orden = [
             'id' => $head['id'],
-            'proveedor' => '' 
+            'proveedor' => ''
         ];
 
         $this->AliasNbPages();
@@ -855,7 +906,7 @@ public function generarCotizacion($cotizacion)
         $this->SetFont('Arial', 'B', 18);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(90, 10, $this->txt('VALE DE ENTREGA'), 0, 1, 'R');
-        
+
         $this->SetTextColor(0);
         $this->SetXY(110, 22);
         $this->SetFont('Arial', 'B', 10);
@@ -879,7 +930,7 @@ public function generarCotizacion($cotizacion)
         $this->Cell(30, 6, 'Fecha:', 0, 0);
         $this->SetFont('Arial', '', 9);
         $this->Cell(70, 6, $fecha, 0, 0);
-        
+
         $this->SetFont('Arial', 'B', 9);
         $this->Cell(30, 6, 'Referencia:', 0, 0);
         $this->SetFont('Arial', '', 9);
@@ -941,7 +992,7 @@ public function generarCotizacion($cotizacion)
         // 4. Firmas al final de la página
         $this->SetY(-55);
         $yFirma = $this->GetY();
-        
+
         $this->SetDrawColor(100, 100, 100);
         $this->Line(25, $yFirma, 85, $yFirma);
         $this->Line(125, $yFirma, 185, $yFirma);
@@ -949,7 +1000,7 @@ public function generarCotizacion($cotizacion)
         $this->SetFont('Arial', 'B', 8);
         $this->SetXY(25, $yFirma + 2);
         $this->Cell(60, 4, 'FIRMA RESPONSABLE BODEGA', 0, 0, 'C');
-        
+
         $this->SetXY(125, $yFirma + 2);
         $this->Cell(60, 4, 'FIRMA RECEPTOR CONFORME', 0, 0, 'C');
 

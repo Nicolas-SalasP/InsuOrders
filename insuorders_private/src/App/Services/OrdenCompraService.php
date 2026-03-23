@@ -103,7 +103,8 @@ public function crearOrden($data, $usuarioId)
                     'insumo_id' => $insumoId,
                     'cantidad' => $item['cantidad'],
                     'precio' => $item['precio'],
-                    'total' => $subtotal
+                    'total' => $subtotal,
+                    'nota_linea' => $item['nota_linea'] ?? null
                 ];
             }
 

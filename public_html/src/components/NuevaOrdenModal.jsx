@@ -9,7 +9,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
     // Cabecera Orden
     const [proveedorId, setProveedorId] = useState('');
-    const [destino, setDestino] = useState(''); // <--- NUEVO ESTADO
+    const [destino, setDestino] = useState('');
     const [moneda, setMoneda] = useState('CLP');
     const [tipoCambio, setTipoCambio] = useState(1);
     const [numeroCotizacion, setNumeroCotizacion] = useState('');
@@ -20,7 +20,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     // Ítems y Estado General
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(''); 
+    const [error, setError] = useState('');
 
     // Estado para "Agregar Producto"
     const [modoNuevo, setModoNuevo] = useState(false);
@@ -47,7 +47,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
             // Resetear formulario
             setProveedorId('');
-            setDestino(''); // <--- RESETEAR DESTINO
+            setDestino('');
             setMoneda('CLP');
             setTipoCambio(1);
             setNumeroCotizacion('');
@@ -61,8 +61,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                 const itemsFormateados = itemsIniciales.map(i => ({
                     ...i,
                     ids_detalle_solicitud: i.ids_detalle_solicitud || i.origen_ids || null,
-                    // Aseguramos capturar la lista de OTs si viene
-                    ot_ids: i.ot_ids || null 
+                    ot_ids: i.ot_ids || null
                 }));
                 setItems(itemsFormateados);
             } else {
@@ -80,13 +79,14 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
         : [];
 
     const agregarItemExistente = (insumo) => {
-        setError(''); // Limpiar error si agrega bien
+        setError('');
+        const precioOriginal = parseFloat(insumo.precio_costo);
         setItems([...items, {
             id: insumo.id,
             nombre: insumo.nombre,
             unidad: insumo.unidad_medida,
             cantidad: 1,
-            precio: parseFloat(insumo.precio_costo) || 0,
+            precio: precioOriginal > 0 ? precioOriginal : '',
             sku: insumo.codigo_sku,
             tipo: 'existente'
         }]);
@@ -94,7 +94,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     };
 
     const agregarItemNuevo = () => {
-        setError(''); // Limpiar errores previos
+        setError('');
         if (!nuevoProd.nombre || !nuevoProd.categoria_id || !nuevoProd.cantidad || !nuevoProd.precio) {
             setError("Completa todos los datos del nuevo producto (incluyendo precio).");
             return;
@@ -120,12 +120,29 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
     const actualizarItem = (index, campo, valor) => {
         const copia = [...items];
-        copia[index][campo] = parseFloat(valor) || 0;
+        
+        if (campo === 'cantidad') {
+            let valLimpio = valor.replace(/[^0-9]/g, '');
+            if (/^0[1-9]+/.test(valLimpio)) {
+                valLimpio = valLimpio.replace(/^0+/, '');
+            }
+            copia[index][campo] = valLimpio;
+            
+        } else if (campo === 'precio') {
+            let valLimpio = valor;
+            if (/^0[1-9]+/.test(valLimpio)) {
+                valLimpio = valLimpio.replace(/^0+/, '');
+            }
+            copia[index][campo] = valLimpio;
+            
+        } else {
+            copia[index][campo] = valor;
+        }
         setItems(copia);
     };
 
     const handleSubmit = async () => {
-        setError(''); // Limpiar errores antes de enviar
+        setError('');
 
         if (!proveedorId) {
             setError("Debes seleccionar un Proveedor.");
@@ -136,16 +153,27 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
             return;
         }
 
+        const itemsLimpios = items.map(item => ({
+            ...item,
+            cantidad: parseFloat(item.cantidad) || 0,
+            precio: parseFloat(item.precio) || 0
+        }));
+
+        if (itemsLimpios.some(i => i.cantidad <= 0)) {
+            setError("Existen productos con cantidad o precio inválido (0 o vacío).");
+            return;
+        }
+
         setLoading(true);
         try {
             await api.post('/index.php/compras', {
                 proveedor_id: proveedorId,
-                destino: destino, // <--- ENVIAR DESTINO
+                destino: destino,
                 moneda,
                 tipo_cambio: tipoCambio,
                 numero_cotizacion: numeroCotizacion,
                 impuesto_porcentaje: impuestoPorcentaje,
-                items
+                items: itemsLimpios
             });
             onSave();
             onClose();
@@ -157,7 +185,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     };
 
     // Cálculos Totales
-    const totalNeto = items.reduce((acc, i) => acc + (i.cantidad * i.precio), 0);
+    const totalNeto = items.reduce((acc, i) => acc + ((parseFloat(i.cantidad) || 0) * (parseFloat(i.precio) || 0)), 0);
     const totalIVA = totalNeto * (impuestoPorcentaje / 100);
     const totalFinal = totalNeto + totalIVA;
 
@@ -192,19 +220,17 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.rut})</option>)}
                                         </select>
                                     </div>
-                                    
-                                    {/* --- NUEVO CAMPO DESTINO --- */}
+
                                     <div className="col-md-6">
                                         <label className="form-label fw-bold small text-uppercase text-muted">Destino / Uso Interno</label>
-                                        <input 
-                                            type="text" 
-                                            className="form-control" 
+                                        <input
+                                            type="text"
+                                            className="form-control"
                                             placeholder="Ej: Stock Crítico / Proyecto X (Visible solo internamente)"
-                                            value={destino} 
-                                            onChange={e => setDestino(e.target.value)} 
+                                            value={destino}
+                                            onChange={e => setDestino(e.target.value)}
                                         />
                                     </div>
-                                    {/* --------------------------- */}
 
                                     <div className="col-md-3">
                                         <label className="form-label fw-bold small text-uppercase text-muted">N° Cotización</label>
@@ -297,8 +323,8 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                         </div>
                                         <div className="col-md-2">
                                             <label className="small text-muted fw-bold">Cant.</label>
-                                            <input type="number" className="form-control form-control-sm" placeholder="1" min="0.1"
-                                                value={nuevoProd.cantidad} onChange={e => setNuevoProd({ ...nuevoProd, cantidad: e.target.value })} />
+                                            <input type="number" className="form-control form-control-sm" placeholder="1" min="1" step="1"
+                                                value={nuevoProd.cantidad} onChange={e => setNuevoProd({ ...nuevoProd, cantidad: e.target.value.replace(/[^0-9]/g, '') })} />
                                         </div>
                                         <div className="col-md-2">
                                             <button className="btn btn-sm btn-success w-100 fw-bold" onClick={agregarItemNuevo}>
@@ -329,14 +355,23 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             <tr key={idx}>
                                                 <td className="ps-4">
                                                     <div className="fw-bold text-dark">{item.nombre}</div>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control form-control-sm mt-1 mb-1 border-secondary-subtle text-muted"
+                                                        placeholder="Nota en OC (Ej: Medidas, material...)"
+                                                        value={item.nota_linea || ''}
+                                                        onChange={e => actualizarItem(idx, 'nota_linea', e.target.value)}
+                                                        style={{ fontSize: '0.75rem', backgroundColor: '#fdfdfd' }}
+                                                    />
+
                                                     <div className="d-flex align-items-center gap-2">
                                                         <small className="text-muted font-monospace">{item.sku !== 'NUEVO' ? item.sku : ''}</small>
-                                                        
+
                                                         {item.ids_detalle_solicitud && (
                                                             <span className="badge bg-warning text-dark border border-warning" title="Proviene de Solicitud de Mantención">
                                                                 <i className="bi bi-link-45deg me-1"></i>
-                                                                {item.ot_ids 
-                                                                    ? `OT: ${item.ot_ids}` 
+                                                                {item.ot_ids
+                                                                    ? `OT: ${item.ot_ids}`
                                                                     : 'Solicitud'
                                                                 }
                                                             </span>
@@ -349,15 +384,15 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <input type="number" className="form-control form-control-sm text-center fw-bold" min="0.1"
+                                                    <input type="number" className="form-control form-control-sm text-center fw-bold" min="1" step="1" placeholder="1"
                                                         value={item.cantidad} onChange={e => actualizarItem(idx, 'cantidad', e.target.value)} />
                                                 </td>
                                                 <td>
-                                                    <input type="number" className="form-control form-control-sm text-end" min="0"
+                                                    <input type="number" className="form-control form-control-sm text-end" min="0" placeholder="0"
                                                         value={item.precio} onChange={e => actualizarItem(idx, 'precio', e.target.value)} />
                                                 </td>
                                                 <td className="text-end fw-bold text-dark">
-                                                    {(item.cantidad * item.precio).toLocaleString('es-CL', { maximumFractionDigits: 2 })}
+                                                    {((parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0)).toLocaleString('es-CL', { maximumFractionDigits: 2 })}
                                                 </td>
                                                 <td className="text-center">
                                                     <button className="btn btn-sm btn-link text-danger p-0" onClick={() => eliminarItem(idx)}><i className="bi bi-trash-fill"></i></button>
