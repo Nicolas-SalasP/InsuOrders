@@ -231,8 +231,8 @@ class OrdenCompraRepository
             $stmt->execute([':id' => $ordenId]);
             $estadoActual = $stmt->fetchColumn();
 
-            if ($estadoActual == 4 || $estadoActual == 5)
-                throw new Exception("No se puede recepcionar: La orden está cerrada o anulada.");
+            if ($estadoActual == 4 || $estadoActual == 5 || $estadoActual == 6)
+                throw new Exception("No se puede recepcionar: La orden está cerrada, incompleta o anulada.");
 
             $ubicacionRecepcionId = 1;
 
@@ -357,5 +357,11 @@ class OrdenCompraRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute($idsArray);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function forzarCierre($id)
+    {
+        $sql = "UPDATE ordenes_compra SET estado_id = 6 WHERE id = :id";
+        return $this->db->prepare($sql)->execute([':id' => $id]);
     }
 }

@@ -34,6 +34,7 @@ const Compras = () => {
     const [confirmModal, setConfirmModal] = useState({ show: false, id: null });
     const [confirmOmitir, setConfirmOmitir] = useState({ show: false, ids: null, nombre: '' });
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
+    const [confirmCierreModal, setConfirmCierreModal] = useState({ show: false, id: null });
 
     // UI
     const [actionMenu, setActionMenu] = useState({ show: false, top: 0, left: 0, id: null, url: null, estado: null });
@@ -154,9 +155,8 @@ const Compras = () => {
         setShowModal(true);
     };
 
-    // --- NUEVO: Exportar Pendientes ---
     const handleExportarPendientes = async (e) => {
-        e.stopPropagation(); // Evitar que colapse el acordeón al hacer clic
+        e.stopPropagation();
         try {
             const res = await api.get('/index.php/exportar?modulo=compras_pendientes', { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -204,6 +204,23 @@ const Compras = () => {
                 cargarOrdenes();
             } else { setMsg({ show: true, title: 'Error', text: res.data.message, type: 'error' }); }
         } catch (error) { setMsg({ show: true, title: 'Error', text: error.response?.data?.message, type: 'error' }); }
+    };
+
+    const ejecutarCierreParcial = async () => {
+        const id = confirmCierreModal.id;
+        setConfirmCierreModal({ show: false, id: null });
+        setLoading(true);
+        try {
+            const res = await api.post('/index.php/compras/cerrar', { id });
+            if (res.data.success) {
+                setMsg({ show: true, title: 'Éxito', text: 'Orden cerrada correctamente.', type: 'success' });
+                cargarOrdenes();
+            }
+        } catch (error) {
+            setMsg({ show: true, title: 'Error', text: error.response?.data?.message || 'Error al cerrar la orden.', type: 'error' });
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleAdjuntar = () => { setUploadModal({ show: true, id: actionMenu.id, url: actionMenu.url }); closeActionMenu(); };
@@ -275,6 +292,7 @@ const Compras = () => {
             case 'Recepcion Parcial': return 'bg-warning text-dark';
             case 'Recepcion Total': return 'bg-success';
             case 'Anulada': return 'bg-danger';
+            case 'Cerrada Incompleta': return 'bg-danger';
             default: return 'bg-secondary';
         }
     };
@@ -283,7 +301,7 @@ const Compras = () => {
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
             <NuevaOrdenModal show={showModal} onClose={() => setShowModal(false)} onSave={() => { cargarOrdenes(); cargarPendientes(); }} itemsIniciales={itemsPrecargados} />
-            <DetalleOrdenModal show={verModal.show} onHide={() => setVerModal({ show: false, id: null })} ordenId={verModal.id} onDownloadPdf={() => { setVerModal({ show: false }); handleDescargarPdf(); }} onExportExcel={() => { setVerModal({ show: false }); handleDescargarExcel(); }} />
+            <DetalleOrdenModal show={verModal.show} onHide={() => { setVerModal({ show: false, id: null }); cargarOrdenes(); }} ordenId={verModal.id} onDownloadPdf={() => { setVerModal({ show: false }); handleDescargarPdf(); }} onExportExcel={() => { setVerModal({ show: false }); handleDescargarExcel(); }} />
             <SubirArchivoModal show={uploadModal.show} onClose={() => setUploadModal({ show: false, id: null, url: null })} ordenId={uploadModal.id} currentUrl={uploadModal.url} onSave={cargarOrdenes} />
             <RecepcionCompraModal show={recepcionModal.show} onClose={() => setRecepcionModal({ show: false, id: null })} ordenId={recepcionModal.id} onSave={() => { cargarOrdenes(); cargarPendientes(); }} />
 
@@ -333,6 +351,17 @@ const Compras = () => {
                             <button className="dropdown-item py-2 px-3 d-flex align-items-center text-danger fw-bold" onClick={solicitarAnulacion}><i className="bi bi-trash me-2"></i> Anular</button>
                         </>
                     )}
+                    {actionMenu.estado === 'Recepcion Parcial' && can('compras_recepcionar') && (
+                        <button 
+                            className="dropdown-item py-2 px-3 d-flex align-items-center text-warning fw-bold" 
+                            onClick={() => { 
+                                setConfirmCierreModal({ show: true, id: actionMenu.id }); 
+                                closeActionMenu(); 
+                            }}
+                        >
+                            <i className="bi bi-lock-fill me-2"></i> Cierre Parcial
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -368,7 +397,7 @@ const Compras = () => {
                             <button className="form-select text-start" onClick={() => setShowEstadoDropdown(!showEstadoDropdown)}>{filtroEstado.length === 0 ? "Estado" : `${filtroEstado.length} selec.`}</button>
                             {showEstadoDropdown && (
                                 <div className="card position-absolute w-100 shadow-sm mt-1 p-2" style={{ zIndex: 1050 }}>
-                                    {['Emitida', 'Recepcion Parcial', 'Recepcion Total', 'Anulada'].map(estado => (
+                                    {['Emitida', 'Recepcion Parcial', 'Recepcion Total', 'Anulada', 'Cerrada Incompleta'].map(estado => (
                                         <div key={estado} className="form-check mb-1"><input className="form-check-input" type="checkbox" id={`check-${estado}`} checked={filtroEstado.includes(estado)} onChange={() => toggleEstado(estado)} /><label className="form-check-label small" htmlFor={`check-${estado}`}>{estado}</label></div>
                                     ))}
                                     <div className="border-top pt-2 mt-2 text-center"><button className="btn btn-link btn-sm p-0 text-decoration-none" onClick={() => { setFiltroEstado([]); setShowEstadoDropdown(false); }}>Borrar</button></div>
@@ -490,7 +519,7 @@ const Compras = () => {
                                             <td className="text-end pe-4">
                                                 <div className="d-flex justify-content-end gap-2">
                                                     {can('compras_detalle') && <button className="btn btn-sm btn-outline-primary" onClick={() => setVerModal({ show: true, id: oc.id })} title="Ver"><i className="bi bi-eye"></i></button>}
-                                                    {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && can('compras_recepcionar') && <button className="btn btn-sm btn-warning text-dark" onClick={() => setRecepcionModal({ show: true, id: oc.id })} title="Recepcionar"><i className="bi bi-truck"></i></button>}
+                                                    {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && oc.estado !== 'Cerrada Incompleta' && can('compras_recepcionar') && (<button className="btn btn-sm btn-warning text-dark" onClick={() => setRecepcionModal({ show: true, id: oc.id })} title="Recepcionar"><i className="bi bi-truck"></i></button>)}
                                                     <button className={`btn btn-sm btn-light border-0 action-menu-trigger ${actionMenu.id === oc.id && actionMenu.show ? 'active bg-light border' : ''}`} type="button" onClick={(e) => handleActionMenuClick(e, oc)}><i className="bi bi-three-dots-vertical"></i></button>
                                                 </div>
                                             </td>
@@ -502,6 +531,16 @@ const Compras = () => {
                     )}
                 </div>
             </div>
+            <ConfirmModal 
+                show={confirmCierreModal.show} 
+                onClose={() => setConfirmCierreModal({ show: false, id: null })} 
+                onConfirm={ejecutarCierreParcial} 
+                title="Cerrar Orden Incompleta" 
+                message="¿Estás seguro de cerrar esta orden de forma definitiva? No se podrá recibir más stock de esta OC." 
+                confirmText="Sí, Cerrar" 
+                cancelText="Cancelar" 
+                type="warning" 
+            />
         </div>
     );
 };

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Modal, Button, Table, Badge, Spinner } from 'react-bootstrap';
 import api from '../api/axiosConfig';
+import ConfirmModal from './ConfirmModal';
 
 const DetalleOrdenModal = ({ show, onHide, ordenId, onDownloadPdf, onExportExcel }) => {
     const [orden, setOrden] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     useEffect(() => {
         if (show && ordenId) {
@@ -25,6 +28,25 @@ const DetalleOrdenModal = ({ show, onHide, ordenId, onDownloadPdf, onExportExcel
             console.error("Error al cargar detalle OC", e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCerrarOrden = () => {
+        setShowConfirm(true);
+    };
+
+    const confirmarCierreParcial = async () => {
+        setShowConfirm(false);
+        setActionLoading(true);
+        try {
+            const res = await api.post('/index.php/compras/cerrar', { id: ordenId });
+            if (res.data.success) {
+                cargarDetalle();
+            }
+        } catch (e) {
+            console.error("Error al cerrar la orden", e);
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -61,7 +83,9 @@ const DetalleOrdenModal = ({ show, onHide, ordenId, onDownloadPdf, onExportExcel
                                 <div className="d-flex flex-column align-items-end h-100 justify-content-between">
                                     <div>
                                         <p className="mb-1 text-muted small text-uppercase fw-bold">Estado</p>
-                                        <Badge bg="primary" className="mb-3 fs-6 px-3 py-2">{orden.cabecera.estado_nombre}</Badge>
+                                        <Badge bg={orden.cabecera.estado_id === 6 ? 'secondary' : 'primary'} className="mb-3 fs-6 px-3 py-2">
+                                            {orden.cabecera.estado_nombre}
+                                        </Badge>
                                     </div>
                                     {orden.cabecera.destino && (
                                         <div className="text-start bg-light p-2 rounded border mb-3 w-100">
@@ -88,16 +112,17 @@ const DetalleOrdenModal = ({ show, onHide, ordenId, onDownloadPdf, onExportExcel
                                 <tr>
                                     <th>SKU</th>
                                     <th>Insumo</th>
-                                    <th className="text-center">Cant.</th>
-                                    <th className="text-end">Precio Unit.</th>
+                                    <th className="text-center">Pedido</th>
+                                    <th className="text-center">Recibido</th>
+                                    <th className="text-end">P. Unit.</th>
                                     <th className="text-end">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {orden.detalles?.map((item, idx) => (
                                     <tr key={idx}>
-                                        <td className="font-monospace">{item.codigo_sku}</td>
-                                        <td>
+                                        <td className="font-monospace align-middle">{item.codigo_sku}</td>
+                                        <td className="align-middle">
                                             <div className="fw-bold">{item.insumo}</div>
                                             {item.nota_linea && (
                                                 <div className="text-muted fst-italic mt-1" style={{ fontSize: '0.75rem' }}>
@@ -105,9 +130,16 @@ const DetalleOrdenModal = ({ show, onHide, ordenId, onDownloadPdf, onExportExcel
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="text-center fw-bold">{parseFloat(item.cantidad_solicitada)} <span className="text-muted fw-normal small">{item.unidad_medida}</span></td>
-                                        <td className="text-end">${parseInt(item.precio_unitario).toLocaleString()}</td>
-                                        <td className="text-end fw-bold">${parseInt(item.total_linea).toLocaleString()}</td>
+                                        <td className="text-center fw-bold align-middle">
+                                            {parseFloat(item.cantidad_solicitada)} <span className="text-muted fw-normal" style={{fontSize: '0.7rem'}}>{item.unit_medida || 'UN'}</span>
+                                        </td>
+                                        <td className="text-center align-middle">
+                                            <Badge bg={parseFloat(item.cantidad_recibida) >= parseFloat(item.cantidad_solicitada) ? 'success' : (parseFloat(item.cantidad_recibida) > 0 ? 'warning' : 'danger')} pill>
+                                                {parseFloat(item.cantidad_recibida || 0)}
+                                            </Badge>
+                                        </td>
+                                        <td className="text-end align-middle">${parseInt(item.precio_unitario).toLocaleString()}</td>
+                                        <td className="text-end fw-bold align-middle">${parseInt(item.total_linea).toLocaleString()}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -118,14 +150,35 @@ const DetalleOrdenModal = ({ show, onHide, ordenId, onDownloadPdf, onExportExcel
                 )}
             </Modal.Body>
             <Modal.Footer className="bg-light">
+                {orden?.cabecera?.estado_id === 3 && (
+                    <Button 
+                        variant="warning" 
+                        className="fw-bold me-auto border-secondary-subtle" 
+                        onClick={handleCerrarOrden}
+                        disabled={actionLoading}
+                    >
+                        {actionLoading ? <Spinner size="sm" className="me-2"/> : <i className="bi bi-lock-fill me-2"></i>}
+                        Cierre Parcial
+                    </Button>
+                )}
+
                 <Button variant="outline-danger" onClick={() => onDownloadPdf(ordenId)} disabled={!orden}>
-                    <i className="bi bi-file-earmark-pdf me-2"></i>PDF Proveedor
+                    <i className="bi bi-file-earmark-pdf me-2"></i>PDF
                 </Button>
                 <Button variant="outline-success" onClick={() => onExportExcel(ordenId)} disabled={!orden}>
-                    <i className="bi bi-file-earmark-excel me-2"></i>Excel Interno
+                    <i className="bi bi-file-earmark-excel me-2"></i>Excel
                 </Button>
                 <Button variant="secondary" onClick={onHide}>Cerrar</Button>
             </Modal.Footer>
+            <ConfirmModal 
+                show={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={confirmarCierreParcial}
+                title="Cierre de Orden Incompleta"
+                message="¿Estás seguro de cerrar esta orden de forma incompleta? Las cantidades pendientes ya no podrán ser recepcionadas y la OC pasará a estado finalizado."
+                confirmText="Sí, Cerrar Orden"
+                type="warning"
+            />
         </Modal>
     );
 };
