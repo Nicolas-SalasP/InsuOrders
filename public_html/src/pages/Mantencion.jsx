@@ -31,12 +31,14 @@ const Mantencion = () => {
     const [confirmFinish, setConfirmFinish] = useState({ show: false, id: null });
 
     const [openMenuId, setOpenMenuId] = useState(null);
-    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 }); 
+    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
 
     const [filtroOT, setFiltroOT] = useState('');
     const [filtroMaquina, setFiltroMaquina] = useState('');
     const [filtroUbicacion, setFiltroUbicacion] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState([]);
+    const [showEstadoDropdown, setShowEstadoDropdown] = useState(false);
+    const estadoRef = useRef(null);
     const [filtroFecha, setFiltroFecha] = useState('');
 
     const [filtroInsumo, setFiltroInsumo] = useState('');
@@ -44,7 +46,7 @@ const Mantencion = () => {
     const [listaInsumos, setListaInsumos] = useState([]);
     const [sugerencias, setSugerencias] = useState([]);
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
-    
+
     const [filtroSinTecnico, setFiltroSinTecnico] = useState(false);
     const [ordenOTAsc, setOrdenOTAsc] = useState(false);
 
@@ -58,8 +60,11 @@ const Mantencion = () => {
             if (!event.target.closest('.menu-trigger-btn') && !event.target.closest('.dropdown-menu-fixed')) {
                 setOpenMenuId(null);
             }
+            if (estadoRef.current && !estadoRef.current.contains(event.target)) {
+                setShowEstadoDropdown(false);
+            }
         };
-        const handleScroll = () => setOpenMenuId(null); 
+        const handleScroll = () => setOpenMenuId(null);
 
         document.addEventListener('mousedown', handleGlobalClick);
         window.addEventListener('scroll', handleScroll, true);
@@ -118,7 +123,6 @@ const Mantencion = () => {
             if (filtroInsumo) params.append('insumo_id', filtroInsumo);
             if (filtroOT) params.append('ot', filtroOT);
             if (filtroMaquina) params.append('maquina', filtroMaquina);
-            if (filtroEstado) params.append('estado', filtroEstado);
             if (filtroFecha) params.append('fecha', filtroFecha);
 
             const res = await api.get(`/index.php/mantencion?${params.toString()}`);
@@ -175,18 +179,18 @@ const Mantencion = () => {
     };
 
     const toggleMenu = (id, event) => {
-        event.stopPropagation(); 
-        event.preventDefault(); 
+        event.stopPropagation();
+        event.preventDefault();
 
         if (openMenuId === id) {
             setOpenMenuId(null);
         } else {
             const rect = event.currentTarget.getBoundingClientRect();
             const spaceBelow = window.innerHeight - rect.bottom;
-            const dropUp = spaceBelow < 250; 
+            const dropUp = spaceBelow < 250;
             const top = dropUp ? (rect.top + window.scrollY - 200) : (rect.bottom + window.scrollY + 2);
             const left = (rect.left + window.scrollX) - 130;
-            
+
             setMenuPos({ top, left });
             setOpenMenuId(id);
         }
@@ -249,11 +253,17 @@ const Mantencion = () => {
         setMostrarSugerencias(false);
     };
 
+    const toggleEstado = (estado) => {
+        setFiltroEstado(prev =>
+            prev.includes(estado) ? prev.filter(e => e !== estado) : [...prev, estado]
+        );
+    };
+
     const limpiarFiltros = () => {
         setFiltroOT('');
         setFiltroMaquina('');
         setFiltroUbicacion('');
-        setFiltroEstado('');
+        setFiltroEstado([]);
         setFiltroFecha('');
         setFiltroInsumo('');
         setBusquedaInsumo('');
@@ -272,13 +282,13 @@ const Mantencion = () => {
     const getPrioridadValor = (prio) => {
         if (!prio) return 6;
         const p = prio.toString().toUpperCase().trim();
-        
+
         if (p === 'CRITICO' || p === 'CRÍTICO' || p === 'CRITICA' || p === 'CRÍTICA') return 1;
         if (p === 'URGENTE') return 2;
         if (p === 'ALTA' || p === 'ALTO') return 3;
         if (p === 'MEDIA' || p === 'MEDIO') return 4;
         if (p === 'BAJA' || p === 'BAJO') return 5;
-        
+
         return 6;
     };
 
@@ -286,14 +296,14 @@ const Mantencion = () => {
         if (isCritico(prio)) {
             return <span className="badge bg-danger blink-badge border border-white shadow-sm">CRÍTICO 🚨</span>;
         }
-        
+
         const p = prio ? prio.toString().toUpperCase().trim() : '';
 
         if (p === 'BAJA' || p === 'BAJO') return <span className="badge bg-secondary">Baja</span>;
         if (p === 'MEDIA' || p === 'MEDIO') return <span className="badge bg-info text-dark">Media</span>;
         if (p === 'ALTA' || p === 'ALTO') return <span className="badge bg-warning text-dark">Alta</span>;
         if (p === 'URGENTE') return <span className="badge bg-danger">Urgente</span>;
-        
+
         return <span className="badge bg-light text-dark border">{prio || 'No def.'}</span>;
     };
 
@@ -302,17 +312,19 @@ const Mantencion = () => {
         const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
         const matchMaquina = !filtroMaquina || maquinaStr.toLowerCase().includes(filtroMaquina.toLowerCase());
         const matchUbicacion = !filtroUbicacion || (s.ubicacion && s.ubicacion.toLowerCase().includes(filtroUbicacion.toLowerCase()));
-        
-        // LÓGICA DE ESTADO INTELIGENTE PARA EL FILTRO:
-        // Si el usuario filtra por "Pendiente", NO debe traer las que en realidad son "Programadas".
+
         let estadoVirtual = s.estado;
+
+        if (estadoVirtual === 'Aprobada') {
+            estadoVirtual = 'En Proceso';
+        }
+
         const reqStr = s.fecha_requerida ? s.fecha_requerida.substring(0, 10) : null;
-        if (reqStr && reqStr > todayStr && (s.estado_id === 1 || s.estado_id === 4)) {
+        if (reqStr && reqStr > todayStr && (parseInt(s.estado_id) === 1 || parseInt(s.estado_id) === 4)) {
             estadoVirtual = 'Programada';
         }
-        
-        const matchEstado = !filtroEstado || estadoVirtual === filtroEstado || s.estado === filtroEstado;
-        
+
+        const matchEstado = filtroEstado.length === 0 || filtroEstado.includes(estadoVirtual);
         const fechaOT = s.fecha_solicitud ? s.fecha_solicitud.split(' ')[0] : '';
         const matchFecha = !filtroFecha || fechaOT === filtroFecha;
         const matchSinTecnico = !filtroSinTecnico || !s.asignados_nombres;
@@ -320,15 +332,15 @@ const Mantencion = () => {
         return matchOT && matchMaquina && matchUbicacion && matchEstado && matchFecha && matchSinTecnico;
     }).sort((a, b) => {
         if (ordenOTAsc) {
-            return parseInt(a.id) - parseInt(b.id); 
+            return parseInt(a.id) - parseInt(b.id);
         }
         const prioA = getPrioridadValor(a.prioridad);
         const prioB = getPrioridadValor(b.prioridad);
-        
+
         if (prioA !== prioB) {
             return prioA - prioB;
         }
-        
+
         return parseInt(b.id) - parseInt(a.id);
     });
 
@@ -395,7 +407,7 @@ const Mantencion = () => {
                         <div className="col-md-2">
                             <input type="text" className="form-control" placeholder="Máquina/Activo..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
                         </div>
-                        
+
                         <div className="col-md-2">
                             <input type="text" className="form-control" placeholder="Ubicación (ej: HOR)..." value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)} />
                         </div>
@@ -434,15 +446,37 @@ const Mantencion = () => {
                                 </ul>
                             )}
                         </div>
-                        <div className="col-md-2">
-                            <select className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-                                <option value="">Estado: Todos</option>
-                                <option value="Pendiente">Pendiente (Hoy)</option>
-                                <option value="Programada">Programadas (Futuro)</option>
-                                <option value="En Proceso">En Proceso</option>
-                                <option value="Completada">Completada</option>
-                                <option value="Anulada">Anulada</option>
-                            </select>
+                        <div className="col-md-2 position-relative" ref={estadoRef}>
+                            <button
+                                className="form-select text-start bg-white shadow-sm"
+                                onClick={() => setShowEstadoDropdown(!showEstadoDropdown)}
+                            >
+                                <i className="bi bi-filter-left me-2"></i>
+                                {filtroEstado.length === 0 ? "Estados: Todos" : `${filtroEstado.length} selec.`}
+                            </button>
+
+                            {showEstadoDropdown && (
+                                <div className="card position-absolute w-100 shadow-lg mt-1 p-2 border-primary" style={{ zIndex: 1060 }}>
+                                    {['Pendiente', 'Programada', 'En Proceso', 'Completada', 'Anulada'].map(est => (
+                                        <div key={est} className="form-check mb-1">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                id={`check-est-${est}`}
+                                                checked={filtroEstado.includes(est)}
+                                                onChange={() => toggleEstado(est)}
+                                            />
+                                            <label className="form-check-label small cursor-pointer w-100" htmlFor={`check-est-${est}`}>
+                                                {est === 'Pendiente' ? 'Pendiente (Hoy / Atrasadas)' : (est === 'Programada' ? 'Programadas (Futuro)' : est)}
+                                            </label>
+                                        </div>
+                                    ))}
+                                    <div className="border-top pt-2 mt-2 d-flex justify-content-between">
+                                        <button className="btn btn-link btn-sm p-0 text-decoration-none" onClick={() => setFiltroEstado([])}>Limpiar</button>
+                                        <button className="btn btn-primary btn-sm px-2" onClick={() => setShowEstadoDropdown(false)}>Aplicar</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="col-md-2 text-end">
                             {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado || filtroFecha || filtroInsumo || filtroSinTecnico || ordenOTAsc) && (
@@ -454,19 +488,19 @@ const Mantencion = () => {
                     </div>
                     <div className="row mt-2">
                         <div className="col-12 d-flex flex-wrap gap-2">
-                            <button 
+                            <button
                                 className={`btn btn-sm shadow-sm ${filtroSinTecnico ? 'btn-danger text-white border-danger' : 'btn-outline-secondary bg-white'}`}
                                 onClick={() => setFiltroSinTecnico(!filtroSinTecnico)}
                             >
                                 <i className="bi bi-person-x-fill me-2"></i>
                                 {filtroSinTecnico ? 'Mostrando: Sin Técnico Asignado' : 'Filtrar: Sin Técnico'}
                             </button>
-                            
-                            <button 
+
+                            <button
                                 className={`btn btn-sm shadow-sm ${ordenOTAsc ? 'btn-primary text-white border-primary' : 'btn-outline-secondary bg-white'}`}
                                 onClick={() => setOrdenOTAsc(!ordenOTAsc)}
                             >
-                                <i className={`bi ${ordenOTAsc ? 'bi-sort-numeric-down' : 'bi-sort-down-alt'} me-2`}></i> 
+                                <i className={`bi ${ordenOTAsc ? 'bi-sort-numeric-down' : 'bi-sort-down-alt'} me-2`}></i>
                                 {ordenOTAsc ? 'Orden: N° OT (Menor a Mayor)' : 'Orden: Prioridad y Recientes'}
                             </button>
                         </div>
@@ -500,15 +534,18 @@ const Mantencion = () => {
                                     // LÓGICA VISUAL: ESTADO PROGRAMADA O PENDIENTE NORMAL
                                     const reqStr = s.fecha_requerida ? s.fecha_requerida.substring(0, 10) : null;
                                     const isFutura = reqStr && reqStr > todayStr;
-                                    
                                     let estadoTexto = s.estado;
                                     let badgeClass = 'bg-warning text-dark';
-                                    
+
+
                                     if (isFutura && (parseInt(s.estado_id) === 1 || parseInt(s.estado_id) === 4)) {
                                         estadoTexto = 'PROGRAMADA';
                                         badgeClass = 'bg-primary text-white shadow-sm';
                                     } else {
-                                        if (s.estado === 'En Proceso') badgeClass = 'bg-info text-dark';
+                                        if (s.estado === 'En Proceso' || s.estado === 'Aprobada') {
+                                            estadoTexto = 'En Proceso';
+                                            badgeClass = 'bg-info text-dark';
+                                        }
                                         else if (s.estado === 'Completada') badgeClass = 'bg-success text-white';
                                         else if (s.estado === 'Anulada' || s.estado === 'Cancelada') badgeClass = 'bg-danger text-white';
                                     }
@@ -541,7 +578,7 @@ const Mantencion = () => {
                                             </td>
                                             <td>
                                                 <div className="text-dark">{s.solicitante_nombre} {s.solicitante_apellido}</div>
-                                                <div className="small mt-1 text-truncate" style={{maxWidth: '150px'}}>
+                                                <div className="small mt-1 text-truncate" style={{ maxWidth: '150px' }}>
                                                     {s.asignados_nombres ? (
                                                         <span className="text-primary"><i className="bi bi-tools me-1"></i>{s.asignados_nombres}</span>
                                                     ) : (
@@ -549,7 +586,7 @@ const Mantencion = () => {
                                                     )}
                                                 </div>
                                             </td>
-                                            
+
                                             {/* LÓGICA VISUAL DE FECHA PROGRAMADA vs FECHA CREACIÓN */}
                                             <td className="small px-3">
                                                 {isFutura ? (
@@ -609,10 +646,10 @@ const Mantencion = () => {
                 <div
                     className="dropdown-menu shadow show border-0 dropdown-menu-fixed"
                     style={{
-                        position: 'fixed', 
+                        position: 'fixed',
                         top: menuPos.top,
                         left: menuPos.left,
-                        zIndex: 9999, 
+                        zIndex: 9999,
                         minWidth: '160px'
                     }}
                 >
