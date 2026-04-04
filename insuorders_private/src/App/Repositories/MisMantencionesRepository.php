@@ -119,24 +119,58 @@ class MisMantencionesRepository
 
     public function guardarCierre($otId, $firmaBase64, $comentarios, $evidenciaStr = null)
     {
-        $sql = "UPDATE solicitudes_ot SET 
-            comentarios_finales = :com,
-            estado_id = 5, 
-            fecha_cierre = NOW()";
-        $params = [':com' => $comentarios, ':id' => $otId];
+        $inTransaction = $this->db->inTransaction();
+        try {
+            if (!$inTransaction)
+                $this->db->beginTransaction();
 
-        if ($firmaBase64 !== null) {
-            $sql .= ", firma_tecnico = :firma";
-            $params[':firma'] = $firmaBase64;
+            // =======================================================
+            // 1. SNAPSHOT FINANCIERO DE LOS INSUMOS
+            // =======================================================
+            $sqlSnapshot = "UPDATE detalle_solicitud ds 
+                            JOIN insumos i ON ds.insumo_id = i.id 
+                            SET ds.costo_unitario_snapshot = i.costo_unitario 
+                            WHERE ds.solicitud_id = :otId AND ds.costo_unitario_snapshot <= 0";
+            $this->db->prepare($sqlSnapshot)->execute([':otId' => $otId]);
+
+            // =======================================================
+            // 2. CALCULAR COSTO TOTAL DE LA OT
+            // =======================================================
+            $sqlTotal = "UPDATE solicitudes_ot 
+                        SET costo_total_insumos = COALESCE((SELECT SUM(costo_total_linea) FROM detalle_solicitud WHERE solicitud_id = :otId), 0) 
+                        WHERE id = :otId";
+            $this->db->prepare($sqlTotal)->execute([':otId' => $otId]);
+
+            // =======================================================
+            // 3. CERRAR LA ORDEN
+            // =======================================================
+            $sql = "UPDATE solicitudes_ot SET 
+                comentarios_finales = :com,
+                estado_id = 5, 
+                fecha_cierre = NOW()";
+            $params = [':com' => $comentarios, ':id' => $otId];
+
+            if ($firmaBase64 !== null) {
+                $sql .= ", firma_tecnico = :firma";
+                $params[':firma'] = $firmaBase64;
+            }
+
+            if ($evidenciaStr !== null) {
+                $sql .= ", evidencia_cierre = :evi";
+                $params[':evi'] = $this->appendEvidencia($otId, $evidenciaStr);
+            }
+
+            $sql .= " WHERE id = :id";
+            $this->db->prepare($sql)->execute($params);
+
+            if (!$inTransaction)
+                $this->db->commit();
+
+        } catch (Exception $e) {
+            if (!$inTransaction)
+                $this->db->rollBack();
+            throw $e;
         }
-
-        if ($evidenciaStr !== null) {
-            $sql .= ", evidencia_cierre = :evi";
-            $params[':evi'] = $this->appendEvidencia($otId, $evidenciaStr);
-        }
-
-        $sql .= " WHERE id = :id";
-        $this->db->prepare($sql)->execute($params);
     }
 
     public function guardarUrlPdf($otId, $url)
@@ -166,6 +200,7 @@ class MisMantencionesRepository
     public function getDetallesOT($id)
     {
         $sql = "SELECT d.cantidad, d.cantidad_entregada, d.estado_linea, 
+            d.costo_unitario_snapshot, d.costo_total_linea,
             i.nombre, i.codigo_sku, i.unidad_medida
             FROM detalle_solicitud d 
             JOIN insumos i ON d.insumo_id = i.id 
@@ -238,11 +273,12 @@ class MisMantencionesRepository
         ]);
     }
 
-    private function appendEvidencia($otId, $nuevasEvidenciasStr) {
+    private function appendEvidencia($otId, $nuevasEvidenciasStr)
+    {
         $stmt = $this->db->prepare("SELECT evidencia_cierre FROM solicitudes_ot WHERE id = ?");
         $stmt->execute([$otId]);
         $actual = $stmt->fetchColumn();
-        
+
         $arrActual = [];
         if ($actual) {
             $decoded = json_decode($actual, true);

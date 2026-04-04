@@ -420,14 +420,13 @@ class PDFService extends FPDF
         $this->AliasNbPages();
         $this->AddPage();
 
-        // 1. Cabecera
         $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Rect(0, 0, 210, 5, 'F');
 
         $this->SetY(15);
         $this->SetFont('Arial', 'B', 16);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
-        $this->Cell(0, 10, 'SOLICITUD DE MATERIALES (OT)', 0, 1, 'C');
+        $this->Cell(0, 10, 'REPORTE DE MANTENCION (OT)', 0, 1, 'C');
 
         $this->SetFont('Arial', 'B', 12);
         $this->SetTextColor(50);
@@ -437,7 +436,7 @@ class PDFService extends FPDF
         // 2. Información General
         $this->SetFont('Arial', 'B', 10);
         $this->SetFillColor($this->colores['table_header'][0], $this->colores['table_header'][1], $this->colores['table_header'][2]);
-        $this->Cell(0, 6, '  DATOS DE LA SOLICITUD', 0, 1, 'L', true);
+        $this->Cell(0, 6, '  DATOS DE LA ORDEN', 0, 1, 'L', true);
         $this->Ln(2);
 
         $this->SetFont('Arial', 'B', 9);
@@ -469,14 +468,14 @@ class PDFService extends FPDF
         $this->MultiCell(0, 5, $this->txt($ot['descripcion_trabajo'] ?? 'Sin observaciones'), 0, 'L');
         $this->Ln(5);
 
-        // 3. Detalle de Insumos
+        // 3. Detalle de Insumos y Costos
         $this->SetFont('Arial', 'B', 9);
         $this->SetFillColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->SetTextColor(255);
 
-        // Anchos de columnas
-        $w = [25, 80, 25, 25, 35];
-        $h = ['SKU', 'DESCRIPCION', 'SOLIC.', 'ENTREG.', 'ESTADO'];
+        // Anchos de columnas ajustados (190 total)
+        $w = [25, 60, 25, 25, 25, 30];
+        $h = ['SKU', 'DESCRIPCION', 'CANT.', 'ESTADO', 'COSTO UN.', 'SUBTOTAL'];
 
         foreach ($h as $i => $val) {
             $this->Cell($w[$i], 7, $val, 0, 0, 'C', true);
@@ -494,21 +493,28 @@ class PDFService extends FPDF
                 $this->SetFillColor(245, 245, 245);
 
                 $desc = $this->txt($row['nombre']);
-                if (strlen($desc) > 45)
-                    $desc = substr($desc, 0, 42) . '...';
+                if (strlen($desc) > 35)
+                    $desc = substr($desc, 0, 32) . '...';
 
-                // Usamos floatval para limpiar ceros innecesarios (10.00 -> 10)
-                $cantSolicitada = floatval($row['cantidad']);
-                $cantEntregada = isset($row['cantidad_entregada']) ? floatval($row['cantidad_entregada']) : 0;
+                $cantEntregada = isset($row['cantidad_entregada']) ? floatval($row['cantidad_entregada']) : floatval($row['cantidad']);
 
                 $this->Cell($w[0], 7, $row['codigo_sku'], 0, 0, 'C', $fill);
                 $this->Cell($w[1], 7, $desc, 0, 0, 'L', $fill);
-                $this->Cell($w[2], 7, $cantSolicitada . ' ' . $this->txt($row['unidad_medida']), 0, 0, 'C', $fill);
-                $this->Cell($w[3], 7, $cantEntregada, 0, 0, 'C', $fill);
-                $this->Cell($w[4], 7, $row['estado_linea'], 0, 1, 'C', $fill);
+                $this->Cell($w[2], 7, $cantEntregada . ' ' . $this->txt($row['unidad_medida']), 0, 0, 'C', $fill);
+                $this->Cell($w[3], 7, $row['estado_linea'], 0, 0, 'C', $fill);
+                $this->Cell($w[4], 7, $this->fmt($row['costo_unitario_snapshot'] ?? 0), 0, 0, 'R', $fill);
+                $this->Cell($w[5], 7, $this->fmt($row['costo_total_linea'] ?? 0), 0, 1, 'R', $fill);
 
                 $fill = !$fill;
             }
+
+            // Total Row
+            $this->Ln(5);
+            $this->SetFont('Arial', 'B', 10);
+            $this->SetFillColor($this->colores['total_bg'][0], $this->colores['total_bg'][1], $this->colores['total_bg'][2]);
+            $this->Cell(130, 8, '', 0, 0); // space
+            $this->Cell(30, 8, 'TOTAL OT:', 0, 0, 'R', true);
+            $this->Cell(30, 8, $this->fmt($ot['costo_total_ot'] ?? 0), 0, 1, 'R', true);
         }
 
         $this->Ln(20);
@@ -698,18 +704,16 @@ class PDFService extends FPDF
     // -----------------------------------------------------------
     public function generarReporteFinalOT($ot, $checklist, $insumos, $firmaBase64, $comentarios)
     {
-        $this->orden = $ot; // Para que el Header() funcione y saque datos si los necesita
+        $this->orden = $ot; 
         $this->AliasNbPages();
         $this->AddPage();
 
-        // 1. Título Específico
-        $this->SetY(35); // Justo debajo del Header estándar
+        $this->SetY(35); 
         $this->SetFont('Arial', 'B', 14);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(0, 10, mb_convert_case('PROTOCOLO DE MANTENCIÓN FINALIZADA', MB_CASE_UPPER, "UTF-8"), 0, 1, 'C');
         $this->Ln(5);
 
-        // 2. Resumen del Equipo y OT
         $this->SetFillColor(240, 240, 240);
         $this->SetFont('Arial', 'B', 10);
         $this->Cell(0, 7, '1. IDENTIFICACION DEL TRABAJO', 1, 1, 'L', true);
@@ -717,27 +721,21 @@ class PDFService extends FPDF
         $this->SetFont('Arial', '', 9);
         $this->SetTextColor(0);
 
-        // Fila 1
         $this->Cell(30, 6, 'Folio OT:', 0, 0, 'L');
         $this->Cell(65, 6, '# ' . $ot['id'], 0, 0, 'L');
         $this->Cell(30, 6, 'Fecha Solicitud:', 0, 0, 'L');
         $this->Cell(65, 6, date('d/m/Y', strtotime($ot['fecha_solicitud'])), 0, 1, 'L');
 
-        // Fila 2
         $this->Cell(30, 6, 'Activo/Equipo:', 0, 0, 'L');
         $this->Cell(65, 6, $this->txt($ot['activo']), 0, 0, 'L');
         $this->Cell(30, 6, mb_convert_encoding('Código:', 'ISO-8859-1'), 0, 0, 'L');
         $this->Cell(65, 6, $this->txt($ot['activo_codigo']), 0, 1, 'L');
 
-        // Fila 3
         $this->Cell(30, 6, mb_convert_encoding('Técnico:', 'ISO-8859-1'), 0, 0, 'L');
-        // Asumiendo que asignado_a es un ID, aquí idealmente deberías pasar el nombre. 
-        // Si $ot ya trae el nombre del técnico (haciendo JOIN en el repo), úsalo.
         $this->Cell(160, 6, $this->txt($ot['asignado_nombre'] ?? 'Técnico Asignado'), 0, 1, 'L');
 
         $this->Ln(5);
 
-        // 3. Checklist
         $this->SetFont('Arial', 'B', 10);
         $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
         $this->Cell(0, 7, '2. PAUTA DE MANTENCION (CHECKLIST)', 1, 1, 'L', true);
@@ -746,7 +744,6 @@ class PDFService extends FPDF
         $this->SetTextColor(0);
         $this->SetFillColor(230);
 
-        // Cabecera Tabla Checklist
         $this->Cell(90, 6, mb_convert_encoding('Punto de Revisión / Tarea', 'ISO-8859-1'), 1, 0, 'L', true);
         $this->Cell(30, 6, 'Estado', 1, 0, 'C', true);
         $this->Cell(70, 6, mb_convert_encoding('Observación', 'ISO-8859-1'), 1, 1, 'L', true);
@@ -755,23 +752,20 @@ class PDFService extends FPDF
 
         if (!empty($checklist)) {
             foreach ($checklist as $key => $item) {
-                // Formatear valores
                 $valor = strtoupper($item['valor']);
                 if ($valor == 'SI' || $valor == 'BUENO')
-                    $this->SetTextColor(0, 128, 0); // Verde
+                    $this->SetTextColor(0, 128, 0); 
                 elseif ($valor == 'NO' || $valor == 'MALO')
-                    $this->SetTextColor(192, 0, 0); // Rojo
+                    $this->SetTextColor(192, 0, 0); 
                 else
                     $this->SetTextColor(0);
 
-                // Calcular altura dinámica para la observación
                 $obs = $this->txt($item['observacion'] ?? '');
-                $keyText = $this->txt($key); // O $item['label'] si lo tienes guardado
+                $keyText = $this->txt($key); 
 
-                // Imprimir celda
                 $this->Cell(90, 6, $keyText, 1, 0, 'L');
                 $this->Cell(30, 6, $this->txt($valor), 1, 0, 'C');
-                $this->SetTextColor(0); // Reset color
+                $this->SetTextColor(0); 
                 $this->Cell(70, 6, $obs, 1, 1, 'L');
             }
         } else {
@@ -779,7 +773,6 @@ class PDFService extends FPDF
         }
         $this->Ln(5);
 
-        // 4. Insumos Utilizados (Segunda Hoja si es necesario)
         if ($this->GetY() > 220)
             $this->AddPage();
 
@@ -791,25 +784,32 @@ class PDFService extends FPDF
         $this->SetTextColor(0);
         $this->SetFillColor(230);
 
-        $this->Cell(30, 6, 'SKU', 1, 0, 'C', true);
-        $this->Cell(100, 6, mb_convert_encoding('Descripción', 'ISO-8859-1'), 1, 0, 'L', true);
-        $this->Cell(30, 6, 'Cant. Utilizada', 1, 0, 'C', true);
-        $this->Cell(30, 6, 'Estado', 1, 1, 'C', true);
+        $this->Cell(25, 6, 'SKU', 1, 0, 'C', true);
+        $this->Cell(75, 6, mb_convert_encoding('Descripción', 'ISO-8859-1'), 1, 0, 'L', true);
+        $this->Cell(25, 6, 'Cant.', 1, 0, 'C', true);
+        $this->Cell(25, 6, 'Estado', 1, 0, 'C', true);
+        $this->Cell(20, 6, 'P. Unit', 1, 0, 'C', true);
+        $this->Cell(20, 6, 'Total', 1, 1, 'C', true);
 
         $this->SetFont('Arial', '', 8);
         if (!empty($insumos)) {
             foreach ($insumos as $ins) {
-                $this->Cell(30, 6, $this->txt($ins['codigo_sku']), 1, 0, 'C');
-                $this->Cell(100, 6, $this->txt(substr($ins['nombre'], 0, 55)), 1, 0, 'L');
-                $this->Cell(30, 6, $ins['cantidad_entregada'] . ' ' . $this->txt($ins['unidad_medida']), 1, 0, 'C');
-                $this->Cell(30, 6, $this->txt($ins['estado_linea']), 1, 1, 'C');
+                $this->Cell(25, 6, $this->txt($ins['codigo_sku']), 1, 0, 'C');
+                $this->Cell(75, 6, $this->txt(substr($ins['nombre'], 0, 40)), 1, 0, 'L');
+                $this->Cell(25, 6, $ins['cantidad_entregada'] . ' ' . $this->txt($ins['unidad_medida']), 1, 0, 'C');
+                $this->Cell(25, 6, $this->txt($ins['estado_linea']), 1, 0, 'C');
+                $this->Cell(20, 6, $this->fmt($ins['costo_unitario_snapshot'] ?? 0), 1, 0, 'R');
+                $this->Cell(20, 6, $this->fmt($ins['costo_total_linea'] ?? 0), 1, 1, 'R');
             }
+            // TOTAL ROW
+            $this->SetFont('Arial', 'B', 9);
+            $this->Cell(150, 6, 'COSTO TOTAL INSUMOS:', 0, 0, 'R');
+            $this->Cell(40, 6, $this->fmt($ot['costo_total_ot'] ?? 0), 1, 1, 'R', true);
         } else {
             $this->Cell(190, 6, 'No se utilizaron repuestos adicionales.', 1, 1, 'C');
         }
         $this->Ln(5);
 
-        // 5. Comentarios y Cierre
         if ($this->GetY() > 200)
             $this->AddPage();
 
@@ -823,24 +823,19 @@ class PDFService extends FPDF
 
         $this->Ln(15);
 
-        // 6. Firmas
-        $this->SetY(-60); // Pie de página fijo o flotante
+        $this->SetY(-60);
 
-        // -- FIRMA TECNICO --
         $xTecnico = 20;
         $yFirma = $this->GetY();
 
-        // Imagen de firma
         if ($firmaBase64) {
             $imgFile = $this->saveBase64Image($firmaBase64);
             if ($imgFile) {
-                // (archivo, x, y, w, h)
                 $this->Image($imgFile, $xTecnico + 10, $yFirma - 25, 40, 0);
                 unlink($imgFile);
             }
         }
 
-        // Líneas
         $this->Line($xTecnico, $yFirma, $xTecnico + 60, $yFirma);
         $this->Line(130, $yFirma, 190, $yFirma);
 

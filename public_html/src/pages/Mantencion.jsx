@@ -307,6 +307,10 @@ const Mantencion = () => {
         return <span className="badge bg-light text-dark border">{prio || 'No def.'}</span>;
     };
 
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value || 0);
+    };
+
     const solicitudesFiltradas = solicitudes.filter(s => {
         const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
         const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
@@ -514,7 +518,7 @@ const Mantencion = () => {
                             <span className="text-muted">Cargando solicitudes...</span>
                         </div>
                     ) : (
-                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '1000px' }}>
+                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '1100px' }}>
                             <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
                                 <tr>
                                     <th className="ps-4">OT #</th>
@@ -524,14 +528,13 @@ const Mantencion = () => {
                                     <th className="py-3 px-3">Fecha Prog / Creación</th>
                                     <th>Prioridad</th>
                                     <th>Estado</th>
-                                    <th className="text-end pe-4" style={{ minWidth: '200px' }}>Acciones</th>
+                                    <th className="text-end">Costo Total</th>
+                                    <th className="text-end pe-4" style={{ minWidth: '150px' }}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => {
                                     const critico = isCritico(s.prioridad);
-
-                                    // LÓGICA VISUAL: ESTADO PROGRAMADA O PENDIENTE NORMAL
                                     const reqStr = s.fecha_requerida ? s.fecha_requerida.substring(0, 10) : null;
                                     const isFutura = reqStr && reqStr > todayStr;
                                     let estadoTexto = s.estado;
@@ -605,6 +608,17 @@ const Mantencion = () => {
                                             <td>{getPriorityBadge(s.prioridad)}</td>
                                             <td><span className={`badge ${badgeClass}`}>{estadoTexto}</span></td>
 
+                                            {/* COSTO TOTAL */}
+                                            <td className="text-end">
+                                                {s.estado === 'Completada' ? (
+                                                    <span className="fw-bold text-success">
+                                                        {formatCurrency(s.costo_total_ot)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted small"><i className="bi bi-dash"></i></span>
+                                                )}
+                                            </td>
+
                                             <td className="text-end pe-4">
                                                 <div className="d-flex justify-content-end align-items-center gap-2">
 
@@ -633,7 +647,7 @@ const Mantencion = () => {
                                         </tr>
                                     );
                                 }) : (
-                                    <tr><td colSpan="8" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
+                                    <tr><td colSpan="9" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
                                 )}
                             </tbody>
                         </table>

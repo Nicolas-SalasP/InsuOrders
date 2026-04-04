@@ -249,7 +249,7 @@ class ExportController
 
         $this->fillSheet(
             $sheet,
-            ['Nro OT', 'Fecha Solicitud', 'Solicitante', 'Máquina / Activo', 'Cód. Activo', 'Descripción Trabajo', 'Estado', 'Fecha Término'],
+            ['Nro OT', 'Fecha Solicitud', 'Solicitante', 'Máquina / Activo', 'Cód. Activo', 'Descripción Trabajo', 'Estado', 'Fecha Término', 'Costo Materiales', 'Costo Mano Obra', 'COSTO TOTAL OT'],
             $data,
             fn($d) => [
                 $d['id'],
@@ -259,7 +259,10 @@ class ExportController
                 $d['activo_codigo'] ?? '',
                 $d['descripcion_trabajo'],
                 $d['estado'],
-                $d['fecha_termino'] ?? '-'
+                $d['fecha_termino'] ?? '-',
+                $d['costo_total_insumos'] ?? 0,
+                $d['costo_mano_obra'] ?? 0,
+                $d['costo_total_ot'] ?? 0
             ]
         );
     }
@@ -344,7 +347,7 @@ class ExportController
             throw new \Exception("OT no encontrada");
 
         $sheet->setCellValue('A1', 'ORDEN DE TRABAJO #' . $id);
-        $sheet->mergeCells('A1:E1');
+        $sheet->mergeCells('A1:G1'); // Ampliamos hasta G
         $sheet->getStyle('A1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 16, 'color' => ['argb' => 'FF1F4E78']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
@@ -365,13 +368,13 @@ class ExportController
         }
 
         $row = 9;
-        $headers = ['SKU', 'Insumo', 'Solicitado', 'Entregado', 'Estado'];
+        $headers = ['SKU', 'Insumo', 'Solicitado', 'Entregado', 'Estado', 'Costo Unitario ($)', 'Subtotal ($)'];
         $c = 'A';
         foreach ($headers as $h) {
             $sheet->setCellValue($c . $row, $h);
             $c++;
         }
-        $sheet->getStyle("A$row:E$row")->applyFromArray([
+        $sheet->getStyle("A$row:G$row")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['argb' => Color::COLOR_WHITE]],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E78']]
         ]);
@@ -383,9 +386,24 @@ class ExportController
             $sheet->setCellValue("C$row", $d['cantidad']);
             $sheet->setCellValue("D$row", $d['cantidad_entregada']);
             $sheet->setCellValue("E$row", $d['estado_linea']);
+            $sheet->setCellValue("F$row", $d['costo_unitario_snapshot'] ?? 0);
+            $sheet->setCellValue("G$row", $d['costo_total_linea'] ?? 0);
             $row++;
         }
-        foreach (range('A', 'E') as $col)
+
+        $row++;
+        $sheet->setCellValue("F$row", 'TOTAL INSUMOS:');
+        $sheet->setCellValue("G$row", $header['costo_total_insumos'] ?? 0);
+        $row++;
+        $sheet->setCellValue("F$row", 'MANO DE OBRA:');
+        $sheet->setCellValue("G$row", $header['costo_mano_obra'] ?? 0);
+        $row++;
+        $sheet->setCellValue("F$row", 'TOTAL OT:');
+        $sheet->setCellValue("G$row", $header['costo_total_ot'] ?? 0);
+        
+        $sheet->getStyle("F" . ($row - 2) . ":G$row")->getFont()->setBold(true);
+
+        foreach (range('A', 'G') as $col)
             $sheet->getColumnDimension($col)->setAutoSize(true);
     }
 
@@ -515,6 +533,7 @@ class ExportController
             }
         );
     }
+
     private function sheetRecepciones(Spreadsheet $s, $idx)
     {
         $sheet = $this->getSheet($s, $idx);
