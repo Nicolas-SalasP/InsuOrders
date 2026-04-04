@@ -126,11 +126,15 @@ const Bodega = () => {
         } catch (error) { setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al procesar", type: "error" }); }
     };
 
-    const aprobarDevolucion = async (id) => {
+    const aprobarDevolucion = async (id, tipoCodigo) => {
+        let mensajeExito = "Devolución aprobada. El stock ahora está 'Por Organizar'.";
+        if (tipoCodigo === 'NO_RECIBIDO') mensajeExito = "Aprobada. El stock ha sido reintegrado automáticamente al inventario.";
+        if (tipoCodigo === 'DANO') mensajeExito = "Aprobada. El producto se ha registrado como baja/merma.";
+
         try {
             setLoading(true);
             await api.post('/bodega/devoluciones/aprobar', { devolucion_id: id });
-            setMsg({ show: true, title: "Aprobada", text: "Devolución aprobada. El stock ahora está 'Por Organizar'.", type: "success" });
+            setMsg({ show: true, title: "Procesado", text: mensajeExito, type: "success" });
             cargarDevoluciones(true);
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al aprobar", type: "error" });
@@ -139,7 +143,6 @@ const Bodega = () => {
     };
 
     const procesarRechazo = async () => {
-        // AQUÍ SE REEMPLAZA EL ALERT POR EL SETMSG CON MODAL
         if (!rechazoModal.motivo.trim()) {
             setMsg({ show: true, title: "Atención", text: "Debe escribir un motivo para el rechazo.", type: "warning" });
             return;
@@ -184,9 +187,9 @@ const Bodega = () => {
                                 <p className="text-muted">El stock devuelto volverá a ser responsabilidad del técnico y se le notificará el rechazo.</p>
                                 <label className="fw-bold mb-2">Motivo del rechazo:</label>
                                 <textarea 
-                                    className="form-control" 
+                                    className="form-control shadow-sm" 
                                     rows="3" 
-                                    placeholder="Ej: Material incompleto, dañado, etc."
+                                    placeholder="Ej: Material incompleto, el técnico lo rompió, etc."
                                     value={rechazoModal.motivo}
                                     onChange={(e) => setRechazoModal({ ...rechazoModal, motivo: e.target.value })}
                                 ></textarea>
@@ -214,10 +217,12 @@ const Bodega = () => {
                         )}
                     </div>
 
-                    <div className="btn-group">
-                        <button className={`btn ${vista === 'salidas' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setVista('salidas')}>Despacho (Salidas)</button>
-                        <button className={`btn ${vista === 'entradas' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setVista('entradas')}>Organizar (Entradas)</button>
-                        <button className={`btn ${vista === 'devoluciones' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setVista('devoluciones')}>Devoluciones {devoluciones.length > 0 && <span className="badge bg-danger ms-1">{devoluciones.length}</span>}</button>
+                    <div className="btn-group shadow-sm">
+                        <button className={`btn ${vista === 'salidas' ? 'btn-dark' : 'btn-outline-dark bg-white'}`} onClick={() => setVista('salidas')}>Despacho (Salidas)</button>
+                        <button className={`btn ${vista === 'entradas' ? 'btn-dark' : 'btn-outline-dark bg-white'}`} onClick={() => setVista('entradas')}>Organizar (Entradas)</button>
+                        <button className={`btn ${vista === 'devoluciones' ? 'btn-dark' : 'btn-outline-dark bg-white'}`} onClick={() => setVista('devoluciones')}>
+                            Devoluciones {devoluciones.length > 0 && <span className="badge bg-danger ms-1 px-2 rounded-pill">{devoluciones.length}</span>}
+                        </button>
                     </div>
                 </div>
 
@@ -225,9 +230,9 @@ const Bodega = () => {
                     <div className="bg-light px-3 pt-3 pb-2 border-bottom">
                         <div className="row">
                             <div className="col-md-4">
-                                <div className="input-group">
+                                <div className="input-group shadow-sm">
                                     <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
-                                    <input type="text" className="form-control border-start-0 ps-0" placeholder="Buscar..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+                                    <input type="text" className="form-control border-start-0 ps-0" placeholder="Buscar por Insumo o Técnico..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
                                     {busqueda && <button className="btn btn-outline-secondary border-start-0 bg-white" onClick={() => setBusqueda('')}><i className="bi bi-x"></i></button>}
                                 </div>
                             </div>
@@ -332,15 +337,15 @@ const Bodega = () => {
                             </div>
                         ) : (
                             <div className="card border-0 shadow-sm">
-                                <table className="table table-hover align-middle mb-0">
+                                <table className="table table-hover align-middle mb-0 bg-white">
                                     <thead className="bg-light sticky-top">
                                         <tr>
-                                            <th className="ps-4">Técnico</th>
-                                            <th>SKU</th>
-                                            <th>Insumo</th>
-                                            <th className="text-center">Cant. Devuelta</th>
-                                            <th>Fecha</th>
-                                            <th className="text-end pe-4">Acciones</th>
+                                            <th className="ps-4 py-3">Técnico Solicitante</th>
+                                            <th>Insumo / SKU</th>
+                                            <th className="text-center">Cant. Retorno</th>
+                                            <th>Motivo / Comentarios</th>
+                                            <th>Fecha Solicitud</th>
+                                            <th className="text-end pe-4">Resolución</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -348,28 +353,73 @@ const Bodega = () => {
                                             devolucionesFiltradas.map(dev => (
                                                 <tr key={dev.id}>
                                                     <td className="ps-4">
-                                                        <div className="fw-bold text-dark">{dev.tecnico_nombre} {dev.tecnico_apellido}</div>
+                                                        <div className="fw-bold text-dark d-flex align-items-center">
+                                                            <div className="bg-secondary bg-opacity-10 p-2 rounded-circle me-2 text-secondary d-flex align-items-center justify-content-center" style={{width:'32px', height:'32px'}}>
+                                                                <i className="bi bi-person-fill"></i>
+                                                            </div>
+                                                            {dev.tecnico_nombre} {dev.tecnico_apellido}
+                                                        </div>
                                                     </td>
-                                                    <td className="font-monospace text-muted">{dev.codigo_sku}</td>
-                                                    <td><div className="fw-bold">{dev.insumo}</div></td>
-                                                    <td className="text-center fw-bold text-warning fs-5">
-                                                        {parseFloat(dev.cantidad)} <small className="text-muted fs-6">{dev.unidad_medida}</small>
+                                                    <td>
+                                                        <div className="fw-bold text-dark">{dev.insumo}</div>
+                                                        <div className="font-monospace text-muted small mt-1">{dev.codigo_sku}</div>
                                                     </td>
-                                                    <td className="text-muted small">{new Date(dev.fecha).toLocaleString()}</td>
+                                                    <td className="text-center">
+                                                        <span className="badge bg-light text-dark border fs-6 px-3 py-2 shadow-sm">
+                                                            {parseFloat(dev.cantidad)} <span className="text-muted ms-1">{dev.unidad_medida}</span>
+                                                        </span>
+                                                    </td>
+                                                    
+                                                    {/* NUEVA COLUMNA ESTILIZADA PARA MOTIVOS */}
+                                                    <td>
+                                                        <div className="d-flex flex-column align-items-start">
+                                                            {dev.tipo_codigo === 'SOBRANTE' && <span className="badge bg-primary bg-opacity-10 text-primary border border-primary mb-1 px-2 py-1"><i className="bi bi-box-seam me-1"></i>Sobrante</span>}
+                                                            {dev.tipo_codigo === 'DANO' && <span className="badge bg-danger bg-opacity-10 text-danger border border-danger mb-1 px-2 py-1"><i className="bi bi-exclamation-triangle me-1"></i>Daño / Merma</span>}
+                                                            {dev.tipo_codigo === 'NO_RECIBIDO' && <span className="badge bg-warning bg-opacity-25 text-dark border border-warning mb-1 px-2 py-1"><i className="bi bi-truck-flatbed me-1"></i>No Recibido</span>}
+                                                            {(!dev.tipo_codigo) && <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary mb-1 px-2 py-1">General</span>}
+                                                            
+                                                            {dev.comentario_tecnico && (
+                                                                <div className="alert alert-secondary p-2 mb-0 mt-1 small fst-italic border-0" style={{ maxWidth: '300px', fontSize: '0.8rem', lineHeight: '1.2' }}>
+                                                                    "{dev.comentario_tecnico}"
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    <td className="text-muted small">
+                                                        <i className="bi bi-calendar3 me-1"></i>
+                                                        {new Date(dev.fecha).toLocaleDateString()}
+                                                        <div className="mt-1"><i className="bi bi-clock me-1"></i>{new Date(dev.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                                    </td>
+                                                    
                                                     <td className="text-end pe-4">
                                                         <div className="btn-group shadow-sm">
-                                                            <button className="btn btn-success btn-sm fw-bold px-3" onClick={() => aprobarDevolucion(dev.id)} title="Aprobar Recepción">
-                                                                <i className="bi bi-check-lg"></i>
+                                                            <button 
+                                                                className="btn btn-outline-success btn-sm fw-bold px-3 d-flex align-items-center" 
+                                                                onClick={() => aprobarDevolucion(dev.id, dev.tipo_codigo)} 
+                                                                title="Procesar y Aceptar"
+                                                            >
+                                                                <i className="bi bi-check2-circle fs-5 me-1"></i> Aceptar
                                                             </button>
-                                                            <button className="btn btn-danger btn-sm fw-bold px-3 border-start" onClick={() => setRechazoModal({ show: true, devId: dev.id, motivo: '' })} title="Rechazar y devolver al técnico">
-                                                                <i className="bi bi-x-lg"></i>
+                                                            <button 
+                                                                className="btn btn-outline-danger btn-sm fw-bold px-3 border-start d-flex align-items-center" 
+                                                                onClick={() => setRechazoModal({ show: true, devId: dev.id, motivo: '' })} 
+                                                                title="Denegar retorno al técnico"
+                                                            >
+                                                                <i className="bi bi-x-circle fs-5 me-1"></i> Rechazar
                                                             </button>
                                                         </div>
                                                     </td>
                                                 </tr>
                                             ))
                                         ) : (
-                                            <tr><td colSpan="6" className="text-center py-5 text-muted">No hay devoluciones pendientes.</td></tr>
+                                            <tr>
+                                                <td colSpan="6" className="text-center py-5 text-muted bg-white">
+                                                    <i className="bi bi-inboxes display-4 text-secondary opacity-50 mb-3 d-block"></i>
+                                                    <h5>No hay solicitudes pendientes</h5>
+                                                    <p>Todas las devoluciones y rechazos han sido procesados.</p>
+                                                </td>
+                                            </tr>
                                         )}
                                     </tbody>
                                 </table>
