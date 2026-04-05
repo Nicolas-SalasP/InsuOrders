@@ -1,37 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import SignatureCanvas from 'react-signature-canvas';
+import React, { useState, useEffect } from 'react';
 
-const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange }) => {
-    // Estado local para las respuestas del checklist
+const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange, readOnly = false }) => {
     const [respuestas, setRespuestas] = useState({});
-    
-    // Estado local para comentarios
-    const [comentarios, setComentarios] = useState('');
-    
-    // Referencia al pad de firma
-    const sigCanvas = useRef({});
 
-    // Cargar datos previos si existen
     useEffect(() => {
         if (respuestasIniciales) {
-            // Respuestas del checklist
             setRespuestas(respuestasIniciales);
         }
     }, [respuestasIniciales]);
 
-    // Función centralizada para notificar cambios al padre (MisMantenciones)
-    const notificarCambios = (nuevasRespuestas, nuevoComentario, nuevaFirma) => {
-        // Preparamos el objeto completo que espera el backend
-        const payload = {
-            respuestas: Object.values(nuevasRespuestas), // Convertimos obj a array
-            comentarios: nuevoComentario,
-            firma: nuevaFirma // Base64 image string
-        };
-        onChange(payload);
-    };
-
-    // Manejar cambios en el Checklist (Si/No, Textos, etc)
     const updateRespuesta = (seccion, key, campo, valor) => {
+        if (readOnly) return;
         const newRespuestas = { ...respuestas };
         
         if (!newRespuestas[key]) {
@@ -41,38 +20,7 @@ const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange }) => {
         newRespuestas[key][campo] = valor;
         setRespuestas(newRespuestas);
         
-        // Notificamos manteniendo los otros estados actuales
-        notificarCambios(
-            newRespuestas, 
-            comentarios, 
-            sigCanvas.current.isEmpty() ? null : sigCanvas.current.toDataURL()
-        );
-    };
-
-    // Manejar cambio en Comentarios
-    const handleComentarioChange = (e) => {
-        const val = e.target.value;
-        setComentarios(val);
-        notificarCambios(
-            respuestas, 
-            val, 
-            sigCanvas.current.isEmpty() ? null : sigCanvas.current.toDataURL()
-        );
-    };
-
-    // Manejar fin de trazo en la firma
-    const handleFirmaEnd = () => {
-        notificarCambios(
-            respuestas, 
-            comentarios, 
-            sigCanvas.current.toDataURL() // Obtenemos la imagen base64
-        );
-    };
-
-    // Borrar firma
-    const limpiarFirma = () => {
-        sigCanvas.current.clear();
-        notificarCambios(respuestas, comentarios, null);
+        onChange(Object.values(newRespuestas));
     };
 
     if (!plantilla || !plantilla.secciones) {
@@ -80,7 +28,7 @@ const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange }) => {
     }
 
     return (
-        <div className="checklist-wrapper pb-5">
+        <div className="checklist-wrapper pb-4">
             {/* CABECERA */}
             <div className="alert alert-info py-2 mb-4 d-flex justify-content-between align-items-center shadow-sm">
                 <div>
@@ -90,7 +38,6 @@ const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange }) => {
                 <i className="bi bi-file-text fs-3"></i>
             </div>
 
-            {/* SECCIONES DEL CHECKLIST */}
             {plantilla.secciones.map((seccion) => (
                 <div key={seccion.key} className="card mb-4 border-0 shadow-sm">
                     <div className="card-header bg-light fw-bold text-uppercase small text-primary d-flex justify-content-between">
@@ -113,10 +60,12 @@ const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange }) => {
                                                     <button 
                                                         className={`btn btn-sm ${respuestas[item.key]?.valor === 'si' ? 'btn-success' : 'btn-outline-success'}`}
                                                         onClick={() => updateRespuesta(seccion.key, item.key, 'valor', 'si')}
+                                                        disabled={readOnly}
                                                     >Si</button>
                                                     <button 
                                                         className={`btn btn-sm ${respuestas[item.key]?.valor === 'no' ? 'btn-danger' : 'btn-outline-danger'}`}
                                                         onClick={() => updateRespuesta(seccion.key, item.key, 'valor', 'no')}
+                                                        disabled={readOnly}
                                                     >No</button>
                                                 </div>
                                             )}
@@ -126,6 +75,7 @@ const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange }) => {
                                                     className={`form-select form-select-sm ${respuestas[item.key]?.valor === 'malo' ? 'border-danger text-danger fw-bold' : ''}`}
                                                     value={respuestas[item.key]?.valor || ''}
                                                     onChange={(e) => updateRespuesta(seccion.key, item.key, 'valor', e.target.value)}
+                                                    disabled={readOnly}
                                                 >
                                                     <option value="">-- Estado --</option>
                                                     <option value="bueno">✅ Bueno</option>
@@ -144,6 +94,7 @@ const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange }) => {
                                                         placeholder={item.cant}
                                                         value={respuestas[item.key]?.valor || ''}
                                                         onChange={(e) => updateRespuesta(seccion.key, item.key, 'valor', e.target.value)}
+                                                        disabled={readOnly}
                                                     />
                                                 </div>
                                             )}
@@ -156,6 +107,7 @@ const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange }) => {
                                                 placeholder="Observaciones..."
                                                 value={respuestas[item.key]?.observacion || ''}
                                                 onChange={(e) => updateRespuesta(seccion.key, item.key, 'observacion', e.target.value)}
+                                                disabled={readOnly}
                                             />
                                         </td>
                                     </tr>
@@ -165,51 +117,6 @@ const ChecklistRenderer = ({ plantilla, respuestasIniciales, onChange }) => {
                     </div>
                 </div>
             ))}
-
-            {/* --- PIE DE PÁGINA: COMENTARIOS Y FIRMA --- */}
-            <div className="card border-secondary shadow-sm mt-5">
-                <div className="card-header bg-secondary text-white fw-bold d-flex justify-content-between align-items-center">
-                    <span><i className="bi bi-pen-fill me-2"></i> FINALIZACIÓN Y FIRMA</span>
-                    <small className="fw-light">Paso Final</small>
-                </div>
-                <div className="card-body bg-light">
-                    
-                    {/* Comentarios Finales */}
-                    <div className="mb-4">
-                        <label className="form-label fw-bold text-dark">Comentarios Generales / Observaciones Finales</label>
-                        <textarea 
-                            className="form-control shadow-sm" 
-                            rows="3"
-                            placeholder="Detalle cualquier anomalía extra, trabajos pendientes o insumos adicionales utilizados..."
-                            value={comentarios}
-                            onChange={handleComentarioChange}
-                        ></textarea>
-                    </div>
-
-                    {/* Pad de Firma */}
-                    <div className="mb-3">
-                        <label className="form-label fw-bold text-dark">Firma del Técnico Responsable</label>
-                        <div className="border border-2 rounded bg-white shadow-sm position-relative" style={{ width: '100%', height: '200px' }}>
-                            <SignatureCanvas 
-                                ref={sigCanvas}
-                                penColor="black"
-                                canvasProps={{ className: 'sigCanvas w-100 h-100' }}
-                                onEnd={handleFirmaEnd} // Se dispara al soltar el mouse/dedo
-                            />
-                            <div className="position-absolute bottom-0 end-0 p-2 pointer-events-none text-muted small opacity-50 user-select-none">
-                                Área de Firma
-                            </div>
-                        </div>
-                        <div className="d-flex justify-content-between mt-2">
-                            <small className="text-muted fst-italic">* Firme en el recuadro blanco usando el mouse o pantalla táctil.</small>
-                            <button className="btn btn-sm btn-outline-danger" onClick={limpiarFirma}>
-                                <i className="bi bi-eraser me-1"></i> Borrar Firma
-                            </button>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
         </div>
     );
 };

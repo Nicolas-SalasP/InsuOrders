@@ -361,7 +361,10 @@ class MantencionRepository
     }
     public function getAsignadosOT($otId)
     {
-        $sql = "SELECT oa.usuario_id, u.nombre, u.apellido, u.email, oa.completado, oa.tarea_rol FROM ot_asignaciones oa JOIN usuarios u ON oa.usuario_id = u.id WHERE oa.solicitud_id = :id";
+        $sql = "SELECT oa.usuario_id, u.nombre, u.apellido, u.email, oa.completado, oa.tarea_rol, oa.notas_cierre 
+                FROM ot_asignaciones oa 
+                JOIN usuarios u ON oa.usuario_id = u.id 
+                WHERE oa.solicitud_id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $otId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

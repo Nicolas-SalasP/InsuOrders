@@ -73,26 +73,57 @@ const MisMantenciones = () => {
 
     const teamStats = esJefe ? obtenerEstadisticasEquipo() : [];
 
-    const handleSelectOt = async (ot) => {
+    const inyectarKeyYSeccion = (respuestasGuardadas) => {
+        const mapa = {};
+        if (respuestasGuardadas && typeof respuestasGuardadas === 'object') {
+            Object.keys(respuestasGuardadas).forEach(k => {
+                mapa[k] = {
+                    key: k,
+                    valor: respuestasGuardadas[k].valor || '',
+                    observacion: respuestasGuardadas[k].observacion || ''
+                };
+            });
+        }
+        return mapa;
+    };
+
+    const handleSelectOt = async (ot, mantenerTab = false) => {
         setSelectedOt(ot);
         setLoadingDetalle(true);
-        setActiveTab('info');
-
-        setDatosEnvio({
-            respuestas: [],
-            firma: null,
-            comentarios: ot.comentarios_finales || '',
-            archivos: []
-        });
+        if (!mantenerTab) setActiveTab('info');
         setEnlargedImage(null);
 
         try {
             const res = await api.get(`/index.php/mantencion?detalle=true&id=${ot.id}`);
             if (res.data.success) {
-                setSelectedOt({ ...ot, ...res.data.data });
+                const dataBd = res.data.data;
+
+                const currentUserId = parseInt(authData?.id || localStorage.getItem('user_id') || 0);
+                const miAsignacion = dataBd.asignaciones?.find(a => parseInt(a.usuario_id) === currentUserId);
+                const misNotasAnteriores = miAsignacion ? miAsignacion.notas_cierre : (dataBd.comentarios_finales || '');
+                const miCompletadoReal = miAsignacion ? parseInt(miAsignacion.completado) : parseInt(ot.mi_completado || 0);
+
+                const freshRespuestas = dataBd.respuestas_guardadas || ot.respuestas_guardadas;
+                const respuestasCargadas = inyectarKeyYSeccion(freshRespuestas);
+
+                const mergedOt = {
+                    ...ot,
+                    ...dataBd,
+                    mi_completado: miCompletadoReal,
+                    respuestas_guardadas: freshRespuestas
+                };
+
+                setSelectedOt(mergedOt);
                 setDetallesOt({
-                    insumos: res.data.data.items || [],
-                    respuestas: formatearRespuestas(res.data.data.respuestas)
+                    insumos: dataBd.items || [],
+                    respuestas: respuestasCargadas
+                });
+
+                setDatosEnvio({
+                    respuestas: respuestasCargadas,
+                    firma: null,
+                    comentarios: misNotasAnteriores || '',
+                    archivos: []
                 });
             }
         } catch (error) {
@@ -103,16 +134,6 @@ const MisMantenciones = () => {
         }
     };
 
-    const formatearRespuestas = (lista) => {
-        const mapa = {};
-        if (lista && Array.isArray(lista)) {
-            lista.forEach(r => {
-                mapa[r.item_key] = { valor: r.valor, observacion: r.observacion };
-            });
-        }
-        return mapa;
-    };
-
     const handleCambiarEstadoManual = async (nuevoEstadoId) => {
         try {
             setGuardando(true);
@@ -121,7 +142,7 @@ const MisMantenciones = () => {
                 estado_id: nuevoEstadoId
             });
             if (res.data.success) {
-                setSelectedOt({ ...selectedOt, estado_id: parseInt(nuevoEstadoId) });
+                setSelectedOt(prev => ({ ...prev, estado_id: parseInt(nuevoEstadoId) }));
                 cargarMisOts();
                 setMsg({ show: true, title: "Éxito", text: "Estado actualizado correctamente", type: "success" });
             }
@@ -146,7 +167,7 @@ const MisMantenciones = () => {
             filtroEstado === 'pendientes' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (!reqStr || reqStr <= todayStr)) :
                 filtroEstado === 'futuras' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (reqStr && reqStr > todayStr)) :
                     filtroEstado === 'proceso' ? ot.estado_id === 2 :
-                        filtroEstado === 'terminado' ? (ot.mi_completado === 1 || ot.estado_id === 5) : true;
+                        filtroEstado === 'terminado' ? (parseInt(ot.mi_completado) === 1 || ot.estado_id === 5) : true;
 
         const texto = busqueda.toLowerCase();
         const matchTexto = ot.activo.toLowerCase().includes(texto) ||
@@ -228,7 +249,7 @@ const MisMantenciones = () => {
         return (
             <div className="d-flex flex-wrap gap-2 mt-1">
                 {archivos.map((url, idx) => {
-                    if (!url || typeof url !== 'string' || url === 'null') return null;     
+                    if (!url || typeof url !== 'string' || url === 'null') return null;
                     const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
                     return isVideo ? (
                         <video key={idx} src={`/api/${url}`} controls className="rounded border shadow-sm bg-dark" style={{ height: '120px', maxWidth: '100%' }}></video>
@@ -272,6 +293,7 @@ const MisMantenciones = () => {
         }
         procesarGuardado(isFinalizar);
     };
+
     const procesarGuardado = async (isFinalizar) => {
         setConfirm({ ...confirm, show: false });
         setGuardando(true);
@@ -279,7 +301,26 @@ const MisMantenciones = () => {
         try {
             const formData = new FormData();
             formData.append('ot_id', selectedOt.id);
-            formData.append('respuestas', JSON.stringify(datosEnvio.respuestas || []));
+
+            let respuestasArray = [];
+            const rawRespuestas = datosEnvio.respuestas;
+
+            if (Array.isArray(rawRespuestas)) {
+                respuestasArray = rawRespuestas.filter(r => r.key && !['respuestas', 'comentarios', 'firma'].includes(r.key));
+            } else if (rawRespuestas && typeof rawRespuestas === 'object') {
+                respuestasArray = Object.keys(rawRespuestas)
+                    .filter(key => !['respuestas', 'comentarios', 'firma'].includes(key))
+                    .map(key => {
+                        const item = rawRespuestas[key];
+                        return {
+                            key: key,
+                            valor: (item && typeof item === 'object') ? (item.valor || '') : (item || ''),
+                            observacion: (item && typeof item === 'object') ? (item.observacion || '') : ''
+                        };
+                    });
+            }
+            formData.append('respuestas', JSON.stringify(respuestasArray));
+
             if (datosEnvio.firma) formData.append('firma', datosEnvio.firma);
             if (datosEnvio.comentarios) formData.append('comentarios', datosEnvio.comentarios);
 
@@ -297,20 +338,19 @@ const MisMantenciones = () => {
 
             if (res.data.success) {
                 setMsg({ show: true, title: isFinalizar ? '¡Trabajo Finalizado!' : 'Avance Guardado', text: 'Operación registrada correctamente.', type: 'success' });
-
                 setDatosEnvio(prev => ({ ...prev, archivos: [] }));
 
+                cargarMisOts();
+
                 if (isFinalizar) {
-                    cargarMisOts();
                     setSelectedOt(null);
                 } else {
-                    cargarMisOts();
-                    const updatedOt = ots.find(o => o.id === selectedOt.id) || selectedOt;
-                    handleSelectOt(updatedOt);
+                    handleSelectOt(selectedOt, true);
                 }
             }
         } catch (e) {
-            setMsg({ show: true, title: 'Error', text: e.response?.data?.message || 'No se pudo guardar.', type: 'error' });
+            console.error("Error crítico al procesar guardado:", e);
+            setMsg({ show: true, title: 'Error', text: e.response?.data?.message || 'Hubo un problema al intentar guardar.', type: 'error' });
         } finally {
             setGuardando(false);
         }
@@ -338,6 +378,8 @@ const MisMantenciones = () => {
             return null;
         }
     };
+
+    const isReadOnly = selectedOt ? (parseInt(selectedOt.mi_completado) === 1 || parseInt(selectedOt.estado_id) === 5) : false;
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column bg-light position-relative">
@@ -449,7 +491,6 @@ const MisMantenciones = () => {
                                     const isActive = selectedOt?.id === ot.id;
                                     const requierePermiso = Number(ot.requiere_permiso) === 1;
 
-                                    // LÓGICA DE BADGE INTELIGENTE "PROGRAMADA"
                                     const reqStr = ot.fecha_requerida ? ot.fecha_requerida.substring(0, 10) : null;
                                     const isFutura = reqStr && reqStr > todayStr;
 
@@ -505,6 +546,23 @@ const MisMantenciones = () => {
                                                     <i className="bi bi-person-fill me-1"></i>Solicita: {ot.solicitante_nombre}
                                                 </div>
                                                 <span className={`badge ${badgeClass} fw-bold mt-1`} style={{ letterSpacing: '0.5px' }}>{estadoTexto}</span>
+
+                                                {ot.equipo_nombres && (
+                                                    <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between">
+                                                        <small className="text-muted" style={{ fontSize: '0.65rem' }}>EQUIPO:</small>
+                                                        <div className="d-flex flex-wrap gap-1 justify-content-end">
+                                                            {ot.equipo_nombres.split(',').map((nombre, i) => {
+                                                                const nameParts = nombre.trim().split(' ');
+                                                                const initials = nameParts.length > 1 ? nameParts[0][0] + nameParts[1][0] : nameParts[0][0];
+                                                                return (
+                                                                    <span key={i} className="badge rounded-circle bg-primary bg-opacity-10 text-primary border border-primary d-flex align-items-center justify-content-center" style={{ width: '22px', height: '22px', fontSize: '0.6rem' }} title={nombre.trim()}>
+                                                                        {initials.toUpperCase()}
+                                                                    </span>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </button>
                                     );
@@ -542,12 +600,18 @@ const MisMantenciones = () => {
                                     </div>
 
                                     <div className="ps-3 d-flex gap-2">
-                                        {esServicio ? (
+                                        {loadingDetalle ? (
+                                            <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                        ) : isReadOnly ? (
+                                            <div className="alert alert-success m-0 py-2 px-3 fw-bold shadow-sm d-flex align-items-center" style={{ fontSize: '0.85rem' }}>
+                                                <i className="bi bi-check-circle-fill me-2 fs-5"></i> ¡Ya entregaste tu parte!
+                                            </div>
+                                        ) : esServicio ? (
                                             <>
                                                 <button
                                                     className="btn btn-outline-primary fw-bold px-3 shadow-sm d-flex align-items-center"
                                                     onClick={() => iniciarGuardado(false)}
-                                                    disabled={guardando || parseInt(selectedOt.estado_id) === 5}
+                                                    disabled={guardando}
                                                 >
                                                     {guardando ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-save-fill me-1 me-sm-2"></i>}
                                                     <span className="d-none d-sm-inline">Guardar Avance</span>
@@ -555,7 +619,7 @@ const MisMantenciones = () => {
                                                 <button
                                                     className="btn btn-success fw-bold px-3 px-sm-4 shadow d-flex align-items-center"
                                                     onClick={() => iniciarGuardado(true)}
-                                                    disabled={guardando || parseInt(selectedOt.estado_id) === 5}
+                                                    disabled={guardando}
                                                 >
                                                     {guardando ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check-circle-fill me-1 me-sm-2"></i>}
                                                     <span className="d-none d-sm-inline">Finalizar</span>
@@ -566,7 +630,7 @@ const MisMantenciones = () => {
                                             <button
                                                 className={`btn btn-lg fw-bold px-4 shadow d-flex align-items-center ${datosEnvio.firma ? 'btn-danger' : 'btn-primary'}`}
                                                 onClick={() => iniciarGuardado(!!datosEnvio.firma)}
-                                                disabled={guardando || parseInt(selectedOt.estado_id) === 5}
+                                                disabled={guardando}
                                             >
                                                 {guardando ? <span className="spinner-border spinner-border-sm me-2"></span> :
                                                     datosEnvio.firma ? <i className="bi bi-file-earmark-lock-fill me-2 fs-5"></i> : <i className="bi bi-save-fill me-2 fs-5"></i>
@@ -636,28 +700,28 @@ const MisMantenciones = () => {
                                                     <button
                                                         className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 1 ? 'btn-warning text-dark border-warning' : 'btn-white border text-muted'}`}
                                                         onClick={() => handleCambiarEstadoManual(1)}
-                                                        disabled={guardando || parseInt(selectedOt.estado_id) === 1 || parseInt(selectedOt.estado_id) === 5}
+                                                        disabled={isReadOnly || guardando}
                                                     >
                                                         <i className="bi bi-hourglass-split me-2"></i>Pendiente
                                                     </button>
                                                     <button
                                                         className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 2 ? 'btn-primary border-primary' : 'btn-white border text-muted'}`}
                                                         onClick={() => handleCambiarEstadoManual(2)}
-                                                        disabled={guardando || parseInt(selectedOt.estado_id) === 2 || parseInt(selectedOt.estado_id) === 5}
+                                                        disabled={isReadOnly || guardando}
                                                     >
                                                         <i className="bi bi-tools me-2"></i>En Proceso
                                                     </button>
                                                     <button
                                                         className={`btn rounded-pill px-4 fw-bold shadow-sm ${parseInt(selectedOt.estado_id) === 4 ? 'btn-danger border-danger' : 'btn-white border text-muted'}`}
                                                         onClick={() => handleCambiarEstadoManual(4)}
-                                                        disabled={guardando || parseInt(selectedOt.estado_id) === 4 || parseInt(selectedOt.estado_id) === 5}
+                                                        disabled={isReadOnly || guardando}
                                                     >
                                                         <i className="bi bi-pause-circle-fill me-2"></i>Pausada
                                                     </button>
                                                 </div>
-                                                {parseInt(selectedOt.estado_id) === 5 ? (
+                                                {isReadOnly ? (
                                                     <small className="text-success mt-3 d-block fw-bold">
-                                                        <i className="bi bi-check-circle-fill me-1"></i> Esta tarea ya fue finalizada. No se puede revertir.
+                                                        <i className="bi bi-check-circle-fill me-1"></i> Tarea bloqueada: ya entregaste tu reporte final.
                                                     </small>
                                                 ) : (
                                                     <small className="text-muted mt-3 d-block">
@@ -670,6 +734,47 @@ const MisMantenciones = () => {
                                                 <i className="bi bi-journal-text me-2 text-primary"></i>
                                                 Detalles del Requerimiento
                                             </h5>
+
+                                            {selectedOt.asignaciones && selectedOt.asignaciones.length > 0 && (
+                                                <div className="mb-4">
+                                                    <h6 className="fw-bold text-dark text-uppercase mb-3">
+                                                        <i className="bi bi-microsoft-teams text-primary me-2"></i> Equipo de Trabajo
+                                                    </h6>
+                                                    <ul className="list-group list-group-flush border rounded shadow-sm">
+                                                        {selectedOt.asignaciones.map((asig, idx) => {
+                                                            const isMe = parseInt(asig.usuario_id) === parseInt(authData?.id);
+                                                            return (
+                                                                <li key={idx} className={`list-group-item d-flex justify-content-between align-items-center ${parseInt(asig.completado) === 1 ? 'bg-success bg-opacity-10' : ''}`}>
+                                                                    <div>
+                                                                        <div className="fw-bold text-dark">
+                                                                            {asig.nombre} {asig.apellido}
+                                                                            {isMe && <span className="badge bg-primary ms-2" style={{ fontSize: '0.6rem' }}>TÚ</span>}
+                                                                        </div>
+
+                                                                        {parseInt(asig.completado) === 1 ? (
+                                                                            asig.notas_cierre ? (
+                                                                                <div className="text-muted small fst-italic mt-1">
+                                                                                    <i className="bi bi-chat-left-text me-1"></i>"{asig.notas_cierre}"
+                                                                                </div>
+                                                                            ) : (
+                                                                                <small className="text-success fw-medium mt-1 d-block"><i className="bi bi-check-all me-1"></i>Finalizado sin notas</small>
+                                                                            )
+                                                                        ) : (
+                                                                            <small className="text-primary fw-medium mt-1 d-block"><i className="bi bi-gear-wide-connected me-1"></i>En ejecución...</small>
+                                                                        )}
+                                                                    </div>
+                                                                    {parseInt(asig.completado) === 1 ? (
+                                                                        <span className="badge bg-success shadow-sm"><i className="bi bi-check-circle-fill me-1"></i>Finalizado</span>
+                                                                    ) : (
+                                                                        <span className="badge bg-warning text-dark shadow-sm"><i className="bi bi-tools me-1"></i>Pendiente</span>
+                                                                    )}
+                                                                </li>
+                                                            )
+                                                        })}
+                                                    </ul>
+                                                </div>
+                                            )}
+
                                             <div className="row">
                                                 <div className="col-md-7">
                                                     <div className="mb-4">
@@ -699,88 +804,113 @@ const MisMantenciones = () => {
                                             </div>
                                         </div>
 
-                                        <div className={activeTab === 'checklist' ? 'd-block' : 'd-none'}>
-                                            {activeTab === 'checklist' && (
-                                                selectedOt.plantilla_json ? (
+                                        {/* CORRECCIÓN: Renderizado condicional del Checklist y Firma */}
+                                        {activeTab === 'checklist' && (
+                                            <div className="fade-in">
+                                                {selectedOt.plantilla_json && (
                                                     <ChecklistRenderer
                                                         plantilla={getPlantillaSegura(selectedOt.plantilla_json)}
                                                         respuestasIniciales={detallesOt.respuestas}
-                                                        onChange={(data) => setDatosEnvio(data)}
+                                                        readOnly={isReadOnly}
+                                                        onChange={(data) => setDatosEnvio(prev => ({ ...prev, respuestas: data }))}
                                                     />
-                                                ) : (
-                                                    <div className="bg-white rounded border shadow-sm p-4 mb-4">
-                                                        <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
-                                                            <i className="bi bi-clipboard-check me-2 text-primary"></i>
-                                                            Avance y Cierre de Tarea
-                                                        </h5>
+                                                )}
 
-                                                        <div className="mb-4">
-                                                            <label className="form-label fw-bold text-muted small text-uppercase">1. Detalles del Trabajo Realizado</label>
-                                                            <textarea
-                                                                className="form-control bg-light"
-                                                                rows="4"
-                                                                placeholder="Describa aquí lo que se reparó, cambió o solucionó..."
-                                                                value={datosEnvio.comentarios || ''}
-                                                                onChange={(e) => setDatosEnvio({ ...datosEnvio, comentarios: e.target.value })}
-                                                            ></textarea>
-                                                        </div>
+                                                <div className="bg-white rounded border shadow-sm p-4 mb-4 mt-4">
+                                                    <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
+                                                        <i className="bi bi-clipboard-check me-2 text-primary"></i>
+                                                        Avance y Cierre de Tarea
+                                                    </h5>
 
-                                                        <div className="mb-4">
-                                                            <label className="form-label fw-bold text-muted small text-uppercase">2. Evidencia (Fotos / Videos)</label>
+                                                    <div className="mb-4">
+                                                        <label className="form-label fw-bold text-muted small text-uppercase">1. Detalles del Trabajo Realizado</label>
+                                                        <textarea
+                                                            className="form-control bg-light"
+                                                            rows="4"
+                                                            placeholder="Describa aquí lo que se reparó, cambió o solucionó..."
+                                                            value={datosEnvio.comentarios || ''}
+                                                            disabled={isReadOnly}
+                                                            onChange={(e) => setDatosEnvio(prev => ({ ...prev, comentarios: e.target.value }))}
+                                                        ></textarea>
+                                                    </div>
 
-                                                            {selectedOt.evidencia_cierre && (
-                                                                <div className="mb-3 p-3 bg-light rounded border border-success border-opacity-25">
-                                                                    <span className="small text-success d-block mb-2 fw-bold"><i className="bi bi-check-circle-fill me-1"></i>Archivos Guardados Anteriormente:</span>
-                                                                    {renderEvidencia(selectedOt.evidencia_cierre)}
-                                                                </div>
-                                                            )}
+                                                    <div className="mb-4">
+                                                        <label className="form-label fw-bold text-muted small text-uppercase">2. Evidencia (Fotos / Videos)</label>
 
-                                                            <input
-                                                                type="file"
-                                                                className="form-control mb-2"
-                                                                accept="image/*,video/*"
-                                                                capture="environment"
-                                                                multiple
-                                                                onChange={handleFileChange}
-                                                            />
-                                                            {datosEnvio.archivos && datosEnvio.archivos.length > 0 && (
-                                                                <div className="d-flex flex-wrap gap-2 mt-2">
-                                                                    {datosEnvio.archivos.map((file, idx) => (
-                                                                        <span key={idx} className="badge bg-secondary d-flex align-items-center gap-2 p-2 shadow-sm">
-                                                                            <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i>
-                                                                            {file.name.substring(0, 10)}...
-                                                                            <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-2"
-                                                                                onClick={() => setDatosEnvio(prev => ({ ...prev, archivos: prev.archivos.filter((_, i) => i !== idx) }))}></i>
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        {!esServicio && (
-                                                            <div className="mb-2">
-                                                                <div className="d-flex justify-content-between align-items-end mb-2">
-                                                                    <label className="form-label fw-bold text-muted small text-uppercase mb-0">3. Firma de Conformidad</label>
-                                                                    <button type="button" className="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onClick={() => {
-                                                                        sigCanvas.current?.clear();
-                                                                        setDatosEnvio({ ...datosEnvio, firma: null });
-                                                                    }}>
-                                                                        <i className="bi bi-eraser me-1"></i>Limpiar
-                                                                    </button>
-                                                                </div>
-                                                                <div className="border border-2 border-primary border-opacity-25 bg-white rounded-3 shadow-sm" style={{ height: '200px' }}>
-                                                                    <SignatureCanvas
-                                                                        ref={sigCanvas}
-                                                                        canvasProps={{ className: 'w-100 h-100' }}
-                                                                        onEnd={() => setDatosEnvio({ ...datosEnvio, firma: sigCanvas.current.getTrimmedCanvas().toDataURL('image/png') })}
-                                                                    />
-                                                                </div>
+                                                        {selectedOt.evidencia_cierre && (
+                                                            <div className="mb-3 p-3 bg-light rounded border border-success border-opacity-25">
+                                                                <span className="small text-success d-block mb-2 fw-bold"><i className="bi bi-check-circle-fill me-1"></i>Archivos Guardados Anteriormente:</span>
+                                                                {renderEvidencia(selectedOt.evidencia_cierre)}
                                                             </div>
                                                         )}
+
+                                                        {!isReadOnly && (
+                                                            <>
+                                                                <input
+                                                                    type="file"
+                                                                    className="form-control mb-2"
+                                                                    accept="image/*,video/*"
+                                                                    capture="environment"
+                                                                    multiple
+                                                                    onChange={handleFileChange}
+                                                                />
+                                                                {datosEnvio.archivos && datosEnvio.archivos.length > 0 && (
+                                                                    <div className="d-flex flex-wrap gap-2 mt-2">
+                                                                        {datosEnvio.archivos.map((file, idx) => (
+                                                                            <span key={idx} className="badge bg-secondary d-flex align-items-center gap-2 p-2 shadow-sm">
+                                                                                <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i>
+                                                                                {file.name.substring(0, 10)}...
+                                                                                <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-2"
+                                                                                    onClick={() => setDatosEnvio(prev => ({ ...prev, archivos: prev.archivos.filter((_, i) => i !== idx) }))}></i>
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        )}
                                                     </div>
-                                                )
-                                            )}
-                                        </div>
+
+                                                    {!esServicio && (
+                                                        <div className="mb-2">
+                                                            <label className="form-label fw-bold text-muted small text-uppercase mb-0">3. Firma de Conformidad</label>
+
+                                                            {isReadOnly ? (
+                                                                <div className="alert alert-success p-3 small mt-2 shadow-sm border border-success text-center">
+                                                                    <div className="fw-bold mb-3 text-success">
+                                                                        <i className="bi bi-check-circle-fill me-2 fs-5"></i>
+                                                                        Tu firma ya está registrada en el sistema.
+                                                                    </div>
+                                                                    {selectedOt.firma_tecnico && (
+                                                                        <div className="mt-2 p-3 bg-white rounded border d-inline-block shadow-sm">
+                                                                            <img src={selectedOt.firma_tecnico} alt="Firma Técnico" style={{ maxHeight: '150px' }} className="img-fluid" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="d-flex justify-content-end align-items-end mb-2">
+                                                                        <button type="button" className="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onClick={() => {
+                                                                            sigCanvas.current?.clear();
+                                                                            setDatosEnvio(prev => ({ ...prev, firma: null }));
+                                                                        }}>
+                                                                            <i className="bi bi-eraser me-1"></i>Limpiar
+                                                                        </button>
+                                                                    </div>
+                                                                    <div className="border border-2 border-primary border-opacity-25 bg-white rounded-3 shadow-sm" style={{ height: '200px' }}>
+                                                                        {/* CORRECCIÓN: Estilos aplicados directamente para evitar conflicto de dimensiones cuando la pestaña está oculta */}
+                                                                        <SignatureCanvas
+                                                                            ref={sigCanvas}
+                                                                            canvasProps={{ className: 'w-100 h-100', style: { width: '100%', height: '100%', touchAction: 'none' } }}
+                                                                            onEnd={() => setDatosEnvio(prev => ({ ...prev, firma: sigCanvas.current.getCanvas().toDataURL('image/png') }))}
+                                                                        />
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className={activeTab === 'materiales' ? 'd-block' : 'd-none'}>
                                             <h5 className="fw-bold mb-4 text-dark border-bottom pb-2">
@@ -864,14 +994,17 @@ styles.innerHTML = `
     .card-hover:hover { transform: translateX(5px); background-color: #f8f9fa !important; cursor: pointer; }
     .grayscale { filter: grayscale(100%); }
     .transition-all { transition: all 0.3s ease; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
     @keyframes blink-animation {
-    0% { opacity: 1; }
-    50% { opacity: 0.4; }
-    100% { opacity: 1; }
+        0% { opacity: 1; }
+        50% { opacity: 0.4; }
+        100% { opacity: 1; }
     }
-    .blink-badge {
-    animation: blink-animation 1.5s infinite;
-    }
+    .blink-badge { animation: blink-animation 1.5s infinite; }
 `;
 document.head.appendChild(styles);
 

@@ -579,13 +579,20 @@ const Mantencion = () => {
                                                 <div className="fw-bold text-dark">{s.titulo || ''}</div>
                                                 <small className="text-muted text-truncate d-block" style={{ maxWidth: '200px' }}>{s.descripcion_trabajo || '-'}</small>
                                             </td>
+                                            {/* --- SECCIÓN DE COLABORADORES --- */}
                                             <td>
                                                 <div className="text-dark">{s.solicitante_nombre} {s.solicitante_apellido}</div>
-                                                <div className="small mt-1 text-truncate" style={{ maxWidth: '150px' }}>
+                                                <div className="mt-1" style={{ maxWidth: '200px' }}>
                                                     {s.asignados_nombres ? (
-                                                        <span className="text-primary"><i className="bi bi-tools me-1"></i>{s.asignados_nombres}</span>
+                                                        <div className="d-flex flex-wrap gap-1">
+                                                            {s.asignados_nombres.split(',').map((nombre, i) => (
+                                                                <span key={i} className="badge bg-light text-primary border border-primary border-opacity-25" style={{fontSize: '0.7rem'}}>
+                                                                    <i className="bi bi-person-fill me-1"></i>{nombre.trim()}
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     ) : (
-                                                        <span className="text-danger fw-medium"><i className="bi bi-exclamation-circle me-1"></i>Sin Asignar</span>
+                                                        <span className="text-danger small fw-bold"><i className="bi bi-exclamation-circle me-1"></i>Sin técnicos</span>
                                                     )}
                                                 </div>
                                             </td>
