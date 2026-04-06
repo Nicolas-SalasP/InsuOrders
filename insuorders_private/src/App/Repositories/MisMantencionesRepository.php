@@ -325,6 +325,40 @@ class MisMantencionesRepository
         }
     }
 
+    public function eliminarEvidenciaYRegistrar($otId, $urlEliminar, $userId)
+    {
+        $stmt = $this->db->prepare("SELECT evidencia_cierre FROM solicitudes_ot WHERE id = ?");
+        $stmt->execute([$otId]);
+        $actualStr = $stmt->fetchColumn();
+
+        if (!$actualStr)
+            return false;
+
+        $actualArr = json_decode($actualStr, true);
+        if (!is_array($actualArr)) {
+            $actualArr = [$actualStr];
+        }
+
+        $nuevoArr = array_values(array_filter($actualArr, function ($item) use ($urlEliminar) {
+            return $item !== $urlEliminar;
+        }));
+
+        $nuevoStr = empty($nuevoArr) ? null : json_encode($nuevoArr);
+
+        $this->db->prepare("UPDATE solicitudes_ot SET evidencia_cierre = ? WHERE id = ?")->execute([$nuevoStr, $otId]);
+        $mensajeLog = "\n[SISTEMA " . date('d-m-Y H:i') . "]: El técnico eliminó una evidencia adjunta previamente.";
+
+        $sqlLog = "UPDATE ot_asignaciones SET notas_cierre = CONCAT(COALESCE(notas_cierre, ''), ?) WHERE solicitud_id = ? AND usuario_id = ?";
+        $stmtLog = $this->db->prepare($sqlLog);
+        $stmtLog->execute([$mensajeLog, $otId, $userId]);
+
+        if ($stmtLog->rowCount() == 0) {
+            $sqlMaster = "UPDATE solicitudes_ot SET comentarios_finales = CONCAT(COALESCE(comentarios_finales, ''), ?) WHERE id = ?";
+            $this->db->prepare($sqlMaster)->execute([$mensajeLog, $otId]);
+        }
+        return true;
+    }
+
     public function beginTransaction()
     {
         return $this->db->beginTransaction();

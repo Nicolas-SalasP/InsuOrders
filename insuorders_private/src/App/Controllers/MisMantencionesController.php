@@ -44,6 +44,14 @@ class MisMantencionesController
             }
 
             $otId = $input['ot_id'] ?? null;
+            $urlEliminar = $input['eliminar_evidencia_url'] ?? null;
+
+            if ($urlEliminar) {
+                $this->service->repository->eliminarEvidenciaYRegistrar($otId, $urlEliminar, $userId);
+                echo json_encode(["success" => true, "message" => "Evidencia eliminada y registrada en bitácora."]);
+                return;
+            }
+
             $checklistData = $input['respuestas'] ?? [];
             $firma = $input['firma'] ?? null;
             $comentarios = $input['comentarios'] ?? null;
@@ -72,6 +80,7 @@ class MisMantencionesController
 
             $itemsChecklist = isset($checklistData['respuestas']) ? $checklistData['respuestas'] : $checklistData;
             $this->service->guardarAvance($otId, $itemsChecklist);
+
             $this->service->registrarInicioTrabajo($otId);
 
             $evidenciasStr = !empty($evidenciaUrls) ? json_encode($evidenciaUrls) : null;
@@ -92,9 +101,7 @@ class MisMantencionesController
                     $this->service->guardarUrlPdf($otId, $pdfUrl);
                 }
             } else {
-                if ($comentarios || $evidenciasStr) {
-                    $this->service->guardarAvanceParcial($otId, $comentarios, $evidenciasStr);
-                }
+                $this->service->guardarAvanceParcial($otId, $comentarios, $evidenciasStr);
             }
 
             $this->service->repository->commit();
