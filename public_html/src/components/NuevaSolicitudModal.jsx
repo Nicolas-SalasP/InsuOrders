@@ -69,7 +69,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     
     const activosFiltrados = activosPrincipales.filter(act =>
         (act.nombre || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
-        (act.codigo_maquina || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
         (act.codigo_interno || '').toLowerCase().includes(busquedaActivo.toLowerCase())
     );
 
@@ -239,7 +238,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const handleSeleccionarActivo = async (act) => {
         const id = act.id;
         setActivoId(id);
-        setActivoNombreSeleccionado(`${act.codigo_interno || act.codigo_maquina} - ${act.nombre}`);
+        setActivoNombreSeleccionado(`${act.codigo_interno || 'S/C'} - ${act.nombre}`);
         setMostrarListaActivo(false);
         setBusquedaActivo('');
         setSubActivoId('');
@@ -541,7 +540,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                                             activosFiltrados.map(act => (
                                                                                 <li key={act.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarActivo(act)}>
                                                                                     <div className="fw-bold text-dark">{act.nombre}</div>
-                                                                                    <small className="text-muted"><i className="bi bi-upc-scan me-1"></i>{act.codigo_interno || act.codigo_maquina}</small>
+                                                                                    <small className="text-muted"><i className="bi bi-upc-scan me-1"></i>{act.codigo_interno || 'Sin código'}</small>
                                                                                 </li>
                                                                             ))
                                                                         ) : (
