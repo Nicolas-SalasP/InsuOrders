@@ -48,7 +48,9 @@ const Mantencion = () => {
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
     const [filtroSinTecnico, setFiltroSinTecnico] = useState(false);
-    const [ordenOTAsc, setOrdenOTAsc] = useState(false);
+    
+    // SISTEMA DE 4 FASES PARA EL ORDEN
+    const [tipoOrden, setTipoOrden] = useState('default');
 
     const wrapperRef = useRef(null);
     const todayStr = new Date().toISOString().split('T')[0];
@@ -269,9 +271,34 @@ const Mantencion = () => {
         setBusquedaInsumo('');
         setMostrarSugerencias(false);
         setFiltroSinTecnico(false);
-        setOrdenOTAsc(false);
+        setTipoOrden('default');
         cargarSolicitudes();
     };
+
+    // LÓGICA DE TRANSICIÓN DE 4 FASES
+    const handleToggleOrden = () => {
+        if (tipoOrden === 'default') setTipoOrden('prio_asc');
+        else if (tipoOrden === 'prio_asc') setTipoOrden('desc');
+        else if (tipoOrden === 'desc') setTipoOrden('asc');
+        else setTipoOrden('default');
+    };
+
+    // CONFIGURACIÓN VISUAL DEL BOTÓN DE ORDEN
+    const getOrdenConfig = () => {
+        switch(tipoOrden) {
+            case 'prio_asc':
+                return { class: 'btn-outline-secondary', icon: 'bi-sort-up', text: 'Prioridad (Menor a Mayor)' };
+            case 'desc':
+                return { class: 'btn-primary text-white', icon: 'bi-sort-numeric-down-alt', text: 'N° OT (Nuevas primero)' };
+            case 'asc':
+                return { class: 'btn-success text-white', icon: 'bi-sort-numeric-down', text: 'N° OT (Antiguas primero)' };
+            case 'default':
+            default:
+                return { class: 'btn-dark text-white', icon: 'bi-sort-down-alt', text: 'Prioridad (Mayor a Menor)' };
+        }
+    };
+    
+    const ordenBtn = getOrdenConfig();
 
     const isCritico = (prio) => {
         if (!prio) return false;
@@ -335,16 +362,20 @@ const Mantencion = () => {
 
         return matchOT && matchMaquina && matchUbicacion && matchEstado && matchFecha && matchSinTecnico;
     }).sort((a, b) => {
-        if (ordenOTAsc) {
-            return parseInt(a.id) - parseInt(b.id);
-        }
+        // Orden N° OT (Nuevas primero)
+        if (tipoOrden === 'desc') return parseInt(b.id) - parseInt(a.id);
+        // Orden N° OT (Antiguas primero)
+        if (tipoOrden === 'asc') return parseInt(a.id) - parseInt(b.id);
+        
+        // Orden por Prioridad
         const prioA = getPrioridadValor(a.prioridad);
         const prioB = getPrioridadValor(b.prioridad);
 
         if (prioA !== prioB) {
-            return prioA - prioB;
+            return tipoOrden === 'prio_asc' ? (prioB - prioA) : (prioA - prioB);
         }
 
+        // Desempate: Siempre poner las más nuevas arriba en caso de misma prioridad
         return parseInt(b.id) - parseInt(a.id);
     });
 
@@ -483,7 +514,7 @@ const Mantencion = () => {
                             )}
                         </div>
                         <div className="col-md-2 text-end">
-                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado || filtroFecha || filtroInsumo || filtroSinTecnico || ordenOTAsc) && (
+                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado.length > 0 || filtroFecha || filtroInsumo || filtroSinTecnico || tipoOrden !== 'default') && (
                                 <button className="btn btn-outline-secondary w-100" onClick={limpiarFiltros}>
                                     <i className="bi bi-x-lg me-1"></i> Limpiar
                                 </button>
@@ -501,11 +532,11 @@ const Mantencion = () => {
                             </button>
 
                             <button
-                                className={`btn btn-sm shadow-sm ${ordenOTAsc ? 'btn-primary text-white border-primary' : 'btn-outline-secondary bg-white'}`}
-                                onClick={() => setOrdenOTAsc(!ordenOTAsc)}
+                                className={`btn btn-sm shadow-sm ${ordenBtn.class}`}
+                                onClick={handleToggleOrden}
                             >
-                                <i className={`bi ${ordenOTAsc ? 'bi-sort-numeric-down' : 'bi-sort-down-alt'} me-2`}></i>
-                                {ordenOTAsc ? 'Orden: N° OT (Menor a Mayor)' : 'Orden: Prioridad y Recientes'}
+                                <i className={`bi ${ordenBtn.icon} me-2`}></i>
+                                {ordenBtn.text}
                             </button>
                         </div>
                     </div>
@@ -579,7 +610,7 @@ const Mantencion = () => {
                                                 <div className="fw-bold text-dark">{s.titulo || ''}</div>
                                                 <small className="text-muted text-truncate d-block" style={{ maxWidth: '200px' }}>{s.descripcion_trabajo || '-'}</small>
                                             </td>
-                                            {/* --- SECCIÓN DE COLABORADORES --- */}
+
                                             <td>
                                                 <div className="text-dark">{s.solicitante_nombre} {s.solicitante_apellido}</div>
                                                 <div className="mt-1" style={{ maxWidth: '200px' }}>
@@ -597,7 +628,6 @@ const Mantencion = () => {
                                                 </div>
                                             </td>
 
-                                            {/* LÓGICA VISUAL DE FECHA PROGRAMADA vs FECHA CREACIÓN */}
                                             <td className="small px-3">
                                                 {isFutura ? (
                                                     <span className="badge bg-primary text-white shadow-sm fw-bold px-2 py-1">
@@ -615,7 +645,6 @@ const Mantencion = () => {
                                             <td>{getPriorityBadge(s.prioridad)}</td>
                                             <td><span className={`badge ${badgeClass}`}>{estadoTexto}</span></td>
 
-                                            {/* COSTO TOTAL */}
                                             <td className="text-end">
                                                 {s.estado === 'Completada' ? (
                                                     <span className="fw-bold text-success">
