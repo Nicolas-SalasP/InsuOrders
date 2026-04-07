@@ -96,34 +96,24 @@ class UsuariosRepository
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function getByRolNombre($rolNombre)
+    public function getByRolNombre($rolNombre = null)
     {
-        $sql = "SELECT DISTINCT u.id, u.nombre, u.apellido, u.email, 
+        $sql = "SELECT u.id, u.nombre, u.apellido, u.email, 
                     COALESCE(e.cargo, r.nombre) as rol 
                 FROM usuarios u 
                 LEFT JOIN roles r ON u.rol_id = r.id 
                 LEFT JOIN empleados e ON e.usuario_id = u.id
                 WHERE u.activo = 1 
                 AND (
-                    r.nombre LIKE :rol1 OR r.nombre LIKE :rol2 OR r.nombre LIKE :rol3
+                    u.rol_id IN (3, 4)
                     OR 
-                    e.cargo LIKE :cargo1 OR e.cargo LIKE :cargo2 OR e.cargo LIKE :cargo3
+                    e.cargo IN ('Tecnico', 'Técnico', 'Mantencion', 'Mantención', 'Jefe Mantención', 'Mecanico', 'Mécanico')
                 )
+                GROUP BY u.id
                 ORDER BY u.nombre ASC";
 
         $stmt = $this->db->prepare($sql);
-        $patronTec = '%Tecni%';
-        $patronTec2 = '%Técni%';
-        $patronMant = '%Mantenc%';
-
-        $stmt->execute([
-            ':rol1' => $patronTec, 
-            ':rol2' => $patronTec2, 
-            ':rol3' => $patronMant,
-            ':cargo1' => $patronTec, 
-            ':cargo2' => $patronTec2, 
-            ':cargo3' => $patronMant
-        ]); 
+        $stmt->execute();
         
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

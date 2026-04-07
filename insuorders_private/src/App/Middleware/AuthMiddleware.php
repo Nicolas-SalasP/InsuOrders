@@ -12,17 +12,21 @@ class AuthMiddleware
 
     public static function verify($requirement = null)
     {
-        $authHeader = self::getAuthHeader();
+        $jwt = $_COOKIE['jwt_token'] ?? null;
 
-        if (!$authHeader) {
-            self::jsonResponse(401, ["error" => "Acceso denegado. Token no proporcionado."]);
+        if (!$jwt) {
+            $authHeader = self::getAuthHeader();
+
+            if (!$authHeader) {
+                self::jsonResponse(401, ["error" => "Acceso denegado. Token no proporcionado."]);
+            }
+
+            if (!preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                self::jsonResponse(401, ["error" => "Acceso denegado. Formato de token inválido."]);
+            }
+
+            $jwt = $matches[1];
         }
-
-        if (!preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-            self::jsonResponse(401, ["error" => "Acceso denegado. Formato de token inválido."]);
-        }
-
-        $jwt = $matches[1];
 
         try {
             $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
@@ -83,13 +87,18 @@ class AuthMiddleware
 
     public static function checkPermissionSilently($permisoRequerido)
     {
-        $authHeader = self::getAuthHeader();
-        if (!$authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-            return false;
+        $jwt = $_COOKIE['jwt_token'] ?? null;
+
+        if (!$jwt) {
+            $authHeader = self::getAuthHeader();
+            if (!$authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                return false;
+            }
+            $jwt = $matches[1];
         }
 
         try {
-            $decoded = JWT::decode($matches[1], new Key(Config::JWT_SECRET, Config::JWT_ALGO));
+            $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
             
             if (($decoded->data->rol ?? '') === 'Admin' || ($decoded->data->rol_id ?? 0) == 1) {
                 return true;
