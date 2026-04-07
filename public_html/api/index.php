@@ -143,14 +143,17 @@ try {
             break;
 
         // --- MANTENCIÓN ---
+        // --- MANTENCIÓN ---
         case 'mantencion':
             $c = new MantencionController();
             if ($method === 'GET') {
-                AuthMiddleware::hasPermission('mant_ver');
-                if (isset($_GET['detalle']))
+                if (isset($_GET['detalle'])) {
+                    AuthMiddleware::verify(); 
                     $c->detalles();
-                else
+                } else {
+                    AuthMiddleware::hasPermission('mant_ver');
                     $c->index();
+                }
             } elseif ($method === 'POST') {
                 $uid = AuthMiddleware::hasPermission('mant_crear');
                 $c->store($uid);
@@ -204,7 +207,7 @@ try {
         case 'mantencion/kit':
             $c = new MantencionController();
             if ($method === 'GET') {
-                AuthMiddleware::verify(); 
+                AuthMiddleware::verify();
                 $c->getKit();
             } elseif ($method === 'POST') {
                 AuthMiddleware::hasPermission('mant_crear');
@@ -375,7 +378,7 @@ try {
                 (new OrdenCompraController())->omitir();
             }
             break;
-        
+
         case 'compras/cerrar':
             AuthMiddleware::verify('compras_recepcionar');
             if ($method === 'POST') {
@@ -481,6 +484,13 @@ try {
         case 'bodega/devoluciones/rechazar':
             $uid = AuthMiddleware::hasPermission('bodega_organizar');
             (new BodegaController())->rechazarDevolucion($uid);
+            break;
+
+        case 'bodega/tipos-devolucion':
+            if ($method === 'GET') {
+                AuthMiddleware::verify();
+                (new BodegaController())->getTiposDevolucion();
+            }
             break;
 
         // --- OPERARIO / ENTREGAS PERSONALES  ---
@@ -674,13 +684,16 @@ try {
             if ($method === 'DELETE')
                 $controller->deleteUbicacionEnvio();
             break;
-        
+
         case 'mantenedores/tipos-permiso':
             AuthMiddleware::verify();
             $c = new MantenedoresController();
-            if ($method === 'GET') $c->getTiposPermiso();
-            elseif ($method === 'POST' || $method === 'PUT') $c->saveTipoPermiso();
-            elseif ($method === 'DELETE') $c->deleteTipoPermiso();
+            if ($method === 'GET')
+                $c->getTiposPermiso();
+            elseif ($method === 'POST' || $method === 'PUT')
+                $c->saveTipoPermiso();
+            elseif ($method === 'DELETE')
+                $c->deleteTipoPermiso();
             break;
 
         // --- PERSONAL ---

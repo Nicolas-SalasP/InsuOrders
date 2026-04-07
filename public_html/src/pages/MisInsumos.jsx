@@ -8,12 +8,26 @@ const MisInsumos = () => {
     const { auth } = useContext(AuthContext);
     const [data, setData] = useState({ pendientes: [], inventario: [] });
     const [loading, setLoading] = useState(true);
-    const [consumo, setConsumo] = useState({}); 
+    const [consumo, setConsumo] = useState({});
     const [busqueda, setBusqueda] = useState('');
+    const [tiposDevolucion, setTiposDevolucion] = useState([]);
     
-    // --- ESTADO NUEVO: SELECCIÓN MÚLTIPLE ---
+    const [modalDevolucion, setModalDevolucion] = useState({
+        show: false,
+        item: null,
+        cantidad: 0,
+        tipoId: 1,
+        comentario: ''
+    });
+
+    const [rechazoPendienteModal, setRechazoPendienteModal] = useState({ 
+        show: false, 
+        items: null, 
+        tipoId: 1, 
+        motivo: '' 
+    });
+
     const [seleccionados, setSeleccionados] = useState([]);
-    
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirm, setConfirm] = useState({ show: false, action: null, title: '', message: '' });
 
@@ -26,7 +40,7 @@ const MisInsumos = () => {
                         pendientes: Array.isArray(res.data.data.pendientes) ? res.data.data.pendientes : [],
                         inventario: Array.isArray(res.data.data.inventario) ? res.data.data.inventario : []
                     });
-                    setSeleccionados([]); // Limpiamos selección al recargar
+                    setSeleccionados([]);
                 } else {
                     setData({ pendientes: [], inventario: [] });
                 }
@@ -36,11 +50,18 @@ const MisInsumos = () => {
                 setMsg({ show: true, title: "Error", text: "No se pudieron cargar tus insumos.", type: "error" });
             })
             .finally(() => setLoading(false));
+
+        api.get('/bodega/tipos-devolucion')
+            .then(res => {
+                if (res.data.success) {
+                    setTiposDevolucion(res.data.data);
+                }
+            })
+            .catch(err => console.error("Error cargando tipos de devolución", err));
     };
 
     useEffect(() => { cargarDatos(); }, []);
 
-    // --- FUNCIONES SELECCIÓN MASIVA ---
     const toggleSeleccion = (id) => {
         setSeleccionados(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
     };
@@ -79,23 +100,54 @@ const MisInsumos = () => {
         return Object.values(agrupados);
     };
 
-    // --- ACEPTAR / RECHAZAR (SOPORTA ÚNICO O MASIVO) ---
     const iniciarRespuesta = (entregaIdOrArray, accion) => {
         const isArray = Array.isArray(entregaIdOrArray);
         const cantidad = isArray ? entregaIdOrArray.length : 1;
-        const texto = accion === 'ACEPTAR' ? 'recibir' : 'rechazar';
         
+        // Si la acción es RECHAZAR, abrimos el modal detallado
+        if (accion === 'RECHAZAR') {
+            setRechazoPendienteModal({
+                show: true,
+                items: entregaIdOrArray,
+                tipoId: tiposDevolucion.length > 0 ? tiposDevolucion[0].id : 1,
+                motivo: ''
+            });
+            return;
+        }
+
+        // Si es aceptar, mantenemos el aviso rápido
         setConfirm({
             show: true,
-            title: `Confirmar ${texto}`,
-            message: `¿Estás seguro de que deseas ${texto} ${cantidad > 1 ? `los ${cantidad} repuestos seleccionados` : 'esta entrega'}?`,
+            title: `Confirmar Recepción`,
+            message: `¿Estás seguro de que deseas recibir ${cantidad > 1 ? `los ${cantidad} repuestos seleccionados` : 'esta entrega'}?`,
             action: () => procesarRespuesta(entregaIdOrArray, accion)
         });
     };
 
+    const ejecutarRechazoPendiente = async () => {
+        try {
+            const { items, tipoId, motivo } = rechazoPendienteModal;
+            if (parseInt(tipoId) > 1 && motivo.trim() === '') {
+                setMsg({ show: true, title: "Justificación Requerida", text: "Por favor, explica el motivo del rechazo en el cuadro de comentarios.", type: "warning" });
+                return;
+            }
+
+            const payload = Array.isArray(items) 
+                ? { entregas_ids: items, accion: 'RECHAZAR', tipo_devolucion_id: parseInt(tipoId), observacion: motivo.trim() }
+                : { entrega_id: items, accion: 'RECHAZAR', tipo_devolucion_id: parseInt(tipoId), observacion: motivo.trim() };
+
+            await api.post('/operario/responder', payload);
+            setMsg({ show: true, title: "Revisión Solicitada", text: "El rechazo ha sido enviado a bodega para su validación.", type: "success" });
+            cargarDatos();
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al procesar.", type: "error" });
+        } finally {
+            setRechazoPendienteModal({ show: false, items: null, tipoId: 1, motivo: '' });
+        }
+    };
+
     const procesarRespuesta = async (entregaIdOrArray, accion) => {
         try {
-            // Evaluamos si el frontend mandó array (entregas_ids) o un solo item (entrega_id)
             const payload = Array.isArray(entregaIdOrArray) 
                 ? { entregas_ids: entregaIdOrArray, accion }
                 : { entrega_id: entregaIdOrArray, accion };
@@ -110,7 +162,6 @@ const MisInsumos = () => {
         }
     };
 
-    // --- DEVOLVER STOCK ---
     const iniciarDevolucion = (itemAgrupado) => { 
         const cantInput = parseInt(consumo[itemAgrupado.insumo_id], 10);
         
@@ -123,34 +174,49 @@ const MisInsumos = () => {
             setMsg({ show: true, title: "Exceso de stock", text: `No puedes devolver más de lo que tienes (Máximo: ${parseInt(itemAgrupado.saldo_total, 10)}).`, type: "warning" });
             return;
         }
-        setConfirm({
+
+        setModalDevolucion({
             show: true,
-            title: `Confirmar Devolución`,
-            message: `¿Vas a devolver ${cantInput} ${itemAgrupado.unidad_medida}(s) de ${itemAgrupado.insumo} a la bodega?`,
-            action: () => procesarStock('/operario/devolver', { 
-                insumo_id: itemAgrupado.insumo_id, 
-                cantidad: cantInput 
-            }, itemAgrupado.insumo_id)
+            item: itemAgrupado,
+            cantidad: cantInput,
+            tipoId: tiposDevolucion.length > 0 ? tiposDevolucion[0].id : 1,
+            comentario: ''
         });
     };
 
-    const procesarStock = async (url, payload, insumoId) => {
+    const ejecutarDevolucion = async () => {
+        const { item, cantidad, tipoId, comentario } = modalDevolucion;
+        if (parseInt(tipoId) > 1 && comentario.trim() === '') {
+            setMsg({ show: true, title: "Justificación Requerida", text: "Por favor, explica el motivo del rechazo o la devolución en el cuadro de comentarios.", type: "warning" });
+            return;
+        }
+
+        const payload = {
+            insumo_id: item.insumo_id,
+            cantidad: cantidad,
+            tipo_devolucion_id: parseInt(tipoId),
+            comentario_tecnico: comentario.trim()
+        };
+
         try {
-            await api.post(url, payload);
+            await api.post('/operario/devolver', payload);
             
             setConsumo(prev => {
                 const newState = { ...prev };
-                delete newState[insumoId];
+                delete newState[item.insumo_id];
                 return newState;
             });
 
-            setMsg({ show: true, title: "Éxito", text: "Devolución registrada.", type: "success" });
+            setMsg({ show: true, title: "Éxito", text: "Devolución/Rechazo registrado correctamente.", type: "success" });
+            cerrarModalDevolucion();
             cargarDatos();
         } catch (error) {
-            setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al procesar.", type: "error" });
-        } finally {
-            setConfirm({ ...confirm, show: false });
+            setMsg({ show: true, title: "Error", text: error.response?.data?.message || "Error al procesar la solicitud.", type: "error" });
         }
+    };
+
+    const cerrarModalDevolucion = () => {
+        setModalDevolucion({ show: false, item: null, cantidad: 0, tipoId: 1, comentario: '' });
     };
 
     const inventarioAgrupado = data.inventario.reduce((acc, item) => {
@@ -161,11 +227,135 @@ const MisInsumos = () => {
     }, {});
 
     if (loading) return <div className="p-5 text-center"><div className="spinner-border text-primary"></div></div>;
+    const isComentarioObligatorio = parseInt(modalDevolucion.tipoId) > 1;
 
     return (
-        <div className="container-fluid py-4 h-100 overflow-auto bg-light">
+        <div className="container-fluid py-4 h-100 overflow-auto bg-light position-relative">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
             <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={confirm.action} title={confirm.title} message={confirm.message} />
+
+            {/* --- MODAL PARA RECHAZAR ENTREGAS PENDIENTES --- */}
+            {rechazoPendienteModal.show && (
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content shadow border-0">
+                            <div className="modal-header bg-danger text-white">
+                                <h5 className="modal-title fw-bold">
+                                    <i className="bi bi-x-circle me-2"></i>Rechazar Entrega
+                                </h5>
+                                <button type="button" className="btn-close btn-close-white" onClick={() => setRechazoPendienteModal({show: false, items: null, tipoId: 1, motivo: ''})}></button>
+                            </div>
+                            <div className="modal-body p-4 bg-light">
+                                <div className="alert alert-warning border-warning small shadow-sm mb-3">
+                                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                    Al rechazar, la solicitud pasará a revisión por bodega. Debes devolver el material físico al bodeguero si corresponde.
+                                </div>
+                                
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold small text-uppercase text-muted">1. Motivo del Rechazo</label>
+                                    <select 
+                                        className="form-select border-primary shadow-sm"
+                                        value={rechazoPendienteModal.tipoId}
+                                        onChange={(e) => setRechazoPendienteModal({...rechazoPendienteModal, tipoId: e.target.value})}
+                                    >
+                                        {tiposDevolucion.map(t => (
+                                            <option key={t.id} value={t.id}>{t.nombre}</option>
+                                        ))}
+                                    </select>
+                                    <div className="form-text text-primary small">
+                                        <i className="bi bi-info-circle me-1"></i>
+                                        {tiposDevolucion.find(t => String(t.id) === String(rechazoPendienteModal.tipoId))?.descripcion}
+                                    </div>
+                                </div>
+
+                                <div className="mb-2">
+                                    <label className="form-label fw-bold small text-uppercase text-muted">
+                                        2. Comentario / Justificación
+                                        {parseInt(rechazoPendienteModal.tipoId) > 1 && <span className="text-danger ms-1">*</span>}
+                                    </label>
+                                    <textarea 
+                                        className={`form-control shadow-sm ${parseInt(rechazoPendienteModal.tipoId) > 1 && rechazoPendienteModal.motivo.trim() === '' ? 'border-danger' : ''}`}
+                                        rows="3" 
+                                        placeholder="Ej: Material incompleto, venía dañado, error de la bodega, etc."
+                                        value={rechazoPendienteModal.motivo}
+                                        onChange={(e) => setRechazoPendienteModal({...rechazoPendienteModal, motivo: e.target.value})}
+                                    ></textarea>
+                                </div>
+                            </div>
+                            <div className="modal-footer bg-white border-top-0">
+                                <button type="button" className="btn btn-light border" onClick={() => setRechazoPendienteModal({show: false, items: null, tipoId: 1, motivo: ''})}>Cancelar</button>
+                                <button type="button" className="btn btn-danger fw-bold px-4" onClick={ejecutarRechazoPendiente}>
+                                    Enviar a Revisión
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- MODAL PARA DEVOLVER INVENTARIO ACEPTADO --- */}
+            {modalDevolucion.show && (
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content shadow border-0">
+                            <div className="modal-header bg-primary text-white">
+                                <h5 className="modal-title fw-bold">
+                                    <i className="bi bi-arrow-return-left me-2"></i>Retornar Material
+                                </h5>
+                                <button type="button" className="btn-close btn-close-white" onClick={cerrarModalDevolucion}></button>
+                            </div>
+                            <div className="modal-body p-4 bg-light">
+                                <div className="d-flex justify-content-between align-items-center mb-3 p-3 bg-white border rounded shadow-sm">
+                                    <div>
+                                        <div className="fw-bold text-dark">{modalDevolucion.item?.insumo}</div>
+                                        <small className="text-muted font-monospace">{modalDevolucion.item?.codigo_sku}</small>
+                                    </div>
+                                    <div className="text-end">
+                                        <span className="badge bg-danger fs-6">{modalDevolucion.cantidad} {modalDevolucion.item?.unidad_medida}</span>
+                                    </div>
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold small text-uppercase text-muted">1. Motivo del Retorno</label>
+                                    <select 
+                                        className="form-select border-primary shadow-sm"
+                                        value={modalDevolucion.tipoId}
+                                        onChange={(e) => setModalDevolucion({...modalDevolucion, tipoId: e.target.value})}
+                                    >
+                                        {tiposDevolucion.map(t => (
+                                            <option key={t.id} value={t.id}>{t.nombre}</option>
+                                        ))}
+                                    </select>
+                                    <div className="form-text text-primary small">
+                                        <i className="bi bi-info-circle me-1"></i>
+                                        {tiposDevolucion.find(t => String(t.id) === String(modalDevolucion.tipoId))?.descripcion}
+                                    </div>
+                                </div>
+
+                                <div className="mb-2">
+                                    <label className="form-label fw-bold small text-uppercase text-muted">
+                                        2. Comentario / Justificación 
+                                        {isComentarioObligatorio && <span className="text-danger ms-1">*</span>}
+                                    </label>
+                                    <textarea 
+                                        className={`form-control shadow-sm ${isComentarioObligatorio && modalDevolucion.comentario.trim() === '' ? 'border-danger' : ''}`}
+                                        rows="3" 
+                                        placeholder={isComentarioObligatorio ? "Explica brevemente por qué rechazas este insumo..." : "Opcional: Algún comentario para bodega..."}
+                                        value={modalDevolucion.comentario}
+                                        onChange={(e) => setModalDevolucion({...modalDevolucion, comentario: e.target.value})}
+                                    ></textarea>
+                                </div>
+                            </div>
+                            <div className="modal-footer bg-white border-top-0">
+                                <button type="button" className="btn btn-light border" onClick={cerrarModalDevolucion}>Cancelar</button>
+                                <button type="button" className="btn btn-primary fw-bold px-4" onClick={ejecutarDevolucion}>
+                                    Confirmar Retorno
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="row align-items-center mb-4 g-3">
                 <div className="col-12 col-md-6">
@@ -173,7 +363,7 @@ const MisInsumos = () => {
                     <small className="text-muted">Gestiona tu stock personal y devoluciones</small>
                 </div>
                 <div className="col-12 col-md-6 d-flex gap-2">
-                    <div className="input-group">
+                    <div className="input-group shadow-sm">
                         <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
                         <input 
                             type="text" 
@@ -183,7 +373,7 @@ const MisInsumos = () => {
                             onChange={(e) => setBusqueda(e.target.value)}
                         />
                     </div>
-                    <button className="btn btn-primary" onClick={cargarDatos} title="Actualizar Datos">
+                    <button className="btn btn-primary shadow-sm" onClick={cargarDatos} title="Actualizar Datos">
                         <i className="bi bi-arrow-clockwise"></i>
                     </button>
                 </div>
@@ -260,7 +450,6 @@ const MisInsumos = () => {
                                                 <span className="fs-5 fw-bold text-dark">{parseInt(p.cantidad_entregada, 10)} {p.unidad_medida}</span>
                                             </div>
 
-                                            {/* Evitar que dar clic en los botones individuales active el check de la tarjeta */}
                                             <div className="d-flex gap-2" onClick={e => e.stopPropagation()}>
                                                 <button className="btn btn-success flex-grow-1 fw-bold btn-sm" onClick={() => iniciarRespuesta([p.id], 'ACEPTAR')}>
                                                     <i className="bi bi-check-lg me-1"></i> Aceptar
@@ -278,6 +467,7 @@ const MisInsumos = () => {
                 </div>
             )}
 
+            {/* SECCIÓN INVENTARIO PERSONAL */}
             {Object.keys(inventarioAgrupado).length === 0 ? (
                 <div className="text-center py-5 text-muted opacity-50">
                     <i className="bi bi-box-seam display-1"></i>
@@ -337,7 +527,7 @@ const MisInsumos = () => {
                                                 </div>
 
                                                 <div className="mt-auto pt-3 border-top">
-                                                    <div className="input-group mb-2 input-group-sm">
+                                                    <div className="input-group mb-2 input-group-sm shadow-sm">
                                                         <input 
                                                             type="number" 
                                                             className="form-control text-center fw-bold" 
@@ -364,7 +554,7 @@ const MisInsumos = () => {
                                                         onClick={() => iniciarDevolucion(i)}
                                                         disabled={!consumo[i.insumo_id]}
                                                     >
-                                                        <i className="bi bi-arrow-return-left me-1"></i> Devolver a Bodega
+                                                        <i className="bi bi-arrow-return-left me-1"></i> Retornar Ítem
                                                     </button>
                                                 </div>
                                             </div>

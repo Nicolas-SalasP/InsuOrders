@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../api/axiosConfig';
 
 const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
@@ -14,6 +14,11 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
     const [tipoCambio, setTipoCambio] = useState(1);
     const [numeroCotizacion, setNumeroCotizacion] = useState('');
 
+    // Estado para Búsqueda de Proveedor
+    const [busquedaProveedor, setBusquedaProveedor] = useState('');
+    const [mostrarListaProveedor, setMostrarListaProveedor] = useState(false);
+    const proveedorRef = useRef(null);
+
     // Estado para Impuesto Variable (Por defecto 19)
     const [impuestoPorcentaje, setImpuestoPorcentaje] = useState(19);
 
@@ -28,6 +33,16 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
     // Formulario Producto Nuevo
     const [nuevoProd, setNuevoProd] = useState({ nombre: '', categoria_id: '', unidad: 'UN', precio: '', cantidad: '' });
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (proveedorRef.current && !proveedorRef.current.contains(event.target)) {
+                setMostrarListaProveedor(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if (show) {
@@ -47,6 +62,8 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
             // Resetear formulario
             setProveedorId('');
+            setBusquedaProveedor('');
+            setMostrarListaProveedor(false);
             setDestino('');
             setMoneda('CLP');
             setTipoCambio(1);
@@ -70,7 +87,26 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
         }
     }, [show, itemsIniciales]);
 
-    // Búsqueda por Nombre y SKU
+    const proveedoresFiltrados = busquedaProveedor
+        ? proveedores.filter(p =>
+            p.nombre.toLowerCase().includes(busquedaProveedor.toLowerCase()) ||
+            (p.rut && p.rut.toLowerCase().includes(busquedaProveedor.toLowerCase()))
+        )
+        : proveedores;
+
+    const handleSeleccionarProveedor = (prov) => {
+        setProveedorId(prov.id);
+        setBusquedaProveedor(`${prov.nombre} (${prov.rut})`);
+        setMostrarListaProveedor(false);
+        setError('');
+    };
+
+    const handleChangeProveedor = (e) => {
+        setBusquedaProveedor(e.target.value);
+        setProveedorId(''); 
+        setMostrarListaProveedor(true);
+    };
+
     const insumosFiltrados = busqueda
         ? insumos.filter(i =>
             i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -145,7 +181,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
         setError('');
 
         if (!proveedorId) {
-            setError("Debes seleccionar un Proveedor.");
+            setError("Debes seleccionar un Proveedor de la lista.");
             return;
         }
         if (items.length === 0) {
@@ -212,13 +248,43 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                         <div className="card border-0 shadow-sm mb-4">
                             <div className="card-body p-4">
                                 <div className="row g-3">
-                                    <div className="col-md-6">
+                                    <div className="col-md-6" ref={proveedorRef}>
                                         <label className="form-label fw-bold small text-uppercase text-muted">Proveedor</label>
-                                        <select className={`form-select ${!proveedorId && error ? 'is-invalid' : ''}`}
-                                            value={proveedorId} onChange={e => { setProveedorId(e.target.value); setError(''); }}>
-                                            <option value="">Seleccione Proveedor...</option>
-                                            {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.rut})</option>)}
-                                        </select>
+                                        <div className="position-relative">
+                                            <div className="input-group">
+                                                <span className="input-group-text bg-white border-end-0"><i className="bi bi-shop text-muted"></i></span>
+                                                <input 
+                                                    type="text" 
+                                                    className={`form-control border-start-0 ps-0 ${!proveedorId && error ? 'is-invalid' : ''}`}
+                                                    placeholder="Buscar proveedor por nombre o RUT..."
+                                                    value={busquedaProveedor}
+                                                    onChange={handleChangeProveedor}
+                                                    onFocus={() => setMostrarListaProveedor(true)}
+                                                />
+                                                {busquedaProveedor && (
+                                                    <button className="btn btn-outline-secondary border-start-0" type="button" onClick={() => { setBusquedaProveedor(''); setProveedorId(''); setMostrarListaProveedor(false); }}>
+                                                        <i className="bi bi-x"></i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                            
+                                            {mostrarListaProveedor && proveedoresFiltrados.length > 0 && (
+                                                <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1050, maxHeight: '200px', overflowY: 'auto' }}>
+                                                    {proveedoresFiltrados.map(prov => (
+                                                        <li key={prov.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarProveedor(prov)} style={{ cursor: 'pointer' }}>
+                                                            <div className="fw-bold text-dark">{prov.nombre}</div>
+                                                            <small className="text-muted">RUT: {prov.rut}</small>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+
+                                            {mostrarListaProveedor && proveedoresFiltrados.length === 0 && busquedaProveedor && (
+                                                <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1050 }}>
+                                                    <li className="list-group-item text-muted small">No se encontraron proveedores.</li>
+                                                </ul>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="col-md-6">
@@ -290,7 +356,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                                             <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 100, maxHeight: '200px', overflowY: 'auto' }}>
                                                 {insumosFiltrados.map(ins => (
                                                     <li key={ins.id} className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center"
-                                                        onClick={() => agregarItemExistente(ins)}>
+                                                        onClick={() => agregarItemExistente(ins)} style={{ cursor: 'pointer' }}>
                                                         <div>
                                                             <div className="fw-bold text-dark">{ins.nombre}</div>
                                                             <small className="text-muted">SKU: {ins.codigo_sku}</small>

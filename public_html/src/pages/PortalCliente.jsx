@@ -244,8 +244,8 @@ const PortalCliente = () => {
                                     </div>
 
                                     <div className="d-flex align-items-center text-muted small mb-3 mt-2">
-                                        {sol.tipo === 'OT (Orden de Trabajo)' ? (
-                                            <><i className="bi bi-gear-wide-connected text-primary me-2 fs-6"></i> <span className="fw-medium">{sol.activo_nombre}</span></>
+                                        {sol.activo_nombre ? (
+                                            <><i className="bi bi-gear-wide-connected text-primary me-2 fs-6"></i> <span className="fw-medium">{sol.activo_codigo ? `${sol.activo_codigo} - ` : ''}{sol.activo_nombre}</span></>
                                         ) : (
                                             <><i className="bi bi-tools text-primary me-2 fs-6"></i> <span className="fw-medium">Servicio General</span></>
                                         )}

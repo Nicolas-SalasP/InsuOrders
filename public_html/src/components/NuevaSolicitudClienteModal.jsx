@@ -60,16 +60,14 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
         } catch (e) { console.error(e); }
     };
 
-    // Lógica de Filtro para las máquinas
     const activosFiltrados = activos.filter(act =>
         (act.nombre || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
-        (act.codigo_maquina || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
         (act.codigo_interno || '').toLowerCase().includes(busquedaActivo.toLowerCase())
     );
 
     const handleSeleccionarActivo = (act) => {
         setForm({ ...form, activo_id: act.id });
-        setActivoNombreSeleccionado(`${act.nombre} (${act.codigo_maquina || act.codigo_interno})`);
+        setActivoNombreSeleccionado(`${act.codigo_interno || 'S/C'} - ${act.nombre}`);
         setMostrarListaActivo(false);
         setBusquedaActivo('');
     };
@@ -306,7 +304,7 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                                                 activosFiltrados.map(act => (
                                                                     <li key={act.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarActivo(act)}>
                                                                         <div className="fw-bold text-dark">{act.nombre}</div>
-                                                                        <small className="text-muted"><i className="bi bi-upc-scan me-1"></i>{act.codigo_maquina || act.codigo_interno}</small>
+                                                                        <small className="text-muted"><i className="bi bi-upc-scan me-1"></i>{act.codigo_interno || 'Sin código'}</small>
                                                                     </li>
                                                                 ))
                                                             ) : (

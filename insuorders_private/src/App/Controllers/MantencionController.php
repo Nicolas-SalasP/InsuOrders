@@ -50,6 +50,7 @@ class MantencionController
 
             $payload = [
                 'usuario_id' => $usuarioId,
+                'titulo' => $data['titulo'] ?? null,
                 'activo_id' => $data['activo_id'] ?? null,
                 'sub_activo_id' => $data['sub_activo_id'] ?? null,
                 'observacion' => $data['observacion'] ?? '',
@@ -57,7 +58,7 @@ class MantencionController
                 'area_negocio' => $data['area_negocio'] ?? null,
                 'centro_costo_ot' => $data['centro_costo_ot'] ?? null,
                 'solicitante_externo' => $data['solicitante_externo'] ?? null,
-                'prioridad' => $data['prioridad'] ?? 'Media',
+                'prioridad' => $data['prioridad'] ?? 'MEDIA',
                 'ubicacion' => $data['ubicacion'] ?? null,
                 'usuario_solicitante_id' => !empty($data['usuario_solicitante_id']) ? $data['usuario_solicitante_id'] : $usuarioId,
                 'asignados' => $data['asignados'] ?? [],

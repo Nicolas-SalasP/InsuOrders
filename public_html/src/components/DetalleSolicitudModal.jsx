@@ -116,6 +116,10 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
         );
     };
 
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value || 0);
+    };
+
     if (!show) return null;
 
     return (
@@ -207,26 +211,32 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                     <li key={idx} className="list-group-item d-flex justify-content-between align-items-center">
                                                         <div>
                                                             <div className="fw-bold">{asig.nombre} {asig.apellido}</div>
-                                                            <small className="text-muted">{asig.cargo || 'Técnico'}</small>
-                                                            {asig.notas_cierre && (
-                                                                <div className="text-success fst-italic small mt-1 border-start border-success ps-2">
-                                                                    "{asig.notas_cierre}"
-                                                                </div>
+                                                            <small className="text-muted d-block">{asig.cargo || 'Técnico'}</small>
+                                                            {parseInt(asig.completado) === 1 ? (
+                                                                asig.notas_cierre ? (
+                                                                    <div className="text-muted small fst-italic mt-1 border-start border-success ps-2">
+                                                                        "{asig.notas_cierre}"
+                                                                    </div>
+                                                                ) : (
+                                                                    <small className="text-success fst-italic border-start border-success ps-2 mt-1 d-inline-block">Finalizado sin notas</small>
+                                                                )
+                                                            ) : (
+                                                                <small className="text-danger fw-medium d-inline-block mt-1">En ejecución...</small>
                                                             )}
                                                         </div>
 
                                                         {parseInt(asig.completado) === 1 ? (
                                                             <div className="text-end">
-                                                                <span className="badge bg-success">
+                                                                <span className="badge bg-success shadow-sm">
                                                                     <i className="bi bi-check-circle-fill me-1"></i> Listo
                                                                 </span>
-                                                                <div className="text-muted" style={{ fontSize: '0.7rem' }}>
+                                                                <div className="text-muted mt-1" style={{ fontSize: '0.7rem' }}>
                                                                     {new Date(asig.fecha_completado).toLocaleDateString()}
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <span className="badge bg-warning text-dark">
-                                                                <i className="bi bi-hourglass-split me-1"></i> Pendiente
+                                                            <span className="badge bg-warning text-dark shadow-sm">
+                                                                <i className="bi bi-tools me-1"></i> Pendiente
                                                             </span>
                                                         )}
                                                     </li>
@@ -302,8 +312,11 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
 
                                     <div className="card mb-3 border-0 shadow-sm">
                                         <div className="card-body">
-                                            <small className="text-muted text-uppercase fw-bold">Descripción del Problema</small>
-                                            <p className="mb-0 mt-1 p-3 bg-white border rounded text-dark">{detalle.descripcion_trabajo}</p>
+                                            <small className="text-muted text-uppercase fw-bold">Título de la Solicitud / Falla</small>
+                                            <h5 className="fw-bold text-primary mt-1 border-bottom pb-2">{detalle.titulo || `OT #${detalle.id}`}</h5>
+                                            
+                                            <small className="text-muted text-uppercase fw-bold mt-3 d-block">Descripción del Problema</small>
+                                            <p className="mb-0 mt-1 p-3 bg-white border rounded text-dark">{detalle.descripcion_trabajo || 'Sin descripción adicional.'}</p>
                                         </div>
                                     </div>
 
@@ -330,9 +343,11 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                         </div>
                                     )}
 
-                                    {/* --- 3. INSUMOS --- */}
+                                    {/* --- 3. INSUMOS Y COSTOS --- */}
                                     <div className="card border-0 shadow-sm mb-3">
-                                        <div className="card-header bg-white fw-bold">Insumos Solicitados a Bodega</div>
+                                        <div className="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+                                            <span><i className="bi bi-box-seam me-2 text-primary"></i>Insumos Utilizados</span>
+                                        </div>
                                         <div className="table-responsive">
                                             <table className="table mb-0 align-middle">
                                                 <thead className="table-light small">
@@ -340,6 +355,8 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                         <th>Insumo</th>
                                                         <th className="text-center">Cant.</th>
                                                         <th className="text-center">Estado</th>
+                                                        <th className="text-end">Costo Unit.</th>
+                                                        <th className="text-end pe-3">Subtotal</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -355,11 +372,49 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                                     {item.estado_linea}
                                                                 </span>
                                                             </td>
+                                                            <td className="text-end text-muted small">
+                                                                {formatCurrency(item.costo_unitario_snapshot)}
+                                                            </td>
+                                                            <td className="text-end fw-bold text-dark pe-3">
+                                                                {formatCurrency(item.costo_total_linea)}
+                                                            </td>
                                                         </tr>
-                                                    )) : <tr><td colSpan="3" className="text-center text-muted py-3">Sin insumos requeridos.</td></tr>}
+                                                    )) : <tr><td colSpan="5" className="text-center text-muted py-4">Sin insumos requeridos.</td></tr>}
                                                 </tbody>
                                             </table>
                                         </div>
+
+                                        {/* --- RESUMEN FINANCIERO --- */}
+                                        <div className="card-footer bg-light d-flex justify-content-end p-3 border-top">
+                                            <div className="text-end">
+                                                <div className="small text-muted text-uppercase fw-bold mb-1">Costo Total de Reparación</div>
+                                                <div className="fs-3 fw-bold text-success">
+                                                    {formatCurrency(detalle.costo_total_ot)}
+                                                </div>
+
+                                                {(parseFloat(detalle.costo_mano_obra) > 0 || parseFloat(detalle.costo_servicios_externos) > 0) && (
+                                                    <div className="small text-muted mt-2 border-top pt-2">
+                                                        <div className="d-flex justify-content-between gap-4">
+                                                            <span>Materiales:</span>
+                                                            <span className="fw-bold">{formatCurrency(detalle.costo_total_insumos)}</span>
+                                                        </div>
+                                                        {parseFloat(detalle.costo_mano_obra) > 0 && (
+                                                            <div className="d-flex justify-content-between gap-4">
+                                                                <span>Mano de Obra:</span>
+                                                                <span className="fw-bold">{formatCurrency(detalle.costo_mano_obra)}</span>
+                                                            </div>
+                                                        )}
+                                                        {parseFloat(detalle.costo_servicios_externos) > 0 && (
+                                                            <div className="d-flex justify-content-between gap-4">
+                                                                <span>Serv. Externos:</span>
+                                                                <span className="fw-bold">{formatCurrency(detalle.costo_servicios_externos)}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
                                     </div>
 
                                 </div>

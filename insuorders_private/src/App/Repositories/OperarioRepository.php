@@ -212,7 +212,7 @@ class OperarioRepository
         ];
     }
 
-    public function gestionarRecepcion($entregaId, $accion, $observacion = null)
+    public function gestionarRecepcion($entregaId, $accion, $observacion = null, $tipoId = 1)
     {
         try {
             $this->db->beginTransaction();
@@ -227,7 +227,6 @@ class OperarioRepository
             if ($accion === 'RECHAZAR') {
                 $nuevoEstado = 4;
                 $cantidad = floatval($entrega['cantidad_entregada']);
-                $bodegaId = 1;
 
                 $sqlUpd = "UPDATE entregas_personal 
                     SET estado_id = :est, fecha_aceptacion = NOW(), observacion_rechazo = :obs,
@@ -239,24 +238,16 @@ class OperarioRepository
                     ':id' => $entregaId
                 ]);
 
-                $sqlRestock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                        VALUES (:iid, :uid, :cant) 
-                        ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
+                $sqlDev = "INSERT INTO devoluciones_pendientes 
+                            (insumo_id, usuario_id, cantidad, tipo_devolucion_id, comentario_tecnico, estado, fecha) 
+                        VALUES (:iid, :uid, :cant, :tipo_id, :comentario, 'PENDIENTE', NOW())";
 
-                $this->db->prepare($sqlRestock)->execute([
+                $this->db->prepare($sqlDev)->execute([
                     ':iid' => $entrega['insumo_id'],
-                    ':uid' => $bodegaId,
-                    ':cant' => $cantidad,
-                    ':cant_upd' => $cantidad
-                ]);
-
-                $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
-                    VALUES (:iid, 1, :cant, :uid, 'Devuelto por Rechazo', :ubi, NOW())";
-                $this->db->prepare($sqlMov)->execute([
-                    ':iid' => $entrega['insumo_id'],
-                    ':cant' => $cantidad,
                     ':uid' => $entrega['usuario_operario_id'],
-                    ':ubi' => $bodegaId
+                    ':cant' => $cantidad,
+                    ':tipo_id' => $tipoId,
+                    ':comentario' => $observacion
                 ]);
 
             } else {
@@ -275,10 +266,13 @@ class OperarioRepository
         }
     }
 
-    public function devolverInsumo($usuarioId, $insumoId, $cantidad)
+    public function devolverInsumo($usuarioId, $insumoId, $cantidad, $tipoId = 1, $comentario = null)
     {
+        $inTransaction = $this->db->inTransaction();
         try {
-            $this->db->beginTransaction();
+            if (!$inTransaction)
+                $this->db->beginTransaction();
+
             $sqlTotal = "SELECT SUM(cantidad_entregada - cantidad_utilizada) as total 
                         FROM entregas_personal 
                         WHERE usuario_operario_id = :uid AND insumo_id = :iid AND estado_id = 2";
@@ -290,22 +284,24 @@ class OperarioRepository
                 throw new Exception("No tienes suficiente stock para devolver. Tienes: " . floatval($total));
             }
 
-            $sqlEntregas = "SELECT id, cantidad_entregada, cantidad_utilizada 
+            $sqlEntregas = "SELECT id, cantidad_entregada, cantidad_utilizada, referencia_ot_id 
                         FROM entregas_personal 
                         WHERE usuario_operario_id = :uid AND insumo_id = :iid AND estado_id = 2 
                         AND (cantidad_entregada - cantidad_utilizada) > 0 
-                        ORDER BY fecha_entrega ASC";
+                        ORDER BY fecha_entrega ASC FOR UPDATE";
 
             $stmt = $this->db->prepare($sqlEntregas);
             $stmt->execute([':uid' => $usuarioId, ':iid' => $insumoId]);
             $entregas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $pendiente = floatval($cantidad);
-            $bodegaId = 1;
-
+            $otReferencia = null;
             foreach ($entregas as $entrega) {
                 if ($pendiente <= 0)
                     break;
+                if (empty($otReferencia) && !empty($entrega['referencia_ot_id'])) {
+                    $otReferencia = $entrega['referencia_ot_id'];
+                }
 
                 $saldoEntrega = floatval($entrega['cantidad_entregada']) - floatval($entrega['cantidad_utilizada']);
                 $aDevolver = min($pendiente, $saldoEntrega);
@@ -316,19 +312,25 @@ class OperarioRepository
 
                 $pendiente -= $aDevolver;
             }
-            $sqlDev = "INSERT INTO devoluciones_pendientes (insumo_id, usuario_id, cantidad) 
-                    VALUES (:iid, :uid, :cant)";
+
+            $sqlDev = "INSERT INTO devoluciones_pendientes 
+                        (insumo_id, usuario_id, cantidad, tipo_devolucion_id, comentario_tecnico, estado, fecha) 
+                    VALUES (:iid, :uid, :cant, :tipo_id, :comentario, 'PENDIENTE', NOW())";
+
             $this->db->prepare($sqlDev)->execute([
                 ':iid' => $insumoId,
                 ':uid' => $usuarioId,
-                ':cant' => $cantidad
+                ':cant' => $cantidad,
+                ':tipo_id' => $tipoId,
+                ':comentario' => $comentario
             ]);
 
-            $this->db->commit();
+            if (!$inTransaction)
+                $this->db->commit();
             return true;
 
         } catch (Exception $e) {
-            if ($this->db->inTransaction())
+            if (!$inTransaction)
                 $this->db->rollBack();
             throw $e;
         }
@@ -397,7 +399,7 @@ class OperarioRepository
         ]);
     }
 
-    public function gestionarRecepcionMasiva($entregasIds, $accion, $observacion = null)
+    public function gestionarRecepcionMasiva($entregasIds, $accion, $observacion = null, $tipoId = 1)
     {
         try {
             $this->db->beginTransaction();
@@ -407,12 +409,12 @@ class OperarioRepository
                 $stmt->execute([':id' => $entregaId]);
                 $entrega = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if (!$entrega) continue;
+                if (!$entrega)
+                    continue;
 
                 if ($accion === 'RECHAZAR') {
                     $nuevoEstado = 4;
                     $cantidad = floatval($entrega['cantidad_entregada']);
-                    $bodegaId = 1;
 
                     $sqlUpd = "UPDATE entregas_personal 
                         SET estado_id = :est, fecha_aceptacion = NOW(), observacion_rechazo = :obs,
@@ -424,24 +426,15 @@ class OperarioRepository
                         ':id' => $entregaId
                     ]);
 
-                    $sqlRestock = "INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) 
-                            VALUES (:iid, :uid, :cant) 
-                            ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd";
-
-                    $this->db->prepare($sqlRestock)->execute([
+                    $sqlDev = "INSERT INTO devoluciones_pendientes 
+                                (insumo_id, usuario_id, cantidad, tipo_devolucion_id, comentario_tecnico, estado, fecha) 
+                            VALUES (:iid, :uid, :cant, :tipo_id, :comentario, 'PENDIENTE', NOW())";
+                    $this->db->prepare($sqlDev)->execute([
                         ':iid' => $entrega['insumo_id'],
-                        ':uid' => $bodegaId,
-                        ':cant' => $cantidad,
-                        ':cant_upd' => $cantidad
-                    ]);
-
-                    $sqlMov = "INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
-                        VALUES (:iid, 1, :cant, :uid, 'Devuelto por Rechazo Masivo', :ubi, NOW())";
-                    $this->db->prepare($sqlMov)->execute([
-                        ':iid' => $entrega['insumo_id'],
-                        ':cant' => $cantidad,
                         ':uid' => $entrega['usuario_operario_id'],
-                        ':ubi' => $bodegaId
+                        ':cant' => $cantidad,
+                        ':tipo_id' => $tipoId,
+                        ':comentario' => $observacion
                     ]);
 
                 } else {

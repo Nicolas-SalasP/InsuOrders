@@ -48,7 +48,9 @@ const Mantencion = () => {
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
     const [filtroSinTecnico, setFiltroSinTecnico] = useState(false);
-    const [ordenOTAsc, setOrdenOTAsc] = useState(false);
+    
+    // SISTEMA DE 4 FASES PARA EL ORDEN
+    const [tipoOrden, setTipoOrden] = useState('default');
 
     const wrapperRef = useRef(null);
     const todayStr = new Date().toISOString().split('T')[0];
@@ -269,9 +271,34 @@ const Mantencion = () => {
         setBusquedaInsumo('');
         setMostrarSugerencias(false);
         setFiltroSinTecnico(false);
-        setOrdenOTAsc(false);
+        setTipoOrden('default');
         cargarSolicitudes();
     };
+
+    // LÓGICA DE TRANSICIÓN DE 4 FASES
+    const handleToggleOrden = () => {
+        if (tipoOrden === 'default') setTipoOrden('prio_asc');
+        else if (tipoOrden === 'prio_asc') setTipoOrden('desc');
+        else if (tipoOrden === 'desc') setTipoOrden('asc');
+        else setTipoOrden('default');
+    };
+
+    // CONFIGURACIÓN VISUAL DEL BOTÓN DE ORDEN
+    const getOrdenConfig = () => {
+        switch(tipoOrden) {
+            case 'prio_asc':
+                return { class: 'btn-outline-secondary', icon: 'bi-sort-up', text: 'Prioridad (Menor a Mayor)' };
+            case 'desc':
+                return { class: 'btn-primary text-white', icon: 'bi-sort-numeric-down-alt', text: 'N° OT (Nuevas primero)' };
+            case 'asc':
+                return { class: 'btn-success text-white', icon: 'bi-sort-numeric-down', text: 'N° OT (Antiguas primero)' };
+            case 'default':
+            default:
+                return { class: 'btn-dark text-white', icon: 'bi-sort-down-alt', text: 'Prioridad (Mayor a Menor)' };
+        }
+    };
+    
+    const ordenBtn = getOrdenConfig();
 
     const isCritico = (prio) => {
         if (!prio) return false;
@@ -307,6 +334,10 @@ const Mantencion = () => {
         return <span className="badge bg-light text-dark border">{prio || 'No def.'}</span>;
     };
 
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value || 0);
+    };
+
     const solicitudesFiltradas = solicitudes.filter(s => {
         const matchOT = !filtroOT || s.id.toString().includes(filtroOT);
         const maquinaStr = (s.activo || '') + ' ' + (s.activo_codigo || '');
@@ -331,16 +362,20 @@ const Mantencion = () => {
 
         return matchOT && matchMaquina && matchUbicacion && matchEstado && matchFecha && matchSinTecnico;
     }).sort((a, b) => {
-        if (ordenOTAsc) {
-            return parseInt(a.id) - parseInt(b.id);
-        }
+        // Orden N° OT (Nuevas primero)
+        if (tipoOrden === 'desc') return parseInt(b.id) - parseInt(a.id);
+        // Orden N° OT (Antiguas primero)
+        if (tipoOrden === 'asc') return parseInt(a.id) - parseInt(b.id);
+        
+        // Orden por Prioridad
         const prioA = getPrioridadValor(a.prioridad);
         const prioB = getPrioridadValor(b.prioridad);
 
         if (prioA !== prioB) {
-            return prioA - prioB;
+            return tipoOrden === 'prio_asc' ? (prioB - prioA) : (prioA - prioB);
         }
 
+        // Desempate: Siempre poner las más nuevas arriba en caso de misma prioridad
         return parseInt(b.id) - parseInt(a.id);
     });
 
@@ -479,7 +514,7 @@ const Mantencion = () => {
                             )}
                         </div>
                         <div className="col-md-2 text-end">
-                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado || filtroFecha || filtroInsumo || filtroSinTecnico || ordenOTAsc) && (
+                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado.length > 0 || filtroFecha || filtroInsumo || filtroSinTecnico || tipoOrden !== 'default') && (
                                 <button className="btn btn-outline-secondary w-100" onClick={limpiarFiltros}>
                                     <i className="bi bi-x-lg me-1"></i> Limpiar
                                 </button>
@@ -497,11 +532,11 @@ const Mantencion = () => {
                             </button>
 
                             <button
-                                className={`btn btn-sm shadow-sm ${ordenOTAsc ? 'btn-primary text-white border-primary' : 'btn-outline-secondary bg-white'}`}
-                                onClick={() => setOrdenOTAsc(!ordenOTAsc)}
+                                className={`btn btn-sm shadow-sm ${ordenBtn.class}`}
+                                onClick={handleToggleOrden}
                             >
-                                <i className={`bi ${ordenOTAsc ? 'bi-sort-numeric-down' : 'bi-sort-down-alt'} me-2`}></i>
-                                {ordenOTAsc ? 'Orden: N° OT (Menor a Mayor)' : 'Orden: Prioridad y Recientes'}
+                                <i className={`bi ${ordenBtn.icon} me-2`}></i>
+                                {ordenBtn.text}
                             </button>
                         </div>
                     </div>
@@ -514,7 +549,7 @@ const Mantencion = () => {
                             <span className="text-muted">Cargando solicitudes...</span>
                         </div>
                     ) : (
-                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '1000px' }}>
+                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '1100px' }}>
                             <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
                                 <tr>
                                     <th className="ps-4">OT #</th>
@@ -524,14 +559,13 @@ const Mantencion = () => {
                                     <th className="py-3 px-3">Fecha Prog / Creación</th>
                                     <th>Prioridad</th>
                                     <th>Estado</th>
-                                    <th className="text-end pe-4" style={{ minWidth: '200px' }}>Acciones</th>
+                                    <th className="text-end">Costo Total</th>
+                                    <th className="text-end pe-4" style={{ minWidth: '150px' }}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => {
                                     const critico = isCritico(s.prioridad);
-
-                                    // LÓGICA VISUAL: ESTADO PROGRAMADA O PENDIENTE NORMAL
                                     const reqStr = s.fecha_requerida ? s.fecha_requerida.substring(0, 10) : null;
                                     const isFutura = reqStr && reqStr > todayStr;
                                     let estadoTexto = s.estado;
@@ -576,18 +610,24 @@ const Mantencion = () => {
                                                 <div className="fw-bold text-dark">{s.titulo || ''}</div>
                                                 <small className="text-muted text-truncate d-block" style={{ maxWidth: '200px' }}>{s.descripcion_trabajo || '-'}</small>
                                             </td>
+
                                             <td>
                                                 <div className="text-dark">{s.solicitante_nombre} {s.solicitante_apellido}</div>
-                                                <div className="small mt-1 text-truncate" style={{ maxWidth: '150px' }}>
+                                                <div className="mt-1" style={{ maxWidth: '200px' }}>
                                                     {s.asignados_nombres ? (
-                                                        <span className="text-primary"><i className="bi bi-tools me-1"></i>{s.asignados_nombres}</span>
+                                                        <div className="d-flex flex-wrap gap-1">
+                                                            {s.asignados_nombres.split(',').map((nombre, i) => (
+                                                                <span key={i} className="badge bg-light text-primary border border-primary border-opacity-25" style={{fontSize: '0.7rem'}}>
+                                                                    <i className="bi bi-person-fill me-1"></i>{nombre.trim()}
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     ) : (
-                                                        <span className="text-danger fw-medium"><i className="bi bi-exclamation-circle me-1"></i>Sin Asignar</span>
+                                                        <span className="text-danger small fw-bold"><i className="bi bi-exclamation-circle me-1"></i>Sin técnicos</span>
                                                     )}
                                                 </div>
                                             </td>
 
-                                            {/* LÓGICA VISUAL DE FECHA PROGRAMADA vs FECHA CREACIÓN */}
                                             <td className="small px-3">
                                                 {isFutura ? (
                                                     <span className="badge bg-primary text-white shadow-sm fw-bold px-2 py-1">
@@ -604,6 +644,16 @@ const Mantencion = () => {
 
                                             <td>{getPriorityBadge(s.prioridad)}</td>
                                             <td><span className={`badge ${badgeClass}`}>{estadoTexto}</span></td>
+
+                                            <td className="text-end">
+                                                {s.estado === 'Completada' ? (
+                                                    <span className="fw-bold text-success">
+                                                        {formatCurrency(s.costo_total_ot)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted small"><i className="bi bi-dash"></i></span>
+                                                )}
+                                            </td>
 
                                             <td className="text-end pe-4">
                                                 <div className="d-flex justify-content-end align-items-center gap-2">
@@ -633,7 +683,7 @@ const Mantencion = () => {
                                         </tr>
                                     );
                                 }) : (
-                                    <tr><td colSpan="8" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
+                                    <tr><td colSpan="9" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
                                 )}
                             </tbody>
                         </table>

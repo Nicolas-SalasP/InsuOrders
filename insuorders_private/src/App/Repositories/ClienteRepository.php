@@ -68,6 +68,7 @@ class ClienteRepository
                     e.nombre as estado,
                     e.id as estado_id,
                     a.nombre as activo_nombre,
+                    a.codigo_interno as activo_codigo,
                     s.fecha_cierre,
                     s.comentarios_finales,
                     s.evidencia_cierre,
@@ -88,7 +89,7 @@ class ClienteRepository
 
     public function getActivosDisponibles()
     {
-        $sql = "SELECT id, nombre, codigo_maquina FROM activos ORDER BY nombre ASC";
+        $sql = "SELECT id, nombre, codigo_interno FROM activos ORDER BY nombre ASC";
         $stmt = $this->db->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

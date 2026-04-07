@@ -2,6 +2,7 @@
 namespace App\Repositories;
 
 use App\Database\Database;
+use \App\Middleware\AuthMiddleware;
 use Exception;
 use PDO;
 
@@ -25,7 +26,11 @@ class MisMantencionesRepository
                 ot.sub_activo_id, sa.nombre as sub_activo_nombre,
                 a.plantilla_json,
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
-                oa.completado as mi_completado
+                oa.completado as mi_completado,
+                (SELECT GROUP_CONCAT(DISTINCT CONCAT(u2.nombre, ' ', u2.apellido) SEPARATOR ', ') 
+                FROM ot_asignaciones oa2 
+                JOIN usuarios u2 ON oa2.usuario_id = u2.id 
+                WHERE oa2.solicitud_id = ot.id) as equipo_nombres
             FROM solicitudes_ot ot
             JOIN ot_asignaciones oa ON ot.id = oa.solicitud_id
             LEFT JOIN activos a ON ot.activo_id = a.id 
@@ -119,24 +124,66 @@ class MisMantencionesRepository
 
     public function guardarCierre($otId, $firmaBase64, $comentarios, $evidenciaStr = null)
     {
-        $sql = "UPDATE solicitudes_ot SET 
-            comentarios_finales = :com,
-            estado_id = 5, 
-            fecha_cierre = NOW()";
-        $params = [':com' => $comentarios, ':id' => $otId];
+        $userId = AuthMiddleware::verify();
+        $inTransaction = $this->db->inTransaction();
+        try {
+            if (!$inTransaction)
+                $this->db->beginTransaction();
 
-        if ($firmaBase64 !== null) {
-            $sql .= ", firma_tecnico = :firma";
-            $params[':firma'] = $firmaBase64;
+            $sqlTarea = "UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW(), notas_cierre = ? WHERE solicitud_id = ? AND usuario_id = ?";
+            $this->db->prepare($sqlTarea)->execute([$comentarios, $otId, $userId]);
+
+            if ($firmaBase64) {
+                $this->db->prepare("UPDATE solicitudes_ot SET firma_tecnico = ? WHERE id = ?")
+                    ->execute([$firmaBase64, $otId]);
+            }
+
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = ? AND completado = 0");
+            $stmt->execute([$otId]);
+            $pendientes = $stmt->fetchColumn();
+
+            if ($pendientes == 0) {
+                $stmtTotal = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = ?");
+                $stmtTotal->execute([$otId]);
+                $totalAsignados = $stmtTotal->fetchColumn();
+
+                $sqlConsolidar = "UPDATE solicitudes_ot SET estado_id = 5, fecha_cierre = NOW()";
+                $paramsConsolidar = [];
+
+                if ($totalAsignados > 0) {
+                    $sqlConsolidar .= ", comentarios_finales = (SELECT GROUP_CONCAT(CONCAT(u.nombre, ': ', COALESCE(oa.notas_cierre, 'Sin notas')) SEPARATOR ' | ') FROM ot_asignaciones oa JOIN usuarios u ON oa.usuario_id = u.id WHERE oa.solicitud_id = ?)";
+                    $paramsConsolidar[] = $otId;
+                } else {
+                    $sqlConsolidar .= ", comentarios_finales = ?";
+                    $paramsConsolidar[] = $comentarios;
+                }
+
+                if ($evidenciaStr !== null) {
+                    $sqlConsolidar .= ", evidencia_cierre = ?";
+                    $paramsConsolidar[] = $this->appendEvidencia($otId, $evidenciaStr);
+                }
+
+                $sqlConsolidar .= " WHERE id = ?";
+                $paramsConsolidar[] = $otId;
+                $this->db->prepare($sqlConsolidar)->execute($paramsConsolidar);
+
+                $sqlSnapshot = "UPDATE detalle_solicitud ds JOIN insumos i ON ds.insumo_id = i.id 
+                                SET ds.costo_unitario_snapshot = i.costo_unitario WHERE ds.solicitud_id = ? AND ds.costo_unitario_snapshot <= 0";
+                $this->db->prepare($sqlSnapshot)->execute([$otId]);
+
+                $sqlTotal = "UPDATE solicitudes_ot SET costo_total_insumos = COALESCE((SELECT SUM(costo_total_linea) FROM detalle_solicitud WHERE solicitud_id = ?), 0) WHERE id = ?";
+                $this->db->prepare($sqlTotal)->execute([$otId, $otId]);
+            }
+
+            if (!$inTransaction)
+                $this->db->commit();
+            return true;
+
+        } catch (Exception $e) {
+            if (!$inTransaction)
+                $this->db->rollBack();
+            throw $e;
         }
-
-        if ($evidenciaStr !== null) {
-            $sql .= ", evidencia_cierre = :evi";
-            $params[':evi'] = $this->appendEvidencia($otId, $evidenciaStr);
-        }
-
-        $sql .= " WHERE id = :id";
-        $this->db->prepare($sql)->execute($params);
     }
 
     public function guardarUrlPdf($otId, $url)
@@ -166,6 +213,7 @@ class MisMantencionesRepository
     public function getDetallesOT($id)
     {
         $sql = "SELECT d.cantidad, d.cantidad_entregada, d.estado_linea, 
+            d.costo_unitario_snapshot, d.costo_total_linea,
             i.nombre, i.codigo_sku, i.unidad_medida
             FROM detalle_solicitud d 
             JOIN insumos i ON d.insumo_id = i.id 
@@ -238,11 +286,12 @@ class MisMantencionesRepository
         ]);
     }
 
-    private function appendEvidencia($otId, $nuevasEvidenciasStr) {
+    private function appendEvidencia($otId, $nuevasEvidenciasStr)
+    {
         $stmt = $this->db->prepare("SELECT evidencia_cierre FROM solicitudes_ot WHERE id = ?");
         $stmt->execute([$otId]);
         $actual = $stmt->fetchColumn();
-        
+
         $arrActual = [];
         if ($actual) {
             $decoded = json_decode($actual, true);
@@ -260,16 +309,54 @@ class MisMantencionesRepository
 
     public function guardarAvanceParcial($otId, $comentarios, $evidenciaStr = null)
     {
-        $sql = "UPDATE solicitudes_ot SET comentarios_finales = :com";
-        $params = [':com' => $comentarios, ':id' => $otId];
-
-        if ($evidenciaStr !== null) {
-            $sql .= ", evidencia_cierre = :evi";
-            $params[':evi'] = $this->appendEvidencia($otId, $evidenciaStr);
+        $userId = AuthMiddleware::verify();
+        $sql = "UPDATE ot_asignaciones SET notas_cierre = ? WHERE solicitud_id = ? AND usuario_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$comentarios, $otId, $userId]);
+        if ($stmt->rowCount() == 0 && !empty($comentarios)) {
+            $sqlMaster = "UPDATE solicitudes_ot SET comentarios_finales = ? WHERE id = ?";
+            $this->db->prepare($sqlMaster)->execute([$comentarios, $otId]);
         }
 
-        $sql .= " WHERE id = :id";
-        $this->db->prepare($sql)->execute($params);
+        if ($evidenciaStr !== null) {
+            $eviActual = $this->appendEvidencia($otId, $evidenciaStr);
+            $sqlEvi = "UPDATE solicitudes_ot SET evidencia_cierre = ? WHERE id = ?";
+            $this->db->prepare($sqlEvi)->execute([$eviActual, $otId]);
+        }
+    }
+
+    public function eliminarEvidenciaYRegistrar($otId, $urlEliminar, $userId)
+    {
+        $stmt = $this->db->prepare("SELECT evidencia_cierre FROM solicitudes_ot WHERE id = ?");
+        $stmt->execute([$otId]);
+        $actualStr = $stmt->fetchColumn();
+
+        if (!$actualStr)
+            return false;
+
+        $actualArr = json_decode($actualStr, true);
+        if (!is_array($actualArr)) {
+            $actualArr = [$actualStr];
+        }
+
+        $nuevoArr = array_values(array_filter($actualArr, function ($item) use ($urlEliminar) {
+            return $item !== $urlEliminar;
+        }));
+
+        $nuevoStr = empty($nuevoArr) ? null : json_encode($nuevoArr);
+
+        $this->db->prepare("UPDATE solicitudes_ot SET evidencia_cierre = ? WHERE id = ?")->execute([$nuevoStr, $otId]);
+        $mensajeLog = "\n[SISTEMA " . date('d-m-Y H:i') . "]: El técnico eliminó una evidencia adjunta previamente.";
+
+        $sqlLog = "UPDATE ot_asignaciones SET notas_cierre = CONCAT(COALESCE(notas_cierre, ''), ?) WHERE solicitud_id = ? AND usuario_id = ?";
+        $stmtLog = $this->db->prepare($sqlLog);
+        $stmtLog->execute([$mensajeLog, $otId, $userId]);
+
+        if ($stmtLog->rowCount() == 0) {
+            $sqlMaster = "UPDATE solicitudes_ot SET comentarios_finales = CONCAT(COALESCE(comentarios_finales, ''), ?) WHERE id = ?";
+            $this->db->prepare($sqlMaster)->execute([$mensajeLog, $otId]);
+        }
+        return true;
     }
 
     public function beginTransaction()
