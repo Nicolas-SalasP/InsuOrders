@@ -8,8 +8,6 @@ const BASE_URL = '/api';
 
 const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const { auth } = useContext(AuthContext);
-    
-    // EVALUACIÓN DE LECTURA (True si no tiene permisos para crear/editar)
     const isReadOnly = auth.rol !== 'Admin' && !(auth.permisos && (auth.permisos.includes('activos_editar') || auth.permisos.includes('activos_crear')));
 
     const [tab, setTab] = useState('general');
@@ -93,7 +91,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 if(res.data.success) setListaCentros(res.data.data || []);
             }).catch(console.error);
             
-            // CORRECCIÓN: Solo cargar inventario si el usuario puede editar. Evita Error 403
             if (!isReadOnly) {
                 api.get('/index.php/inventario').then(res => {
                     if(res.data.success) setInsumosList(res.data.data || []);
@@ -271,7 +268,9 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             show: true, id: id, title: 'Eliminar Imagen', message: `¿Seguro de eliminar esta imagen ${type === 'principal' ? 'principal' : 'de la galería'}?`,
             action: async () => {
                 try {
-                    await api.delete(`/index.php/mantencion/imagen?id=${id}&tipo=${type}&activo_id=${activo.id}`);
+                    const targetId = id === null ? '' : id;
+                    await api.delete(`/index.php/mantencion/imagen?id=${targetId}&tipo=${type}&activo_id=${activo.id}`);
+                    
                     setConfirmModal({ show: false, id: null });
                     if (type === 'principal') setMainImagePreview(null);
                     else cargarGaleria(activo.id);

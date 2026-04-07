@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Modal, Button, Form, Row, Col } from 'react-bootstrap'; // Usamos componentes de Bootstrap para limpieza
+import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
 import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
 
 const BASE_URL_IMAGENES = '/api';
 
 const InsumoModal = ({ show, onClose, onSave, insumo }) => {
-    // Estado inicial limpio
     const initialState = {
         codigo_sku: '', nombre: '', descripcion: '',
         categoria_id: '',
-        // ubicacion_id se elimina de aquí porque ahora es múltiple
         stock_actual: 0, stock_minimo: 5,
         precio_costo: 0, moneda: 'CLP', unidad_medida: 'UN'
     };
@@ -36,13 +34,12 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
             setSaving(false);
             cargarAuxiliares();
         }
-    }, [show, insumo]); // Dependencia 'insumo' para recargar si cambia la selección
+    }, [show, insumo]);
 
     const cargarAuxiliares = async () => {
         try {
-            const res = await api.get('/index.php/inventario/auxiliares'); // Tu ruta original
+            const res = await api.get('/index.php/inventario/auxiliares');
             if (res.data.success) {
-                // CORRECCIÓN DEL ERROR: Aseguramos que siempre sean arrays
                 const data = res.data.data;
                 setListas({
                     categorias: data.categorias || [],
@@ -74,7 +71,6 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                 unidad_medida: insumo.unidad_medida || 'UN'
             });
 
-            // Lógica de Imagen
             if (insumo.imagen_url) {
                 const url = insumo.imagen_url.startsWith('http') ? insumo.imagen_url : `${BASE_URL_IMAGENES}${insumo.imagen_url}`;
                 setImagenPreview(url);
@@ -82,13 +78,11 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                 setImagenPreview(null);
             }
 
-            // Desactivar automático al editar
             setEsAutomatico(false);
 
             // --- CARGAR UBICACIONES MÚLTIPLES ---
             if (insumo.stocks_json) {
                 try {
-                    // El backend devuelve JSON, parseamos si es string o usamos directo si es objeto
                     const parsedStocks = typeof insumo.stocks_json === 'string' 
                         ? JSON.parse(insumo.stocks_json) 
                         : insumo.stocks_json;
@@ -96,15 +90,12 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                     if (Array.isArray(parsedStocks) && parsedStocks.length > 0) {
                         setStockLocations(parsedStocks);
                     } else {
-                         // Fallback si el array está vacío pero hay stock
                         setStockLocations([{ ubicacion_id: insumo.ubicacion_defecto_id || '', cantidad: insumo.stock_actual || 0 }]);
                     }
                 } catch (e) {
                     setStockLocations([{ ubicacion_id: '', cantidad: 0 }]);
                 }
             } else {
-                // Compatibilidad con datos antiguos (si no viene stocks_json)
-                // Usamos la ubicacion_id antigua si existe en el objeto insumo
                 const ubicacionAntigua = insumo.ubicacion_id || ''; 
                 setStockLocations([{ ubicacion_id: ubicacionAntigua, cantidad: insumo.stock_actual || 0 }]);
             }
@@ -117,6 +108,11 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
             setStockLocations([{ ubicacion_id: '', cantidad: 0 }]);
             setEsAutomatico(true);
             obtenerSiguienteSku();
+
+            const fileInput = document.getElementById('inputImagenInsumo');
+            if (fileInput) {
+                fileInput.value = '';
+            }
         }
     };
 
@@ -148,10 +144,7 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
         setStockLocations(newLocations);
     };
 
-    // Calculamos el total visual sumando las filas
     const totalStockCalculado = stockLocations.reduce((acc, curr) => acc + (parseFloat(curr.cantidad) || 0), 0);
-
-    // ----------------------------------------
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -360,7 +353,6 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                             </Button>
                                         </div>
                                     </Col>
-                                    {/* ------------------------------- */}
 
                                     {/* Costos y Alertas */}
                                     <Col md={4}>
@@ -390,7 +382,7 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                     
                                     <Col xs={12}>
                                         <Form.Label className="small fw-bold">Imagen</Form.Label>
-                                        <Form.Control type="file" accept="image/*" onChange={handleImageChange} />
+                                        <Form.Control id="inputImagenInsumo" type="file" accept="image/*" onChange={handleImageChange} />
                                         {imagenPreview && (
                                             <div className="mt-2 text-center border rounded p-1 bg-light">
                                                 <img src={imagenPreview} style={{ maxHeight: '100px', objectFit: 'contain' }} alt="Preview" />

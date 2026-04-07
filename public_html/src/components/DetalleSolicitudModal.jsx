@@ -312,8 +312,11 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
 
                                     <div className="card mb-3 border-0 shadow-sm">
                                         <div className="card-body">
-                                            <small className="text-muted text-uppercase fw-bold">Descripción del Problema</small>
-                                            <p className="mb-0 mt-1 p-3 bg-white border rounded text-dark">{detalle.descripcion_trabajo}</p>
+                                            <small className="text-muted text-uppercase fw-bold">Título de la Solicitud / Falla</small>
+                                            <h5 className="fw-bold text-primary mt-1 border-bottom pb-2">{detalle.titulo || `OT #${detalle.id}`}</h5>
+                                            
+                                            <small className="text-muted text-uppercase fw-bold mt-3 d-block">Descripción del Problema</small>
+                                            <p className="mb-0 mt-1 p-3 bg-white border rounded text-dark">{detalle.descripcion_trabajo || 'Sin descripción adicional.'}</p>
                                         </div>
                                     </div>
 

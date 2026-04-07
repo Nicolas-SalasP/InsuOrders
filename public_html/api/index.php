@@ -143,14 +143,17 @@ try {
             break;
 
         // --- MANTENCIÓN ---
+        // --- MANTENCIÓN ---
         case 'mantencion':
             $c = new MantencionController();
             if ($method === 'GET') {
-                AuthMiddleware::hasPermission('mant_ver');
-                if (isset($_GET['detalle']))
+                if (isset($_GET['detalle'])) {
+                    AuthMiddleware::verify(); 
                     $c->detalles();
-                else
+                } else {
+                    AuthMiddleware::hasPermission('mant_ver');
                     $c->index();
+                }
             } elseif ($method === 'POST') {
                 $uid = AuthMiddleware::hasPermission('mant_crear');
                 $c->store($uid);

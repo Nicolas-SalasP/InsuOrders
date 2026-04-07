@@ -23,10 +23,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [subActivoId, setSubActivoId] = useState('');
     const [solicitanteId, setSolicitanteId] = useState('');
     const [centroCostoOT, setCentroCostoOT] = useState('');
+    
+    const [titulo, setTitulo] = useState('');
     const [observacion, setObservacion] = useState('');
 
     // CAMPOS ADICIONALES
-    const [prioridad, setPrioridad] = useState('Media');
+    const [prioridad, setPrioridad] = useState('MEDIA');
     const [ubicacion, setUbicacion] = useState('');
 
     const [items, setItems] = useState([]);
@@ -71,6 +73,18 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         (act.nombre || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
         (act.codigo_interno || '').toLowerCase().includes(busquedaActivo.toLowerCase())
     );
+
+    const normalizarPrioridad = (prio) => {
+        if (!prio) return 'MEDIA';
+        const p = prio.toString().toUpperCase().trim();
+        
+        if (p === 'CRITICA' || p === 'CRÍTICO' || p === 'CRITICA' || p === 'CRÍTICA') return 'CRITICA';
+        if (p === 'ALTA' || p === 'ALTO' || p === 'URGENTE') return 'ALTA';
+        if (p === 'MEDIA' || p === 'MEDIO') return 'MEDIA';
+        if (p === 'BAJA' || p === 'BAJO') return 'BAJA';
+        
+        return 'MEDIA'; 
+    };
 
     useEffect(() => {
         if (show) cargarDatosMaestros();
@@ -141,12 +155,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setActivoNombreSeleccionado('');
         setBusquedaActivo('');
         setMostrarListaActivo(false);
-        
+        setTitulo('');
         setObservacion('');
         setBusqueda('');
         setSolicitanteId('');
         setCentroCostoOT('');
-        setPrioridad('Media');
+        setPrioridad('MEDIA');
         setUbicacion('');
         setAsignados([]);
         setItems([]);
@@ -171,8 +185,13 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 setSolicitanteId(otEditar.usuario_solicitante_id || '');
                 setCentroCostoOT(otEditar.centro_costo_ot || '');
             }
+            
+            setTitulo(otEditar.titulo || '');
             setObservacion(otEditar.descripcion_trabajo || '');
-            setPrioridad(otEditar.prioridad || 'Media');
+            
+            // CORRECCIÓN APLICADA: Forzamos la normalización de la prioridad proveniente de BD
+            setPrioridad(normalizarPrioridad(otEditar.prioridad));
+            
             setUbicacion(otEditar.ubicacion || '');
             setRequierePermiso(otEditar.requiere_permiso == 1);
             setTipoPermisoId(otEditar.tipo_permiso_id || '');
@@ -234,7 +253,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         return nombres.join(', ');
     };
 
-    // MANEJADOR DE SELECCIÓN INTELIGENTE DE MÁQUINA
     const handleSeleccionarActivo = async (act) => {
         const id = act.id;
         setActivoId(id);
@@ -262,7 +280,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         }
     };
 
-    // CAMBIO DE SUB-ACTIVO (COMPONENTE ESPECÍFICO)
     const handleSubActivoChange = async (e) => {
         const subId = e.target.value;
         setSubActivoId(subId);
@@ -283,7 +300,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         }
     };
 
-    // FUNCIÓN PARA CARGAR LOS ITEMS DEL KIT AL STATE
     const cargarKitEnItems = (dataKit, append = false) => {
         const kitItems = dataKit.map(k => ({
             id_producto: k.insumo_id || k.id,
@@ -359,6 +375,9 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     };
 
     const preSubmit = () => {
+        if (!titulo.trim()) {
+            return setMsgModal({ show: true, title: "Faltan Datos", message: "Debe ingresar un título para la solicitud.", type: "warning" });
+        }
         if (modo === 'maquina' && !activoId) {
             return setMsgModal({ show: true, title: "Faltan Datos", message: "Por favor seleccione una máquina o activo.", type: "warning" });
         }
@@ -399,6 +418,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
             const payload = {
                 id: otEditar ? otEditar.id : null,
+                titulo: titulo, 
                 activo_id: modo === 'maquina' ? activoId : null,
                 sub_activo_id: modo === 'maquina' && subActivoId ? subActivoId : null,
                 observacion: observacion,
@@ -472,7 +492,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
                         <div className="modal-header bg-warning text-dark border-bottom border-warning">
                             <h5 className="modal-title fw-bold">
-                                {otEditar ? `✏️ Detalle OT #${otEditar.id}` : '🛠️ Nueva Orden de Trabajo'}
+                                {otEditar ? `✏️ Edición OT #${otEditar.id}` : '🛠️ Nueva Orden de Trabajo'}
                             </h5>
                             <button className="btn-close" onClick={onClose} disabled={loading}></button>
                         </div>
@@ -498,9 +518,24 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
                             <div className="card border-0 shadow-sm mb-4">
                                 <div className="card-body">
+                                    <div className="row mb-3">
+                                        <div className="col-12">
+                                            <label className="form-label fw-bold small text-muted text-uppercase">
+                                                Título de la Solicitud / Falla <span className="text-danger">*</span>
+                                            </label>
+                                            <input 
+                                                type="text" 
+                                                className="form-control form-control-lg shadow-sm border-primary text-primary fw-bold" 
+                                                placeholder="Ej: Cambio de rodamientos motor principal..." 
+                                                value={titulo} 
+                                                onChange={e => setTitulo(e.target.value)} 
+                                                disabled={!editable} 
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div className="row g-3">
                                         <div className="col-md-6">
-                                            {/* SELECTORES DE MÁQUINA Y SUB-ACTIVO */}
                                             {modo === 'maquina' ? (
                                                 <>
                                                     <div className="mb-3 position-relative" ref={wrapperRefActivo}>
@@ -540,7 +575,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                                             activosFiltrados.map(act => (
                                                                                 <li key={act.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarActivo(act)}>
                                                                                     <div className="fw-bold text-dark">{act.nombre}</div>
-                                                                                    <small className="text-muted"><i className="bi bi-upc-scan me-1"></i>{act.codigo_interno || 'Sin código'}</small>
+                                                                                    <small className="text-muted"><i className="bi bi-upc-scan me-1"></i>{act.codigo_interno || act.codigo_maquina}</small>
                                                                                 </li>
                                                                             ))
                                                                         ) : (
@@ -552,7 +587,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                         )}
                                                     </div>
 
-                                                    {/* SELECTOR DE SUB-ACTIVO (CONDICIONAL) */}
                                                     {subActivosDisponibles.length > 0 && (
                                                         <div className="mb-3 p-3 bg-primary bg-opacity-10 border border-primary rounded animate__animated animate__fadeIn">
                                                             <label className="form-label fw-bold small text-primary text-uppercase">
@@ -621,20 +655,18 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 <div className="col-6">
                                                     <label className="form-label small text-muted">Prioridad</label>
                                                     <select
-                                                        className={`form-select shadow-sm fw-bold ${prioridad === 'Critico' ? 'text-danger border-danger' : ''}`}
+                                                        className={`form-select shadow-sm fw-bold ${prioridad === 'CRITICA' ? 'text-danger border-danger' : ''}`}
                                                         value={prioridad}
                                                         onChange={e => setPrioridad(e.target.value)}
                                                         disabled={!editable}
                                                     >
-                                                        <option value="Baja">Baja</option>
-                                                        <option value="Media">Media</option>
-                                                        <option value="Alta">Alta</option>
-                                                        <option value="Urgente">Urgente</option>
-                                                        <option value="Critico">Crítico 🚨</option>
+                                                        <option value="BAJA">Baja</option>
+                                                        <option value="MEDIA">Media</option>
+                                                        <option value="ALTA">Alta</option>
+                                                        <option value="CRITICA">Crítico 🚨</option>
                                                     </select>
                                                 </div>
                                                 <div className="col-6">
-                                                    {/* --- SELECTOR DE UBICACIÓN --- */}
                                                     <label className="form-label small text-muted">Ubicación / Área</label>
                                                     <select 
                                                         className="form-select shadow-sm" 
@@ -660,7 +692,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 </div>
                                             </div>
 
-                                            {/* ASIGNACIÓN MÚLTIPLE DE TÉCNICOS */}
                                             <div className="mb-2" ref={dropdownRef}>
                                                 <label className="form-label fw-bold small text-primary text-uppercase">Asignar Técnicos (Multi-Selección)</label>
                                                 <div className="dropdown w-100">
@@ -713,7 +744,6 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                     disabled={!editable}
                                                 ></textarea>
 
-                                                {/* EVIDENCIAS */}
                                                 <div className="mt-3">
                                                     <label className="form-label fw-bold small text-muted text-uppercase">
                                                         <i className="bi bi-camera me-1"></i> Evidencia Adjunta (Opcional)
