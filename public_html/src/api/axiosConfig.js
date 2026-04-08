@@ -27,7 +27,6 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Interceptor de Response (Manejo de errores 401)
 api.interceptors.response.use(
     (response) => response,
     (error) => {

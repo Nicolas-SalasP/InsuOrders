@@ -226,16 +226,25 @@ class MantencionController
     {
         AuthMiddleware::hasPermission('activos_editar');
         $id = $_GET['id'] ?? null;
-
-        if (!$id) {
-            http_response_code(400);
-            echo json_encode(["success" => false, "message" => "ID de imagen faltante"]);
-            return;
-        }
+        $tipo = $_GET['tipo'] ?? null;
+        $activoId = $_GET['activo_id'] ?? null;
 
         try {
+            if ($tipo === 'principal' && $activoId) {
+                $db = \App\Database\Database::getConnection();
+                $db->prepare("UPDATE activos SET imagen_url = NULL WHERE id = ?")->execute([$activoId]);
+                
+                echo json_encode(["success" => true, "message" => "Portada principal eliminada"]);
+                return;
+            }
+            if (!$id || $id == '-1') {
+                http_response_code(400);
+                echo json_encode(["success" => false, "message" => "ID de imagen de galería faltante"]);
+                return;
+            }
             $this->service->eliminarImagenGaleria($id);
-            echo json_encode(["success" => true, "message" => "Imagen eliminada"]);
+            echo json_encode(["success" => true, "message" => "Imagen de galería eliminada"]);
+
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => "Error al eliminar: " . $e->getMessage()]);

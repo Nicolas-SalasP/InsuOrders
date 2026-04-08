@@ -1,5 +1,17 @@
 <?php
-header("Access-Control-Allow-Origin: *");
+
+$allowed_origins = [
+    'http://localhost:5173',
+    //'https://tu-dominio-produccion.com' // IP Insuban
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+}
+
+header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept");
 
@@ -112,6 +124,19 @@ try {
                 jsonResponse(405, ["error" => "Método no permitido"]);
             break;
 
+        case 'logout':
+            $c = new AuthController();
+            if ($method === 'POST') {
+                setcookie("jwt_token", "", [
+                    'expires' => time() - 3600,
+                    'path' => '/',
+                    'httponly' => true,
+                    'samesite' => 'Strict'
+                ]);
+                echo json_encode(["success" => true, "message" => "Sesión cerrada"]);
+            }
+            break;
+
         case 'auth/me':
             (new AuthController())->me();
             break;
@@ -148,7 +173,7 @@ try {
             $c = new MantencionController();
             if ($method === 'GET') {
                 if (isset($_GET['detalle'])) {
-                    AuthMiddleware::verify(); 
+                    AuthMiddleware::verify();
                     $c->detalles();
                 } else {
                     AuthMiddleware::hasPermission('mant_ver');

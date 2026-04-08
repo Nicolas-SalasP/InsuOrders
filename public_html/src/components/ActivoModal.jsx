@@ -31,20 +31,20 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     });
 
     const [listaCentros, setListaCentros] = useState([]);
-    const [listaActivos, setListaActivos] = useState([]); 
-    
+    const [listaActivos, setListaActivos] = useState([]);
+
     const [mainImage, setMainImage] = useState(null);
     const [mainImagePreview, setMainImagePreview] = useState(null);
-    const [galleryItems, setGalleryItems] = useState([]); 
-    const [existingGallery, setExistingGallery] = useState([]); 
-    
-    const [zoomImage, setZoomImage] = useState(null); 
-    const [zoomLevel, setZoomLevel] = useState(1); 
+    const [galleryItems, setGalleryItems] = useState([]);
+    const [existingGallery, setExistingGallery] = useState([]);
+
+    const [zoomImage, setZoomImage] = useState(null);
+    const [zoomLevel, setZoomLevel] = useState(1);
 
     const [kitItems, setKitItems] = useState([]);
     const [insumosList, setInsumosList] = useState([]);
     const [loadingKit, setLoadingKit] = useState(false);
-    
+
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
     const [insumoSeleccionado, setInsumoSeleccionado] = useState(null);
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
@@ -86,19 +86,19 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     useEffect(() => {
         if (show) {
             setTab('general');
-            
+
             api.get('/index.php/mantencion/centros-costo').then(res => {
-                if(res.data.success) setListaCentros(res.data.data || []);
+                if (res.data.success) setListaCentros(res.data.data || []);
             }).catch(console.error);
-            
+
             if (!isReadOnly) {
                 api.get('/index.php/inventario').then(res => {
-                    if(res.data.success) setInsumosList(res.data.data || []);
+                    if (res.data.success) setInsumosList(res.data.data || []);
                 }).catch(console.error);
             }
 
             api.get('/index.php/mantencion/activos').then(res => {
-                if(res.data.success) setListaActivos(res.data.data || []);
+                if (res.data.success) setListaActivos(res.data.data || []);
             }).catch(console.error);
 
             if (activo) {
@@ -117,18 +117,18 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     centro_costo: activo.centro_costo_id || '',
                     frecuencia_mantencion: activo.frecuencia_mantencion || '',
                     unidad_frecuencia: activo.unidad_frecuencia || 'MESES',
-                    activo_padre_id: activo.activo_padre_id || '' 
+                    activo_padre_id: activo.activo_padre_id || ''
                 });
-                
+
                 if (activo.imagen_url || activo.imagen_principal) {
                     setMainImagePreview(`${BASE_URL}${activo.imagen_url || activo.imagen_principal}`);
                 } else {
                     setMainImagePreview(null);
                 }
-                
+
                 setMainImage(null);
                 setGalleryItems([]);
-                
+
                 cargarGaleria(activo.id);
                 cargarKit(activo.id);
                 cargarDocs(activo.id);
@@ -141,7 +141,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 setMainImage(null); setMainImagePreview(null); setGalleryItems([]); setExistingGallery([]);
                 setKitItems([]); setDocs([]);
             }
-            
+
             setBusquedaInsumo('');
             setInsumoSeleccionado(null);
         }
@@ -149,14 +149,14 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     const cargarGaleria = (id) => {
         api.get(`/index.php/mantencion/galeria?id=${id}`)
-            .then(res => { if(res.data.success) setExistingGallery(res.data.data || []); })
+            .then(res => { if (res.data.success) setExistingGallery(res.data.data || []); })
             .catch(console.error);
     };
 
     const cargarKit = (id) => {
         setLoadingKit(true);
         api.get(`/index.php/mantencion/kit?id=${id}`)
-            .then(res => { if(res.data.success) setKitItems(res.data.data || []); })
+            .then(res => { if (res.data.success) setKitItems(res.data.data || []); })
             .catch(console.error)
             .finally(() => setLoadingKit(false));
     };
@@ -164,7 +164,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const cargarDocs = (id) => {
         setLoadingDocs(true);
         api.get(`/index.php/mantencion/docs?id=${id}`)
-            .then(res => { if(res.data.success) setDocs(res.data.data || []); })
+            .then(res => { if (res.data.success) setDocs(res.data.data || []); })
             .catch(console.error)
             .finally(() => setLoadingDocs(false));
     };
@@ -172,7 +172,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const handleSubmitGeneral = async (e) => {
         e.preventDefault();
         if (isReadOnly) return;
-        
+
         setSaving(true);
         try {
             const formDataObj = new FormData();
@@ -181,7 +181,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             });
 
             if (mainImage) formDataObj.append('imagen_principal', mainImage);
-            
+
             galleryItems.forEach((file) => {
                 formDataObj.append('galeria_files[]', file);
                 formDataObj.append('galeria_tipos[]', 'General');
@@ -200,10 +200,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 onSave();
                 if (!activo) {
                     setTimeout(onClose, 1000);
-                } else { 
-                    setMainImage(null); 
-                    setGalleryItems([]); 
-                    cargarGaleria(activo.id); 
+                } else {
+                    setMainImage(null);
+                    setGalleryItems([]);
+                    cargarGaleria(activo.id);
                 }
             }
         } catch (error) {
@@ -216,7 +216,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
     const handleAddKitItem = async () => {
         if (isReadOnly) return;
         const cant = document.getElementById('nuevaCantidad').value;
-        if (!insumoSeleccionado || !cant) return setMsgModal({show:true, title:'Error', message:'Faltan datos de insumo o cantidad', type:'warning'});
+        if (!insumoSeleccionado || !cant) return setMsgModal({ show: true, title: 'Error', message: 'Faltan datos de insumo o cantidad', type: 'warning' });
 
         try {
             await api.post('/index.php/mantencion/kit', { activo_id: activo.id, insumo_id: insumoSeleccionado.id, cantidad: cant });
@@ -225,7 +225,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             document.getElementById('nuevaCantidad').value = '';
             cargarKit(activo.id);
         } catch (e) {
-            setMsgModal({show:true, title:'Error', message:'No se pudo agregar', type:'error'});
+            setMsgModal({ show: true, title: 'Error', message: 'No se pudo agregar', type: 'error' });
         }
     };
 
@@ -246,7 +246,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             setFile(null);
             document.getElementById('fileInput').value = '';
             cargarDocs(activo.id);
-        } catch(e) { console.error(e); }
+        } catch (e) { console.error(e); }
     };
 
     const solicitarBorrarDoc = (id) => {
@@ -268,14 +268,14 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             show: true, id: id, title: 'Eliminar Imagen', message: `¿Seguro de eliminar esta imagen ${type === 'principal' ? 'principal' : 'de la galería'}?`,
             action: async () => {
                 try {
-                    const targetId = id === null ? '' : id;
+                    const targetId = id === null ? '-1' : id;
                     await api.delete(`/index.php/mantencion/imagen?id=${targetId}&tipo=${type}&activo_id=${activo.id}`);
-                    
+
                     setConfirmModal({ show: false, id: null });
                     if (type === 'principal') setMainImagePreview(null);
                     else cargarGaleria(activo.id);
-                    onSave(); 
-                } catch(e) { console.error(e); }
+                    onSave();
+                } catch (e) { console.error(e); }
             }
         });
     };
@@ -291,13 +291,13 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     return (
         <>
-            <MessageModal show={msgModal.show} onClose={() => setMsgModal({...msgModal, show: false})} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
-            <ConfirmModal show={confirmModal.show} onClose={() => setConfirmModal({...confirmModal, show: false})} onConfirm={confirmModal.action} title={confirmModal.title} message={confirmModal.message} />
-            
+            <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
+            <ConfirmModal show={confirmModal.show} onClose={() => setConfirmModal({ ...confirmModal, show: false })} onConfirm={confirmModal.action} title={confirmModal.title} message={confirmModal.message} />
+
             {zoomImage && (
-                <div 
-                    className="position-fixed top-0 start-0 w-100 h-100" 
-                    style={{ backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 1070, overflowX: 'auto', overflowY: 'auto' }} 
+                <div
+                    className="position-fixed top-0 start-0 w-100 h-100"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 1070, overflowX: 'auto', overflowY: 'auto' }}
                     onClick={() => { setZoomImage(null); setZoomLevel(1); }}
                 >
                     <div className="position-fixed top-0 start-50 translate-middle-x mt-4" style={{ zIndex: 1080 }} onClick={e => e.stopPropagation()}>
@@ -309,22 +309,22 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     </div>
 
                     <div className="d-flex" style={{ minWidth: '100%', minHeight: '100%', padding: '80px 20px', justifyContent: zoomLevel > 1 ? 'flex-start' : 'center', alignItems: zoomLevel > 1 ? 'flex-start' : 'center' }}>
-                        <img 
-                            src={zoomImage} 
-                            alt="Zoom" 
-                            className="shadow-lg rounded" 
-                            style={{ 
-                                height: `${zoomLevel * 80}vh`, 
-                                objectFit: 'contain', 
-                                transition: 'height 0.2s ease', 
+                        <img
+                            src={zoomImage}
+                            alt="Zoom"
+                            className="shadow-lg rounded"
+                            style={{
+                                height: `${zoomLevel * 80}vh`,
+                                objectFit: 'contain',
+                                transition: 'height 0.2s ease',
                                 cursor: zoomLevel > 1 ? 'zoom-out' : 'zoom-in',
-                                margin: zoomLevel > 1 ? 'auto' : '0' 
-                            }} 
+                                margin: zoomLevel > 1 ? 'auto' : '0'
+                            }}
                             onClick={e => {
                                 e.stopPropagation();
                                 if (zoomLevel > 1) setZoomLevel(1);
                                 else setZoomLevel(2);
-                            }} 
+                            }}
                         />
                     </div>
                 </div>
@@ -340,9 +340,9 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                             </h5>
                             <button type="button" className="btn-close btn-close-white" onClick={onClose} disabled={saving}></button>
                         </div>
-                        
+
                         <div className="modal-body p-0 d-flex flex-column flex-md-row">
-                            
+
                             <div className="bg-light border-end p-3 d-flex flex-column gap-2" style={{ minWidth: '220px' }}>
                                 <button className={`btn text-start fw-bold w-100 shadow-sm ${tab === 'general' ? 'btn-primary' : 'btn-white border text-muted'}`} onClick={() => setTab('general')}><i className="bi bi-info-circle me-2"></i>Datos Generales</button>
                                 {activo && (
@@ -355,7 +355,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                             </div>
 
                             <div className="p-4 flex-grow-1 bg-white" style={{ minHeight: '60vh' }}>
-                                
+
                                 {isReadOnly && (
                                     <div className="alert alert-warning py-2 small fw-bold shadow-sm border-warning d-flex align-items-center">
                                         <i className="bi bi-shield-lock-fill fs-5 me-2"></i>
@@ -364,17 +364,17 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 )}
 
                                 <form onSubmit={handleSubmitGeneral} className={(tab === 'general' || tab === 'galeria') ? "d-flex flex-column h-100" : "d-none"}>
-                                    
+
                                     <div className={tab === 'general' ? 'd-block' : 'd-none'}>
                                         <div className="row g-3">
                                             <div className="col-12 mb-2">
                                                 <label className="form-label fw-bold text-muted small text-uppercase">
                                                     <i className="bi bi-diagram-2 me-1"></i> Sub-Equipo De (Opcional)
                                                 </label>
-                                                <select 
-                                                    className="form-select border-primary shadow-sm" 
-                                                    value={formData.activo_padre_id} 
-                                                    onChange={e => setFormData({...formData, activo_padre_id: e.target.value})}
+                                                <select
+                                                    className="form-select border-primary shadow-sm"
+                                                    value={formData.activo_padre_id}
+                                                    onChange={e => setFormData({ ...formData, activo_padre_id: e.target.value })}
                                                     disabled={isReadOnly}
                                                 >
                                                     <option value="">-- Ninguno (Es una máquina principal) --</option>
@@ -386,33 +386,33 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                 </select>
                                             </div>
 
-                                            <div className="col-md-6"><label className="form-label fw-bold text-muted small text-uppercase">Nombre del Activo <span className="text-danger">*</span></label><input type="text" className="form-control fw-bold" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required disabled={isReadOnly} /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Interno <span className="text-danger">*</span></label><input type="text" className="form-control font-monospace" value={formData.codigo_interno} onChange={e => setFormData({...formData, codigo_interno: e.target.value})} required disabled={isReadOnly} /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Fabricante</label><input type="text" className="form-control font-monospace" value={formData.codigo_maquina} onChange={e => setFormData({...formData, codigo_maquina: e.target.value})} disabled={isReadOnly} /></div>
-                                            
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Tipo</label><input type="text" className="form-control" value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})} disabled={isReadOnly} /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Marca</label><input type="text" className="form-control" value={formData.marca} onChange={e => setFormData({...formData, marca: e.target.value})} disabled={isReadOnly} /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Modelo</label><input type="text" className="form-control" value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} disabled={isReadOnly} /></div>
-                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">N° Serie</label><input type="text" className="form-control" value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} disabled={isReadOnly} /></div>
+                                            <div className="col-md-6"><label className="form-label fw-bold text-muted small text-uppercase">Nombre del Activo <span className="text-danger">*</span></label><input type="text" className="form-control fw-bold" value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} required disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Interno <span className="text-danger">*</span></label><input type="text" className="form-control font-monospace" value={formData.codigo_interno} onChange={e => setFormData({ ...formData, codigo_interno: e.target.value })} required disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Cód. Fabricante</label><input type="text" className="form-control font-monospace" value={formData.codigo_maquina} onChange={e => setFormData({ ...formData, codigo_maquina: e.target.value })} disabled={isReadOnly} /></div>
 
-                                            <div className="col-md-4"><label className="form-label fw-bold text-muted small text-uppercase">Ubicación</label><input type="text" className="form-control" value={formData.ubicacion} onChange={e => setFormData({...formData, ubicacion: e.target.value})} disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Tipo</label><input type="text" className="form-control" value={formData.tipo} onChange={e => setFormData({ ...formData, tipo: e.target.value })} disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Marca</label><input type="text" className="form-control" value={formData.marca} onChange={e => setFormData({ ...formData, marca: e.target.value })} disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">Modelo</label><input type="text" className="form-control" value={formData.modelo} onChange={e => setFormData({ ...formData, modelo: e.target.value })} disabled={isReadOnly} /></div>
+                                            <div className="col-md-3"><label className="form-label fw-bold text-muted small text-uppercase">N° Serie</label><input type="text" className="form-control" value={formData.numero_serie} onChange={e => setFormData({ ...formData, numero_serie: e.target.value })} disabled={isReadOnly} /></div>
+
+                                            <div className="col-md-4"><label className="form-label fw-bold text-muted small text-uppercase">Ubicación</label><input type="text" className="form-control" value={formData.ubicacion} onChange={e => setFormData({ ...formData, ubicacion: e.target.value })} disabled={isReadOnly} /></div>
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold text-muted small text-uppercase">Centro de Costo</label>
-                                                <select className="form-select" value={formData.centro_costo} onChange={e => setFormData({...formData, centro_costo: e.target.value})} disabled={isReadOnly}>
+                                                <select className="form-select" value={formData.centro_costo} onChange={e => setFormData({ ...formData, centro_costo: e.target.value })} disabled={isReadOnly}>
                                                     <option value="">Seleccione...</option>
                                                     {listaCentros.map(c => <option key={c.id} value={c.id}>{c.codigo} - {c.nombre}</option>)}
                                                 </select>
                                             </div>
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold text-muted small text-uppercase">Estado</label>
-                                                <select className="form-select fw-bold" value={formData.estado_activo} onChange={e => setFormData({...formData, estado_activo: e.target.value})} disabled={isReadOnly}>
+                                                <select className="form-select fw-bold" value={formData.estado_activo} onChange={e => setFormData({ ...formData, estado_activo: e.target.value })} disabled={isReadOnly}>
                                                     <option value="OPERATIVO" className="text-success">🟢 Operativo</option>
                                                     <option value="FUERA DE SERVICIO" className="text-danger">🔴 Fuera de Servicio</option>
                                                     <option value="EN MANTENCION" className="text-warning">🟡 En Mantención</option>
                                                 </select>
                                             </div>
 
-                                            <div className="col-12"><label className="form-label fw-bold text-muted small text-uppercase">Descripción / Notas</label><textarea className="form-control" rows="3" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} disabled={isReadOnly}></textarea></div>
+                                            <div className="col-12"><label className="form-label fw-bold text-muted small text-uppercase">Descripción / Notas</label><textarea className="form-control" rows="3" value={formData.descripcion} onChange={e => setFormData({ ...formData, descripcion: e.target.value })} disabled={isReadOnly}></textarea></div>
                                         </div>
                                     </div>
 
@@ -422,22 +422,22 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold text-muted small text-uppercase">Imagen Principal (Portada)</label>
                                                 {mainImagePreview ? (
-                                                    <div className="position-relative border rounded shadow-sm w-100 mb-3 bg-light" style={{height:'180px', overflow:'hidden'}}>
-                                                        <img src={mainImagePreview} className="w-100 h-100" style={{objectFit:'contain', cursor:'pointer'}} onClick={() => {setZoomImage(mainImagePreview); setZoomLevel(1);}} alt="Portada"/>
+                                                    <div className="position-relative border rounded shadow-sm w-100 mb-3 bg-light" style={{ height: '180px', overflow: 'hidden' }}>
+                                                        <img src={mainImagePreview} className="w-100 h-100" style={{ objectFit: 'contain', cursor: 'pointer' }} onClick={() => { setZoomImage(mainImagePreview); setZoomLevel(1); }} alt="Portada" />
                                                         {!isReadOnly && activo?.imagen_url && <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle shadow" onClick={() => handleDeleteImage(null, 'principal')}><i className="bi bi-trash"></i></button>}
                                                     </div>
                                                 ) : (
-                                                    <div className="border rounded d-flex align-items-center justify-content-center bg-light w-100 mb-3 text-muted" style={{height:'180px'}}>
+                                                    <div className="border rounded d-flex align-items-center justify-content-center bg-light w-100 mb-3 text-muted" style={{ height: '180px' }}>
                                                         <div className="text-center"><i className="bi bi-camera fs-1 d-block mb-1"></i>Sin portada</div>
                                                     </div>
                                                 )}
                                                 {!isReadOnly && <input type="file" className="form-control form-control-sm" accept="image/*" onChange={(e) => {
                                                     const file = e.target.files[0];
-                                                    if(file) {
+                                                    if (file) {
                                                         setMainImage(file);
                                                         setMainImagePreview(URL.createObjectURL(file));
                                                     }
-                                                }}/>}
+                                                }} />}
                                             </div>
 
                                             {activo && (
@@ -446,11 +446,11 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                         <span>Galería Adicional</span>
                                                         <span className="badge bg-secondary">{existingGallery.length} fotos</span>
                                                     </label>
-                                                    
+
                                                     <div className="d-flex flex-wrap gap-2 pb-3 mb-3 border-bottom">
                                                         {existingGallery.map(img => (
-                                                            <div key={img.id} className="position-relative border rounded shadow-sm" style={{width:'100px', height:'100px', backgroundColor:'#fff'}}>
-                                                                <img src={`${BASE_URL}${img.imagen_url || img.url_imagen}`} className="w-100 h-100 rounded" style={{objectFit:'cover', cursor:'pointer'}} onClick={() => {setZoomImage(`${BASE_URL}${img.imagen_url || img.url_imagen}`); setZoomLevel(1);}} alt="Galeria" />
+                                                            <div key={img.id} className="position-relative border rounded shadow-sm" style={{ width: '100px', height: '100px', backgroundColor: '#fff' }}>
+                                                                <img src={`${BASE_URL}${img.imagen_url || img.url_imagen}`} className="w-100 h-100 rounded" style={{ objectFit: 'cover', cursor: 'pointer' }} onClick={() => { setZoomImage(`${BASE_URL}${img.imagen_url || img.url_imagen}`); setZoomLevel(1); }} alt="Galeria" />
                                                                 {!isReadOnly && <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-1 lh-1 shadow-sm" onClick={() => handleDeleteImage(img.id, 'galeria')}><i className="bi bi-x-circle-fill"></i></button>}
                                                             </div>
                                                         ))}
@@ -461,18 +461,43 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                         <>
                                                             <label className="form-label fw-bold text-primary small"><i className="bi bi-plus-circle me-1"></i>Añadir nuevas fotos</label>
                                                             <input type="file" className="form-control form-control-sm" accept="image/*" multiple onChange={(e) => {
-                                                                const files = Array.from(e.target.files);
+                                                                const files = Array.from(e.target.files).map(file => {
+                                                                    file.preview = URL.createObjectURL(file);
+                                                                    return file;
+                                                                });
                                                                 setGalleryItems(prev => [...prev, ...files]);
-                                                            }}/>
-                                                            
+                                                                e.target.value = null;
+                                                            }} />
+
                                                             {galleryItems.length > 0 && (
-                                                                <div className="mt-2 d-flex flex-wrap gap-2">
-                                                                    {galleryItems.map((file, idx) => (
-                                                                        <span key={idx} className="badge bg-success bg-opacity-10 text-success border border-success d-flex align-items-center">
-                                                                            <i className="bi bi-image me-1"></i> {file.name.substring(0, 15)}...
-                                                                            <i className="bi bi-x-circle-fill ms-2 cursor-pointer" onClick={() => setGalleryItems(prev => prev.filter((_, i) => i !== idx))}></i>
-                                                                        </span>
-                                                                    ))}
+                                                                <div className="mt-3 p-3 bg-success bg-opacity-10 border border-success border-opacity-25 rounded shadow-sm">
+                                                                    <label className="form-label fw-bold text-success small mb-2 d-block">
+                                                                        <i className="bi bi-cloud-arrow-up me-1"></i>Listas para subir ({galleryItems.length}):
+                                                                    </label>
+                                                                    <div className="d-flex flex-wrap gap-2">
+                                                                        {galleryItems.map((file, idx) => (
+                                                                            <div key={idx} className="position-relative border rounded shadow-sm border-success animate__animated animate__zoomIn" style={{ width: '80px', height: '80px', backgroundColor: '#fff' }}>
+                                                                                <img
+                                                                                    src={file.preview}
+                                                                                    className="w-100 h-100 rounded"
+                                                                                    style={{ objectFit: 'cover', cursor: 'zoom-in' }}
+                                                                                    onClick={() => { setZoomImage(file.preview); setZoomLevel(1); }}
+                                                                                    alt="Previsualización"
+                                                                                />
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center shadow-sm rounded-circle"
+                                                                                    style={{ width: '22px', height: '22px', transform: 'translate(40%, -40%)', zIndex: 5, border: '2px solid white' }}
+                                                                                    onClick={() => {
+                                                                                        URL.revokeObjectURL(file.preview); // Limpieza de memoria
+                                                                                        setGalleryItems(prev => prev.filter((_, i) => i !== idx));
+                                                                                    }}
+                                                                                >
+                                                                                    <i className="bi bi-x fw-bold" style={{ fontSize: '14px' }}></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
                                                                 </div>
                                                             )}
                                                         </>
@@ -483,7 +508,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                     </div>
 
                                     {!isReadOnly && (
-                                        <div className="text-end mt-auto pt-3 border-top position-sticky bottom-0 bg-white py-2" style={{zIndex: 10}}>
+                                        <div className="text-end mt-auto pt-3 border-top position-sticky bottom-0 bg-white py-2" style={{ zIndex: 10 }}>
                                             <button type="submit" className="btn btn-success fw-bold px-4 shadow-sm" disabled={saving}>
                                                 {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Guardando...</> : <><i className="bi bi-save me-2"></i>Guardar Activo</>}
                                             </button>
@@ -494,7 +519,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 {activo && (
                                     <div className={tab === 'kit' ? 'd-block' : 'd-none'}>
                                         <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-tools text-primary me-2"></i>Kit de Repuestos Sugeridos</h5>
-                                        
+
                                         {!isReadOnly && (
                                             <>
                                                 <div className="alert alert-info border-info d-flex align-items-center p-3 shadow-sm">
@@ -506,9 +531,9 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                         <label className="small fw-bold text-muted mb-1">Buscar Insumo / Repuesto</label>
                                                         <div className="input-group">
                                                             <span className="input-group-text bg-white"><i className="bi bi-search text-muted"></i></span>
-                                                            <input 
-                                                                type="text" 
-                                                                className="form-control" 
+                                                            <input
+                                                                type="text"
+                                                                className="form-control"
                                                                 placeholder="Escriba nombre o SKU..."
                                                                 value={busquedaInsumo}
                                                                 onChange={e => {
@@ -519,11 +544,11 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                                 onFocus={() => setMostrarSugerencias(true)}
                                                             />
                                                         </div>
-                                                        
+
                                                         {mostrarSugerencias && (
                                                             <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1050, maxHeight: '220px', overflowY: 'auto', left: 0 }}>
                                                                 {insumosFiltrados.length > 0 ? insumosFiltrados.map(ins => (
-                                                                    <li key={ins.id} 
+                                                                    <li key={ins.id}
                                                                         className="list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center"
                                                                         onMouseDown={(e) => {
                                                                             e.preventDefault();
@@ -534,7 +559,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                                     >
                                                                         <div>
                                                                             <div className="fw-bold small text-dark">{ins.nombre}</div>
-                                                                            <small className="text-muted" style={{fontSize: '0.75rem'}}>{ins.codigo_sku}</small>
+                                                                            <small className="text-muted" style={{ fontSize: '0.75rem' }}>{ins.codigo_sku}</small>
                                                                         </div>
                                                                         <span className={`badge rounded-pill ${parseFloat(ins.stock_actual) > 0 ? 'bg-success' : 'bg-danger'}`}>
                                                                             Stock: {ins.stock_actual}
@@ -546,19 +571,19 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                             </ul>
                                                         )}
                                                     </div>
-                                                    
+
                                                     <div className="col-8 col-md-3">
                                                         <label className="small fw-bold text-muted mb-1">Cant. Default</label>
                                                         <input type="number" id="nuevaCantidad" className="form-control text-center fw-bold" placeholder="0.0" min="0.1" step="0.1" />
                                                     </div>
-                                                    
+
                                                     <div className="col-4 col-md-2">
                                                         <button type="button" className="btn btn-primary w-100 fw-bold shadow-sm" onClick={handleAddKitItem}>Agregar</button>
                                                     </div>
                                                 </div>
                                             </>
                                         )}
-                                        
+
                                         <div className="table-responsive mt-3">
                                             {loadingKit ? <div className="text-center py-5"><div className="spinner-border text-primary"></div></div> : (
                                                 <table className="table table-hover align-middle border shadow-sm">
@@ -584,7 +609,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                                 <td className="font-monospace text-muted small">{k.insumo_sku}</td>
                                                                 <td className="fw-bold text-dark">{k.insumo_nombre || k.nombre}</td>
                                                                 <td className="text-center fw-bold text-success">{k.cantidad_sugerida || k.cantidad} <span className="small text-muted fw-normal">{k.unidad_medida}</span></td>
-                                                                
+
                                                                 {!isReadOnly && (
                                                                     <td className="text-end pe-3">
                                                                         {k.activo_id === activo.id && (
@@ -605,14 +630,14 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                 {activo && (
                                     <div className={tab === 'docs' ? 'd-block' : 'd-none'}>
                                         <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-file-earmark-text text-primary me-2"></i>Manuales y Planos</h5>
-                                        
+
                                         {!isReadOnly && (
                                             <div className="input-group mb-4 shadow-sm">
                                                 <input type="file" id="fileInput" className="form-control bg-white" onChange={e => setFile(e.target.files[0])} />
                                                 <button type="button" className="btn btn-primary fw-bold px-4" onClick={subirDoc} disabled={!file}><i className="bi bi-cloud-upload me-2"></i>Subir Archivo</button>
                                             </div>
                                         )}
-                                        
+
                                         <div className="card border-0 shadow-sm mt-3">
                                             {loadingDocs ? <div className="text-center py-5"><div className="spinner-border text-primary"></div></div> : (
                                                 <div className="list-group list-group-flush border rounded">

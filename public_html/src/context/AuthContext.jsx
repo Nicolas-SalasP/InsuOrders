@@ -17,18 +17,15 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (username, password) => {
         try {
-            const response = await api.post('/index.php/login', {
-                username,
-                password
-            });
+            const response = await api.post('/index.php/login', { username, password });
 
             if (response.data.success) {
                 const userData = {
                     id: response.data.user.id,
                     nombre: response.data.user.nombre,
                     rol: response.data.user.rol,
-                    token: response.data.token,
-                    permisos: response.data.user.permisos || [] 
+                    permisos: response.data.user.permisos || [],
+                    token: response.data.token
                 };
                 setAuth(userData);
                 localStorage.setItem("insuorders_user", JSON.stringify(userData));
@@ -46,9 +43,14 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
+    const logout = async () => {
         setAuth({});
         localStorage.removeItem("insuorders_user");
+        try {
+            await api.post('/index.php/logout');
+        } catch (e) {
+            console.error("Error al hacer logout", e);
+        }
         window.location.href = "/login";
     };
 

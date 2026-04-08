@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Repositories\UsuariosRepository;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use App\Database\Database;
 use App\Config\Config;
 
@@ -30,7 +31,7 @@ class AuthController
         $user = $this->repository->findByUsername($data->username);
 
         if ($user && password_verify($data->password, $user['password_hash'])) {
-            
+
             $stmt = $this->db->prepare("
                 SELECT p.codigo 
                 FROM permisos p 
@@ -41,13 +42,13 @@ class AuthController
             $permisos = $stmt->fetchAll(\PDO::FETCH_COLUMN);
 
             $time = time();
-            
+
             $tokenPayload = [
                 "iss" => "insuorders",
                 "aud" => "insuorders_users",
                 "iat" => $time,
                 "nbf" => $time - 10,
-                "exp" => $time + Config::JWT_EXP, 
+                "exp" => $time + Config::JWT_EXP,
                 "data" => [
                     "id" => $user['id'],
                     "nombre" => $user['nombre'],
@@ -58,6 +59,16 @@ class AuthController
             ];
 
             $jwt = JWT::encode($tokenPayload, Config::JWT_SECRET, Config::JWT_ALGO);
+            setcookie(
+                "jwt_token",
+                $jwt,
+                [
+                    'expires' => $time + Config::JWT_EXP,
+                    'path' => '/',
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]
+            );
 
             echo json_encode([
                 "success" => true,
@@ -78,13 +89,20 @@ class AuthController
 
     public function me()
     {
-        $headers = apache_request_headers();
-        if (!isset($headers['Authorization'])) {
+        $jwt = $_COOKIE['jwt_token'] ?? null;
+        if (!$jwt) {
+            $headers = apache_request_headers();
+            if (isset($headers['Authorization'])) {
+                list($jwt) = sscanf($headers['Authorization'], 'Bearer %s');
+            }
+        }
+
+        if (!$jwt) {
             http_response_code(401);
+            echo json_encode(["success" => false, "message" => "No autorizado"]);
             return;
         }
-        list($jwt) = sscanf($headers['Authorization'], 'Bearer %s');
-        
+
         try {
             $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
             $userId = $decoded->data->id;
@@ -120,5 +138,11 @@ class AuthController
         } catch (\Exception $e) {
             http_response_code(401);
         }
+    }
+
+    public function logout()
+    {
+        setcookie("jwt_token", "", time() - 3600, "/");
+        echo json_encode(["success" => true, "message" => "Sesión cerrada"]);
     }
 }
