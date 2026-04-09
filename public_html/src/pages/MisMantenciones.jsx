@@ -39,10 +39,10 @@ const MisMantenciones = () => {
         if (can('ope_mant')) {
             cargarMisOts();
         }
-        
+
         return () => {
             datosEnvio.archivos.forEach(file => {
-                if(file.preview) URL.revokeObjectURL(file.preview);
+                if (file.preview) URL.revokeObjectURL(file.preview);
             });
         };
     }, []);
@@ -97,26 +97,26 @@ const MisMantenciones = () => {
     const handleSelectOt = async (ot, mantenerTab = false) => {
         setSelectedOt(ot);
         setLoadingDetalle(true);
-        if (!mantenerTab) setActiveTab('info'); 
+        if (!mantenerTab) setActiveTab('info');
         setEnlargedImage(null);
 
         try {
             const res = await api.get(`/index.php/mantencion?detalle=true&id=${ot.id}`);
             if (res.data.success) {
                 const dataBd = res.data.data;
-                
+
                 const currentUserId = parseInt(authData?.id || localStorage.getItem('user_id') || 0);
                 const miAsignacion = dataBd.asignaciones?.find(a => parseInt(a.usuario_id) === currentUserId);
-                
+
                 const misNotasAnteriores = miAsignacion ? miAsignacion.notas_cierre : (dataBd.comentarios_finales || '');
                 const miCompletadoReal = miAsignacion ? parseInt(miAsignacion.completado) : parseInt(ot.mi_completado || 0);
 
                 const freshRespuestas = dataBd.respuestas_guardadas || ot.respuestas_guardadas;
                 const respuestasCargadas = inyectarKeyYSeccion(freshRespuestas);
 
-                const mergedOt = { 
-                    ...ot, 
-                    ...dataBd, 
+                const mergedOt = {
+                    ...ot,
+                    ...dataBd,
                     mi_completado: miCompletadoReal,
                     respuestas_guardadas: freshRespuestas
                 };
@@ -148,7 +148,7 @@ const MisMantenciones = () => {
 
             const formData = new FormData();
             formData.append('ot_id', selectedOt.id);
-            
+
             let respuestasArray = [];
             const rawRespuestas = datosEnvio.respuestas;
             if (Array.isArray(rawRespuestas)) {
@@ -271,7 +271,7 @@ const MisMantenciones = () => {
         }));
         setDatosEnvio(prev => ({ ...prev, archivos: [...(prev.archivos || []), ...processedFiles] }));
         setGuardando(false);
-        e.target.value = null; 
+        e.target.value = null;
     };
 
     const ejecutarEliminarEvidenciaGuardada = async () => {
@@ -290,7 +290,7 @@ const MisMantenciones = () => {
 
             if (res.data.success) {
                 setMsg({ show: true, title: "Eliminada", text: "La evidencia se eliminó y se registró en la bitácora.", type: "success" });
-                handleSelectOt(selectedOt, true); 
+                handleSelectOt(selectedOt, true);
             }
         } catch (e) {
             setMsg({ show: true, title: "Error", text: e.response?.data?.message || "No se pudo eliminar la evidencia.", type: "error" });
@@ -313,17 +313,17 @@ const MisMantenciones = () => {
         return (
             <div className="d-flex flex-wrap gap-2 mt-1">
                 {archivos.map((url, idx) => {
-                    if (!url || typeof url !== 'string' || url === 'null') return null;     
+                    if (!url || typeof url !== 'string' || url === 'null') return null;
                     const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
                     return (
                         <div key={idx} className="position-relative d-inline-block">
                             {!readOnly && (
-                                <button 
+                                <button
                                     type="button"
                                     className="btn btn-danger position-absolute top-0 end-0 rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center"
                                     style={{ width: '24px', height: '24px', transform: 'translate(40%, -40%)', zIndex: 10, border: '2px solid white' }}
-                                    onClick={(e) => { 
-                                        e.stopPropagation(); 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         setConfirmDeleteEvi({ show: true, otId: selectedOt.id, url: url });
                                     }}
                                     title="Eliminar evidencia guardada"
@@ -331,7 +331,7 @@ const MisMantenciones = () => {
                                     <i className="bi bi-trash fw-bold"></i>
                                 </button>
                             )}
-                            
+
                             {isVideo ? (
                                 <video src={`/api/${url}`} controls className="rounded border shadow-sm bg-dark" style={{ height: '120px', maxWidth: '100%' }}></video>
                             ) : (
@@ -382,9 +382,9 @@ const MisMantenciones = () => {
 
         try {
             const formData = new FormData();
-            formData.append('ot_id', selectedOt.id);           
+            formData.append('ot_id', selectedOt.id);
             let respuestasArray = [];
-            const rawRespuestas = datosEnvio.respuestas;     
+            const rawRespuestas = datosEnvio.respuestas;
             if (Array.isArray(rawRespuestas)) {
                 respuestasArray = rawRespuestas.filter(r => r.key && !['respuestas', 'comentarios', 'firma'].includes(r.key));
             } else if (rawRespuestas && typeof rawRespuestas === 'object') {
@@ -399,7 +399,7 @@ const MisMantenciones = () => {
                         };
                     });
             }
-            formData.append('respuestas', JSON.stringify(respuestasArray));         
+            formData.append('respuestas', JSON.stringify(respuestasArray));
             if (datosEnvio.firma) formData.append('firma', datosEnvio.firma);
             if (datosEnvio.comentarios) formData.append('comentarios', datosEnvio.comentarios);
 
@@ -417,19 +417,19 @@ const MisMantenciones = () => {
 
             if (res.data.success) {
                 setMsg({ show: true, title: isFinalizar ? '¡Trabajo Finalizado!' : 'Avance Guardado', text: 'Operación registrada correctamente.', type: 'success' });
-                datosEnvio.archivos.forEach(file => { if(file.preview) URL.revokeObjectURL(file.preview); });
+                datosEnvio.archivos.forEach(file => { if (file.preview) URL.revokeObjectURL(file.preview); });
                 setDatosEnvio(prev => ({ ...prev, archivos: [] }));
 
                 cargarMisOts();
-                
+
                 if (isFinalizar) {
                     setSelectedOt(null);
                 } else {
-                    handleSelectOt(selectedOt, true); 
+                    handleSelectOt(selectedOt, true);
                 }
             }
         } catch (e) {
-            console.error("Error crítico al procesar guardado:", e); 
+            console.error("Error crítico al procesar guardado:", e);
             setMsg({ show: true, title: 'Error', text: e.response?.data?.message || 'Hubo un problema al intentar guardar.', type: 'error' });
         } finally {
             setGuardando(false);
@@ -491,14 +491,14 @@ const MisMantenciones = () => {
 
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
             <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={confirm.action} title={confirm.title} message={confirm.message} confirmText="Sí, Finalizar igual" cancelText="Cancelar" type="warning" />
-            <ConfirmModal 
-                show={confirmDeleteEvi.show} 
-                onClose={() => setConfirmDeleteEvi({ show: false, otId: null, url: null })} 
-                onConfirm={ejecutarEliminarEvidenciaGuardada} 
-                title="Eliminar Evidencia" 
-                message="¿Estás seguro de eliminar esta imagen? Se agregará un registro automático en tu bitácora indicando que eliminaste el archivo por seguridad." 
-                confirmText="Sí, Eliminar y Registrar" 
-                type="danger" 
+            <ConfirmModal
+                show={confirmDeleteEvi.show}
+                onClose={() => setConfirmDeleteEvi({ show: false, otId: null, url: null })}
+                onConfirm={ejecutarEliminarEvidenciaGuardada}
+                title="Eliminar Evidencia"
+                message="¿Estás seguro de eliminar esta imagen? Se agregará un registro automático en tu bitácora indicando que eliminaste el archivo por seguridad."
+                confirmText="Sí, Eliminar y Registrar"
+                type="danger"
             />
 
             <div className="row g-0 flex-grow-1" style={{ minHeight: 0 }}>
@@ -635,20 +635,16 @@ const MisMantenciones = () => {
                                                     <i className="bi bi-person-fill me-1"></i>Solicita: {ot.solicitante_nombre}
                                                 </div>
                                                 <span className={`badge ${badgeClass} fw-bold mt-1`} style={{ letterSpacing: '0.5px' }}>{estadoTexto}</span>
-                                                
+
                                                 {ot.equipo_nombres && (
                                                     <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between">
-                                                        <small className="text-muted" style={{fontSize: '0.65rem'}}>EQUIPO:</small>
+                                                        <small className="text-muted" style={{ fontSize: '0.65rem' }}>EQUIPO:</small>
                                                         <div className="d-flex flex-wrap gap-1 justify-content-end">
-                                                            {ot.equipo_nombres.split(',').map((nombre, i) => {
-                                                                const nameParts = nombre.trim().split(' ');
-                                                                const initials = nameParts.length > 1 ? nameParts[0][0] + nameParts[1][0] : nameParts[0][0];
-                                                                return (
-                                                                    <span key={i} className="badge rounded-circle bg-primary bg-opacity-10 text-primary border border-primary d-flex align-items-center justify-content-center" style={{width: '22px', height: '22px', fontSize: '0.6rem'}} title={nombre.trim()}>
-                                                                        {initials.toUpperCase()}
-                                                                    </span>
-                                                                )
-                                                            })}
+                                                            {ot.equipo_nombres.split(',').map((nombre, i) => (
+                                                                <span key={i} className="badge bg-light text-dark border border-secondary shadow-sm" style={{ fontSize: '0.65rem' }}>
+                                                                    <i className="bi bi-person me-1"></i>{nombre.trim()}
+                                                                </span>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 )}
@@ -692,7 +688,7 @@ const MisMantenciones = () => {
                                         {loadingDetalle ? (
                                             <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
                                         ) : isReadOnly ? (
-                                            <div className="alert alert-success m-0 py-2 px-3 fw-bold shadow-sm d-flex align-items-center" style={{fontSize: '0.85rem'}}>
+                                            <div className="alert alert-success m-0 py-2 px-3 fw-bold shadow-sm d-flex align-items-center" style={{ fontSize: '0.85rem' }}>
                                                 <i className="bi bi-check-circle-fill me-2 fs-5"></i> ¡Ya entregaste tu parte!
                                             </div>
                                         ) : esServicio ? (
@@ -823,7 +819,7 @@ const MisMantenciones = () => {
                                                 <i className="bi bi-journal-text me-2 text-primary"></i>
                                                 Detalles del Requerimiento
                                             </h5>
-                                            
+
                                             {selectedOt.asignaciones && selectedOt.asignaciones.length > 0 && (
                                                 <div className="mb-4">
                                                     <h6 className="fw-bold text-dark text-uppercase mb-3">
@@ -833,32 +829,33 @@ const MisMantenciones = () => {
                                                         {selectedOt.asignaciones.map((asig, idx) => {
                                                             const isMe = parseInt(asig.usuario_id) === parseInt(authData?.id);
                                                             return (
-                                                            <li key={idx} className={`list-group-item d-flex justify-content-between align-items-center ${parseInt(asig.completado) === 1 ? 'bg-success bg-opacity-10' : ''}`}>
-                                                                <div>
-                                                                    <div className="fw-bold text-dark">
-                                                                        {asig.nombre} {asig.apellido} 
-                                                                        {isMe && <span className="badge bg-primary ms-2" style={{fontSize: '0.6rem'}}>TÚ</span>}
-                                                                    </div>
-                                                                    
-                                                                    {parseInt(asig.completado) === 1 ? (
-                                                                        asig.notas_cierre ? (
-                                                                            <div className="text-muted small fst-italic mt-1">
-                                                                                <i className="bi bi-chat-left-text me-1"></i>"{asig.notas_cierre}"
-                                                                            </div>
+                                                                <li key={idx} className={`list-group-item d-flex justify-content-between align-items-center ${parseInt(asig.completado) === 1 ? 'bg-success bg-opacity-10' : ''}`}>
+                                                                    <div>
+                                                                        <div className="fw-bold text-dark">
+                                                                            {asig.nombre} {asig.apellido}
+                                                                            {isMe && <span className="badge bg-primary ms-2" style={{ fontSize: '0.6rem' }}>TÚ</span>}
+                                                                        </div>
+
+                                                                        {parseInt(asig.completado) === 1 ? (
+                                                                            asig.notas_cierre ? (
+                                                                                <div className="text-muted small fst-italic mt-1">
+                                                                                    <i className="bi bi-chat-left-text me-1"></i>"{asig.notas_cierre}"
+                                                                                </div>
+                                                                            ) : (
+                                                                                <small className="text-success fw-medium mt-1 d-block"><i className="bi bi-check-all me-1"></i>Finalizado sin notas</small>
+                                                                            )
                                                                         ) : (
-                                                                            <small className="text-success fw-medium mt-1 d-block"><i className="bi bi-check-all me-1"></i>Finalizado sin notas</small>
-                                                                        )
+                                                                            <small className="text-primary fw-medium mt-1 d-block"><i className="bi bi-gear-wide-connected me-1"></i>En ejecución...</small>
+                                                                        )}
+                                                                    </div>
+                                                                    {parseInt(asig.completado) === 1 ? (
+                                                                        <span className="badge bg-success shadow-sm"><i className="bi bi-check-circle-fill me-1"></i>Finalizado</span>
                                                                     ) : (
-                                                                        <small className="text-primary fw-medium mt-1 d-block"><i className="bi bi-gear-wide-connected me-1"></i>En ejecución...</small>
+                                                                        <span className="badge bg-warning text-dark shadow-sm"><i className="bi bi-tools me-1"></i>Pendiente</span>
                                                                     )}
-                                                                </div>
-                                                                {parseInt(asig.completado) === 1 ? (
-                                                                    <span className="badge bg-success shadow-sm"><i className="bi bi-check-circle-fill me-1"></i>Finalizado</span>
-                                                                ) : (
-                                                                    <span className="badge bg-warning text-dark shadow-sm"><i className="bi bi-tools me-1"></i>Pendiente</span>
-                                                                )}
-                                                            </li>
-                                                        )})}
+                                                                </li>
+                                                            )
+                                                        })}
                                                     </ul>
                                                 </div>
                                             )}
@@ -932,7 +929,7 @@ const MisMantenciones = () => {
                                                                 {renderEvidencia(selectedOt.evidencia_cierre, isReadOnly)}
                                                             </div>
                                                         )}
-                                                        
+
                                                         {!isReadOnly && (
                                                             <>
                                                                 <input
@@ -943,7 +940,7 @@ const MisMantenciones = () => {
                                                                     multiple
                                                                     onChange={handleFileChange}
                                                                 />
-                                                                
+
                                                                 {datosEnvio.archivos && datosEnvio.archivos.length > 0 && (
                                                                     <div className="d-flex flex-wrap gap-3 mt-3 p-3 bg-light border rounded border-primary border-opacity-25 shadow-sm">
                                                                         <div className="w-100 mb-1 fw-bold text-primary small">
@@ -953,13 +950,13 @@ const MisMantenciones = () => {
                                                                             const isVideo = file.type.startsWith('video');
                                                                             return (
                                                                                 <div key={idx} className="position-relative d-inline-block">
-                                                                                    <button 
+                                                                                    <button
                                                                                         type="button"
                                                                                         className="btn btn-danger position-absolute top-0 end-0 rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center"
                                                                                         style={{ width: '24px', height: '24px', transform: 'translate(40%, -40%)', zIndex: 10, border: '2px solid white' }}
-                                                                                        onClick={(e) => { 
-                                                                                            e.stopPropagation(); 
-                                                                                            setDatosEnvio(prev => ({ ...prev, archivos: prev.archivos.filter((_, i) => i !== idx) })); 
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            setDatosEnvio(prev => ({ ...prev, archivos: prev.archivos.filter((_, i) => i !== idx) }));
                                                                                         }}
                                                                                         title="Eliminar imagen"
                                                                                     >
@@ -968,11 +965,11 @@ const MisMantenciones = () => {
                                                                                     {isVideo ? (
                                                                                         <video src={file.preview} className="rounded border shadow-sm bg-dark" style={{ height: '100px', width: '100px', objectFit: 'cover' }}></video>
                                                                                     ) : (
-                                                                                        <img 
-                                                                                            src={file.preview} 
-                                                                                            alt="Previsualización" 
-                                                                                            className="rounded border shadow-sm" 
-                                                                                            style={{ height: '100px', width: '100px', objectFit: 'cover', cursor: 'pointer' }} 
+                                                                                        <img
+                                                                                            src={file.preview}
+                                                                                            alt="Previsualización"
+                                                                                            className="rounded border shadow-sm"
+                                                                                            style={{ height: '100px', width: '100px', objectFit: 'cover', cursor: 'pointer' }}
                                                                                             onClick={() => setEnlargedImage(file.preview)}
                                                                                         />
                                                                                     )}
@@ -988,7 +985,7 @@ const MisMantenciones = () => {
                                                     {!esServicio && (
                                                         <div className="mb-2">
                                                             <label className="form-label fw-bold text-muted small text-uppercase mb-0">3. Firma de Conformidad</label>
-                                                            
+
                                                             {isReadOnly ? (
                                                                 <div className="alert alert-success p-3 small mt-2 shadow-sm border border-success text-center">
                                                                     <div className="fw-bold mb-3 text-success">
@@ -997,7 +994,7 @@ const MisMantenciones = () => {
                                                                     </div>
                                                                     {selectedOt.firma_tecnico && (
                                                                         <div className="mt-2 p-3 bg-white rounded border d-inline-block shadow-sm">
-                                                                            <img src={selectedOt.firma_tecnico} alt="Firma Técnico" style={{maxHeight: '150px'}} className="img-fluid" />
+                                                                            <img src={selectedOt.firma_tecnico} alt="Firma Técnico" style={{ maxHeight: '150px' }} className="img-fluid" />
                                                                         </div>
                                                                     )}
                                                                 </div>
