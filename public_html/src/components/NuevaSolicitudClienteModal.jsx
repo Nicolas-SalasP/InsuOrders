@@ -17,12 +17,22 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
     });
 
     const [loading, setLoading] = useState(false);
-
-    // --- ESTADOS PARA BUSCADOR INTELIGENTE DE ACTIVOS ---
     const [busquedaActivo, setBusquedaActivo] = useState('');
     const [mostrarListaActivo, setMostrarListaActivo] = useState(false);
     const [activoNombreSeleccionado, setActivoNombreSeleccionado] = useState('');
     const wrapperRefActivo = useRef(null);
+
+    const normalizarPrioridad = (prio) => {
+        if (!prio) return 'MEDIA';
+        const p = prio.toString().toUpperCase().trim();
+        
+        if (p === 'CRITICO' || p === 'CRÍTICO' || p === 'CRITICA' || p === 'CRÍTICA') return 'CRITICA';
+        if (p === 'ALTA' || p === 'ALTO' || p === 'URGENTE') return 'ALTA';
+        if (p === 'MEDIA' || p === 'MEDIO') return 'MEDIA';
+        if (p === 'BAJA' || p === 'BAJO') return 'BAJA';
+        
+        return 'MEDIA'; 
+    };
 
     useEffect(() => {
         if (show) {
@@ -31,7 +41,6 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
         }
     }, [show]);
 
-    // Cerrar lista desplegable al hacer clic fuera
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRefActivo.current && !wrapperRefActivo.current.contains(event.target)) {
@@ -43,6 +52,10 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
     }, [wrapperRefActivo]);
 
     const resetForm = () => {
+        form.imagenes.forEach(file => {
+            if (file.preview) URL.revokeObjectURL(file.preview);
+        });
+
         setTipoTrabajo('general'); 
         setForm({ titulo: '', descripcion: '', activo_id: '', prioridad: 'MEDIA', imagenes: [], ubicacion: '' });
         setSuccessId(null);
@@ -98,21 +111,30 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
         setLoading(true);
         
         const processedFiles = await Promise.all(files.map(async (file) => {
+            let finalFile = file;
             if (file.type.startsWith('image/')) {
-                return await comprimirImagen(file);
+                finalFile = await comprimirImagen(file);
             }
-            return file;
+            finalFile.preview = URL.createObjectURL(finalFile);
+            return finalFile;
         }));
         
         setForm(prev => ({ ...prev, imagenes: [...(prev.imagenes || []), ...processedFiles] }));
         setLoading(false);
+        e.target.value = null; 
     };
 
     const removeFile = (indexToRemove) => {
-        setForm(prev => ({
-            ...prev,
-            imagenes: prev.imagenes.filter((_, idx) => idx !== indexToRemove)
-        }));
+        setForm(prev => {
+            const fileToRemove = prev.imagenes[indexToRemove];
+            if (fileToRemove && fileToRemove.preview) {
+                URL.revokeObjectURL(fileToRemove.preview);
+            }
+            return {
+                ...prev,
+                imagenes: prev.imagenes.filter((_, idx) => idx !== indexToRemove)
+            };
+        });
     };
 
     const handlePreSubmit = (e) => {
@@ -123,7 +145,7 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
             return;
         }
 
-        if (form.prioridad === 'CRITICO') {
+        if (form.prioridad === 'CRITICA') {
             setShowUrgentConfirm(true);
         } else {
             enviarDatosAlBackend();
@@ -158,6 +180,9 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                 onSave();
                 setShowUrgentConfirm(false);
                 setSuccessId(res.data.id);
+                form.imagenes.forEach(file => {
+                    if (file.preview) URL.revokeObjectURL(file.preview);
+                });
             }
         } catch (error) {
             alert("Error: " + (error.response?.data?.error || "Error al crear solicitud"));
@@ -190,7 +215,7 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                             
                             <p className="text-muted small mb-4">
                                 Tu requerimiento ha sido ingresado correctamente.<br/>
-                                {form.prioridad === 'CRITICO' && <strong className="text-danger">El equipo ha sido notificado de la urgencia.</strong>}
+                                {form.prioridad === 'CRITICA' && <strong className="text-danger">El equipo ha sido notificado de la urgencia.</strong>}
                             </p>
 
                             <button className="btn btn-success btn-lg w-50 shadow-sm" onClick={handleCloseFinal}>
@@ -366,13 +391,26 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                                 onChange={handleFileChange} 
                                             />
                                             {form.imagenes && form.imagenes.length > 0 && (
-                                                <div className="d-flex flex-wrap gap-2 mt-2">
+                                                <div className="d-flex flex-wrap gap-2 mt-3 p-3 bg-light border rounded shadow-sm">
+                                                    <label className="form-label d-block w-100 fw-bold small text-muted mb-2">Archivos listos para subir:</label>
                                                     {form.imagenes.map((file, idx) => (
-                                                        <span key={idx} className="badge bg-secondary d-flex align-items-center gap-2 p-2">
-                                                            <i className={file.type.startsWith('video') ? "bi bi-film" : "bi bi-image"}></i> 
-                                                            {file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name}
-                                                            <i className="bi bi-x-circle-fill text-danger cursor-pointer fs-6 ms-1" onClick={() => removeFile(idx)}></i>
-                                                        </span>
+                                                        <div key={idx} className="position-relative border rounded bg-white shadow-sm" style={{ width: '80px', height: '80px' }}>
+                                                            {file.type.startsWith('video') ? (
+                                                                <div className="w-100 h-100 d-flex align-items-center justify-content-center bg-dark text-white rounded">
+                                                                    <i className="bi bi-film fs-3"></i>
+                                                                </div>
+                                                            ) : (
+                                                                <img src={file.preview} alt="preview" className="w-100 h-100 rounded" style={{ objectFit: 'cover' }} />
+                                                            )}
+                                                            <button 
+                                                                type="button" 
+                                                                className="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center shadow-sm rounded-circle" 
+                                                                style={{ width: '22px', height: '22px', transform: 'translate(40%, -40%)', zIndex: 5, border: '2px solid white' }} 
+                                                                onClick={() => removeFile(idx)}
+                                                            >
+                                                                <i className="bi bi-x fw-bold" style={{ fontSize: '14px' }}></i>
+                                                            </button>
+                                                        </div>
                                                     ))}
                                                 </div>
                                             )}
@@ -380,14 +418,14 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                         <div className="col-md-4">
                                             <label className="form-label fw-bold">Prioridad</label>
                                             <select 
-                                                className={`form-select fw-bold ${form.prioridad === 'CRITICO' ? 'bg-danger text-white border-danger' : ''}`}
+                                                className={`form-select fw-bold ${form.prioridad === 'CRITICA' ? 'bg-danger text-white border-danger' : ''}`}
                                                 value={form.prioridad} 
-                                                onChange={(e) => setForm({...form, prioridad: e.target.value})}
+                                                onChange={(e) => setForm({...form, prioridad: normalizarPrioridad(e.target.value)})}
                                             >
                                                 <option value="BAJA" className="bg-white text-dark">Baja</option>
                                                 <option value="MEDIA" className="bg-white text-dark">Media</option>
                                                 <option value="ALTA" className="bg-white text-dark">Alta</option>
-                                                <option value="CRITICO" className="bg-danger text-white fw-bold">🚨 CRÍTICO (URGENTE)</option>
+                                                <option value="CRITICA" className="bg-danger text-white fw-bold">🚨 CRÍTICO (URGENTE)</option>
                                             </select>
                                         </div>
                                     </div>
