@@ -18,6 +18,8 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
     const [activos, setActivos] = useState([]);
     const [insumos, setInsumos] = useState([]);
     const [busqueda, setBusqueda] = useState('');
+    const [busquedaActivo, setBusquedaActivo] = useState('');
+    const [mostrarListaActivo, setMostrarListaActivo] = useState(false);
 
     const [repetir, setRepetir] = useState(false);
     const [frecuencia, setFrecuencia] = useState(1);
@@ -29,6 +31,11 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
     const activosPrincipales = activos.filter(a => !a.activo_padre_id);
     const subActivosDisponibles = activos.filter(a => a.activo_padre_id && String(a.activo_padre_id) === String(formData.activo_id));
+
+    const activosFiltrados = activosPrincipales.filter(a => {
+        const term = busquedaActivo.toLowerCase();
+        return !term || a.nombre.toLowerCase().includes(term) || (a.codigo_interno && a.codigo_interno.toLowerCase().includes(term));
+    });
 
     const listaIconos = [
         { icon: 'bi-tools', label: 'Herramienta' },
@@ -50,8 +57,20 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
             setProyeccionCantidad(1);
             setProyeccionUnidad('years');
             setBusqueda('');
+            setBusquedaActivo('');
+            setMostrarListaActivo(false);
 
-            api.get('/index.php/mantencion/activos').then(res => setActivos(res.data.data || []));
+            api.get('/index.php/mantencion/activos').then(res => {
+                const lista = res.data.data || [];
+                setActivos(lista);
+                if (eventData?.activo_id || eventData?.id) {
+                    const aid = eventData?.activo_id;
+                    if (aid) {
+                        const act = lista.find(a => String(a.id) === String(aid));
+                        if (act) setBusquedaActivo(`${act.codigo_interno} - ${act.nombre}`);
+                    }
+                }
+            });
             api.get('/index.php/inventario').then(res => setInsumos(res.data.data || []));
 
             if (eventData?.id) {
@@ -70,6 +89,11 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                 icono: data.icono || (data.tipo_evento === 'COMPRA' ? 'bi-cart-fill' : 'bi-tools'),
                                 tipo_evento: data.tipo_evento
                             }));
+                            if (data.activo_nombre && data.activo_codigo) {
+                                setBusquedaActivo(`${data.activo_codigo} - ${data.activo_nombre}`);
+                            } else if (data.activo_id) {
+                                setBusquedaActivo(String(data.activo_id));
+                            }
 
                             if (data.items) {
                                 const loadedItems = data.items.map(i => ({
@@ -259,18 +283,60 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                 <label className="form-label fw-bold text-dark small">
                                     {isCompra ? 'ASOCIAR A ACTIVO (Opcional)' : 'MÁQUINA PRINCIPAL'}
                                 </label>
-                                <select className="form-select fw-bold" 
-                                    required={!isCompra}
-                                    value={formData.activo_id}
-                                    onChange={e => { 
-                                        setFormData({ ...formData, activo_id: e.target.value, sub_activo_id: '' }); 
-                                        cargarKitActivo(e.target.value); 
-                                    }}
-                                    disabled={readOnly}
-                                >
-                                    <option value="">{isCompra ? '-- Ninguno --' : 'Seleccione máquina...'}</option>
-                                    {activosPrincipales.map(a => <option key={a.id} value={a.id}>{a.codigo_interno} - {a.nombre}</option>)}
-                                </select>
+                                <div className="position-relative">
+                                    <div className="input-group shadow-sm">
+                                        <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
+                                        <input
+                                            type="text"
+                                            className="form-control border-start-0"
+                                            placeholder={isCompra ? 'Buscar activo...' : 'Buscar máquina...'}
+                                            value={busquedaActivo}
+                                            disabled={readOnly}
+                                            onChange={e => {
+                                                setBusquedaActivo(e.target.value);
+                                                setMostrarListaActivo(true);
+                                                if (e.target.value === '') {
+                                                    setFormData({ ...formData, activo_id: '', sub_activo_id: '' });
+                                                }
+                                            }}
+                                            onFocus={() => setMostrarListaActivo(true)}
+                                            onBlur={() => setTimeout(() => setMostrarListaActivo(false), 150)}
+                                        />
+                                        {formData.activo_id && !readOnly && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-secondary border-start-0"
+                                                onClick={() => {
+                                                    setBusquedaActivo('');
+                                                    setFormData({ ...formData, activo_id: '', sub_activo_id: '' });
+                                                }}
+                                            >
+                                                <i className="bi bi-x"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                    {mostrarListaActivo && !readOnly && (
+                                        <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1050, maxHeight: '240px', overflowY: 'auto' }}>
+                                            {activosFiltrados.length > 0 ? activosFiltrados.map(a => (
+                                                <li
+                                                    key={a.id}
+                                                    className={`list-group-item list-group-item-action cursor-pointer py-2 ${String(formData.activo_id) === String(a.id) ? 'active' : ''}`}
+                                                    onMouseDown={() => {
+                                                        setBusquedaActivo(`${a.codigo_interno} - ${a.nombre}`);
+                                                        setFormData({ ...formData, activo_id: String(a.id), sub_activo_id: '' });
+                                                        cargarKitActivo(a.id);
+                                                        setMostrarListaActivo(false);
+                                                    }}
+                                                >
+                                                    <div className="fw-bold small">{a.codigo_interno} - {a.nombre}</div>
+                                                    {a.tipo && <small className="text-muted">{a.tipo}</small>}
+                                                </li>
+                                            )) : (
+                                                <li className="list-group-item text-center text-muted small py-3">Sin resultados</li>
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="col-12 col-md-6">

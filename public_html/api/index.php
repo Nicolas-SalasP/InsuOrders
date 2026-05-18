@@ -98,10 +98,39 @@ try {
         }
 
         if ($fullPathOnDisk) {
+            $fullPathOnDisk = realpath($fullPathOnDisk);
             $mime = mime_content_type($fullPathOnDisk);
+            $fileSize = filesize($fullPathOnDisk);
+
             header("Content-Type: $mime");
+            header("Accept-Ranges: bytes");
             header("Content-Disposition: inline; filename=\"" . basename($fullPathOnDisk) . "\"");
-            readfile($fullPathOnDisk);
+            header("Cache-Control: public, max-age=86400");
+
+            if (isset($_SERVER['HTTP_RANGE'])) {
+                preg_match('/bytes=(\d+)-(\d*)/', $_SERVER['HTTP_RANGE'], $rm);
+                $start = isset($rm[1]) ? intval($rm[1]) : 0;
+                $end   = isset($rm[2]) && $rm[2] !== '' ? intval($rm[2]) : $fileSize - 1;
+                $end   = min($end, $fileSize - 1);
+                $length = $end - $start + 1;
+                http_response_code(206);
+                header("Content-Range: bytes $start-$end/$fileSize");
+                header("Content-Length: $length");
+                $fp = fopen($fullPathOnDisk, 'rb');
+                fseek($fp, $start);
+                $buf = 1024 * 64;
+                $rem = $length;
+                while ($rem > 0 && !feof($fp)) {
+                    $chunk = min($buf, $rem);
+                    echo fread($fp, $chunk);
+                    $rem -= $chunk;
+                    flush();
+                }
+                fclose($fp);
+            } else {
+                header("Content-Length: $fileSize");
+                readfile($fullPathOnDisk);
+            }
             exit;
         }
     }

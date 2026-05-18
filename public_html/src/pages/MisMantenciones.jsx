@@ -36,6 +36,17 @@ const MisMantenciones = () => {
     const esServicio = selectedOt && (!selectedOt.activo_id || selectedOt.codigo_interno === 'SERV');
 
     useEffect(() => {
+        if (activeTab === 'checklist' && sigCanvas.current) {
+            const canvas = sigCanvas.current.getCanvas();
+            const container = canvas.parentElement;
+            if (container) {
+                canvas.width = container.clientWidth || 600;
+            }
+            sigCanvas.current.clear();
+        }
+    }, [activeTab]);
+
+    useEffect(() => {
         if (can('ope_mant')) {
             cargarMisOts();
         }
@@ -63,16 +74,18 @@ const MisMantenciones = () => {
         const stats = {};
         ots.forEach(ot => {
             if (!ot.asignados_ids) return;
-            const ids = ot.asignados_ids.toString().split(',');
+            const ids = ot.asignados_ids.toString().split(',').filter(Boolean);
             const nombres = ot.asignados_nombres ? ot.asignados_nombres.toString().split(', ') : [];
+            const estadoId = parseInt(ot.estado_id);
 
             ids.forEach((id, index) => {
+                if (!id || !id.trim()) return;
                 if (!stats[id]) {
                     stats[id] = { id, nombre: nombres[index] || 'Técnico', pendientes: 0, proceso: 0, terminado: 0 };
                 }
-                if (ot.estado_id === 1 || ot.estado_id === 4) stats[id].pendientes++;
-                else if (ot.estado_id === 2) stats[id].proceso++;
-                else if (ot.estado_id === 3 || ot.estado_id === 5) stats[id].terminado++;
+                if (estadoId === 1 || estadoId === 4) stats[id].pendientes++;
+                else if (estadoId === 2) stats[id].proceso++;
+                else if (estadoId === 3 || estadoId === 5) stats[id].terminado++;
             });
         });
         return Object.values(stats);
@@ -197,11 +210,14 @@ const MisMantenciones = () => {
 
         const reqStr = ot.fecha_requerida ? ot.fecha_requerida.substring(0, 10) : null;
 
-        const matchEstado =
-            filtroEstado === 'pendientes' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (!reqStr || reqStr <= todayStr)) :
-                filtroEstado === 'futuras' ? ((ot.estado_id === 1 || ot.estado_id === 4) && (reqStr && reqStr > todayStr)) :
-                    filtroEstado === 'proceso' ? ot.estado_id === 2 :
-                        filtroEstado === 'terminado' ? (parseInt(ot.mi_completado) === 1 || ot.estado_id === 5) : true;
+        const matchEstado = (() => {
+            const sid = parseInt(ot.estado_id);
+            if (filtroEstado === 'pendientes') return (sid === 1 || sid === 4) && (!reqStr || reqStr <= todayStr);
+            if (filtroEstado === 'futuras')    return (sid === 1 || sid === 4) && (!!reqStr && reqStr > todayStr);
+            if (filtroEstado === 'proceso')    return sid === 2;
+            if (filtroEstado === 'terminado')  return parseInt(ot.mi_completado) === 1 || sid === 5;
+            return true;
+        })();
 
         const texto = busqueda.toLowerCase();
         const matchTexto = ot.activo.toLowerCase().includes(texto) ||
@@ -333,7 +349,20 @@ const MisMantenciones = () => {
                             )}
 
                             {isVideo ? (
-                                <video src={`/api/${url}`} controls className="rounded border shadow-sm bg-dark" style={{ height: '120px', maxWidth: '100%' }}></video>
+                                <video
+                                    controls
+                                    playsInline
+                                    preload="metadata"
+                                    className="rounded border shadow-sm bg-dark"
+                                    style={{ height: '120px', maxWidth: '100%' }}
+                                >
+                                    <source src={`/api/${url}`} type={
+                                        url.toLowerCase().endsWith('.mp4') ? 'video/mp4' :
+                                        url.toLowerCase().endsWith('.webm') ? 'video/webm' :
+                                        url.toLowerCase().endsWith('.ogg') ? 'video/ogg' :
+                                        'video/mp4'
+                                    } />
+                                </video>
                             ) : (
                                 <img
                                     src={`/api/${url}`}
@@ -354,11 +383,6 @@ const MisMantenciones = () => {
         if (!selectedOt) return;
 
         if (isFinalizar) {
-            if (!esServicio && !datosEnvio.firma) {
-                setMsg({ show: true, title: "Firma Requerida", text: "Debe firmar de conformidad para finalizar esta OT.", type: "warning" });
-                return;
-            }
-
             const faltantes = detallesOt.insumos.filter(i => parseFloat(i.stock_usuario || 0) < parseFloat(i.cantidad));
 
             if (faltantes.length > 0) {
@@ -691,7 +715,7 @@ const MisMantenciones = () => {
                                             <div className="alert alert-success m-0 py-2 px-3 fw-bold shadow-sm d-flex align-items-center" style={{ fontSize: '0.85rem' }}>
                                                 <i className="bi bi-check-circle-fill me-2 fs-5"></i> ¡Ya entregaste tu parte!
                                             </div>
-                                        ) : esServicio ? (
+                                        ) : (
                                             <>
                                                 <button
                                                     className="btn btn-outline-primary fw-bold px-3 shadow-sm d-flex align-items-center"
@@ -711,18 +735,6 @@ const MisMantenciones = () => {
                                                     <span className="d-inline d-sm-none">Fin</span>
                                                 </button>
                                             </>
-                                        ) : (
-                                            <button
-                                                className={`btn btn-lg fw-bold px-4 shadow d-flex align-items-center ${datosEnvio.firma ? 'btn-danger' : 'btn-primary'}`}
-                                                onClick={() => iniciarGuardado(!!datosEnvio.firma)}
-                                                disabled={guardando}
-                                            >
-                                                {guardando ? <span className="spinner-border spinner-border-sm me-2"></span> :
-                                                    datosEnvio.firma ? <i className="bi bi-file-earmark-lock-fill me-2 fs-5"></i> : <i className="bi bi-save-fill me-2 fs-5"></i>
-                                                }
-                                                <span className="d-none d-sm-inline">{datosEnvio.firma ? 'FINALIZAR Y FIRMAR' : 'GUARDAR AVANCE'}</span>
-                                                <span className="d-inline d-sm-none">{datosEnvio.firma ? 'FINALIZAR' : 'GUARDAR'}</span>
-                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -982,22 +994,22 @@ const MisMantenciones = () => {
                                                         )}
                                                     </div>
 
-                                                    {!esServicio && (
+                                                    {!isReadOnly && (
                                                         <div className="mb-2">
-                                                            <label className="form-label fw-bold text-muted small text-uppercase mb-0">3. Firma de Conformidad</label>
+                                                            <label className="form-label fw-bold text-muted small text-uppercase mb-1">3. Firma de Conformidad <span className="text-muted fw-normal">(opcional)</span></label>
 
-                                                            {isReadOnly ? (
+                                                            {isReadOnly || (selectedOt?.firma_tecnico) ? (
+                                                                selectedOt?.firma_tecnico && (
                                                                 <div className="alert alert-success p-3 small mt-2 shadow-sm border border-success text-center">
                                                                     <div className="fw-bold mb-3 text-success">
                                                                         <i className="bi bi-check-circle-fill me-2 fs-5"></i>
-                                                                        Tu firma ya está registrada en el sistema.
+                                                                        Firma registrada en el sistema.
                                                                     </div>
-                                                                    {selectedOt.firma_tecnico && (
-                                                                        <div className="mt-2 p-3 bg-white rounded border d-inline-block shadow-sm">
-                                                                            <img src={selectedOt.firma_tecnico} alt="Firma Técnico" style={{ maxHeight: '150px' }} className="img-fluid" />
-                                                                        </div>
-                                                                    )}
+                                                                    <div className="mt-2 p-3 bg-white rounded border d-inline-block shadow-sm">
+                                                                        <img src={selectedOt.firma_tecnico} alt="Firma Técnico" style={{ maxHeight: '150px' }} className="img-fluid" />
+                                                                    </div>
                                                                 </div>
+                                                                )
                                                             ) : (
                                                                 <>
                                                                     <div className="d-flex justify-content-end align-items-end mb-2">
@@ -1008,13 +1020,19 @@ const MisMantenciones = () => {
                                                                             <i className="bi bi-eraser me-1"></i>Limpiar
                                                                         </button>
                                                                     </div>
-                                                                    <div className="border border-2 border-primary border-opacity-25 bg-white rounded-3 shadow-sm" style={{ height: '200px' }}>
+                                                                    <div className="border border-2 border-primary border-opacity-25 bg-white rounded-3 shadow-sm" style={{ touchAction: 'none', userSelect: 'none' }}>
                                                                         <SignatureCanvas
                                                                             ref={sigCanvas}
-                                                                            canvasProps={{ className: 'w-100 h-100', style: { width: '100%', height: '100%', touchAction: 'none' } }}
+                                                                            canvasProps={{
+                                                                                height: 200,
+                                                                                style: { width: '100%', height: '200px', display: 'block', cursor: 'crosshair' }
+                                                                            }}
                                                                             onEnd={() => setDatosEnvio(prev => ({ ...prev, firma: sigCanvas.current.getCanvas().toDataURL('image/png') }))}
                                                                         />
                                                                     </div>
+                                                                    {datosEnvio.firma && (
+                                                                        <small className="text-success mt-1 d-block"><i className="bi bi-check-circle me-1"></i>Firma capturada. Se incluirá en el reporte.</small>
+                                                                    )}
                                                                 </>
                                                             )}
                                                         </div>

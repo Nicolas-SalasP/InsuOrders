@@ -18,7 +18,7 @@ class MisMantencionesRepository
     public function getOtsAsignadas($userId)
     {
         $sql = "SELECT DISTINCT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, 
-                ot.fecha_solicitud, ot.fecha_requerida, ot.prioridad, ot.requiere_permiso,
+                ot.fecha_solicitud, ot.fecha_requerida, ot.prioridad, ot.requiere_permiso, ot.requiere_firma,
                 ot.estado_id, e.nombre as estado,
                 ot.imagen_url, ot.ubicacion, ot.comentarios_finales, ot.evidencia_cierre,
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
@@ -49,7 +49,7 @@ class MisMantencionesRepository
     public function getAllOtsWithAsignados()
     {
         $sql = "SELECT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, 
-                ot.fecha_solicitud, ot.fecha_requerida, ot.prioridad, ot.requiere_permiso,
+                ot.fecha_solicitud, ot.fecha_requerida, ot.prioridad, ot.requiere_permiso, ot.requiere_firma,
                 ot.estado_id, e.nombre as estado,
                 ot.imagen_url, ot.ubicacion, ot.comentarios_finales, ot.evidencia_cierre,
                 COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
@@ -62,7 +62,7 @@ class MisMantencionesRepository
                 0 as mi_completado
             FROM solicitudes_ot ot
             LEFT JOIN ot_asignaciones oa ON ot.id = oa.solicitud_id
-            LEFT JOIN usuarios tec ON oa.usuario_id = tec.id
+            LEFT JOIN usuarios tec ON oa.usuario_id = tec.id AND tec.activo = 1
             LEFT JOIN activos a ON ot.activo_id = a.id 
             LEFT JOIN activos sa ON ot.sub_activo_id = sa.id
             JOIN estados_solicitud e ON ot.estado_id = e.id
@@ -168,7 +168,9 @@ class MisMantencionesRepository
                 $this->db->prepare($sqlConsolidar)->execute($paramsConsolidar);
 
                 $sqlSnapshot = "UPDATE detalle_solicitud ds JOIN insumos i ON ds.insumo_id = i.id 
-                                SET ds.costo_unitario_snapshot = i.costo_unitario WHERE ds.solicitud_id = ? AND ds.costo_unitario_snapshot <= 0";
+                                SET ds.costo_unitario_snapshot = i.precio_costo,
+                                    ds.costo_total_linea = i.precio_costo * ds.cantidad_entregada
+                                WHERE ds.solicitud_id = ? AND (ds.costo_unitario_snapshot IS NULL OR ds.costo_unitario_snapshot = 0)";
                 $this->db->prepare($sqlSnapshot)->execute([$otId]);
 
                 $sqlTotal = "UPDATE solicitudes_ot SET costo_total_insumos = COALESCE((SELECT SUM(costo_total_linea) FROM detalle_solicitud WHERE solicitud_id = ?), 0) WHERE id = ?";
@@ -213,7 +215,8 @@ class MisMantencionesRepository
     public function getDetallesOT($id)
     {
         $sql = "SELECT d.cantidad, d.cantidad_entregada, d.estado_linea, 
-            d.costo_unitario_snapshot, d.costo_total_linea,
+            COALESCE(d.costo_unitario_snapshot, i.precio_costo, 0) as costo_unitario_snapshot,
+            COALESCE(d.costo_total_linea, i.precio_costo * d.cantidad_entregada, 0) as costo_total_linea,
             i.nombre, i.codigo_sku, i.unidad_medida
             FROM detalle_solicitud d 
             JOIN insumos i ON d.insumo_id = i.id 

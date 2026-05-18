@@ -351,8 +351,19 @@ class MantencionRepository
     public function getDetallesOT($id)
     {
         $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.cantidad_entregada, d.estado_linea, 
+                COALESCE(d.costo_unitario_snapshot, i.precio_costo, 0) as costo_unitario_snapshot,
+                COALESCE(d.costo_total_linea, i.precio_costo * d.cantidad_entregada, 0) as costo_total_linea,
                 i.nombre, i.codigo_sku, i.stock_actual, i.unidad_medida, oc.id as oc_id, prov.nombre as oc_proveedor,
-                (SELECT GROUP_CONCAT(DISTINCT emp.nombre_completo SEPARATOR ', ') FROM movimientos_inventario mi JOIN empleados emp ON mi.empleado_id = emp.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por
+                (SELECT GROUP_CONCAT(DISTINCT 
+                    COALESCE(emp.nombre_completo, CONCAT(uv.nombre, ' ', uv.apellido))
+                    SEPARATOR ', ')
+                 FROM movimientos_inventario mi
+                 LEFT JOIN empleados emp ON mi.empleado_id = emp.id
+                 LEFT JOIN usuarios uv ON mi.usuario_id = uv.id
+                 WHERE mi.referencia_id = d.solicitud_id 
+                 AND mi.insumo_id = d.insumo_id
+                 AND mi.tipo_movimiento_id = 2
+                ) as retirado_por
                 FROM detalle_solicitud d JOIN insumos i ON d.insumo_id = i.id 
                 LEFT JOIN ordenes_compra oc ON d.orden_compra_id = oc.id LEFT JOIN proveedores prov ON oc.proveedor_id = prov.id WHERE d.solicitud_id = :id";
         $stmt = $this->db->prepare($sql);
@@ -398,8 +409,8 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
 
-            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, sub_activo_id, titulo, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, fecha_requerida, requiere_permiso, tipo_permiso_id, descripcion_permiso, prioridad, ubicacion) 
-                    VALUES (:uid, :aid, :subaid, :tit, :desc, :orig, :area, :cc, :ext, 1, NOW(), :freq, :req_perm, :tipo_perm, :desc_perm, :prio, :ubi)";
+            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, sub_activo_id, titulo, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, fecha_requerida, requiere_permiso, tipo_permiso_id, descripcion_permiso, requiere_firma, prioridad, ubicacion) 
+                    VALUES (:uid, :aid, :subaid, :tit, :desc, :orig, :area, :cc, :ext, 1, NOW(), :freq, :req_perm, :tipo_perm, :desc_perm, :req_firma, :prio, :ubi)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':uid' => $data['usuario_id'],
@@ -415,6 +426,7 @@ class MantencionRepository
                 ':req_perm' => !empty($data['requiere_permiso']) ? 1 : 0,
                 ':tipo_perm' => !empty($data['tipo_permiso_id']) ? $data['tipo_permiso_id'] : null,
                 ':desc_perm' => $data['descripcion_permiso'] ?? null,
+                ':req_firma' => isset($data['requiere_firma']) ? (int)$data['requiere_firma'] : 1,
                 ':prio' => $data['prioridad'] ?? 'Media',
                 ':ubi' => $data['ubicacion'] ?? null
             ]);
@@ -464,7 +476,7 @@ class MantencionRepository
             $sql = "UPDATE solicitudes_ot SET 
                     activo_id=:aid, sub_activo_id=:subaid, titulo=:tit, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot,
                     requiere_permiso=:req_perm, tipo_permiso_id=:tipo_perm, descripcion_permiso=:desc_perm,
-                    prioridad=:prio, ubicacion=:ubi, fecha_requerida=:freq
+                    requiere_firma=:req_firma, prioridad=:prio, ubicacion=:ubi, fecha_requerida=:freq
                     WHERE id=:id";
 
             $this->db->prepare($sql)->execute([
@@ -478,6 +490,7 @@ class MantencionRepository
                 ':req_perm' => !empty($data['requiere_permiso']) ? 1 : 0,
                 ':tipo_perm' => !empty($data['tipo_permiso_id']) ? $data['tipo_permiso_id'] : null,
                 ':desc_perm' => $data['descripcion_permiso'] ?? null,
+                ':req_firma' => isset($data['requiere_firma']) ? (int)$data['requiere_firma'] : 1,
                 ':prio' => $data['prioridad'] ?? 'Media',
                 ':ubi' => $data['ubicacion'] ?? null,
                 ':freq' => !empty($data['fecha_requerida']) ? $data['fecha_requerida'] : null,
