@@ -28,6 +28,7 @@ const Cotizaciones = () => {
         end: '',
         usuario: ''
     });
+    const [previewModal, setPreviewModal] = useState({ show: false, data: null, loading: false });
 
     const can = (permiso) => {
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
@@ -101,6 +102,20 @@ const Cotizaciones = () => {
         }
     };
 
+    const verDetalle = async (id) => {
+        setPreviewModal({ show: true, data: null, loading: true });
+        try {
+            const res = await api.get(`/index.php/cotizaciones/detalle?id=${id}`);
+            if (res.data.success) {
+                setPreviewModal({ show: true, data: res.data.data, loading: false });
+            }
+        } catch (e) {
+            setPreviewModal({ show: false, data: null, loading: false });
+        }
+    };
+
+    const cerrarPreview = () => setPreviewModal({ show: false, data: null, loading: false });
+
     return (
         <div className="container-fluid p-4 bg-light min-vh-100">
             <NuevaCotizacionModal show={showModal} onClose={() => setShowModal(false)} onSave={cargarDatos} />
@@ -114,6 +129,102 @@ const Cotizaciones = () => {
                 confirmText="Sí, continuar"
                 cancelText="Cancelar"
             />
+
+            {previewModal.show && (
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }} onClick={cerrarPreview}>
+                    <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" onClick={e => e.stopPropagation()}>
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-header bg-primary text-white">
+                                <h5 className="modal-title fw-bold">
+                                    <i className="bi bi-calculator me-2"></i>
+                                    {previewModal.data ? `Cotización #${previewModal.data.id}` : 'Cargando...'}
+                                </h5>
+                                <button type="button" className="btn-close btn-close-white" onClick={cerrarPreview}></button>
+                            </div>
+                            <div className="modal-body p-4">
+                                {previewModal.loading ? (
+                                    <div className="text-center py-5"><div className="spinner-border text-primary"></div></div>
+                                ) : previewModal.data ? (() => {
+                                    const cot = previewModal.data;
+                                    const total = cot.items?.reduce((s, i) => s + parseFloat(i.cantidad || 0) * parseFloat(i.precio_unitario || 0), 0) ?? 0;
+                                    const fmtCLP = (v) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(isNaN(v) ? 0 : v);
+                                    const badgeClass = cot.estado_nombre === 'Aprobada' ? 'bg-success' : cot.estado_nombre === 'Rechazada' ? 'bg-danger' : 'bg-warning text-dark';
+                                    return (
+                                        <>
+                                            <div className="row g-3 mb-4">
+                                                <div className="col-md-3">
+                                                    <small className="text-muted text-uppercase fw-bold d-block">Fecha</small>
+                                                    <span className="fw-bold">{new Date(cot.fecha_creacion).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <small className="text-muted text-uppercase fw-bold d-block">Solicitante</small>
+                                                    <span className="fw-bold">{cot.creador_nombre} {cot.creador_apellido}</span>
+                                                </div>
+                                                <div className="col-md-2">
+                                                    <small className="text-muted text-uppercase fw-bold d-block">Estado</small>
+                                                    <span className={`badge px-3 py-2 rounded-pill ${badgeClass}`}>{cot.estado_nombre}</span>
+                                                </div>
+                                                <div className="col-md-3">
+                                                    <small className="text-muted text-uppercase fw-bold d-block">Total Estimado</small>
+                                                    <span className="fw-bold text-primary fs-5">{fmtCLP(total)}</span>
+                                                </div>
+                                            </div>
+                                            {cot.observacion && (
+                                                <div className="alert alert-light border mb-3 py-2">
+                                                    <small className="text-muted fw-bold text-uppercase d-block mb-1">Observación</small>
+                                                    {cot.observacion}
+                                                </div>
+                                            )}
+                                            <div className="table-responsive">
+                                                <table className="table table-hover align-middle border rounded">
+                                                    <thead className="table-light">
+                                                        <tr className="text-uppercase small text-muted">
+                                                            <th className="ps-3">#</th>
+                                                            <th>Insumo / Ítem</th>
+                                                            <th>SKU</th>
+                                                            <th className="text-center">Cantidad</th>
+                                                            <th className="text-end">Precio Unit.</th>
+                                                            <th className="text-end pe-3">Subtotal</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {cot.items && cot.items.length > 0 ? cot.items.map((item, idx) => (
+                                                            <tr key={item.id}>
+                                                                <td className="ps-3 text-muted small">{idx + 1}</td>
+                                                                <td className="fw-bold text-dark">{item.nombre_item}</td>
+                                                                <td><span className="badge bg-light text-muted border font-monospace">{item.codigo_sku || '—'}</span></td>
+                                                                <td className="text-center fw-bold">{parseFloat(item.cantidad)} {item.unidad_medida || 'UN'}</td>
+                                                                <td className="text-end">{fmtCLP(item.precio_unitario)}</td>
+                                                                <td className="text-end pe-3 fw-bold text-primary">{fmtCLP(parseFloat(item.cantidad || 0) * parseFloat(item.precio_unitario || 0))}</td>
+                                                            </tr>
+                                                        )) : (
+                                                            <tr><td colSpan="6" className="text-center text-muted py-4">Sin ítems.</td></tr>
+                                                        )}
+                                                    </tbody>
+                                                    <tfoot className="table-light">
+                                                        <tr>
+                                                            <td colSpan="5" className="text-end fw-bold pe-2">TOTAL ESTIMADO:</td>
+                                                            <td className="text-end pe-3 fw-bold text-primary fs-6">{fmtCLP(total)}</td>
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        </>
+                                    );
+                                })() : null}
+                            </div>
+                            <div className="modal-footer bg-light border-top-0">
+                                <button type="button" className="btn btn-secondary px-4" onClick={cerrarPreview}>Cerrar</button>
+                                {previewModal.data && (
+                                    <button type="button" className="btn btn-outline-danger px-4" onClick={() => { cerrarPreview(); descargarPdf(previewModal.data.id); }} disabled={downloading}>
+                                        <i className="bi bi-file-earmark-pdf me-2"></i>Descargar PDF
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
                 <div>
@@ -185,6 +296,9 @@ const Cotizaciones = () => {
                                                 </td>
                                                 <td className="text-end pe-4">
                                                     <div className="btn-group">
+                                                        <button className="btn btn-sm btn-outline-primary" title="Vista Previa" onClick={() => verDetalle(cot.id)}>
+                                                            <i className="bi bi-eye"></i>
+                                                        </button>
                                                         <button className="btn btn-sm btn-outline-secondary" title="Descargar PDF" onClick={() => descargarPdf(cot.id)} disabled={downloading}>
                                                             {downloading ? <span className="spinner-border spinner-border-sm"></span> : <i className="bi bi-file-earmark-pdf"></i>}
                                                         </button>
