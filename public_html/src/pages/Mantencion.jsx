@@ -557,6 +557,7 @@ const Mantencion = () => {
                                     <th>Descripción</th>
                                     <th>Solicitante</th>
                                     <th className="py-3 px-3">Fecha Prog / Creación</th>
+                                    <th className="py-3 px-3">Fecha Cierre</th>
                                     <th>Prioridad</th>
                                     <th>Estado</th>
                                     <th className="text-end">Costo Total</th>
@@ -642,6 +643,20 @@ const Mantencion = () => {
                                                 )}
                                             </td>
 
+                                            <td className="small px-3">
+                                                {s.fecha_cierre ? (
+                                                    <span className="text-success fw-bold">
+                                                        <i className="bi bi-check-circle me-1"></i>
+                                                        {new Date(s.fecha_cierre).toLocaleDateString()}
+                                                        <small className="d-block text-muted fw-normal">
+                                                            {new Date(s.fecha_cierre).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </small>
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted small"><i className="bi bi-dash"></i></span>
+                                                )}
+                                            </td>
+
                                             <td>{getPriorityBadge(s.prioridad)}</td>
                                             <td><span className={`badge ${badgeClass}`}>{estadoTexto}</span></td>
 
@@ -683,7 +698,7 @@ const Mantencion = () => {
                                         </tr>
                                     );
                                 }) : (
-                                    <tr><td colSpan="9" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
+                                    <tr><td colSpan="10" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
                                 )}
                             </tbody>
                         </table>

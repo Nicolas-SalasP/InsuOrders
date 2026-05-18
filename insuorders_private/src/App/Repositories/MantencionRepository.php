@@ -427,10 +427,6 @@ class MantencionRepository
             $insumosFinales = [];
             if (!empty($data['items']) && count($data['items']) > 0) {
                 $insumosFinales = $data['items'];
-            } elseif (!empty($data['activo_id'])) {
-                $stmtKit = $this->db->prepare("SELECT insumo_id, cantidad_default as cantidad FROM activos_insumos WHERE activo_id = ?");
-                $stmtKit->execute([$data['activo_id']]);
-                $insumosFinales = $stmtKit->fetchAll(PDO::FETCH_ASSOC);
             }
 
             if (!empty($insumosFinales)) {
@@ -733,5 +729,49 @@ class MantencionRepository
     {
         $sql = "SELECT * FROM tipos_permiso_trabajo WHERE activo = 1 ORDER BY nombre ASC";
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getTipoPermisoNombre($tipoPermisoId)
+    {
+        if (empty($tipoPermisoId)) return null;
+        $stmt = $this->db->prepare("SELECT nombre FROM tipos_permiso_trabajo WHERE id = :id");
+        $stmt->execute([':id' => $tipoPermisoId]);
+        return $stmt->fetchColumn() ?: null;
+    }
+
+    public function getRequierePermisoActual($otId)
+    {
+        $stmt = $this->db->prepare("SELECT requiere_permiso, tipo_permiso_id FROM solicitudes_ot WHERE id = :id");
+        $stmt->execute([':id' => $otId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['requiere_permiso' => 0, 'tipo_permiso_id' => null];
+    }
+
+    public function getEmailsPrevencion()
+    {
+        $emails = [];
+        $envEmails = $_ENV['PREVENCION_EMAILS'] ?? '';
+        if (!empty($envEmails)) {
+            foreach (explode(',', $envEmails) as $e) {
+                $e = trim($e);
+                if (filter_var($e, FILTER_VALIDATE_EMAIL)) {
+                    $emails[] = $e;
+                }
+            }
+        }
+
+        $sql = "SELECT DISTINCT email FROM empleados 
+                WHERE activo = 1 
+                AND email IS NOT NULL AND email <> ''
+                AND (cargo LIKE '%Prevenci%' OR cargo LIKE '%PdR%' OR cargo LIKE '%Seguridad%')";
+        $stmt = $this->db->query($sql);
+        if ($stmt) {
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $e) {
+                if (filter_var($e, FILTER_VALIDATE_EMAIL)) {
+                    $emails[] = $e;
+                }
+            }
+        }
+
+        return array_values(array_unique($emails));
     }
 }

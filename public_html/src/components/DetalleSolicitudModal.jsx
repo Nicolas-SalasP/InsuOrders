@@ -321,12 +321,27 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                     </div>
 
                                     {/* --- EVIDENCIA DEL TÉCNICO AL CERRAR --- */}
-                                    {(detalle.comentarios_finales || detalle.evidencia_cierre) && (
+                                    {(detalle.comentarios_finales || detalle.evidencia_cierre || detalle.fecha_cierre) && (
                                         <div className="card mb-3 border-success shadow-sm">
-                                            <div className="card-header bg-success text-white fw-bold">
-                                                <i className="bi bi-check2-all me-2"></i>Reporte Final del Técnico
+                                            <div className="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center flex-wrap">
+                                                <span><i className="bi bi-check2-all me-2"></i>Reporte Final del Técnico</span>
+                                                {detalle.fecha_cierre && (
+                                                    <span className="badge bg-white text-success fw-bold">
+                                                        <i className="bi bi-calendar-check me-1"></i>
+                                                        Culminado: {new Date(detalle.fecha_cierre).toLocaleDateString()} {new Date(detalle.fecha_cierre).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="card-body bg-light">
+                                                {detalle.fecha_cierre && (
+                                                    <div className="mb-3">
+                                                        <small className="text-muted text-uppercase fw-bold">Fecha de Culminación</small>
+                                                        <p className="mb-0 mt-1 p-2 bg-white border rounded text-dark fw-bold">
+                                                            <i className="bi bi-calendar-check-fill text-success me-2"></i>
+                                                            {new Date(detalle.fecha_cierre).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                )}
                                                 {detalle.comentarios_finales && (
                                                     <div className="mb-3">
                                                         <small className="text-muted text-uppercase fw-bold">Trabajo Realizado / Notas</small>
