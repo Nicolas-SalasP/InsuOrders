@@ -8,7 +8,8 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
         descripcion: '',
         fecha_programada: initialDate || '',
         activo_id: '',
-        sub_activo_id: '', 
+        sub_activo_id: '',
+        ubicacion: '',
         color: mode === 'COMPRA' ? '#198754' : '#0d6efd',
         icono: mode === 'COMPRA' ? 'bi-cart-fill' : 'bi-tools',
         tipo_evento: mode 
@@ -17,7 +18,13 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
     const [items, setItems] = useState([]);
     const [activos, setActivos] = useState([]);
     const [insumos, setInsumos] = useState([]);
+    const [tecnicos, setTecnicos] = useState([]);
+    const [asignadosCron, setAsignadosCron] = useState([]);
+    const [showDropdownTec, setShowDropdownTec] = useState(false);
+    const dropdownTecRef = React.useRef(null);
     const [busqueda, setBusqueda] = useState('');
+    const [busquedaActivo, setBusquedaActivo] = useState('');
+    const [mostrarListaActivo, setMostrarListaActivo] = useState(false);
 
     const [repetir, setRepetir] = useState(false);
     const [frecuencia, setFrecuencia] = useState(1);
@@ -29,6 +36,21 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
     const activosPrincipales = activos.filter(a => !a.activo_padre_id);
     const subActivosDisponibles = activos.filter(a => a.activo_padre_id && String(a.activo_padre_id) === String(formData.activo_id));
+
+    const activosFiltrados = activosPrincipales.filter(a => {
+        const term = busquedaActivo.toLowerCase();
+        return !term || a.nombre.toLowerCase().includes(term) || (a.codigo_interno && a.codigo_interno.toLowerCase().includes(term));
+    });
+
+    React.useEffect(() => {
+        const handler = (e) => {
+            if (dropdownTecRef.current && !dropdownTecRef.current.contains(e.target)) {
+                setShowDropdownTec(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     const listaIconos = [
         { icon: 'bi-tools', label: 'Herramienta' },
@@ -50,9 +72,32 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
             setProyeccionCantidad(1);
             setProyeccionUnidad('years');
             setBusqueda('');
+            setBusquedaActivo('');
+            setMostrarListaActivo(false);
+            setAsignadosCron([]);
+            setShowDropdownTec(false);
 
-            api.get('/index.php/mantencion/activos').then(res => setActivos(res.data.data || []));
+            api.get('/index.php/mantencion/activos').then(res => {
+                const lista = res.data.data || [];
+                setActivos(lista);
+                if (eventData?.activo_id || eventData?.id) {
+                    const aid = eventData?.activo_id;
+                    if (aid) {
+                        const act = lista.find(a => String(a.id) === String(aid));
+                        if (act) setBusquedaActivo(`${act.codigo_interno} - ${act.nombre}`);
+                    }
+                }
+            });
             api.get('/index.php/inventario').then(res => setInsumos(res.data.data || []));
+            api.get('/index.php/personal').then(res => {
+                const lista = res.data.data || [];
+                const soloTecnicos = lista.filter(e => {
+                    if (!e.usuario_id) return false;
+                    const cargoNorm = (e.cargo || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                    return ['tecn', 'mecan', 'elec', 'sold', 'ayud', 'jefe'].some(k => cargoNorm.includes(k));
+                });
+                setTecnicos(soloTecnicos);
+            });
 
             if (eventData?.id) {
                 api.get(`/index.php/cronograma?id=${eventData.id}`)
@@ -66,10 +111,19 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                 fecha_programada: data.fecha_programada,
                                 activo_id: data.activo_id || '',
                                 sub_activo_id: data.sub_activo_id || '',
+                                ubicacion: data.ot_ubicacion || '',
                                 color: data.color || (data.tipo_evento === 'COMPRA' ? '#198754' : '#0d6efd'),
                                 icono: data.icono || (data.tipo_evento === 'COMPRA' ? 'bi-cart-fill' : 'bi-tools'),
                                 tipo_evento: data.tipo_evento
                             }));
+                            if (data.activo_nombre && data.activo_codigo) {
+                                setBusquedaActivo(`${data.activo_codigo} - ${data.activo_nombre}`);
+                            } else if (data.activo_id) {
+                                setBusquedaActivo(String(data.activo_id));
+                            }
+                            if (data.ot_asignados && Array.isArray(data.ot_asignados)) {
+                                setAsignadosCron(data.ot_asignados.map(Number).filter(Boolean));
+                            }
 
                             if (data.items) {
                                 const loadedItems = data.items.map(i => ({
@@ -138,6 +192,7 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
             const payload = { 
                 ...formData,
                 items,
+                asignados: isCompra ? [] : asignadosCron,
                 frecuencia: repetir ? frecuencia : null,
                 unidad_frecuencia: repetir ? unidadFrecuencia : null,
                 proyeccion_cantidad: repetir ? proyeccionCantidad : null,
@@ -259,18 +314,60 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                 <label className="form-label fw-bold text-dark small">
                                     {isCompra ? 'ASOCIAR A ACTIVO (Opcional)' : 'MÁQUINA PRINCIPAL'}
                                 </label>
-                                <select className="form-select fw-bold" 
-                                    required={!isCompra}
-                                    value={formData.activo_id}
-                                    onChange={e => { 
-                                        setFormData({ ...formData, activo_id: e.target.value, sub_activo_id: '' }); 
-                                        cargarKitActivo(e.target.value); 
-                                    }}
-                                    disabled={readOnly}
-                                >
-                                    <option value="">{isCompra ? '-- Ninguno --' : 'Seleccione máquina...'}</option>
-                                    {activosPrincipales.map(a => <option key={a.id} value={a.id}>{a.codigo_interno} - {a.nombre}</option>)}
-                                </select>
+                                <div className="position-relative">
+                                    <div className="input-group shadow-sm">
+                                        <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
+                                        <input
+                                            type="text"
+                                            className="form-control border-start-0"
+                                            placeholder={isCompra ? 'Buscar activo...' : 'Buscar máquina...'}
+                                            value={busquedaActivo}
+                                            disabled={readOnly}
+                                            onChange={e => {
+                                                setBusquedaActivo(e.target.value);
+                                                setMostrarListaActivo(true);
+                                                if (e.target.value === '') {
+                                                    setFormData({ ...formData, activo_id: '', sub_activo_id: '' });
+                                                }
+                                            }}
+                                            onFocus={() => setMostrarListaActivo(true)}
+                                            onBlur={() => setTimeout(() => setMostrarListaActivo(false), 150)}
+                                        />
+                                        {formData.activo_id && !readOnly && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-secondary border-start-0"
+                                                onClick={() => {
+                                                    setBusquedaActivo('');
+                                                    setFormData({ ...formData, activo_id: '', sub_activo_id: '' });
+                                                }}
+                                            >
+                                                <i className="bi bi-x"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                    {mostrarListaActivo && !readOnly && (
+                                        <ul className="list-group position-absolute w-100 shadow mt-1" style={{ zIndex: 1050, maxHeight: '240px', overflowY: 'auto' }}>
+                                            {activosFiltrados.length > 0 ? activosFiltrados.map(a => (
+                                                <li
+                                                    key={a.id}
+                                                    className={`list-group-item list-group-item-action cursor-pointer py-2 ${String(formData.activo_id) === String(a.id) ? 'active' : ''}`}
+                                                    onMouseDown={() => {
+                                                        setBusquedaActivo(`${a.codigo_interno} - ${a.nombre}`);
+                                                        setFormData({ ...formData, activo_id: String(a.id), sub_activo_id: '' });
+                                                        cargarKitActivo(a.id);
+                                                        setMostrarListaActivo(false);
+                                                    }}
+                                                >
+                                                    <div className="fw-bold small">{a.codigo_interno} - {a.nombre}</div>
+                                                    {a.tipo && <small className="text-muted">{a.tipo}</small>}
+                                                </li>
+                                            )) : (
+                                                <li className="list-group-item text-center text-muted small py-3">Sin resultados</li>
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="col-12 col-md-6">
@@ -298,6 +395,79 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                         {subActivosDisponibles.map(sa => <option key={sa.id} value={sa.id}>↳ {sa.codigo_interno} - {sa.nombre}</option>)}
                                     </select>
                                 </div>
+                            )}
+
+                            {!isCompra && (
+                                <>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label fw-bold text-dark small">UBICACIÓN / ÁREA</label>
+                                        <select
+                                            className="form-select shadow-sm"
+                                            value={formData.ubicacion}
+                                            onChange={e => setFormData({ ...formData, ubicacion: e.target.value })}
+                                            disabled={readOnly}
+                                        >
+                                            <option value="">-- Seleccione Ubicación --</option>
+                                            <optgroup label="🏢 Insuban (Internos)">
+                                                <option value="Planta 1">Planta 1</option>
+                                                <option value="Planta 2">Planta 2</option>
+                                                <option value="Patio">Patio</option>
+                                                <option value="Hor">Hor</option>
+                                                <option value="Lavanderia">Lavandería</option>
+                                                <option value="Taller de Mantencion">Taller de Mantención</option>
+                                            </optgroup>
+                                            <optgroup label="🚚 Externos">
+                                                <option value="Comafri">Comafri</option>
+                                                <option value="Coexca">Coexca</option>
+                                                <option value="Camer">Camer</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+
+                                    <div className="col-12 col-md-6" ref={dropdownTecRef}>
+                                        <label className="form-label fw-bold text-dark small">TÉCNICOS ASIGNADOS</label>
+                                        <div className="position-relative">
+                                            <button
+                                                type="button"
+                                                className="form-select text-start d-flex justify-content-between align-items-center shadow-sm"
+                                                onClick={() => !readOnly && setShowDropdownTec(v => !v)}
+                                                disabled={readOnly}
+                                            >
+                                                <span className="text-truncate" style={{ maxWidth: '90%' }}>
+                                                    {asignadosCron.length === 0
+                                                        ? 'Sin asignar'
+                                                        : tecnicos.filter(t => asignadosCron.includes(Number(t.usuario_id))).map(t => t.nombre_completo || t.nombre).join(', ') || `${asignadosCron.length} asignado(s)`
+                                                    }
+                                                </span>
+                                                <i className="bi bi-chevron-down small ms-2"></i>
+                                            </button>
+                                            {showDropdownTec && (
+                                                <div className="dropdown-menu show w-100 p-2 shadow" style={{ zIndex: 1060, maxHeight: '220px', overflowY: 'auto' }}>
+                                                    {tecnicos.length === 0
+                                                        ? <div className="text-muted small p-2 text-center">Sin técnicos disponibles.</div>
+                                                        : tecnicos.map(t => {
+                                                            const uid = Number(t.usuario_id);
+                                                            return (
+                                                                <div key={uid} className="form-check py-1 px-3 rounded cursor-pointer"
+                                                                    onClick={e => {
+                                                                        e.stopPropagation();
+                                                                        setAsignadosCron(prev => prev.includes(uid) ? prev.filter(x => x !== uid) : [...prev, uid]);
+                                                                    }}>
+                                                                    <input className="form-check-input" type="checkbox" readOnly checked={asignadosCron.includes(uid)} />
+                                                                    <label className="form-check-label w-100 ms-1">
+                                                                        {t.nombre_completo || t.nombre}
+                                                                        <small className="text-muted ms-1">({t.cargo})</small>
+                                                                    </label>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    }
+                                                </div>
+                                            )}
+                                        </div>
+                                        <small className="form-text text-muted">{asignadosCron.length} técnico(s) seleccionado(s).</small>
+                                    </div>
+                                </>
                             )}
 
                             {!readOnly && formData.tipo_evento === 'MANTENCION' && !eventData?.id && (

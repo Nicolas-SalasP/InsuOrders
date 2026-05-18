@@ -112,7 +112,9 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     anio: activo.anio || '',
                     numero_serie: activo.numero_serie || '',
                     ubicacion: activo.ubicacion || '',
-                    estado_activo: activo.estado_activo || 'OPERATIVO',
+                    estado_activo: (['OPERATIVO','FUERA DE SERVICIO','EN MANTENCION','BAJA'].includes((activo.estado_activo || '').toUpperCase())
+                        ? (activo.estado_activo || '').toUpperCase()
+                        : 'OPERATIVO'),
                     descripcion: activo.descripcion || '',
                     centro_costo: activo.centro_costo_id || '',
                     frecuencia_mantencion: activo.frecuencia_mantencion || '',

@@ -26,7 +26,16 @@ class CronogramaService
 
     public function obtener($id)
     {
-        return $this->repo->findById($id);
+        $evento = $this->repo->findById($id);
+        if ($evento && !empty($evento['solicitud_ot_id'])) {
+            $ot = $this->mantencionRepo->getOTHeader($evento['solicitud_ot_id']);
+            if ($ot) {
+                $evento['ot_ubicacion'] = $ot['ubicacion'];
+                $asignados = $this->mantencionRepo->getAsignadosOT($evento['solicitud_ot_id']);
+                $evento['ot_asignados'] = array_column($asignados, 'usuario_id');
+            }
+        }
+        return $evento;
     }
 
     private function validarEdicion($evento)
@@ -65,6 +74,8 @@ class CronogramaService
                     'centro_costo_ot' => '6400',
                     'solicitante_externo' => 'CRONOGRAMA',
                     'fecha_requerida' => $data['fecha_programada'],
+                    'ubicacion' => $data['ubicacion'] ?? null,
+                    'asignados' => !empty($data['asignados']) ? array_map('intval', $data['asignados']) : [],
                     'items' => $data['items'] ?? []
                 ];
 
@@ -205,6 +216,8 @@ class CronogramaService
                     'centro_costo_ot' => $headerOT['centro_costo_ot'] ?? '6400',
                     'solicitante_externo' => $headerOT['solicitante_externo'] ?? 'CRONOGRAMA',
                     'fecha_requerida' => $data['fecha_programada'],
+                    'ubicacion' => array_key_exists('ubicacion', $data) ? $data['ubicacion'] : ($headerOT['ubicacion'] ?? null),
+                    'asignados' => isset($data['asignados']) ? array_map('intval', $data['asignados']) : null,
                     'items' => $itemsFinales
                 ];
 

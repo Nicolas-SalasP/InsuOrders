@@ -58,7 +58,13 @@ class MantencionService
         if (!empty($data['requiere_permiso']) && empty($data['tipo_permiso_id'])) {
             throw new Exception("Ha indicado que requiere permiso de trabajo, por favor seleccione el tipo de permiso.");
         }
-        return $this->repo->createOT($data);
+        $otId = $this->repo->createOT($data);
+
+        if (!empty($data['requiere_permiso']) && !empty($data['tipo_permiso_id'])) {
+            $this->notificarPrevencion($otId, $data, true);
+        }
+
+        return $otId;
     }
 
     public function editarOT($id, $data)
@@ -66,12 +72,82 @@ class MantencionService
         if (!empty($data['requiere_permiso']) && empty($data['tipo_permiso_id'])) {
             throw new Exception("Ha indicado que requiere permiso de trabajo, por favor seleccione el tipo de permiso.");
         }
-        
+
+        $estadoPrevio = $this->repo->getRequierePermisoActual($id);
+
         $resultado = $this->repo->updateOT($id, $data);
         if ($this->cronogramaRepo) {
             $this->cronogramaRepo->syncByOT($id, $data);
         }
+
+        $reqNuevo = !empty($data['requiere_permiso']) ? 1 : 0;
+        $tipoNuevo = !empty($data['tipo_permiso_id']) ? (int)$data['tipo_permiso_id'] : null;
+        $reqPrevio = (int)($estadoPrevio['requiere_permiso'] ?? 0);
+        $tipoPrevio = !empty($estadoPrevio['tipo_permiso_id']) ? (int)$estadoPrevio['tipo_permiso_id'] : null;
+
+        $debeNotificar = $reqNuevo === 1 && ($reqPrevio === 0 || $tipoPrevio !== $tipoNuevo);
+        if ($debeNotificar) {
+            $this->notificarPrevencion($id, $data, $reqPrevio === 0);
+        }
+
         return $resultado;
+    }
+
+    private function notificarPrevencion($otId, $data, $esCreacion = true)
+    {
+        try {
+            $destinatarios = $this->repo->getEmailsPrevencion();
+            if (empty($destinatarios)) return;
+
+            $header = $this->repo->getOTHeader($otId);
+            if (!$header) return;
+
+            $tipoNombre = $this->repo->getTipoPermisoNombre($data['tipo_permiso_id'] ?? null) ?? 'No especificado';
+            $solicitanteNombre = trim(($header['solicitante_nombre'] ?? '') . ' ' . ($header['solicitante_apellido'] ?? '')) ?: 'No identificado';
+            $maquina = $header['activo'] ?? 'General';
+            $ubicacion = $header['ubicacion'] ?? 'No especificada';
+            $prioridad = $header['prioridad'] ?? 'MEDIA';
+            $titulo = $header['titulo'] ?? ('OT #' . $otId);
+            $descripcionPermiso = $data['descripcion_permiso'] ?? '';
+            $descripcionTrabajo = $header['descripcion_trabajo'] ?? '';
+
+            $accion = $esCreacion ? 'NUEVA' : 'ACTUALIZADA';
+            $appName = $_ENV['APP_NAME'] ?? 'InsuOrders';
+            $mailFrom = $_ENV['MAIL_FROM'] ?? 'no-reply@insuorders.com';
+
+            $subject = "[$appName] Permiso de Trabajo Requerido - OT #$otId ($tipoNombre)";
+
+            $message  = "ATENCIÓN PREVENCIÓN DE RIESGOS\n\n";
+            $message .= "Se ha registrado una OT que requiere PERMISO DE TRABAJO SEGURO.\n";
+            $message .= "Acción: $accion\n\n";
+            $message .= "FOLIO OT: #$otId\n";
+            $message .= "TÍTULO: $titulo\n";
+            $message .= "TIPO DE PERMISO: $tipoNombre\n";
+            $message .= "PRIORIDAD: $prioridad\n";
+            $message .= "MÁQUINA / ACTIVO: $maquina\n";
+            $message .= "UBICACIÓN: $ubicacion\n";
+            $message .= "SOLICITANTE: $solicitanteNombre\n\n";
+            $message .= "DESCRIPCIÓN DEL TRABAJO:\n" . ($descripcionTrabajo ?: 'Sin descripción') . "\n\n";
+            if (!empty($descripcionPermiso)) {
+                $message .= "DETALLE DEL PERMISO:\n" . $descripcionPermiso . "\n\n";
+            }
+            $message .= "Por favor coordinar la elaboración y respaldo del permiso correspondiente.\n";
+            $message .= "Sistema $appName.";
+
+            $headers  = "From: $mailFrom\r\n";
+            $headers .= "Reply-To: $mailFrom\r\n";
+            $headers .= "X-Priority: 1 (Highest)\r\n";
+            $headers .= "X-MSMail-Priority: High\r\n";
+            $headers .= "Importance: High\r\n";
+            $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+
+            $subjectSafe = str_replace(["\r", "\n"], ' ', $subject);
+            foreach ($destinatarios as $to) {
+                @mail($to, $subjectSafe, $message, $headers);
+            }
+        } catch (\Throwable $e) {
+            error_log("notificarPrevencion error: " . $e->getMessage());
+        }
     }
 
     public function finalizarTarea($otId, $usuarioId, $notas = '')

@@ -253,50 +253,44 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         return nombres.join(', ');
     };
 
-    const handleSeleccionarActivo = async (act) => {
+    const handleSeleccionarActivo = (act) => {
         const id = act.id;
         setActivoId(id);
         setActivoNombreSeleccionado(`${act.codigo_interno || 'S/C'} - ${act.nombre}`);
         setMostrarListaActivo(false);
         setBusquedaActivo('');
         setSubActivoId('');
-
         if (id && !otEditar && modo === 'maquina') {
-            try {
-                const res = await api.get(`/index.php/mantencion/kit?id=${id}`);
-                if (res.data.success && res.data.data.length > 0) {
-                    setConfirmModal({
-                        show: true,
-                        title: "Kit de Mantención Detectado",
-                        message: `Esta máquina tiene un kit con ${res.data.data.length} insumos base. ¿Deseas cargarlos?`,
-                        action: () => cargarKitEnItems(res.data.data, false)
-                    });
-                } else {
-                    setItems([]);
-                }
-            } catch (e) {
-                setItems([]);
-            }
+            setItems([]);
         }
     };
 
-    const handleSubActivoChange = async (e) => {
+    const handleSubActivoChange = (e) => {
         const subId = e.target.value;
         setSubActivoId(subId);
-        if (subId && !otEditar && modo === 'maquina') {
-            try {
-                const res = await api.get(`/index.php/mantencion/kit?id=${subId}`);
-                if (res.data.success && res.data.data.length > 0) {
-                    setConfirmModal({
-                        show: true,
-                        title: "Kit Específico de Componente",
-                        message: `Este componente tiene un kit con ${res.data.data.length} repuestos. ¿Deseas agregarlos a la orden actual?`,
-                        action: () => cargarKitEnItems(res.data.data, true)
-                    });
-                }
-            } catch (e) {
-                console.error(e);
+    };
+
+    const handleCargarKitManual = async () => {
+        if (modo !== 'maquina' || (!activoId && !subActivoId)) {
+            setMsgModal({ show: true, title: "Falta Activo", message: "Selecciona primero una máquina o sub-activo para cargar su kit de repuestos.", type: "warning" });
+            return;
+        }
+        const targetId = subActivoId || activoId;
+        const append = items.length > 0;
+        try {
+            setLoading(true);
+            const res = await api.get(`/index.php/mantencion/kit?id=${targetId}`);
+            if (res.data.success && res.data.data.length > 0) {
+                cargarKitEnItems(res.data.data, append);
+                setMsgModal({ show: true, title: "Kit Cargado", message: `Se cargaron ${res.data.data.length} repuestos del kit.`, type: "success" });
+                setTimeout(() => setMsgModal(prev => ({ ...prev, show: false })), 1500);
+            } else {
+                setMsgModal({ show: true, title: "Sin Kit", message: "Este activo no tiene un kit de repuestos configurado.", type: "info" });
             }
+        } catch (e) {
+            setMsgModal({ show: true, title: "Error", message: "No se pudo cargar el kit de repuestos.", type: "error" });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -832,13 +826,26 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                 <div className="card-body p-0">
                                     {editable && (
                                         <div className="p-3 border-bottom position-relative" ref={wrapperRef}>
-                                            <div className="input-group shadow-sm">
-                                                <span className="input-group-text bg-white text-primary border-end-0"><i className="bi bi-search"></i></span>
-                                                <input type="text" className="form-control border-start-0" placeholder="Escriba para buscar repuestos..."
-                                                    value={busqueda}
-                                                    onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }}
-                                                    onFocus={() => setMostrarLista(true)}
-                                                />
+                                            <div className="d-flex gap-2 align-items-stretch">
+                                                <div className="input-group shadow-sm flex-grow-1">
+                                                    <span className="input-group-text bg-white text-primary border-end-0"><i className="bi bi-search"></i></span>
+                                                    <input type="text" className="form-control border-start-0" placeholder="Escriba para buscar repuestos..."
+                                                        value={busqueda}
+                                                        onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }}
+                                                        onFocus={() => setMostrarLista(true)}
+                                                    />
+                                                </div>
+                                                {modo === 'maquina' && (activoId || subActivoId) && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-outline-primary fw-bold d-flex align-items-center shadow-sm text-nowrap"
+                                                        onClick={handleCargarKitManual}
+                                                        disabled={loading}
+                                                        title="Cargar todos los repuestos sugeridos del kit de mantenimiento de esta máquina"
+                                                    >
+                                                        <i className="bi bi-tools me-2"></i>Cargar Kit de Repuestos
+                                                    </button>
+                                                )}
                                             </div>
                                             {mostrarLista && busqueda && (
                                                 <ul className="list-group position-absolute w-100 shadow mt-1 start-0" style={{ zIndex: 2000, maxHeight: '250px', overflowY: 'auto' }}>

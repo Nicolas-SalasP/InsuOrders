@@ -461,6 +461,13 @@ class PDFService extends FPDF
         $this->SetFont('Arial', '', 9);
         $this->Cell(40, 5, $this->txt($ot['estado']), 0, 1);
 
+        if (!empty($ot['fecha_cierre'])) {
+            $this->SetFont('Arial', 'B', 9);
+            $this->Cell(30, 5, 'FECHA CIERRE:', 0, 0);
+            $this->SetFont('Arial', '', 9);
+            $this->Cell(80, 5, date('d/m/Y H:i', strtotime($ot['fecha_cierre'])), 0, 1);
+        }
+
         $this->Ln(6);
         $this->SetFont('Arial', 'B', 9);
         $this->Cell(30, 5, 'DESCRIPCION:', 0, 0);
@@ -733,6 +740,14 @@ class PDFService extends FPDF
 
         $this->Cell(30, 6, mb_convert_encoding('Técnico:', 'ISO-8859-1'), 0, 0, 'L');
         $this->Cell(160, 6, $this->txt($ot['asignado_nombre'] ?? 'Técnico Asignado'), 0, 1, 'L');
+
+        $fechaCierreReporte = !empty($ot['fecha_cierre']) ? date('d/m/Y H:i', strtotime($ot['fecha_cierre'])) : date('d/m/Y H:i');
+        $this->Cell(30, 6, mb_convert_encoding('Fecha Culminación:', 'ISO-8859-1'), 0, 0, 'L');
+        $this->SetFont('Arial', 'B', 9);
+        $this->SetTextColor(0, 100, 0);
+        $this->Cell(160, 6, $fechaCierreReporte, 0, 1, 'L');
+        $this->SetFont('Arial', '', 9);
+        $this->SetTextColor(0);
 
         $this->Ln(5);
 

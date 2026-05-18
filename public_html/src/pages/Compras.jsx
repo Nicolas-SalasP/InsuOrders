@@ -43,6 +43,7 @@ const Compras = () => {
     // Filtros
     const [filtroProveedor, setFiltroProveedor] = useState('');
     const [filtroDestino, setFiltroDestino] = useState('');
+    const [filtroNumero, setFiltroNumero] = useState('');
     const [filtroEstado, setFiltroEstado] = useState([]);
     const [showEstadoDropdown, setShowEstadoDropdown] = useState(false);
     const estadoRef = useRef(null);
@@ -272,18 +273,19 @@ const Compras = () => {
     };
 
     const limpiarFiltros = () => {
-        setFiltroProveedor(''); setFiltroDestino(''); setFiltroEstado([]); setFiltroFecha(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes();
+        setFiltroProveedor(''); setFiltroDestino(''); setFiltroNumero(''); setFiltroEstado([]); setFiltroFecha(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes();
     };
 
     const seleccionarInsumo = (item) => { setFiltroInsumo(item.id); setBusquedaInsumo(item.nombre); setMostrarSugerencias(false); };
 
     const ordenesFiltradas = ordenes.filter(oc => {
+        const matchNum = filtroNumero === '' || String(oc.id).includes(filtroNumero.replace(/^#/, '').trim());
         const matchProv = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
         const matchEst = filtroEstado.length === 0 || filtroEstado.includes(oc.estado);
         const matchDest = filtroDestino === '' || (oc.destino && oc.destino.toLowerCase().includes(filtroDestino.toLowerCase()));
         const fechaOC = oc.fecha_creacion.split(' ')[0];
         const matchFecha = filtroFecha ? fechaOC === filtroFecha : true;
-        return matchProv && matchDest && matchEst && matchFecha;
+        return matchNum && matchProv && matchDest && matchEst && matchFecha;
     });
 
     const getBadgeColor = (estado) => {
@@ -379,6 +381,12 @@ const Compras = () => {
 
                 <div className="bg-light p-3 border-bottom">
                     <div className="row g-2 align-items-center">
+                        <div className="col-md-1">
+                            <div className="input-group">
+                                <span className="input-group-text bg-white border-end-0"><i className="bi bi-hash text-muted"></i></span>
+                                <input type="text" className="form-control border-start-0 ps-0" placeholder="N° OC" value={filtroNumero} onChange={(e) => setFiltroNumero(e.target.value)} />
+                            </div>
+                        </div>
                         <div className="col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} /></div></div>
                         <div className="col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0"><i className="bi bi-geo-alt"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Destino..." value={filtroDestino} onChange={(e) => setFiltroDestino(e.target.value)} /></div></div>
                         <div className="col-md-3 position-relative" ref={wrapperRef}>
@@ -405,7 +413,7 @@ const Compras = () => {
                             )}
                         </div>
                         <div className="col-md-2"><input type="date" className="form-control" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} /></div>
-                        <div className="col-md-1 text-end">{(filtroProveedor || filtroDestino || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros}><i className="bi bi-x-lg"></i></button>}</div>
+                        <div className="col-md-1 text-end">{(filtroNumero || filtroProveedor || filtroDestino || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros}><i className="bi bi-x-lg"></i></button>}</div>
                     </div>
                 </div>
 

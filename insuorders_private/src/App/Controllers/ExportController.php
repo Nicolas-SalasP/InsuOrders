@@ -57,6 +57,15 @@ class ExportController
                     $this->sheetDetalleOC($spreadsheet, $id);
                     $filename = "Detalle_OC_{$id}.xlsx";
                     break;
+                case 'kit_activo':
+                    $id = $_GET['id'] ?? 0;
+                    if (!$id) {
+                        throw new \Exception("Falta el ID del activo.");
+                    }
+                    $codigoActivo = $this->sheetKitActivo($spreadsheet, $id);
+                    $sufijo = $codigoActivo ? preg_replace('/[^A-Za-z0-9_-]/', '_', $codigoActivo) : $id;
+                    $filename = "Kit_Repuestos_{$sufijo}_" . date('Ymd_Hi') . ".xlsx";
+                    break;
                 case 'bodega':
                     $this->sheetBodega($spreadsheet, $sheetIndex);
                     $filename = "Bodega_Pendientes_" . date('Ymd_Hi') . ".xlsx";
@@ -214,6 +223,101 @@ class ExportController
                 : 'Sin asignar'
             ]
         );
+    }
+
+    private function sheetKitActivo(Spreadsheet $s, $activoId)
+    {
+        $sheet = $s->getSheet(0);
+        $sheet->setTitle("Kit Repuestos");
+
+        $repo = new MantencionRepository();
+        $kit = $repo->getKitActivo($activoId);
+
+        $headerActivo = null;
+        $stmtAct = \App\Database\Database::getConnection()->prepare(
+            "SELECT a.codigo_interno, a.nombre, a.marca, a.modelo, a.ubicacion 
+             FROM activos a WHERE a.id = :id"
+        );
+        $stmtAct->execute([':id' => $activoId]);
+        $headerActivo = $stmtAct->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$headerActivo) {
+            throw new \Exception("Activo no encontrado.");
+        }
+
+        $sheet->setCellValue('A1', 'KIT DE REPUESTOS SUGERIDOS');
+        $sheet->mergeCells('A1:F1');
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 16, 'color' => ['argb' => 'FF1F4E78']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
+        ]);
+
+        $info = [
+            3 => ['Equipo:', $headerActivo['nombre']],
+            4 => [mb_convert_encoding('Código Interno:', 'UTF-8'), $headerActivo['codigo_interno']],
+            5 => ['Marca / Modelo:', trim(($headerActivo['marca'] ?? '') . ' ' . ($headerActivo['modelo'] ?? '')) ?: '-'],
+            6 => [mb_convert_encoding('Ubicación:', 'UTF-8'), $headerActivo['ubicacion'] ?? '-'],
+            7 => ['Fecha Reporte:', date('d/m/Y H:i')]
+        ];
+        foreach ($info as $row => $par) {
+            $sheet->setCellValue('A' . $row, $par[0]);
+            $sheet->setCellValue('B' . $row, $par[1]);
+            $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+        }
+
+        $startRow = 9;
+        $headers = ['#', 'SKU', 'Insumo', 'Cantidad', 'Unidad', 'Stock Actual'];
+        $col = 'A';
+        foreach ($headers as $h) {
+            $sheet->setCellValue($col . $startRow, $h);
+            $col++;
+        }
+
+        $lastCol = chr(ord('A') + count($headers) - 1);
+        $headerRange = "A{$startRow}:{$lastCol}{$startRow}";
+        $sheet->getStyle($headerRange)->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['argb' => Color::COLOR_WHITE], 'size' => 11],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E78']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+        ]);
+
+        $row = $startRow + 1;
+        $i = 1;
+        foreach ($kit as $item) {
+            $sheet->setCellValue('A' . $row, $i++);
+            $sheet->setCellValue('B' . $row, $item['insumo_sku'] ?? '');
+            $sheet->setCellValue('C' . $row, $item['insumo_nombre'] ?? '');
+            $sheet->setCellValue('D' . $row, $item['cantidad'] ?? 0);
+            $sheet->setCellValue('E' . $row, $item['unidad_medida'] ?? 'UN');
+            $sheet->setCellValue('F' . $row, $item['stock_actual'] ?? 0);
+            $row++;
+        }
+
+        if ($row > $startRow + 1) {
+            $dataRange = "A" . ($startRow + 1) . ":{$lastCol}" . ($row - 1);
+            $sheet->getStyle($dataRange)->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFD3D3D3']]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
+            ]);
+            $sheet->getStyle("A" . ($startRow + 1) . ":A" . ($row - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("D" . ($startRow + 1) . ":D" . ($row - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("E" . ($startRow + 1) . ":E" . ($row - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("F" . ($startRow + 1) . ":F" . ($row - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        } else {
+            $sheet->setCellValue('A' . $row, 'Este activo no tiene kit de repuestos configurado.');
+            $sheet->mergeCells('A' . $row . ':' . $lastCol . $row);
+            $sheet->getStyle('A' . $row)->applyFromArray([
+                'font' => ['italic' => true, 'color' => ['argb' => 'FF808080']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
+            ]);
+        }
+
+        foreach (range('A', $lastCol) as $columnID) {
+            $sheet->getColumnDimension($columnID)->setAutoSize(true);
+        }
+
+        return $headerActivo['codigo_interno'] ?? null;
     }
 
     private function sheetProveedores(Spreadsheet $s, $idx)

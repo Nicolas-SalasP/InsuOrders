@@ -51,7 +51,7 @@ class OrdenCompraService
         return $this->repo->getOrdenCompleta($id);
     }
 
-public function crearOrden($data, $usuarioId)
+    public function crearOrden($data, $usuarioId)
     {
         if (empty($data['items']))
             throw new Exception("La orden debe tener items.");
@@ -139,7 +139,7 @@ public function crearOrden($data, $usuarioId)
             if ($this->db->inTransaction()) {
                 $this->db->commit();
             }
-            
+
             return $ordenId;
 
         } catch (Exception $e) {
@@ -188,15 +188,22 @@ public function crearOrden($data, $usuarioId)
     public function cancelarOrden($id)
     {
         $orden = $this->repo->getById($id);
-        if (!$orden)
+        if (!$orden) {
             throw new Exception("Orden no encontrada.");
+        }
 
         $estadoActual = $orden['cabecera']['estado_id'];
         if ($estadoActual >= 3) {
             throw new Exception("No se puede cancelar la orden porque ya tiene recepciones o está finalizada.");
         }
 
-        return $this->repo->cancelar($id);
+        $resultado = $this->repo->cancelar($id);
+        if (isset($orden['detalles']) && is_array($orden['detalles'])) {
+            foreach ($orden['detalles'] as $detalle) {
+                $this->insumoRepo->eliminarSiEsHuerfano($detalle['insumo_id'], $id);
+            }
+        }
+        return $resultado;
     }
 
     public function regenerarDocumentoPdf($id)
@@ -230,31 +237,33 @@ public function crearOrden($data, $usuarioId)
 
     public function omitirPendientes($idsString)
     {
-        if (empty($idsString)) throw new Exception("No se seleccionaron ítems.");
-        
+        if (empty($idsString))
+            throw new Exception("No se seleccionaron ítems.");
+
         $ids = explode(',', $idsString);
         $ids = array_filter($ids, 'is_numeric');
 
-        if (empty($ids)) return false;
+        if (empty($ids))
+            return false;
         $datosNotificacion = $this->repo->obtenerDatosParaNotificar($ids);
 
         $resultado = $this->repo->archivarSolicitudesPendientes($ids);
 
         if ($resultado && !empty($datosNotificacion)) {
             $notifRepo = new \App\Repositories\NotificationRepository();
-            
+
             foreach ($datosNotificacion as $dato) {
                 $mensaje = "Gestión de Compras: El insumo '{$dato['nombre_insumo']}' para la OT #{$dato['ot_id']} ha sido marcado como 'No Comprar' (Omitido).";
                 $notifRepo->create(
-                    $dato['usuario_id'], 
-                    'Insumo Omitido', 
-                    $mensaje, 
+                    $dato['usuario_id'],
+                    'Insumo Omitido',
+                    $mensaje,
                     '/mis-mantenciones',
                     'high'
                 );
             }
         }
-        
+
         return $resultado;
     }
 
@@ -264,12 +273,12 @@ public function crearOrden($data, $usuarioId)
         if (!$orden) {
             throw new Exception("Orden no encontrada.");
         }
-        
+
         $estadoActual = $orden['cabecera']['estado_id'];
         if (in_array($estadoActual, [4, 5, 6])) {
             throw new Exception("La orden ya se encuentra en un estado inmutable (Cerrada o Anulada).");
         }
-        
+
         $this->repo->forzarCierre($id);
     }
 }
