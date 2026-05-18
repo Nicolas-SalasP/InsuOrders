@@ -234,6 +234,26 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         api.delete(`/index.php/mantencion/kit?id=${id}`).then(() => cargarKit(activo.id)).catch(console.error);
     };
 
+    const handleExportarKit = async (activoId, codigoInterno) => {
+        if (!activoId) return;
+        try {
+            const res = await api.get(`/index.php/exportar?modulo=kit_activo&id=${activoId}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            const safeCodigo = (codigoInterno || activoId).toString().replace(/[^A-Za-z0-9_-]/g, '_');
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            link.href = url;
+            link.setAttribute('download', `Kit_Repuestos_${safeCodigo}_${today}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            setMsgModal({ show: true, title: 'Exportación exitosa', message: 'El kit de repuestos se descargó correctamente.', type: 'success' });
+        } catch (e) {
+            setMsgModal({ show: true, title: 'Error', message: 'No se pudo exportar el kit de repuestos.', type: 'error' });
+        }
+    };
+
     const subirDoc = async () => {
         if (!file || !activo || isReadOnly) return;
         const data = new FormData();
@@ -518,7 +538,18 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
                                 {activo && (
                                     <div className={tab === 'kit' ? 'd-block' : 'd-none'}>
-                                        <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-tools text-primary me-2"></i>Kit de Repuestos Sugeridos</h5>
+                                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                            <h5 className="fw-bold mb-0 text-dark"><i className="bi bi-tools text-primary me-2"></i>Kit de Repuestos Sugeridos</h5>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-success fw-bold d-flex align-items-center shadow-sm"
+                                                onClick={() => handleExportarKit(activo.id, activo.codigo_interno)}
+                                                disabled={loadingKit || kitItems.length === 0}
+                                                title={kitItems.length === 0 ? 'No hay repuestos en el kit para exportar' : 'Exportar kit de repuestos a Excel'}
+                                            >
+                                                <i className="bi bi-file-earmark-excel me-2"></i>Exportar Kit a Excel
+                                            </button>
+                                        </div>
 
                                         {!isReadOnly && (
                                             <>

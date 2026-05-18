@@ -13,6 +13,7 @@ const Activos = () => {
     const [activos, setActivos] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState('TODOS');
 
     const [showModal, setShowModal] = useState(false);
     const [showBuilder, setShowBuilder] = useState(false);
@@ -51,11 +52,26 @@ const Activos = () => {
         }
     };
 
-    const activosFiltrados = activos.filter(a => 
+    const matchTexto = (a) =>
         (a.nombre && a.nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (a.codigo_interno && a.codigo_interno.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (a.codigo_maquina && a.codigo_maquina.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+        (a.codigo_maquina && a.codigo_maquina.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const esOperativo = (a) => (a.estado_activo || '').toUpperCase() === 'OPERATIVO';
+    const esFueraServicio = (a) => {
+        const e = (a.estado_activo || '').toUpperCase();
+        return e && e !== 'OPERATIVO';
+    };
+
+    const conteoOperativos = activos.filter(esOperativo).length;
+    const conteoFueraServicio = activos.filter(esFueraServicio).length;
+
+    const activosFiltrados = activos.filter(a => {
+        if (!matchTexto(a)) return false;
+        if (filtroEstado === 'OPERATIVO') return esOperativo(a);
+        if (filtroEstado === 'FUERA') return esFueraServicio(a);
+        return true;
+    });
 
     // FUNCIÓN UNIFICADA PARA ABRIR MODAL
     const handleOpenModal = (activo) => { 
@@ -191,9 +207,45 @@ const Activos = () => {
                         </div>
                         <h4 className="mb-0 fw-bold text-dark">Activos / Máquinas</h4>
                     </div>
-                    
+
                     <div className="d-flex gap-2 justify-content-center justify-content-md-end flex-wrap align-items-center w-100 w-md-auto">
-                        
+
+                        <div className="btn-group shadow-sm" role="group" aria-label="Filtro por estado">
+                            <button
+                                type="button"
+                                className={`btn btn-sm fw-bold ${filtroEstado === 'TODOS' ? 'btn-primary text-white' : 'btn-outline-secondary'}`}
+                                onClick={() => setFiltroEstado('TODOS')}
+                                title="Mostrar todos los activos"
+                            >
+                                <i className="bi bi-grid me-1"></i>Todos
+                                <span className={`badge ms-2 ${filtroEstado === 'TODOS' ? 'bg-white text-primary' : 'bg-secondary text-white'}`}>
+                                    {activos.length}
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`btn btn-sm fw-bold ${filtroEstado === 'OPERATIVO' ? 'btn-success text-white' : 'btn-outline-success'}`}
+                                onClick={() => setFiltroEstado('OPERATIVO')}
+                                title="Mostrar solo activos operativos"
+                            >
+                                <i className="bi bi-check-circle me-1"></i>Operativos
+                                <span className={`badge ms-2 ${filtroEstado === 'OPERATIVO' ? 'bg-white text-success' : 'bg-success text-white'}`}>
+                                    {conteoOperativos}
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`btn btn-sm fw-bold ${filtroEstado === 'FUERA' ? 'btn-danger text-white' : 'btn-outline-danger'}`}
+                                onClick={() => setFiltroEstado('FUERA')}
+                                title="Mostrar activos fuera de servicio o de baja"
+                            >
+                                <i className="bi bi-exclamation-triangle me-1"></i>Fuera de Servicio
+                                <span className={`badge ms-2 ${filtroEstado === 'FUERA' ? 'bg-white text-danger' : 'bg-danger text-white'}`}>
+                                    {conteoFueraServicio}
+                                </span>
+                            </button>
+                        </div>
+
                         <div className="input-group" style={{ maxWidth: '250px' }}>
                             <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
                             <input 
@@ -250,12 +302,16 @@ const Activos = () => {
                                     <th>Año</th>
                                     <th>Ubicación</th>
                                     <th>Centro Costo</th>
+                                    <th className="text-center">Estado</th>
                                     <th className="text-end pe-4">Gestión</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {activosFiltrados.map(a => (
-                                    <tr key={a.id}>
+                                {activosFiltrados.map(a => {
+                                    const operativo = (a.estado_activo || '').toUpperCase() === 'OPERATIVO';
+                                    const rowClass = !operativo ? 'table-danger bg-opacity-25' : '';
+                                    return (
+                                    <tr key={a.id} className={rowClass}>
                                         <td className="ps-4">
                                             <div className="d-flex align-items-center">
                                                 <div className="avatar me-3 bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'40px', height:'40px'}}>
@@ -283,6 +339,17 @@ const Activos = () => {
                                                 </span>
                                             ) : (
                                                 <span className="text-muted small fst-italic">Sin asignar</span>
+                                            )}
+                                        </td>
+                                        <td className="text-center">
+                                            {operativo ? (
+                                                <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold px-2 py-1">
+                                                    <i className="bi bi-check-circle-fill me-1"></i>Operativo
+                                                </span>
+                                            ) : (
+                                                <span className="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold px-2 py-1">
+                                                    <i className="bi bi-x-octagon-fill me-1"></i>{a.estado_activo || 'BAJA'}
+                                                </span>
                                             )}
                                         </td>
                                         <td className="text-end pe-4">
@@ -313,11 +380,12 @@ const Activos = () => {
                                             )}
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                                 {activosFiltrados.length === 0 && (
                                     <tr>
-                                        <td colSpan="9" className="text-center p-5 text-muted">
-                                            {searchTerm ? 'No se encontraron resultados para tu búsqueda.' : 'No hay activos registrados.'}
+                                        <td colSpan="10" className="text-center p-5 text-muted">
+                                            {searchTerm || filtroEstado !== 'TODOS' ? 'No se encontraron resultados para los filtros aplicados.' : 'No hay activos registrados.'}
                                         </td>
                                     </tr>
                                 )}
