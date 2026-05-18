@@ -3,6 +3,7 @@ namespace App\Repositories;
 
 use App\Database\Database;
 use PDO;
+use PDOException;
 use Exception;
 
 class InsumoRepository
@@ -216,7 +217,7 @@ class InsumoRepository
             $this->db->commit();
             return true;
 
-        } catch (\PDOException $e) {
+        } catch (PDOException $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
@@ -306,7 +307,7 @@ class InsumoRepository
                 WHERE codigo_sku REGEXP '^[0-9]+$'";
 
         $stmt = $this->db->query($sql);
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result && $result['max_sku']) {
             return number_format($result['max_sku'] + 1, 0, '', '');
@@ -324,7 +325,7 @@ class InsumoRepository
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
-public function registrarSalidaManual($data)
+    public function registrarSalidaManual($data)
     {
         try {
             $this->db->beginTransaction();
@@ -346,10 +347,11 @@ public function registrarSalidaManual($data)
             }
 
             $cantidadRestante = $cantidad;
-            $idsGenerados = []; 
+            $idsGenerados = [];
 
             foreach ($stocks as $stock) {
-                if ($cantidadRestante <= 0) break;
+                if ($cantidadRestante <= 0)
+                    break;
 
                 $descuento = min($cantidadRestante, $stock['cantidad']);
 
@@ -361,9 +363,14 @@ public function registrarSalidaManual($data)
                            VALUES (:iid, 2, :cant, :uid, :obs, :ref, :ubi, :emp, :env, NOW())";
 
                 $this->db->prepare($sqlMov)->execute([
-                    ':iid' => $insumoId, ':cant' => $descuento, ':uid' => $usuarioId, 
-                    ':obs' => $obsFinal, ':ref' => $otId, ':ubi' => $stock['ubicacion_id'], 
-                    ':emp' => $empleadoId, ':env' => $ubicacionEnvioId
+                    ':iid' => $insumoId,
+                    ':cant' => $descuento,
+                    ':uid' => $usuarioId,
+                    ':obs' => $obsFinal,
+                    ':ref' => $otId,
+                    ':ubi' => $stock['ubicacion_id'],
+                    ':emp' => $empleadoId,
+                    ':env' => $ubicacionEnvioId
                 ]);
 
                 $idsGenerados[] = $this->db->lastInsertId();
@@ -427,7 +434,8 @@ public function registrarSalidaManual($data)
             return $idsGenerados;
 
         } catch (Exception $e) {
-            if ($this->db->inTransaction()) $this->db->rollBack();
+            if ($this->db->inTransaction())
+                $this->db->rollBack();
             throw $e;
         }
     }
@@ -499,5 +507,63 @@ public function registrarSalidaManual($data)
         $stmt = $this->db->prepare($sql);
         $stmt->execute($movimientoIds);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function eliminarSiEsHuerfano($insumoId, $ordenCompraCanceladaId)
+    {
+        try {
+            $sql = "SELECT 
+                    (SELECT COUNT(*) FROM detalle_orden_compra WHERE insumo_id = :id1 AND orden_compra_id != :oc_id) as uso_en_otras_oc,
+                    (SELECT COUNT(*) FROM insumo_stock_ubicacion WHERE insumo_id = :id2 AND cantidad > 0) as stock_en_ubicaciones,
+                    stock_actual,
+                    stock_comprometido
+                FROM insumos 
+                WHERE id = :id3";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':id1' => $insumoId,
+                ':oc_id' => $ordenCompraCanceladaId,
+                ':id2' => $insumoId,
+                ':id3' => $insumoId
+            ]);
+
+            $insumo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$insumo) {
+                return false;
+            }
+
+            if (
+                $insumo['uso_en_otras_oc'] == 0 &&
+                $insumo['stock_en_ubicaciones'] == 0 &&
+                $insumo['stock_actual'] == 0 &&
+                $insumo['stock_comprometido'] == 0
+            ) {
+                $this->db->beginTransaction();
+
+                $sqlDeleteDetalle = "DELETE FROM detalle_orden_compra WHERE orden_compra_id = :oc_id AND insumo_id = :id_insumo";
+                $this->db->prepare($sqlDeleteDetalle)->execute([
+                    ':oc_id' => $ordenCompraCanceladaId,
+                    ':id_insumo' => $insumoId
+                ]);
+
+                $sqlDeleteUbicacion = "DELETE FROM insumo_stock_ubicacion WHERE insumo_id = :id";
+                $this->db->prepare($sqlDeleteUbicacion)->execute([':id' => $insumoId]);
+                $sqlDelete = "DELETE FROM insumos WHERE id = :id";
+                $stmtDelete = $this->db->prepare($sqlDelete);
+                $stmtDelete->execute([':id' => $insumoId]);
+                $this->db->commit();
+                return true;
+            }
+
+            return false;
+
+        } catch (PDOException $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            return false;
+        }
     }
 }
