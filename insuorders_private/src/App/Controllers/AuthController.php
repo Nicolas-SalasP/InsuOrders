@@ -58,7 +58,7 @@ class AuthController
                 ]
             ];
 
-            $jwt = JWT::encode($tokenPayload, Config::JWT_SECRET, Config::JWT_ALGO);
+            $jwt = JWT::encode($tokenPayload, Config::getJwtSecret(), Config::JWT_ALGO);
             setcookie(
                 "jwt_token",
                 $jwt,
@@ -104,7 +104,7 @@ class AuthController
         }
 
         try {
-            $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
+            $decoded = JWT::decode($jwt, new Key(Config::getJwtSecret(), Config::JWT_ALGO));
             $userId = $decoded->data->id;
 
             $stmt = $this->db->prepare("

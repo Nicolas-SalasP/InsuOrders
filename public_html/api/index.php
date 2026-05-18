@@ -226,6 +226,11 @@ try {
                 (new MantencionController())->finalizar();
             break;
 
+        case 'mantencion/asignar-ot':
+            if ($method === 'POST')
+                (new MantencionController())->asignarOT();
+            break;
+
         case 'mantencion/pdf':
             AuthMiddleware::hasPermission('mant_pdf');
             (new MantencionController())->downloadPdf();
@@ -795,8 +800,15 @@ try {
             break;
     }
 } catch (Throwable $e) {
-    jsonResponse(500, [
-        "success" => false,
-        "error" => "Error Fatal: " . $e->getMessage() . " en " . $e->getFile() . " línea " . $e->getLine()
-    ]);
+    error_log('[InsuOrders] Error fatal: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
+    $response = ["success" => false, "message" => "Error interno del servidor."];
+    if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {
+        $response["debug"] = [
+            "error" => $e->getMessage(),
+            "file" => basename($e->getFile()),
+            "line" => $e->getLine(),
+            "trace" => array_slice(explode("\n", $e->getTraceAsString()), 0, 5)
+        ];
+    }
+    jsonResponse(500, $response);
 }

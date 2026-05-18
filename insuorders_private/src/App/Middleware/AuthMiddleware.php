@@ -29,13 +29,14 @@ class AuthMiddleware
         }
 
         try {
-            $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
+            $decoded = JWT::decode($jwt, new Key(Config::getJwtSecret(), Config::JWT_ALGO));
             $data = $decoded->data;
             $userId = $data->id;
             
             self::$currentUser = $data;
 
-            if (($data->rol ?? '') === 'Admin' || ($data->rol_id ?? 0) == 1) {
+            // C5 fix: solo comprobamos el nombre del rol, no el id numérico
+            if (($data->rol ?? '') === 'Admin') {
                 return $userId;
             }
 
@@ -43,7 +44,7 @@ class AuthMiddleware
                 
                 if (is_string($requirement)) {
                     if (!self::checkDbPermission($userId, $requirement)) {
-                        self::jsonResponse(403, ["error" => "Permisos insuficientes.", "requiere" => $requirement]);
+                        self::jsonResponse(403, ["error" => "Permisos insuficientes."]);
                     }
                 }
                 
@@ -57,7 +58,9 @@ class AuthMiddleware
             return $userId;
 
         } catch (\Exception $e) {
-            self::jsonResponse(401, ["error" => "Acceso denegado. Token inválido o expirado.", "details" => $e->getMessage()]);
+            // C4 fix: no exponer detalles del error al cliente
+            error_log('[Auth] Token error: ' . $e->getMessage());
+            self::jsonResponse(401, ["error" => "Acceso denegado. Token inválido o expirado."]);
         }
     }
 
@@ -98,9 +101,10 @@ class AuthMiddleware
         }
 
         try {
-            $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
+            $decoded = JWT::decode($jwt, new Key(Config::getJwtSecret(), Config::JWT_ALGO));
             
-            if (($decoded->data->rol ?? '') === 'Admin' || ($decoded->data->rol_id ?? 0) == 1) {
+            // C5 fix: solo comprobamos el nombre del rol
+            if (($decoded->data->rol ?? '') === 'Admin') {
                 return true;
             }
 

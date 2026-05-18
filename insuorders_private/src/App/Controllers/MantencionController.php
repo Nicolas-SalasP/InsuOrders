@@ -483,4 +483,25 @@ class MantencionController
             echo json_encode(["success" => false, "message" => $e->getMessage()]);
         }
     }
+
+    public function asignarOT()
+    {
+        AuthMiddleware::hasPermission('mant_editar');
+        $data = json_decode(file_get_contents("php://input"), true);
+        $otId = $data['ot_id'] ?? null;
+        if (!$otId) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Falta ot_id"]);
+            return;
+        }
+        try {
+            $asignados = isset($data['asignados']) ? array_map('intval', $data['asignados']) : null;
+            $ubicacion = array_key_exists('ubicacion', $data) ? $data['ubicacion'] : null;
+            $this->service->repo->asignarOT($otId, $asignados, $ubicacion);
+            echo json_encode(["success" => true, "message" => "Asignación actualizada."]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
 }

@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Repositories\ProveedorRepository;
+use App\Utils\FileUpload;
 
 class ProveedorService
 {
@@ -48,15 +49,13 @@ class ProveedorService
     private function procesarArchivo($id, $file)
     {
         $uploadDir = __DIR__ . '/../../../../public_html/uploads/proveedores/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $fileName = "prov_{$id}_" . time() . "." . $extension;
-        $targetPath = $uploadDir . $fileName;
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        try {
+            $fileName = FileUpload::guardar($file, $uploadDir, 'documento', 'prov');
             $rutaWeb = '/uploads/proveedores/' . $fileName;
             $this->repo->guardarDocumento($id, $file['name'], $rutaWeb);
+        } catch (\InvalidArgumentException $e) {
+            error_log('[Upload] Archivo rechazado en proveedor: ' . $e->getMessage());
+            throw $e;
         }
     }
 }

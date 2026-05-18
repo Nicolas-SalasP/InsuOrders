@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Repositories\ClienteRepository;
+use App\Utils\FileUpload;
 use Exception;
 
 class ClienteService
@@ -44,15 +45,14 @@ class ClienteService
         $activoId = !empty($data['activo_id']) ? $data['activo_id'] : null;
         $evidenciaUrls = [];
         $uploadDir = __DIR__ . '/../../../../public_html/api/uploads/solicitudes/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
         foreach ($files as $key => $file) {
             if (strpos($key, 'evidencia_') === 0 && $file['error'] === UPLOAD_ERR_OK) {
-                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-                $fileName = 'SOL_' . $usuarioId . '_' . uniqid() . '.' . $ext;
-                
-                if (move_uploaded_file($file['tmp_name'], $uploadDir . $fileName)) {
+                try {
+                    $fileName = FileUpload::guardar($file, $uploadDir, 'evidencia', 'sol');
                     $evidenciaUrls[] = 'uploads/solicitudes/' . $fileName;
+                } catch (\InvalidArgumentException $e) {
+                    error_log('[Upload] Archivo rechazado en solicitud cliente: ' . $e->getMessage());
                 }
             }
         }

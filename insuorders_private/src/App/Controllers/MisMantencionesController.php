@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Services\MisMantencionesService;
 use App\Services\PDFService;
 use App\Middleware\AuthMiddleware;
+use App\Utils\FileUpload;
 use Exception;
 
 class MisMantencionesController
@@ -60,15 +61,14 @@ class MisMantencionesController
             $evidenciaUrls = [];
             if (!empty($_FILES)) {
                 $uploadDir = __DIR__ . '/../../../../public_html/uploads/cierre/';
-                if (!is_dir($uploadDir))
-                    mkdir($uploadDir, 0777, true);
-
                 foreach ($_FILES as $key => $file) {
                     if (strpos($key, 'evidencia_') === 0 && $file['error'] === UPLOAD_ERR_OK) {
-                        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-                        $filename = 'cierre_' . $otId . '_' . uniqid() . '.' . $ext;
-                        if (move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+                        try {
+                            $filename = FileUpload::guardar($file, $uploadDir, 'evidencia', 'cierre');
                             $evidenciaUrls[] = 'uploads/cierre/' . $filename;
+                        } catch (\InvalidArgumentException $e) {
+                            // Archivo inválido: ignorar y continuar con los demás
+                            error_log('[Upload] Archivo rechazado en cierre OT: ' . $e->getMessage());
                         }
                     }
                 }

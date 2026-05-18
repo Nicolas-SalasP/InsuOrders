@@ -6,6 +6,7 @@ use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
 use App\Services\PDFService;
 use App\Database\Database;
+use App\Utils\FileUpload;
 use Exception;
 
 class OrdenCompraService
@@ -168,20 +169,16 @@ class OrdenCompraService
 
     public function subirArchivo($id, $file)
     {
-        if (!is_dir($this->uploadBaseDir)) {
-            mkdir($this->uploadBaseDir, 0777, true);
-        }
-
-        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $fileName = "OC_" . $id . "_" . time() . "." . $ext;
-        $targetPath = $this->uploadBaseDir . $fileName;
-
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        try {
+            $fileName = FileUpload::guardar($file, $this->uploadBaseDir, 'documento', 'oc');
             $urlPath = $this->publicUrlBase . $fileName;
             $this->repo->updateArchivo($id, $urlPath);
-            return "/" . $urlPath;
-        } else {
-            throw new Exception("No se pudo mover el archivo al servidor.");
+            return '/' . $urlPath;
+        } catch (\InvalidArgumentException $e) {
+            error_log('[Upload] Archivo rechazado en OC: ' . $e->getMessage());
+            throw new Exception('Tipo de archivo no permitido: ' . $e->getMessage());
+        } catch (\RuntimeException $e) {
+            throw new Exception('No se pudo guardar el archivo en el servidor.');
         }
     }
 

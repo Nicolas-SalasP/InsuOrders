@@ -28,7 +28,7 @@ class DashboardController
             $stmtPerms = $this->db->prepare("SELECT p.codigo FROM permisos p JOIN usuario_permisos up ON p.id = up.permiso_id WHERE up.usuario_id = ?");
             $stmtPerms->execute([$userId]);
             $permisos = $stmtPerms->fetchAll(PDO::FETCH_COLUMN);
-            $isAdmin = ($userRole === 'Admin' || $userId == 1);
+            $isAdmin = ($userRole === 'Admin');
             $canVerCompras = $isAdmin || 
                             stripos($userRole, 'Encargado Compras') !== false || 
                             in_array('dash_compras', $permisos) || 
