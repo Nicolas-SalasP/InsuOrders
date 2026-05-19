@@ -85,20 +85,24 @@ try {
     }
 
     if (preg_match('/^uploads\/(.+)$/', $path, $matches)) {
-        $relativePath = 'uploads/' . $matches[1];
-        $pathApi = __DIR__ . '/' . $relativePath;
-        $pathPublic = __DIR__ . '/../' . $relativePath;
-
+        AuthMiddleware::verify();
+        $uploadsBaseApi    = realpath(__DIR__ . '/uploads');
+        $uploadsBasePublic = realpath(__DIR__ . '/../uploads');
+        $candidateApi    = realpath(__DIR__ . '/uploads/' . $matches[1]);
+        $candidatePublic = realpath(__DIR__ . '/../uploads/' . $matches[1]);
         $fullPathOnDisk = null;
 
-        if (file_exists($pathApi) && is_file($pathApi)) {
-            $fullPathOnDisk = $pathApi;
-        } elseif (file_exists($pathPublic) && is_file($pathPublic)) {
-            $fullPathOnDisk = $pathPublic;
+        if ($candidateApi && $uploadsBaseApi &&
+            str_starts_with($candidateApi, $uploadsBaseApi) &&
+            is_file($candidateApi)) {
+            $fullPathOnDisk = $candidateApi;
+        } elseif ($candidatePublic && $uploadsBasePublic &&
+                  str_starts_with($candidatePublic, $uploadsBasePublic) &&
+                  is_file($candidatePublic)) {
+            $fullPathOnDisk = $candidatePublic;
         }
 
         if ($fullPathOnDisk) {
-            $fullPathOnDisk = realpath($fullPathOnDisk);
             $mime = mime_content_type($fullPathOnDisk);
             $fileSize = filesize($fullPathOnDisk);
 
@@ -133,6 +137,8 @@ try {
             }
             exit;
         }
+        jsonResponse(404, ["error" => "Archivo no encontrado."]);
+        exit;
     }
 
     if ($path === '')
@@ -196,7 +202,6 @@ try {
             }
             break;
 
-        // --- MANTENCIÓN ---
         // --- MANTENCIÓN ---
         case 'mantencion':
             $c = new MantencionController();
