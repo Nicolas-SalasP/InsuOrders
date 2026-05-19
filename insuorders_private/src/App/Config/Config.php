@@ -4,6 +4,7 @@ namespace App\Config;
 class Config
 {
     private static ?string $jwtSecret = null;
+    private static ?string $testEnvFile = 'DISABLED';
 
     public static function getJwtSecret(): string
     {
@@ -11,15 +12,13 @@ class Config
             return self::$jwtSecret;
         }
 
-        // 1. Primero intentar variables de entorno (cargadas por phpdotenv)
         $secret = $_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET') ?? null;
         if ($secret !== null) {
             $secret = trim($secret);
         }
 
-        // 2. Fallback: leer .env manualmente si dotenv falló
-        if (empty($secret)) {
-            $envFile = __DIR__ . '/../../../.env';  // insuorders_private/.env
+        if (empty($secret) && self::$testEnvFile !== 'DISABLED') {
+            $envFile = self::$testEnvFile ?? __DIR__ . '/../../../.env';
             if (is_readable($envFile)) {
                 $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
                 foreach ($lines as $line) {
@@ -27,7 +26,6 @@ class Config
                     if ($line === '' || $line[0] === '#') continue;
                     if (strpos($line, 'JWT_SECRET=') === 0) {
                         $secret = trim(substr($line, strlen('JWT_SECRET=')));
-                        // Quitar comillas si las tiene
                         $secret = trim($secret, "\"'");
                         break;
                     }
@@ -46,6 +44,12 @@ class Config
         return self::$jwtSecret;
     }
 
+    public static function resetForTesting(): void
+    {
+        self::$jwtSecret = null;
+        self::$testEnvFile = 'DISABLED';
+    }
+
     const JWT_ALGO = 'HS256';
-    const JWT_EXP  = 28800; // 8 horas
+    const JWT_EXP  = 28800;
 }
