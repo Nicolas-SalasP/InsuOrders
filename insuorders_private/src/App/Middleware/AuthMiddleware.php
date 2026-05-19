@@ -35,7 +35,6 @@ class AuthMiddleware
             
             self::$currentUser = $data;
 
-            // C5 fix: solo comprobamos el nombre del rol, no el id numérico
             if (($data->rol ?? '') === 'Admin') {
                 return $userId;
             }
@@ -58,7 +57,6 @@ class AuthMiddleware
             return $userId;
 
         } catch (\Exception $e) {
-            // C4 fix: no exponer detalles del error al cliente
             error_log('[Auth] Token error: ' . $e->getMessage());
             self::jsonResponse(401, ["error" => "Acceso denegado. Token inválido o expirado."]);
         }
@@ -67,6 +65,14 @@ class AuthMiddleware
     public static function getUser()
     {
         return self::$currentUser;
+    }
+
+    public static function getCurrentUserId(): ?int
+    {
+        if (self::$currentUser && isset(self::$currentUser->id)) {
+            return (int) self::$currentUser->id;
+        }
+        return null;
     }
 
     private static function checkDbPermission($userId, $permisoCodigo)
@@ -103,7 +109,6 @@ class AuthMiddleware
         try {
             $decoded = JWT::decode($jwt, new Key(Config::getJwtSecret(), Config::JWT_ALGO));
             
-            // C5 fix: solo comprobamos el nombre del rol
             if (($decoded->data->rol ?? '') === 'Admin') {
                 return true;
             }

@@ -2,6 +2,8 @@
 namespace App\Repositories;
 
 use App\Database\Database;
+use App\Middleware\AuthMiddleware;
+use Exception;
 use PDO;
 
 class ProveedorRepository
@@ -53,16 +55,21 @@ class ProveedorRepository
     public function registrarLog($accion, $id, $descripcion)
     {
         try {
-            $sql = "INSERT INTO sistema_logs (usuario_id, modulo, accion, detalle) VALUES (1, 'Proveedores', :a, :d)";
-            $this->db->prepare($sql)->execute([':a' => $accion, ':d' => $descripcion]);
-        } catch (\Exception $e) {
+            $uid = AuthMiddleware::getCurrentUserId();
+            if ($uid === null) {
+                return;
+            }
+            $sql = "INSERT INTO sistema_logs (usuario_id, modulo, accion, detalle) VALUES (:uid, 'Proveedores', :a, :d)";
+            $this->db->prepare($sql)->execute([':uid' => $uid, ':a' => $accion, ':d' => $descripcion]);
+        } catch (Exception $e) {
+            error_log('[Audit] No se pudo registrar log de Proveedores: ' . $e->getMessage());
         }
     }
 
     public function create($data)
     {
         if ($this->existeRut($data['rut']))
-            throw new \Exception("El RUT {$data['rut']} ya existe.");
+            throw new Exception("El RUT {$data['rut']} ya existe.");
         $sql = "INSERT INTO proveedores (rut, nombre, direccion, email, telefono, contacto_vendedor, tipo_venta_id, comuna_id) 
                 VALUES (:rut, :nombre, :dir, :email, :tel, :contacto, :tv, :comuna)";
         $stmt = $this->db->prepare($sql);
@@ -84,7 +91,7 @@ class ProveedorRepository
     public function update($id, $data)
     {
         if ($this->existeRut($data['rut'], $id))
-            throw new \Exception("El RUT ya existe.");
+            throw new Exception("El RUT ya existe.");
         $sql = "UPDATE proveedores SET rut=:rut, nombre=:nombre, direccion=:dir, email=:email, telefono=:tel, contacto_vendedor=:contacto, tipo_venta_id=:tv, comuna_id=:comuna WHERE id=:id";
         $stmt = $this->db->prepare($sql);
         $res = $stmt->execute([

@@ -32,6 +32,7 @@ class InsumoRepository
                     WHERE isu.insumo_id = i.id AND isu.cantidad > 0) as ubicaciones_multiples
                 FROM insumos i 
                 LEFT JOIN categorias_insumo c ON i.categoria_id = c.id 
+                WHERE i.deleted_at IS NULL
                 ORDER BY i.nombre ASC";
 
         $insumos = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
@@ -202,7 +203,10 @@ class InsumoRepository
                     ]);
 
                 if ($stockTotal > 0) {
-                    $uidFinal = $usuarioId ?: 1;
+                    $uidFinal = $usuarioId ?: \App\Middleware\AuthMiddleware::getCurrentUserId();
+                    if (!$uidFinal) {
+                        throw new Exception('Operación de reubicación sin usuario autenticado.');
+                    }
                     $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, ubicacion_id, fecha) 
                                         VALUES (:iid, 3, :cant, :uid, 'Reubicación (Edición)', :ubi, NOW())")
                         ->execute([
@@ -230,10 +234,24 @@ class InsumoRepository
 
     public function delete($id)
     {
-        $this->db->prepare("DELETE FROM movimientos_inventario WHERE insumo_id = :id")->execute([':id' => $id]);
-        $this->db->prepare("DELETE FROM insumo_stock_ubicacion WHERE insumo_id = :id")->execute([':id' => $id]);
-        $this->db->prepare("DELETE FROM insumos WHERE id = :id")->execute([':id' => $id]);
-        return true;
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare("DELETE FROM insumo_stock_ubicacion WHERE insumo_id = :id")->execute([':id' => $id]);
+
+            $stmt = $this->db->prepare("UPDATE insumos SET deleted_at = NOW(), stock_actual = 0 WHERE id = :id AND deleted_at IS NULL");
+            $stmt->execute([':id' => $id]);
+
+            if ($stmt->rowCount() === 0) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     private function registrarMovimiento($datos)
@@ -338,7 +356,7 @@ class InsumoRepository
             $empleadoId = !empty($data['empleado_id']) ? $data['empleado_id'] : null;
             $ubicacionEnvioId = !empty($data['ubicacion_envio_id']) ? $data['ubicacion_envio_id'] : null;
 
-            $stmtLoc = $this->db->prepare("SELECT ubicacion_id, cantidad FROM insumo_stock_ubicacion WHERE insumo_id = ? AND cantidad > 0 ORDER BY cantidad DESC");
+            $stmtLoc = $this->db->prepare("SELECT ubicacion_id, cantidad FROM insumo_stock_ubicacion WHERE insumo_id = ? AND cantidad > 0 ORDER BY cantidad DESC FOR UPDATE");
             $stmtLoc->execute([$insumoId]);
             $stocks = $stmtLoc->fetchAll(PDO::FETCH_ASSOC);
 
@@ -442,21 +460,17 @@ class InsumoRepository
 
     private function imputarAOrdenTrabajo($otId, $insumoId, $cantidad)
     {
-        // Verificar si ya estaba planificado
         $stmtCheck = $this->db->prepare("SELECT id, cantidad, cantidad_entregada FROM detalle_solicitud WHERE solicitud_id = :ot AND insumo_id = :insumo");
         $stmtCheck->execute([':ot' => $otId, ':insumo' => $insumoId]);
         $existe = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
         if ($existe) {
-            // Ya existía: Actualizamos lo entregado
             $nuevaEntregada = floatval($existe['cantidad_entregada']) + $cantidad;
             $nuevoEstado = ($nuevaEntregada >= floatval($existe['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
 
             $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :ent, estado_linea = :st WHERE id = :id")
                 ->execute([':ent' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $existe['id']]);
         } else {
-            // No existía: Lo agregamos como ítem adicional (Entregado Full)
-            // Usamos parámetros distintos (:c1, :c2) para evitar errores de PDO en algunos drivers
             $sqlInsert = "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, estado_linea) 
                           VALUES (:ot, :insumo, :cant_sol, :cant_ent, 'ENTREGADO')";
             $this->db->prepare($sqlInsert)->execute([
@@ -467,13 +481,9 @@ class InsumoRepository
             ]);
         }
 
-        // Asegurar que la OT pase a estado "En Proceso" (2) si estaba pendiente
         $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $otId]);
     }
 
-    /**
-     * Obtiene la información enriquecida para generar el PDF
-     */
     public function getDatosComprobante($movimientoIds)
     {
         if (empty($movimientoIds))
@@ -484,22 +494,15 @@ class InsumoRepository
         $sql = "SELECT 
                     m.id, m.fecha, m.cantidad, m.observacion, m.referencia_id as ot_id,
                     i.nombre as insumo, i.codigo_sku, i.unidad_medida,
-                    
-                    -- Quién entregó (Usuario logueado)
                     u.nombre as bodeguero_nombre, u.apellido as bodeguero_apellido,
-                    
-                    -- Quién recibió (Empleado o Usuario)
                     COALESCE(e.nombre_completo, CONCAT(u_rec.nombre, ' ', u_rec.apellido), 'Sin Receptor') as receptor_nombre,
                     COALESCE(e.rut, u_rec.email, 'S/I') as receptor_rut,
-                    
-                    -- Destino
                     ub_dest.nombre as ubicacion_destino
                 FROM movimientos_inventario m
                 JOIN insumos i ON m.insumo_id = i.id
-                JOIN usuarios u ON m.usuario_id = u.id -- El que hizo la acción
-                
+                JOIN usuarios u ON m.usuario_id = u.id
                 LEFT JOIN empleados e ON m.empleado_id = e.id 
-                LEFT JOIN usuarios u_rec ON m.usuario_id = u_rec.id -- Fallback si se asignó a usuario
+                LEFT JOIN usuarios u_rec ON m.usuario_id = u_rec.id
                 LEFT JOIN ubicaciones ub_dest ON m.ubicacion_envio_id = ub_dest.id
                 
                 WHERE m.id IN ($placeholders)";
@@ -550,7 +553,8 @@ class InsumoRepository
 
                 $sqlDeleteUbicacion = "DELETE FROM insumo_stock_ubicacion WHERE insumo_id = :id";
                 $this->db->prepare($sqlDeleteUbicacion)->execute([':id' => $insumoId]);
-                $sqlDelete = "DELETE FROM insumos WHERE id = :id";
+
+                $sqlDelete = "UPDATE insumos SET deleted_at = NOW() WHERE id = :id AND deleted_at IS NULL";
                 $stmtDelete = $this->db->prepare($sqlDelete);
                 $stmtDelete->execute([':id' => $insumoId]);
                 $this->db->commit();
