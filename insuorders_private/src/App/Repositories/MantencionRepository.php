@@ -29,12 +29,7 @@ class MantencionRepository
                 t.nombre as tecnico_nombre, t.apellido as tecnico_apellido,
                 tpt.nombre as tipo_permiso_nombre,
                 (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') FROM ot_asignaciones oa JOIN usuarios usr ON oa.usuario_id = usr.id WHERE oa.solicitud_id = s.id) as asignados_nombres,
-                (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids,
-                COALESCE((SELECT SUM(ds.cantidad_entregada * i.precio_costo)
-                          FROM detalle_solicitud ds
-                          JOIN insumos i ON ds.insumo_id = i.id
-                          WHERE ds.solicitud_id = s.id
-                          AND ds.cantidad_entregada > 0), 0) as costo_total_ot
+                (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids
                 FROM solicitudes_ot s 
                 LEFT JOIN activos a ON s.activo_id = a.id 
                 LEFT JOIN activos sa ON s.sub_activo_id = sa.id
@@ -461,6 +456,15 @@ class MantencionRepository
                 $this->db->rollBack();
             throw $e;
         }
+    }
+
+    public function getRequierePermisoActual($id)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT requiere_permiso, tipo_permiso_id FROM solicitudes_ot WHERE id = :id"
+        );
+        $stmt->execute([':id' => $id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function updateOT($id, $data)
