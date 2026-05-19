@@ -6,7 +6,7 @@ export const usePermission = () => {
 
     const can = (permissionCode) => {
         // Si no hay datos de autenticación o token, denegar
-        if (!auth || !auth.token) return false;
+        if (!auth || !auth.id) return false;
 
         // Si es Admin (Rol ID 1 o string 'Admin'), tiene permiso total
         if (auth.rol === 'Admin' || auth.rol_id === 1) return true;

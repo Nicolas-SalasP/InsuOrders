@@ -55,12 +55,12 @@ const Sidebar = ({ onClose }) => {
             } catch (e) { }
         };
 
-        if (auth.token) {
+        if (auth.id) {
             checkData();
             const interval = setInterval(checkData, 15000);
             return () => clearInterval(interval);
         }
-    }, [auth.token, isClientePuro]);
+    }, [auth.id, isClientePuro]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {

@@ -10,7 +10,11 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const storedUser = localStorage.getItem("insuorders_user");
         if (storedUser) {
-            setAuth(JSON.parse(storedUser));
+            try {
+                setAuth(JSON.parse(storedUser));
+            } catch (e) {
+                localStorage.removeItem("insuorders_user");
+            }
         }
         setLoading(false);
     }, []);
@@ -20,12 +24,14 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/index.php/login', { username, password });
 
             if (response.data.success) {
+                // A1 fix: NO guardamos el token en localStorage.
+                // El JWT viaja en cookie HttpOnly que JS no puede leer.
+                // localStorage solo guarda info para la UI (nombre, rol, permisos).
                 const userData = {
                     id: response.data.user.id,
                     nombre: response.data.user.nombre,
                     rol: response.data.user.rol,
-                    permisos: response.data.user.permisos || [],
-                    token: response.data.token
+                    permisos: response.data.user.permisos || []
                 };
                 setAuth(userData);
                 localStorage.setItem("insuorders_user", JSON.stringify(userData));

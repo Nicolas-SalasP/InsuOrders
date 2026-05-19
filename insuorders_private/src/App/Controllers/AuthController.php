@@ -59,25 +59,33 @@ class AuthController
             ];
 
             $jwt = JWT::encode($tokenPayload, Config::getJwtSecret(), Config::JWT_ALGO);
+
+            // A1 fix: cookie endurecida — Secure cuando hay HTTPS, SameSite=Strict
+            $isHttps = (
+                !empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off'
+            ) || (
+                ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+            );
             setcookie(
                 "jwt_token",
                 $jwt,
                 [
-                    'expires' => $time + Config::JWT_EXP,
-                    'path' => '/',
+                    'expires'  => $time + Config::JWT_EXP,
+                    'path'     => '/',
                     'httponly' => true,
-                    'samesite' => 'Lax'
+                    'secure'   => $isHttps,
+                    'samesite' => 'Strict'
                 ]
             );
 
+            // A1 fix: no devolvemos el token en JSON. La cookie HttpOnly basta.
             echo json_encode([
                 "success" => true,
                 "message" => "Login exitoso",
-                "token" => $jwt,
                 "user" => [
-                    "id" => $user['id'],
-                    "nombre" => $user['nombre'],
-                    "rol" => $user['rol_nombre'],
+                    "id"       => $user['id'],
+                    "nombre"   => $user['nombre'],
+                    "rol"      => $user['rol_nombre'],
                     "permisos" => $permisos
                 ]
             ]);

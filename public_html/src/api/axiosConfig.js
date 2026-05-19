@@ -1,32 +1,36 @@
 import axios from 'axios';
-const baseURL = '/api'; 
+const baseURL = '/api';
+
+/**
+ * Lee el mensaje de error real desde una respuesta blob (Excel/PDF que
+ * devolvió JSON de error en lugar del archivo).
+ * Uso: catch(e) { const msg = await parseBlobError(e); ... }
+ */
+export const parseBlobError = async (error) => {
+    if (error?.response?.data instanceof Blob && error.response.data.type === 'application/json') {
+        try {
+            const text = await error.response.data.text();
+            const json = JSON.parse(text);
+            return json.error || json.message || 'Error desconocido.';
+        } catch { /* ignorar */ }
+    }
+    if (error?.response?.data?.error) return error.response.data.error;
+    if (error?.response?.data?.message) return error.response.data.message;
+    return null;
+};
 
 const api = axios.create({
-    baseURL: baseURL, 
+    baseURL: baseURL,
+    // A1 fix: enviar la cookie HttpOnly jwt_token automáticamente
+    withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     }
 });
 
-api.interceptors.request.use(
-    (config) => {
-        const storedUser = localStorage.getItem("insuorders_user");
-        if (storedUser) {
-            try {
-                const user = JSON.parse(storedUser);
-                if (user.token) {
-                    config.headers.Authorization = `Bearer ${user.token}`;
-                }
-            } catch (e) {
-                console.error("Error al leer token local", e);
-            }
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
-
+// Interceptor de respuesta — solo redirige al login si la sesión expira.
+// No leemos token de localStorage; la cookie HttpOnly hace todo el trabajo.
 api.interceptors.response.use(
     (response) => response,
     (error) => {
