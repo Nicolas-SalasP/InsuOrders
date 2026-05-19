@@ -33,6 +33,7 @@ const Compras = () => {
     const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null });
     const [confirmModal, setConfirmModal] = useState({ show: false, id: null });
     const [confirmOmitir, setConfirmOmitir] = useState({ show: false, ids: null, nombre: '' });
+    const [confirmReabrir, setConfirmReabrir] = useState({ show: false, id: null });
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirmCierreModal, setConfirmCierreModal] = useState({ show: false, id: null });
 
@@ -196,6 +197,27 @@ const Compras = () => {
 
     const solicitarAnulacion = () => { closeActionMenu(); if (actionMenu.id) setConfirmModal({ show: true, id: actionMenu.id }); };
 
+    const solicitarReabrir = () => {
+        closeActionMenu();
+        if (actionMenu.id) setConfirmReabrir({ show: true, id: actionMenu.id });
+    };
+
+    const ejecutarReabrir = async () => {
+        const id = confirmReabrir.id;
+        setConfirmReabrir({ show: false, id: null });
+        try {
+            const res = await api.post('/index.php/compras/reabrir', { id });
+            if (res.data.success) {
+                setMsg({ show: true, title: 'OC Reabierta', text: res.data.message, type: 'success' });
+                cargarOrdenes();
+            } else {
+                setMsg({ show: true, title: 'Error', text: res.data.message, type: 'error' });
+            }
+        } catch (error) {
+            setMsg({ show: true, title: 'Error', text: error.response?.data?.message || 'Error al reabrir.', type: 'error' });
+        }
+    };
+
     const confirmarAnulacion = async () => {
         setConfirmModal({ show: false, id: null });
         try {
@@ -347,6 +369,17 @@ const Compras = () => {
                 type="danger" 
             />
 
+            <ConfirmModal
+                show={confirmReabrir.show}
+                onClose={() => setConfirmReabrir({ show: false, id: null })}
+                onConfirm={ejecutarReabrir}
+                title="Reabrir Orden de Compra"
+                message="¿Confirmas reabrir esta OC? Volverá al estado anterior (Recepción Parcial o Emitida según corresponda) para continuar recibiendo materiales pendientes."
+                confirmText="Sí, Reabrir"
+                cancelText="Cancelar"
+                type="warning"
+            />
+
             {actionMenu.show && (
                 <div className="floating-action-menu shadow rounded bg-white border" style={{ position: 'absolute', top: actionMenu.top, left: actionMenu.left, zIndex: 9999, minWidth: '180px', padding: '0.5rem 0' }}>
                     {actionMenu.estado !== 'Anulada' && can('compras_adjuntar') && (
@@ -371,6 +404,17 @@ const Compras = () => {
                         >
                             <i className="bi bi-lock-fill me-2"></i> Cierre Parcial
                         </button>
+                    )}
+                    {actionMenu.estado === 'Cerrada Incompleta' && can('compras_recepcionar') && (
+                        <>
+                            <div className="dropdown-divider my-1"></div>
+                            <button
+                                className="dropdown-item py-2 px-3 d-flex align-items-center text-warning fw-bold"
+                                onClick={solicitarReabrir}
+                            >
+                                <i className="bi bi-arrow-counterclockwise me-2"></i> Reabrir OC
+                            </button>
+                        </>
                     )}
                 </div>
             )}
@@ -512,7 +556,6 @@ const Compras = () => {
                                         <th>Proveedor</th>
                                         <th>Fecha</th>
                                         <th>Destino</th>
-                                        <th>Monto Neto</th>
                                         <th>Monto Total</th>
                                         <th>Estado</th>
                                         <th className="text-end pe-4">Acciones</th>
@@ -525,7 +568,6 @@ const Compras = () => {
                                             <td><div className="fw-medium text-dark">{oc.proveedor}</div><small className="text-muted">{oc.proveedor_rut}</small></td>
                                             <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
                                             <td>{oc.destino ? <span className="badge bg-light text-dark border fw-normal">{oc.destino}</span> : <span className="text-muted small">-</span>}</td>
-                                            <td className="text-dark">${parseInt(oc.monto_neto || 0).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}</td>
                                             <td className="fw-bold text-dark">${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}</td>
                                             <td><span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span></td>
                                             <td className="text-end pe-4">

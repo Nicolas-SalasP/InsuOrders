@@ -4,9 +4,12 @@ namespace App\Services;
 use App\Repositories\OrdenCompraRepository;
 use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
+use App\Repositories\NotificationRepository;
 use App\Services\PDFService;
 use App\Database\Database;
 use App\Utils\FileUpload;
+use InvalidArgumentException;
+use RuntimeException;
 use Exception;
 
 class OrdenCompraService
@@ -174,95 +177,11 @@ class OrdenCompraService
             $urlPath = $this->publicUrlBase . $fileName;
             $this->repo->updateArchivo($id, $urlPath);
             return '/' . $urlPath;
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             error_log('[Upload] Archivo rechazado en OC: ' . $e->getMessage());
             throw new Exception('Tipo de archivo no permitido: ' . $e->getMessage());
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             throw new Exception('No se pudo guardar el archivo en el servidor.');
-        }
-    }
-
-    public function editarOrden($id, $data, $usuarioId)
-    {
-        $orden = $this->repo->getById($id);
-        if (!$orden) {
-            throw new Exception("Orden no encontrada.");
-        }
-
-        $estadoActual = $orden['cabecera']['estado_id'];
-        if ($estadoActual >= 3) {
-            throw new Exception("No se puede editar una orden que ya tiene recepciones o está cerrada.");
-        }
-
-        if (empty($data['items'])) {
-            throw new Exception("La orden debe tener al menos un ítem.");
-        }
-        if (empty($data['proveedor_id'])) {
-            throw new Exception("Seleccione un proveedor.");
-        }
-
-        try {
-            if (!$this->db->inTransaction()) {
-                $this->db->beginTransaction();
-            }
-
-            $itemsProcesados = [];
-            $montoNeto = 0;
-
-            foreach ($data['items'] as $item) {
-                $insumoId = $item['id'] ?? null;
-                if (!$insumoId) {
-                    $nuevoInsumo = [
-                        'codigo_sku'   => null,
-                        'nombre'       => $item['nombre'],
-                        'categoria_id' => 1,
-                        'stock_actual' => 0,
-                        'stock_minimo' => 0,
-                        'precio_costo' => $item['precio'],
-                        'unidad_medida' => $item['unidad'] ?? 'UN'
-                    ];
-                    $insumoId = $this->insumoRepo->create($nuevoInsumo);
-                }
-
-                $subtotal = $item['cantidad'] * $item['precio'];
-                $montoNeto += $subtotal;
-                $itemsProcesados[] = [
-                    'insumo_id' => $insumoId,
-                    'cantidad'  => $item['cantidad'],
-                    'precio'    => $item['precio'],
-                    'total'     => $subtotal,
-                    'nota_linea' => $item['nota_linea'] ?? null
-                ];
-            }
-
-            $porcIVA = isset($data['impuesto_porcentaje']) ? floatval($data['impuesto_porcentaje']) : 19.0;
-            $iva     = $montoNeto * ($porcIVA / 100);
-
-            $cabecera = [
-                'proveedor_id'        => $data['proveedor_id'],
-                'monto_neto'          => $montoNeto,
-                'impuesto'            => $iva,
-                'monto_total'         => $montoNeto + $iva,
-                'moneda'              => $data['moneda'] ?? 'CLP',
-                'tipo_cambio'         => $data['tipo_cambio'] ?? 1,
-                'numero_cotizacion'   => $data['numero_cotizacion'] ?? null,
-                'impuesto_porcentaje' => $porcIVA,
-                'destino'             => $data['destino'] ?? null
-            ];
-
-            $this->repo->editarOrden($id, $cabecera, $itemsProcesados);
-
-            if ($this->db->inTransaction()) {
-                $this->db->commit();
-            }
-
-            return $id;
-
-        } catch (Exception $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-            throw $e;
         }
     }
 
@@ -331,7 +250,7 @@ class OrdenCompraService
         $resultado = $this->repo->archivarSolicitudesPendientes($ids);
 
         if ($resultado && !empty($datosNotificacion)) {
-            $notifRepo = new \App\Repositories\NotificationRepository();
+            $notifRepo = new NotificationRepository();
 
             foreach ($datosNotificacion as $dato) {
                 $mensaje = "Gestión de Compras: El insumo '{$dato['nombre_insumo']}' para la OT #{$dato['ot_id']} ha sido marcado como 'No Comprar' (Omitido).";
@@ -361,5 +280,10 @@ class OrdenCompraService
         }
 
         $this->repo->forzarCierre($id);
+    }
+
+    public function reabrirOC($id)
+    {
+        return $this->repo->reabrirOC($id);
     }
 }
