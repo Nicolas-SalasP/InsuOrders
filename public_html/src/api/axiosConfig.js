@@ -7,17 +7,18 @@ const baseURL = '/api';
  * Uso: catch(e) { const msg = await parseBlobError(e); ... }
  */
 export const parseBlobError = async (error) => {
-    if (error?.response?.data instanceof Blob && error.response.data.type === 'application/json') {
+    const data = error?.response?.data
+    if (data && typeof data.text === 'function' && data.type === 'application/json') {
         try {
-            const text = await error.response.data.text();
-            const json = JSON.parse(text);
-            return json.error || json.message || 'Error desconocido.';
-        } catch { /* ignorar */ }
+            const text = await data.text()
+            const json = JSON.parse(text)
+            return json.error || json.message || 'Error desconocido.'
+        } catch { }
     }
-    if (error?.response?.data?.error) return error.response.data.error;
-    if (error?.response?.data?.message) return error.response.data.message;
-    return null;
-};
+    if (error?.response?.data?.error) return error.response.data.error
+    if (error?.response?.data?.message) return error.response.data.message
+    return null
+}
 
 const api = axios.create({
     baseURL: baseURL,
