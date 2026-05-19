@@ -546,6 +546,21 @@ class MantencionRepository
         }
     }
 
+    public function reabrirOT($id)
+    {
+        $stmt = $this->db->prepare("SELECT estado_id FROM solicitudes_ot WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $estadoActual = (int) $stmt->fetchColumn();
+
+        if ($estadoActual !== 5) {
+            throw new Exception("Solo se pueden reabrir OTs en estado Completada.");
+        }
+
+        $this->db->prepare(
+            "UPDATE solicitudes_ot SET estado_id = 4, fecha_cierre = NULL WHERE id = :id"
+        )->execute([':id' => $id]);
+    }
+
     public function finalizarTareaTecnico($otId, $usuarioId, $notas = '')
     {
         $sql = "UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW(), notas_cierre = :notas WHERE solicitud_id = :otId AND usuario_id = :uid";

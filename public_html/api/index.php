@@ -231,6 +231,12 @@ try {
                 (new MantencionController())->finalizar();
             break;
 
+        case 'mantencion/reabrir':
+            AuthMiddleware::hasPermission('mant_editar');
+            if ($method === 'POST')
+                (new MantencionController())->reabrirOT();
+            break;
+
         case 'mantencion/asignar-ot':
             AuthMiddleware::hasPermission('mant_editar');
             if ($method === 'POST')
@@ -400,6 +406,12 @@ try {
                 $uid = AuthMiddleware::verify('compras_crear');
                 (new OrdenCompraController())->store($uid);
             }
+            break;
+
+        case 'compras/editar':
+            $uid = AuthMiddleware::verify('compras_crear');
+            if ($method === 'PUT')
+                (new OrdenCompraController())->editar($uid);
             break;
 
         case 'compras/filtros':

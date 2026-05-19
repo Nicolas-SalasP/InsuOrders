@@ -164,6 +164,11 @@ class MantencionService
         $this->repo->delete($id);
     }
 
+    public function reabrirOT($id)
+    {
+        $this->repo->reabrirOT($id);
+    }
+
     // =================================================================================
     // 2. GESTIÓN DE ACTIVOS
     // =================================================================================

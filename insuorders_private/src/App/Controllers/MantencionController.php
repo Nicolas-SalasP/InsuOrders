@@ -115,6 +115,27 @@ class MantencionController
         }
     }
 
+    public function reabrirOT()
+    {
+        try {
+            $data = json_decode(file_get_contents("php://input"), true);
+            $otId = $data['id'] ?? null;
+
+            if (!$otId) {
+                http_response_code(400);
+                echo json_encode(["success" => false, "message" => "Falta ID de la OT."]);
+                return;
+            }
+
+            $this->service->reabrirOT($otId);
+            echo json_encode(["success" => true, "message" => "OT reabierta correctamente."]);
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
     public function finalizar()
     {
         try {
