@@ -17,11 +17,14 @@ class OrdenCompraRepository
     public function getAll($filtros = [])
     {
         $sql = "SELECT DISTINCT 
-                    oc.id, oc.fecha_creacion, oc.monto_total, oc.url_archivo,
+                    oc.id, oc.fecha_creacion,
+                    oc.monto_neto, oc.impuesto, oc.monto_total,
+                    oc.moneda, oc.tipo_cambio,
+                    oc.numero_cotizacion, oc.impuesto_porcentaje,
+                    oc.destino,
                     p.nombre as proveedor, p.rut as proveedor_rut,
                     e.nombre as estado, e.id as estado_id,
-                    u.nombre as creador,
-                    oc.destino 
+                    u.nombre as creador
                 FROM ordenes_compra oc
                 JOIN proveedores p ON oc.proveedor_id = p.id
                 JOIN estados_orden_compra e ON oc.estado_id = e.id
