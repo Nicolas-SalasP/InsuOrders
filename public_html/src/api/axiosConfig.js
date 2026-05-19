@@ -1,11 +1,6 @@
 import axios from 'axios';
 const baseURL = '/api';
 
-/**
- * Lee el mensaje de error real desde una respuesta blob (Excel/PDF que
- * devolvió JSON de error en lugar del archivo).
- * Uso: catch(e) { const msg = await parseBlobError(e); ... }
- */
 export const parseBlobError = async (error) => {
     const data = error?.response?.data
     if (data && typeof data.text === 'function' && data.type === 'application/json') {
@@ -22,7 +17,6 @@ export const parseBlobError = async (error) => {
 
 const api = axios.create({
     baseURL: baseURL,
-    // A1 fix: enviar la cookie HttpOnly jwt_token automáticamente
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
@@ -30,8 +24,6 @@ const api = axios.create({
     }
 });
 
-// Interceptor de respuesta — solo redirige al login si la sesión expira.
-// No leemos token de localStorage; la cookie HttpOnly hace todo el trabajo.
 api.interceptors.response.use(
     (response) => response,
     (error) => {
