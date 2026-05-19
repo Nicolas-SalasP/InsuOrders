@@ -2,7 +2,7 @@ name: InsuOrders CI/CD
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev/NicolasSalas]
     tags:     ['v*']
   pull_request:
     branches: [main]
