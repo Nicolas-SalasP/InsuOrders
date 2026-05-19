@@ -101,6 +101,26 @@ class OrdenCompraController
         }
     }
 
+    public function editar($usuarioId = null)
+    {
+        $data = json_decode(file_get_contents("php://input"), true);
+        $id   = $data['id'] ?? null;
+
+        if (!$usuarioId || !$id) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Faltan datos obligatorios."]);
+            return;
+        }
+
+        try {
+            $this->service->editarOrden($id, $data, $usuarioId);
+            echo json_encode(["success" => true, "message" => "Orden actualizada correctamente.", "id" => $id]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+        }
+    }
+
     public function recepcionar($usuarioId)
     {
         AuthMiddleware::verify();
