@@ -390,11 +390,11 @@ class ExportController
                 $d['numero_cotizacion'] ?? '',
                 $d['destino'] ?? '',
                 $d['moneda'] ?? 'CLP',
-                $d['tipo_cambio'] ?? 1,
-                $d['monto_neto'] ?? 0,
+                (int) ($d['tipo_cambio'] ?? 1),
+                (int) ($d['monto_neto'] ?? 0),
                 ($d['impuesto_porcentaje'] ?? 19) . '%',
-                $d['impuesto'] ?? 0,
-                $d['monto_total'] ?? 0,
+                (int) ($d['impuesto'] ?? 0),
+                (int) ($d['monto_total'] ?? 0),
                 $d['creador'] ?? 'Sistema'
             ]
         );

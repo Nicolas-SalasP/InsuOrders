@@ -17,11 +17,14 @@ class OrdenCompraRepository
     public function getAll($filtros = [])
     {
         $sql = "SELECT DISTINCT 
-                    oc.id, oc.fecha_creacion, oc.monto_total, oc.url_archivo,
+                    oc.id, oc.fecha_creacion,
+                    oc.monto_neto, oc.impuesto, oc.monto_total,
+                    oc.moneda, oc.tipo_cambio,
+                    oc.numero_cotizacion, oc.impuesto_porcentaje,
+                    oc.destino,
                     p.nombre as proveedor, p.rut as proveedor_rut,
                     e.nombre as estado, e.id as estado_id,
-                    u.nombre as creador,
-                    oc.destino 
+                    u.nombre as creador
                 FROM ordenes_compra oc
                 JOIN proveedores p ON oc.proveedor_id = p.id
                 JOIN estados_orden_compra e ON oc.estado_id = e.id
@@ -289,55 +292,6 @@ class OrdenCompraRepository
         } catch (Exception $e) {
             $this->db->rollBack();
             throw $e;
-        }
-    }
-
-    public function editarOrden($id, $cabecera, $items)
-    {
-        $this->db->prepare(
-            "UPDATE ordenes_compra SET
-                proveedor_id        = :proveedor_id,
-                monto_neto          = :neto,
-                impuesto            = :imp,
-                monto_total         = :total,
-                moneda              = :moneda,
-                tipo_cambio         = :tc,
-                numero_cotizacion   = :cotiz,
-                impuesto_porcentaje = :iva_pct,
-                destino             = :dest
-             WHERE id = :id"
-        )->execute([
-            ':proveedor_id' => $cabecera['proveedor_id'],
-            ':neto'         => $cabecera['monto_neto'],
-            ':imp'          => $cabecera['impuesto'],
-            ':total'        => $cabecera['monto_total'],
-            ':moneda'       => $cabecera['moneda'],
-            ':tc'           => $cabecera['tipo_cambio'],
-            ':cotiz'        => $cabecera['numero_cotizacion'],
-            ':iva_pct'      => $cabecera['impuesto_porcentaje'],
-            ':dest'         => $cabecera['destino'],
-            ':id'           => $id,
-        ]);
-
-        $this->db->prepare(
-            "DELETE FROM detalle_orden_compra WHERE orden_compra_id = :id"
-        )->execute([':id' => $id]);
-
-        $stmtDet = $this->db->prepare(
-            "INSERT INTO detalle_orden_compra
-                (orden_compra_id, insumo_id, cantidad_solicitada, precio_unitario, total_linea, nota_linea)
-             VALUES (:oc, :ins, :qty, :precio, :total, :nota)"
-        );
-
-        foreach ($items as $item) {
-            $stmtDet->execute([
-                ':oc'     => $id,
-                ':ins'    => $item['insumo_id'],
-                ':qty'    => $item['cantidad'],
-                ':precio' => $item['precio'],
-                ':total'  => $item['total'],
-                ':nota'   => $item['nota_linea'],
-            ]);
         }
     }
 
