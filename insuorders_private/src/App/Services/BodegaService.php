@@ -42,11 +42,12 @@ class BodegaService
 
         if (!empty($data['empleado_id']) && empty($data['detalle_id'])) {
             $datosEntrega = [
-                'insumo_id' => $data['insumo_id'],
-                'cantidad' => (float) $cantidad,
-                'empleado_id' => (int) $data['empleado_id'],
-                'observacion' => $data['observacion'] ?? 'Entrega directa desde Bodega',
-                'bodeguero_id' => $usuarioId
+                'insumo_id'  => $data['insumo_id'],
+                'cantidad'   => (float) $cantidad,
+                'empleado_id'=> (int) $data['empleado_id'],
+                'observacion'=> $data['observacion'] ?? 'Entrega directa desde Bodega',
+                'bodeguero_id'=> $usuarioId,
+                'ot_id'      => !empty($data['ot_id']) ? (int) $data['ot_id'] : null
             ];
             $this->operarioRepo->asignarInsumo($datosEntrega);
             return "Material entregado al empleado correctamente";
