@@ -320,15 +320,15 @@ class InsumoRepository
 
     public function getNextSku()
     {
-        $sql = "SELECT MAX(CAST(codigo_sku AS UNSIGNED)) as max_sku 
+        $sql = "SELECT CAST((MAX(CAST(TRIM(codigo_sku) AS UNSIGNED)) + 1) AS CHAR) as next_sku 
                 FROM insumos 
-                WHERE codigo_sku REGEXP '^[0-9]+$'";
+                WHERE TRIM(codigo_sku) REGEXP '^[0-9]+$'";
 
         $stmt = $this->db->query($sql);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($result && $result['max_sku']) {
-            return number_format($result['max_sku'] + 1, 0, '', '');
+        if ($result && !empty($result['next_sku'])) {
+            return $result['next_sku'];
         }
         return '990000000000001';
     }
