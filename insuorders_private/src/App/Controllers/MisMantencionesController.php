@@ -19,7 +19,7 @@ class MisMantencionesController
     public function index()
     {
         try {
-            AuthMiddleware::hasPermission('ope_mant');
+            
             $userId = AuthMiddleware::verify();
 
             $data = $this->service->listarMisOts($userId);
@@ -33,7 +33,7 @@ class MisMantencionesController
     public function guardar()
     {
         try {
-            AuthMiddleware::hasPermission('ope_mant');
+            
             $userId = AuthMiddleware::verify();
 
             $input = [];
@@ -119,7 +119,7 @@ class MisMantencionesController
     public function detalle()
     {
         try {
-            AuthMiddleware::hasPermission('ope_mant');
+            
             $userId = AuthMiddleware::verify();
 
             $otId = $_GET['id'] ?? null;
@@ -137,7 +137,7 @@ class MisMantencionesController
     public function actualizarEstadoManual()
     {
         try {
-            AuthMiddleware::hasPermission('ope_mant');
+            
             $input = json_decode(file_get_contents("php://input"), true);
 
             $otId = $input['ot_id'] ?? null;

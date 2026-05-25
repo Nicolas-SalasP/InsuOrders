@@ -231,9 +231,11 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         }
     };
 
-    const handleDeleteKit = (id) => {
+    const handleDeleteKit = (insumoId) => {
         if (isReadOnly) return;
-        api.delete(`/index.php/mantencion/kit?id=${id}`).then(() => cargarKit(activo.id)).catch(console.error);
+        api.delete(`/index.php/mantencion/kit?activo_id=${activo.id}&insumo_id=${insumoId}`)
+            .then(() => cargarKit(activo.id))
+            .catch(console.error);
     };
 
     const subirDoc = async () => {
