@@ -501,7 +501,7 @@ class OperarioRepository
                              WHERE solicitud_id = :ot AND insumo_id = :ins LIMIT 1"
                         );
                         $stmtD->execute([':ot' => $entrega['referencia_ot_id'], ':ins' => $entrega['insumo_id']]);
-                        $detalle = $stmtD->fetch(PDO::FETCH_ASSOC);
+                        $detalle = $stmtD->fetch(\PDO::FETCH_ASSOC);
 
                         if ($detalle) {
                             $nuevaEntregada = floatval($detalle['cantidad_entregada']) + floatval($entrega['cantidad_entregada']);
