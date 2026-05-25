@@ -31,7 +31,8 @@ class MantencionController
             echo json_encode(["success" => false, "message" => "Faltan datos"]);
             return;
         }
-        echo json_encode(["success" => true, "data" => $this->service->obtenerDetalleOT($id)]);
+        $userId = AuthMiddleware::getCurrentUserId() ?: 0;
+        echo json_encode(["success" => true, "data" => $this->service->obtenerDetalleOT($id, $userId)]);
     }
 
     public function tiposPermiso()
@@ -516,9 +517,9 @@ class MantencionController
             return;
         }
         try {
-            $asignados = isset($data['asignados']) ? array_map('intval', $data['asignados']) : null;
+            $asignados = isset($data['asignados']) ? array_map('intval', $data['asignados']) : [];
             $ubicacion = array_key_exists('ubicacion', $data) ? $data['ubicacion'] : null;
-            $this->service->repo->asignarOT($otId, $asignados, $ubicacion);
+            $this->service->asignarOT($otId, $asignados, $ubicacion);
             echo json_encode(["success" => true, "message" => "Asignación actualizada."]);
         } catch (Exception $e) {
             http_response_code(500);

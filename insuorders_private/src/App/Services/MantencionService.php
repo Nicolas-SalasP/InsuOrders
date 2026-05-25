@@ -35,13 +35,23 @@ class MantencionService
         return $this->repo->getTiposPermiso();
     }
 
-    public function obtenerDetalleOT($id)
+    public function asignarOT($otId, array $asignados, $ubicacion = null)
+    {
+        $this->repo->syncAsignaciones($otId, $asignados);
+        if ($ubicacion !== null) {
+            $this->repo->getDb()->prepare(
+                "UPDATE solicitudes_ot SET ubicacion = :ub WHERE id = :id"
+            )->execute([':ub' => $ubicacion, ':id' => $otId]);
+        }
+    }
+
+    public function obtenerDetalleOT($id, $userId = 0)
     {
         $header = $this->repo->getOTHeader($id);
         if (!$header)
             return null;
 
-        $items = $this->repo->getDetallesOT($id);
+        $items = $this->repo->getDetallesOT($id, $userId);
         $asignaciones = $this->repo->getAsignadosOT($id);
 
         return array_merge($header, [

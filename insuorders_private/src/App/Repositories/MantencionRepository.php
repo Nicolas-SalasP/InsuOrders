@@ -353,15 +353,26 @@ class MantencionRepository
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function getDetallesOT($id)
+    public function getDetallesOT($id, $userId = 0)
     {
         $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.cantidad_entregada, d.estado_linea, 
-                i.nombre, i.codigo_sku, i.stock_actual, i.unidad_medida, oc.id as oc_id, prov.nombre as oc_proveedor,
-                (SELECT GROUP_CONCAT(DISTINCT emp.nombre_completo SEPARATOR ', ') FROM movimientos_inventario mi JOIN empleados emp ON mi.empleado_id = emp.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por
+                i.nombre, i.codigo_sku, i.stock_actual, i.unidad_medida, i.precio_costo,
+                oc.id as oc_id, prov.nombre as oc_proveedor,
+                (SELECT GROUP_CONCAT(DISTINCT emp.nombre_completo SEPARATOR ', ') FROM movimientos_inventario mi JOIN empleados emp ON mi.empleado_id = emp.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por,
+                COALESCE((
+                    SELECT SUM(ep.cantidad_entregada - ep.cantidad_utilizada)
+                    FROM entregas_personal ep
+                    WHERE ep.insumo_id = d.insumo_id
+                        AND ep.usuario_operario_id = :uid
+                        AND ep.estado_id IN (1, 2)
+                        AND (ep.cantidad_entregada - ep.cantidad_utilizada) > 0
+                ), 0) as stock_usuario
                 FROM detalle_solicitud d JOIN insumos i ON d.insumo_id = i.id 
-                LEFT JOIN ordenes_compra oc ON d.orden_compra_id = oc.id LEFT JOIN proveedores prov ON oc.proveedor_id = prov.id WHERE d.solicitud_id = :id";
+                LEFT JOIN ordenes_compra oc ON d.orden_compra_id = oc.id
+                LEFT JOIN proveedores prov ON oc.proveedor_id = prov.id
+                WHERE d.solicitud_id = :id";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':id' => $id, ':uid' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     public function getAsignadosOT($otId)

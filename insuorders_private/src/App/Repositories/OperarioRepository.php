@@ -104,19 +104,42 @@ class OperarioRepository
             ]);
 
             $sqlEntrega = "INSERT INTO entregas_personal 
-            (insumo_id, usuario_operario_id, receptor_externo, usuario_bodeguero_id, cantidad_entregada, cantidad_utilizada, estado_id, observacion, fecha_entrega, fecha_aceptacion) 
-            VALUES (:iid, :u_op, :ext, :u_bod, :cant, 0, :est, :obs, NOW(), :fecha_ac)";
+            (insumo_id, usuario_operario_id, receptor_externo, usuario_bodeguero_id, cantidad_entregada, cantidad_utilizada, estado_id, observacion, fecha_entrega, fecha_aceptacion, referencia_ot_id) 
+            VALUES (:iid, :u_op, :ext, :u_bod, :cant, 0, :est, :obs, NOW(), :fecha_ac, :otid)";
 
             $this->db->prepare($sqlEntrega)->execute([
-                ':iid' => $insumoId,
-                ':u_op' => $usuarioOperarioId,
-                ':ext' => $receptorExterno,
-                ':u_bod' => $bodegueroId,
-                ':cant' => $cantidadRequerida,
-                ':est' => $estadoId,
-                ':obs' => $datos['observacion'] ?? null,
-                ':fecha_ac' => $fechaAceptacion
+                ':iid'     => $insumoId,
+                ':u_op'    => $usuarioOperarioId,
+                ':ext'     => $receptorExterno,
+                ':u_bod'   => $bodegueroId,
+                ':cant'    => $cantidadRequerida,
+                ':est'     => $estadoId,
+                ':obs'     => $datos['observacion'] ?? null,
+                ':fecha_ac'=> $fechaAceptacion,
+                ':otid'    => !empty($datos['ot_id']) ? $datos['ot_id'] : null
             ]);
+
+            if (!empty($datos['ot_id']) && !empty($usuarioOperarioId)) {
+                $stmtCheck = $this->db->prepare(
+                    "SELECT id, cantidad, cantidad_entregada FROM detalle_solicitud 
+                     WHERE solicitud_id = :ot AND insumo_id = :ins LIMIT 1"
+                );
+                $stmtCheck->execute([':ot' => $datos['ot_id'], ':ins' => $insumoId]);
+                $detalle = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
+
+                if ($detalle) {
+                    $nuevaEntregada = floatval($detalle['cantidad_entregada']) + $cantidadRequerida;
+                    $nuevoEstadoLinea = ($nuevaEntregada >= floatval($detalle['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
+                    $this->db->prepare(
+                        "UPDATE detalle_solicitud SET cantidad_entregada = :ent, estado_linea = :st WHERE id = :id"
+                    )->execute([':ent' => $nuevaEntregada, ':st' => $nuevoEstadoLinea, ':id' => $detalle['id']]);
+                } else {
+                    $this->db->prepare(
+                        "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, estado_linea)
+                         VALUES (:ot, :ins, :cant, :ent, 'ENTREGADO')"
+                    )->execute([':ot' => $datos['ot_id'], ':ins' => $insumoId, ':cant' => $cantidadRequerida, ':ent' => $cantidadRequerida]);
+                }
+            }
 
             $this->db->commit();
             return true;
@@ -254,6 +277,36 @@ class OperarioRepository
                 $nuevoEstado = 2;
                 $sqlUpd = "UPDATE entregas_personal SET estado_id = :est, fecha_aceptacion = NOW() WHERE id = :id";
                 $this->db->prepare($sqlUpd)->execute([':est' => $nuevoEstado, ':id' => $entregaId]);
+
+                if (!empty($entrega['referencia_ot_id'])) {
+                    $sqlDetalle = "SELECT id, cantidad_entregada FROM detalle_solicitud 
+                                   WHERE solicitud_id = :ot AND insumo_id = :ins 
+                                   LIMIT 1";
+                    $stmtD = $this->db->prepare($sqlDetalle);
+                    $stmtD->execute([
+                        ':ot'  => $entrega['referencia_ot_id'],
+                        ':ins' => $entrega['insumo_id']
+                    ]);
+                    $detalle = $stmtD->fetch(\PDO::FETCH_ASSOC);
+
+                    if ($detalle) {
+                        $nuevaEntregada = floatval($detalle['cantidad_entregada']) + floatval($entrega['cantidad_entregada']);
+                        $stmtDs = $this->db->prepare(
+                            "SELECT cantidad FROM detalle_solicitud WHERE id = :id"
+                        );
+                        $stmtDs->execute([':id' => $detalle['id']]);
+                        $cantSolicitada = floatval($stmtDs->fetchColumn());
+                        $nuevoEstadoLinea = ($nuevaEntregada >= $cantSolicitada) ? 'ENTREGADO' : 'PARCIAL';
+
+                        $this->db->prepare(
+                            "UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id"
+                        )->execute([
+                            ':cant' => $nuevaEntregada,
+                            ':st'   => $nuevoEstadoLinea,
+                            ':id'   => $detalle['id']
+                        ]);
+                    }
+                }
             }
 
             $this->db->commit();
@@ -441,6 +494,23 @@ class OperarioRepository
                     $nuevoEstado = 2;
                     $sqlUpd = "UPDATE entregas_personal SET estado_id = :est, fecha_aceptacion = NOW() WHERE id = :id";
                     $this->db->prepare($sqlUpd)->execute([':est' => $nuevoEstado, ':id' => $entregaId]);
+
+                    if (!empty($entrega['referencia_ot_id'])) {
+                        $stmtD = $this->db->prepare(
+                            "SELECT id, cantidad_entregada, cantidad FROM detalle_solicitud 
+                             WHERE solicitud_id = :ot AND insumo_id = :ins LIMIT 1"
+                        );
+                        $stmtD->execute([':ot' => $entrega['referencia_ot_id'], ':ins' => $entrega['insumo_id']]);
+                        $detalle = $stmtD->fetch(\PDO::FETCH_ASSOC);
+
+                        if ($detalle) {
+                            $nuevaEntregada = floatval($detalle['cantidad_entregada']) + floatval($entrega['cantidad_entregada']);
+                            $nuevoEstadoLinea = ($nuevaEntregada >= floatval($detalle['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
+                            $this->db->prepare(
+                                "UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id"
+                            )->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstadoLinea, ':id' => $detalle['id']]);
+                        }
+                    }
                 }
             }
 
