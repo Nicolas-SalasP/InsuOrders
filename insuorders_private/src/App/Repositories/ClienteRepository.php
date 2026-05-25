@@ -80,11 +80,10 @@ class ClienteRepository
                 JOIN estados_solicitud e ON s.estado_id = e.id
                 LEFT JOIN activos a ON s.activo_id = a.id
                 LEFT JOIN usuarios u ON s.usuario_solicitante_id = u.id
-                WHERE s.usuario_solicitante_id = :uid
                 ORDER BY s.fecha_solicitud DESC";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':uid' => $usuarioId]); 
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
