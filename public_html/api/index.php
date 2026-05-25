@@ -616,25 +616,25 @@ try {
 
         // --- MIS MANTENCIONES ---
         case 'mis-mantenciones':
-            AuthMiddleware::hasPermission('mant_ver');
+            AuthMiddleware::hasPermission('ope_ver');
             if ($method === 'GET')
                 (new MisMantencionesController())->index();
             break;
 
         case 'mis-mantenciones/guardar':
-            AuthMiddleware::hasPermission('mant_editar');
+            AuthMiddleware::hasPermission('ope_mant');
             if ($method === 'POST')
                 (new MisMantencionesController())->guardar();
             break;
 
         case 'mis-mantenciones/detalle':
-            AuthMiddleware::hasPermission('mant_ver');
+            AuthMiddleware::hasPermission('ope_ver');
             if ($method === 'GET')
                 (new MisMantencionesController())->detalle();
             break;
 
         case 'mis-mantenciones/cambiar-estado':
-            AuthMiddleware::hasPermission('mant_editar');
+            AuthMiddleware::hasPermission('ope_mant');
             if ($method === 'POST')
                 (new MisMantencionesController())->actualizarEstadoManual();
             break;

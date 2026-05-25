@@ -29,7 +29,12 @@ class MantencionRepository
                 t.nombre as tecnico_nombre, t.apellido as tecnico_apellido,
                 tpt.nombre as tipo_permiso_nombre,
                 (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') FROM ot_asignaciones oa JOIN usuarios usr ON oa.usuario_id = usr.id WHERE oa.solicitud_id = s.id) as asignados_nombres,
-                (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids
+                (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids,
+                COALESCE((SELECT SUM(ds.cantidad_entregada * i.precio_costo)
+                          FROM detalle_solicitud ds
+                          JOIN insumos i ON ds.insumo_id = i.id
+                          WHERE ds.solicitud_id = s.id
+                          AND ds.cantidad_entregada > 0), 0) as costo_total_ot
                 FROM solicitudes_ot s 
                 LEFT JOIN activos a ON s.activo_id = a.id 
                 LEFT JOIN activos sa ON s.sub_activo_id = sa.id
@@ -557,17 +562,27 @@ class MantencionRepository
 
     public function finalizarTareaTecnico($otId, $usuarioId, $notas = '')
     {
-        $sql = "UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW(), notas_cierre = :notas WHERE solicitud_id = :otId AND usuario_id = :uid";
-        $this->db->prepare($sql)->execute([':notas' => $notas, ':otId' => $otId, ':uid' => $usuarioId]);
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = :id AND usuario_id = :uid");
+        $stmt->execute([':id' => $otId, ':uid' => $usuarioId]);
+        $estaAsignado = (int) $stmt->fetchColumn() > 0;
 
-        $pendientes = $this->db->query("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = $otId AND completado = 0")->fetchColumn();
+        if ($estaAsignado) {
+            $sql = "UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW(), notas_cierre = :notas WHERE solicitud_id = :otId AND usuario_id = :uid";
+            $this->db->prepare($sql)->execute([':notas' => $notas, ':otId' => $otId, ':uid' => $usuarioId]);
 
-        if ($pendientes == 0) {
+            $pendientes = $this->db->query("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = $otId AND completado = 0")->fetchColumn();
+
+            if ($pendientes == 0) {
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
+                return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
+            } else {
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'En Proceso') WHERE id = :id")->execute([':id' => $otId]);
+                return ['status' => 'partial', 'message' => 'Tarea registrada. OT sigue abierta.'];
+            }
+        } else {
+            $this->db->prepare("UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW() WHERE solicitud_id = :id")->execute([':id' => $otId]);
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
             return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
-        } else {
-            $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'En Proceso') WHERE id = :id")->execute([':id' => $otId]);
-            return ['status' => 'partial', 'message' => 'Tarea registrada. OT sigue abierta.'];
         }
     }
 
