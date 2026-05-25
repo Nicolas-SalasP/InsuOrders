@@ -802,14 +802,17 @@ try {
             break;
 
         case 'mantenedores/ubicaciones-envio':
-            AuthMiddleware::verify(['Admin']);
             $controller = new MantenedoresController();
-            if ($method === 'GET')
+            if ($method === 'GET') {
+                AuthMiddleware::verify(); 
                 $controller->getUbicacionesEnvio();
-            if ($method === 'POST')
+            } elseif ($method === 'POST') {
+                AuthMiddleware::verify(['Admin']); 
                 $controller->saveUbicacionEnvio();
-            if ($method === 'DELETE')
+            } elseif ($method === 'DELETE') {
+                AuthMiddleware::verify(['Admin']); 
                 $controller->deleteUbicacionEnvio();
+            }
             break;
 
         case 'mantenedores/tipos-permiso':
