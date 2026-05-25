@@ -27,7 +27,7 @@ class OperarioRepository
 
             $sqlStock = "SELECT id, ubicacion_id, cantidad FROM insumo_stock_ubicacion 
                     WHERE insumo_id = :iid AND cantidad > 0 
-                    ORDER BY cantidad DESC";
+                    ORDER BY cantidad DESC FOR UPDATE";
             $stmtStock = $this->db->prepare($sqlStock);
             $stmtStock->execute([':iid' => $insumoId]);
             $ubicaciones = $stmtStock->fetchAll(PDO::FETCH_ASSOC);

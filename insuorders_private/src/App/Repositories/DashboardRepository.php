@@ -22,7 +22,6 @@ class DashboardRepository
             }
             return [];
         } catch (\Exception $e) {
-            // Opcional: error_log($e->getMessage());
             return [];
         }
     }
@@ -30,30 +29,32 @@ class DashboardRepository
     public function getGeneralKPIs($start, $end)
     {
         return [
-            'total_gasto' => $this->db->query("SELECT COALESCE(SUM(monto_total), 0) FROM ordenes_compra WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'")->fetchColumn(),
-            'total_ots' => $this->db->query("SELECT COUNT(*) FROM solicitudes_ot WHERE fecha_solicitud BETWEEN '$start' AND '$end'")->fetchColumn(),
-            'stock_bajo' => $this->db->query("SELECT COUNT(*) FROM insumos WHERE stock_actual <= stock_minimo")->fetchColumn(),
+            'total_gasto'         => $this->db->query("SELECT COALESCE(SUM(monto_total), 0) FROM ordenes_compra WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'")->fetchColumn(),
+            'total_neto'          => $this->db->query("SELECT COALESCE(SUM(monto_neto), 0) FROM ordenes_compra WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'")->fetchColumn(),
+            'total_ots'           => $this->db->query("SELECT COUNT(*) FROM solicitudes_ot WHERE fecha_solicitud BETWEEN '$start' AND '$end'")->fetchColumn(),
+            'stock_bajo'          => $this->db->query("SELECT COUNT(*) FROM insumos WHERE stock_actual <= stock_minimo")->fetchColumn(),
             'proveedores_activos' => $this->db->query("SELECT COUNT(*) FROM proveedores")->fetchColumn(),
-            'insumos_usados' => $this->db->query("SELECT COALESCE(SUM(cantidad), 0) FROM movimientos_inventario WHERE tipo_movimiento_id = 2 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn()
+            'insumos_usados'      => $this->db->query("SELECT COALESCE(SUM(cantidad), 0) FROM movimientos_inventario WHERE tipo_movimiento_id = 2 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn()
         ];
     }
 
     public function getComprasAnalytics($start, $end)
     {
-        // 1. Tendencia
-        $sqlTendencia = "SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') as mes, SUM(monto_total) as total 
-                        FROM ordenes_compra 
+        $sqlTendencia = "SELECT DATE_FORMAT(fecha_creacion, '%Y-%m') as mes,
+                            SUM(monto_total) as total,
+                            SUM(monto_neto)  as neto
+                        FROM ordenes_compra
                         WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'
                         GROUP BY mes ORDER BY mes ASC";
 
-        // 2. Top Proveedores
-        $sqlTopProv = "SELECT p.nombre, SUM(oc.monto_total) as total
-                    FROM ordenes_compra oc
-                    JOIN proveedores p ON oc.proveedor_id = p.id
-                    WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
-                    GROUP BY p.id ORDER BY total DESC LIMIT 5";
+        $sqlTopProv = "SELECT p.nombre,
+                            SUM(oc.monto_total) as total,
+                            SUM(oc.monto_neto)  as neto
+                        FROM ordenes_compra oc
+                        JOIN proveedores p ON oc.proveedor_id = p.id
+                        WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
+                        GROUP BY p.id ORDER BY total DESC LIMIT 5";
 
-        // 3. Top Inversión
         $sqlTopInsumos = "SELECT i.nombre, SUM(doc.total_linea) as total_gasto
                         FROM detalle_orden_compra doc
                         JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
@@ -61,7 +62,6 @@ class DashboardRepository
                         WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
                         GROUP BY i.id ORDER BY total_gasto DESC LIMIT 5";
 
-        // 4. Top Cantidad
         $sqlTopInsumosQty = "SELECT i.nombre, SUM(doc.cantidad_solicitada) as total_cantidad
                         FROM detalle_orden_compra doc
                         JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
@@ -69,8 +69,9 @@ class DashboardRepository
                         WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
                         GROUP BY i.id ORDER BY total_cantidad DESC LIMIT 5";
 
-        // 5. Gasto por Categoría 
-        $sqlCategorias = "SELECT c.nombre, SUM(doc.total_linea) as value
+        $sqlCategorias = "SELECT c.nombre,
+                            SUM(doc.total_linea) as value,
+                            SUM(doc.total_linea) as value_neto
                         FROM detalle_orden_compra doc
                         JOIN ordenes_compra oc ON doc.orden_compra_id = oc.id
                         JOIN insumos i ON doc.insumo_id = i.id
@@ -78,23 +79,22 @@ class DashboardRepository
                         WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
                         GROUP BY c.id ORDER BY value DESC";
 
-        // 6. Últimas Órdenes
-        $sqlUltimas = "SELECT oc.id, p.nombre as proveedor, oc.fecha_creacion, oc.monto_total, oc.estado_id
-                    FROM ordenes_compra oc
-                    JOIN proveedores p ON oc.proveedor_id = p.id
-                    WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
-                    ORDER BY oc.fecha_creacion DESC LIMIT 5";
+        $sqlUltimas = "SELECT oc.id, p.nombre as proveedor, oc.fecha_creacion,
+                            oc.monto_total, oc.monto_neto, oc.estado_id
+                        FROM ordenes_compra oc
+                        JOIN proveedores p ON oc.proveedor_id = p.id
+                        WHERE oc.estado_id != 5 AND oc.fecha_creacion BETWEEN '$start' AND '$end'
+                        ORDER BY oc.fecha_creacion DESC LIMIT 5";
 
         return [
-            'tendencia_gasto' => $this->safeQuery($sqlTendencia),
-            'top_proveedores' => $this->safeQuery($sqlTopProv),
+            'tendencia_gasto'       => $this->safeQuery($sqlTendencia),
+            'top_proveedores'       => $this->safeQuery($sqlTopProv),
             'top_insumos_comprados' => $this->safeQuery($sqlTopInsumos),
-            'top_insumos_cantidad' => $this->safeQuery($sqlTopInsumosQty),
-            'gasto_por_categoria' => $this->safeQuery($sqlCategorias),
-            'ultimas_ordenes' => $this->safeQuery($sqlUltimas)
+            'top_insumos_cantidad'  => $this->safeQuery($sqlTopInsumosQty),
+            'gasto_por_categoria'   => $this->safeQuery($sqlCategorias),
+            'ultimas_ordenes'       => $this->safeQuery($sqlUltimas)
         ];
     }
-
     public function getMantencionAnalytics($start, $end)
     {
         $sqlTopMaq = "SELECT a.nombre, COUNT(s.id) as total_ots

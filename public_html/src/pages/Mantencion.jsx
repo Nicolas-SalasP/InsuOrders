@@ -29,6 +29,7 @@ const Mantencion = () => {
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirmAnular, setConfirmAnular] = useState({ show: false, id: null });
     const [confirmFinish, setConfirmFinish] = useState({ show: false, id: null });
+    const [confirmReabrir, setConfirmReabrir] = useState({ show: false, id: null });
 
     const [openMenuId, setOpenMenuId] = useState(null);
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
@@ -175,6 +176,25 @@ const Mantencion = () => {
             cargarSolicitudes();
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.message || "Error al finalizar.", type: "error" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const solicitarReabrir = (id) => {
+        setConfirmReabrir({ show: true, id });
+    };
+
+    const ejecutarReabrir = async () => {
+        const id = confirmReabrir.id;
+        setConfirmReabrir({ show: false, id: null });
+        setLoading(true);
+        try {
+            await api.post('/index.php/mantencion/reabrir', { id });
+            setMsg({ show: true, title: "OT Reabierta", text: "La OT volvió a estado En Proceso.", type: "success" });
+            cargarSolicitudes();
+        } catch (error) {
+            setMsg({ show: true, title: "Error", text: error.response?.data?.message || "Error al reabrir.", type: "error" });
         } finally {
             setLoading(false);
         }
@@ -401,6 +421,16 @@ const Mantencion = () => {
                 message={`¿Confirmas que el trabajo está terminado?\n\nCualquier insumo que no haya sido entregado se marcará como CANCELADO en Bodega.`}
                 confirmText="Sí, Finalizar OT"
                 type="success"
+            />
+
+            <ConfirmModal
+                show={confirmReabrir.show}
+                onClose={() => setConfirmReabrir({ show: false, id: null })}
+                onConfirm={ejecutarReabrir}
+                title="Reabrir OT"
+                message="¿Confirmas que deseas reabrir esta OT? Volverá al estado En Proceso para continuar el trabajo."
+                confirmText="Sí, Reabrir"
+                type="warning"
             />
 
             <NuevaSolicitudModal show={showModal} onClose={() => setShowModal(false)} onSave={cargarSolicitudes} otEditar={otEditar} />
@@ -685,6 +715,15 @@ const Mantencion = () => {
                                                                 </button>
                                                             )}
                                                         </>
+                                                    )}
+                                                    {s.estado === 'Completada' && can('mant_editar') && (
+                                                        <button
+                                                            className="btn btn-sm btn-outline-warning fw-bold px-2 py-1"
+                                                            onClick={() => solicitarReabrir(s.id)}
+                                                            title="Reabrir OT"
+                                                        >
+                                                            <i className="bi bi-arrow-counterclockwise"></i>
+                                                        </button>
                                                     )}
                                                     <button
                                                         className={`btn btn-sm btn-light border menu-trigger-btn ${openMenuId === s.id ? 'active' : ''}`}

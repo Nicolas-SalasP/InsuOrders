@@ -253,4 +253,29 @@ class OrdenCompraController
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     }
+
+    public function reabrirOC()
+    {
+        AuthMiddleware::verify();
+        $input = json_decode(file_get_contents("php://input"), true);
+        $id = $input['id'] ?? null;
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID no proporcionado']);
+            return;
+        }
+
+        try {
+            $nuevoEstado = $this->service->reabrirOC($id);
+            $nombre = $nuevoEstado === 3 ? 'Recepcion Parcial' : 'Emitida';
+            echo json_encode([
+                'success' => true,
+                'message' => "Orden reabierta. Estado actualizado a: $nombre."
+            ]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

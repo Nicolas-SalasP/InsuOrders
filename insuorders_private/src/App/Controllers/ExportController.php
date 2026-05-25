@@ -379,7 +379,7 @@ class ExportController
 
         $this->fillSheet(
             $sheet,
-            ['ID OC', 'Fecha', 'Proveedor', 'RUT', 'Estado', 'Neto', 'IVA', 'Total', 'Creador'],
+            ['ID OC', 'Fecha', 'Proveedor', 'RUT', 'Estado', 'N° Cotización', 'Destino', 'Moneda', 'Tipo Cambio', 'Neto', 'IVA %', 'IVA $', 'Total', 'Creador'],
             $data,
             fn($d) => [
                 $d['id'],
@@ -387,9 +387,14 @@ class ExportController
                 $d['proveedor'] ?? 'N/A',
                 $d['proveedor_rut'] ?? 'N/A',
                 $d['estado'] ?? 'N/A',
-                $d['monto_neto'] ?? 0,
-                $d['impuesto'] ?? $d['monto_impuesto'] ?? 0,
-                $d['monto_total'] ?? 0,
+                $d['numero_cotizacion'] ?? '',
+                $d['destino'] ?? '',
+                $d['moneda'] ?? 'CLP',
+                (int) ($d['tipo_cambio'] ?? 1),
+                (int) ($d['monto_neto'] ?? 0),
+                ($d['impuesto_porcentaje'] ?? 19) . '%',
+                (int) ($d['impuesto'] ?? 0),
+                (int) ($d['monto_total'] ?? 0),
                 $d['creador'] ?? 'Sistema'
             ]
         );

@@ -364,4 +364,39 @@ class OrdenCompraRepository
         $sql = "UPDATE ordenes_compra SET estado_id = 6 WHERE id = :id";
         return $this->db->prepare($sql)->execute([':id' => $id]);
     }
+
+    public function reabrirOC($id)
+    {
+        $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $estado = (int) $stmt->fetchColumn();
+
+        if ($estado !== 6) {
+            throw new Exception("Solo se pueden reabrir OCs en estado Cerrada Incompleta.");
+        }
+
+        $stmtDet = $this->db->prepare(
+            "SELECT cantidad_solicitada, cantidad_recibida
+             FROM detalle_orden_compra WHERE orden_compra_id = :id"
+        );
+        $stmtDet->execute([':id' => $id]);
+        $detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+
+        $nuevoEstado = 3;
+        $algunaRecibida = false;
+        foreach ($detalles as $d) {
+            if ((float)$d['cantidad_recibida'] > 0) {
+                $algunaRecibida = true;
+                break;
+            }
+        }
+        if (!$algunaRecibida) {
+            $nuevoEstado = 2;
+        }
+
+        $this->db->prepare("UPDATE ordenes_compra SET estado_id = :st WHERE id = :id")
+            ->execute([':st' => $nuevoEstado, ':id' => $id]);
+
+        return $nuevoEstado;
+    }
 }

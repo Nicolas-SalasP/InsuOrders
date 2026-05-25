@@ -4,8 +4,12 @@ namespace App\Services;
 use App\Repositories\OrdenCompraRepository;
 use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
+use App\Repositories\NotificationRepository;
 use App\Services\PDFService;
 use App\Database\Database;
+use App\Utils\FileUpload;
+use InvalidArgumentException;
+use RuntimeException;
 use Exception;
 
 class OrdenCompraService
@@ -168,20 +172,16 @@ class OrdenCompraService
 
     public function subirArchivo($id, $file)
     {
-        if (!is_dir($this->uploadBaseDir)) {
-            mkdir($this->uploadBaseDir, 0777, true);
-        }
-
-        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $fileName = "OC_" . $id . "_" . time() . "." . $ext;
-        $targetPath = $this->uploadBaseDir . $fileName;
-
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        try {
+            $fileName = FileUpload::guardar($file, $this->uploadBaseDir, 'documento', 'oc');
             $urlPath = $this->publicUrlBase . $fileName;
             $this->repo->updateArchivo($id, $urlPath);
-            return "/" . $urlPath;
-        } else {
-            throw new Exception("No se pudo mover el archivo al servidor.");
+            return '/' . $urlPath;
+        } catch (InvalidArgumentException $e) {
+            error_log('[Upload] Archivo rechazado en OC: ' . $e->getMessage());
+            throw new Exception('Tipo de archivo no permitido: ' . $e->getMessage());
+        } catch (RuntimeException $e) {
+            throw new Exception('No se pudo guardar el archivo en el servidor.');
         }
     }
 
@@ -250,7 +250,7 @@ class OrdenCompraService
         $resultado = $this->repo->archivarSolicitudesPendientes($ids);
 
         if ($resultado && !empty($datosNotificacion)) {
-            $notifRepo = new \App\Repositories\NotificationRepository();
+            $notifRepo = new NotificationRepository();
 
             foreach ($datosNotificacion as $dato) {
                 $mensaje = "Gestión de Compras: El insumo '{$dato['nombre_insumo']}' para la OT #{$dato['ot_id']} ha sido marcado como 'No Comprar' (Omitido).";
@@ -280,5 +280,10 @@ class OrdenCompraService
         }
 
         $this->repo->forzarCierre($id);
+    }
+
+    public function reabrirOC($id)
+    {
+        return $this->repo->reabrirOC($id);
     }
 }

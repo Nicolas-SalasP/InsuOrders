@@ -25,7 +25,7 @@ import PortalCliente from './pages/PortalCliente';
 const PrivateRoute = () => {
     const { auth, loading } = useContext(AuthContext);
     if (loading) return <div className="p-5 text-center">Cargando sistema...</div>;
-    return auth.token ? <Outlet /> : <Navigate to="/login" />;
+    return auth.id ? <Outlet /> : <Navigate to="/login" />;
 };
 
 const PermissionGuard = ({ children, permiso, redirectTo = "/dashboard" }) => {

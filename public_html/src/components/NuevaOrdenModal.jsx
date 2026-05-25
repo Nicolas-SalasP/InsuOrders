@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/axiosConfig';
 
-const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
+const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [], modoEdicion = false, ocEditar = null }) => {
     // Datos Maestros
     const [proveedores, setProveedores] = useState([]);
     const [insumos, setInsumos] = useState([]);
@@ -73,6 +73,16 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
             setBusqueda('');
             setNuevoProd({ nombre: '', categoria_id: '', unidad: 'UN', precio: '', cantidad: '' });
 
+            if (modoEdicion && ocEditar) {
+                setProveedorId(ocEditar.proveedor_id || '');
+                setBusquedaProveedor(`${ocEditar.proveedor || ''} (${ocEditar.proveedor_rut || ''})`);
+                setDestino(ocEditar.destino || '');
+                setMoneda(ocEditar.moneda || 'CLP');
+                setTipoCambio(ocEditar.tipo_cambio || 1);
+                setNumeroCotizacion(ocEditar.numero_cotizacion || '');
+                setImpuestoPorcentaje(ocEditar.impuesto_porcentaje || 19);
+            }
+
             // Cargar ítems iniciales
             if (itemsIniciales.length > 0) {
                 const itemsFormateados = itemsIniciales.map(i => ({
@@ -85,7 +95,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                 setItems([]);
             }
         }
-    }, [show, itemsIniciales]);
+    }, [show, itemsIniciales, modoEdicion, ocEditar]);
 
     const proveedoresFiltrados = busquedaProveedor
         ? proveedores.filter(p =>
@@ -202,7 +212,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
 
         setLoading(true);
         try {
-            await api.post('/index.php/compras', {
+            const payload = {
                 proveedor_id: proveedorId,
                 destino: destino,
                 moneda,
@@ -210,8 +220,14 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                 numero_cotizacion: numeroCotizacion,
                 impuesto_porcentaje: impuestoPorcentaje,
                 items: itemsLimpios
-            });
-            onSave();
+            };
+
+            if (modoEdicion) {
+                await onSave(payload);
+            } else {
+                await api.post('/index.php/compras', payload);
+                onSave();
+            }
             onClose();
         } catch (error) {
             setError("Error: " + (error.response?.data?.message || "Error desconocido al guardar"));
@@ -501,7 +517,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [] }) => {
                     <div className="modal-footer bg-white border-top-0 py-3">
                         <button className="btn btn-outline-secondary rounded-pill px-4" onClick={onClose}>Cancelar</button>
                         <button className="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onClick={handleSubmit} disabled={loading}>
-                            {loading ? <><span className="spinner-border spinner-border-sm me-2"></span>Procesando...</> : <><i className="bi bi-check-lg me-2"></i>Confirmar Orden</>}
+                            {loading ? <><span className="spinner-border spinner-border-sm me-2"></span>Procesando...</> : <><i className="bi bi-check-lg me-2"></i>{modoEdicion ? 'Guardar Cambios' : 'Confirmar Orden'}</>}
                         </button>
                     </div>
                 </div>

@@ -172,7 +172,7 @@ class BodegaService
 
     public function rechazarDevolucion($devolucionId, $usuarioId, $motivo)
     {
-        if (empty($motivo))
+        if (empty(trim($motivo ?? '')))
             throw new Exception("Debe especificar un motivo para el rechazo.");
         $db = Database::getConnection();
         try {

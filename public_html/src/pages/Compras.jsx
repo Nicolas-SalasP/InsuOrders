@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import api from '../api/axiosConfig';
+import api, { parseBlobError } from '../api/axiosConfig';
 import NuevaOrdenModal from '../components/NuevaOrdenModal';
 import DetalleOrdenModal from '../components/DetalleOrdenModal';
 import SubirArchivoModal from '../components/SubirArchivoModal';
@@ -33,6 +33,7 @@ const Compras = () => {
     const [recepcionModal, setRecepcionModal] = useState({ show: false, id: null });
     const [confirmModal, setConfirmModal] = useState({ show: false, id: null });
     const [confirmOmitir, setConfirmOmitir] = useState({ show: false, ids: null, nombre: '' });
+    const [confirmReabrir, setConfirmReabrir] = useState({ show: false, id: null });
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirmCierreModal, setConfirmCierreModal] = useState({ show: false, id: null });
 
@@ -43,7 +44,6 @@ const Compras = () => {
     // Filtros
     const [filtroProveedor, setFiltroProveedor] = useState('');
     const [filtroDestino, setFiltroDestino] = useState('');
-    const [filtroNumero, setFiltroNumero] = useState('');
     const [filtroEstado, setFiltroEstado] = useState([]);
     const [showEstadoDropdown, setShowEstadoDropdown] = useState(false);
     const estadoRef = useRef(null);
@@ -167,8 +167,9 @@ const Compras = () => {
             document.body.appendChild(link); 
             link.click();
             setTimeout(() => { document.body.removeChild(link); window.URL.revokeObjectURL(url); }, 100);
-        } catch (e) { 
-            setMsg({ show: true, title: "Error", text: "Error al exportar pendientes.", type: "error" }); 
+        } catch (e) {
+            const msg = await parseBlobError(e);
+            setMsg({ show: true, title: "Error", text: msg || "Error al exportar pendientes.", type: "error" });
         }
     };
 
@@ -195,6 +196,27 @@ const Compras = () => {
     const closeActionMenu = () => { setActionMenu({ ...actionMenu, show: false }); };
 
     const solicitarAnulacion = () => { closeActionMenu(); if (actionMenu.id) setConfirmModal({ show: true, id: actionMenu.id }); };
+
+    const solicitarReabrir = () => {
+        closeActionMenu();
+        if (actionMenu.id) setConfirmReabrir({ show: true, id: actionMenu.id });
+    };
+
+    const ejecutarReabrir = async () => {
+        const id = confirmReabrir.id;
+        setConfirmReabrir({ show: false, id: null });
+        try {
+            const res = await api.post('/index.php/compras/reabrir', { id });
+            if (res.data.success) {
+                setMsg({ show: true, title: 'OC Reabierta', text: res.data.message, type: 'success' });
+                cargarOrdenes();
+            } else {
+                setMsg({ show: true, title: 'Error', text: res.data.message, type: 'error' });
+            }
+        } catch (error) {
+            setMsg({ show: true, title: 'Error', text: error.response?.data?.message || 'Error al reabrir.', type: 'error' });
+        }
+    };
 
     const confirmarAnulacion = async () => {
         setConfirmModal({ show: false, id: null });
@@ -244,7 +266,10 @@ const Compras = () => {
             const link = document.createElement('a'); link.href = url; link.setAttribute('download', `OC_${id}.pdf`);
             document.body.appendChild(link); link.click();
             setTimeout(() => { document.body.removeChild(link); window.URL.revokeObjectURL(url); }, 100);
-        } catch (e) { setMsg({ show: true, title: "Error", text: "Error al descargar PDF.", type: "error" }); }
+        } catch (e) { 
+            const msg = await parseBlobError(e);
+            setMsg({ show: true, title: "Error", text: msg || "Error al descargar PDF.", type: "error" }); 
+        }
     };
 
     const handleDescargarExcel = async () => {
@@ -255,7 +280,10 @@ const Compras = () => {
             const link = document.createElement('a'); link.href = url; link.setAttribute('download', `Detalle_OC_${id}.xlsx`);
             document.body.appendChild(link); link.click();
             setTimeout(() => { document.body.removeChild(link); window.URL.revokeObjectURL(url); }, 100);
-        } catch (e) { setMsg({ show: true, title: "Error", text: "Error al descargar Excel.", type: "error" }); }
+        } catch (e) { 
+            const msg = await parseBlobError(e);
+            setMsg({ show: true, title: "Error", text: msg || "Error al descargar Excel.", type: "error" }); 
+        }
     };
 
     const handleExportar = async () => {
@@ -265,7 +293,10 @@ const Compras = () => {
             const link = document.createElement('a'); link.href = url; link.setAttribute('download', `Reporte_Compras_${new Date().getTime()}.xlsx`);
             document.body.appendChild(link); link.click();
             setTimeout(() => { document.body.removeChild(link); window.URL.revokeObjectURL(url); }, 100);
-        } catch (e) { setMsg({ show: true, title: "Error", text: "Error al exportar.", type: "error" }); }
+        } catch (e) { 
+            const msg = await parseBlobError(e);
+            setMsg({ show: true, title: "Error", text: msg || "Error al exportar.", type: "error" }); 
+        }
     };
 
     const toggleEstado = (estado) => {
@@ -273,19 +304,18 @@ const Compras = () => {
     };
 
     const limpiarFiltros = () => {
-        setFiltroProveedor(''); setFiltroDestino(''); setFiltroNumero(''); setFiltroEstado([]); setFiltroFecha(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes();
+        setFiltroProveedor(''); setFiltroDestino(''); setFiltroEstado([]); setFiltroFecha(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes();
     };
 
     const seleccionarInsumo = (item) => { setFiltroInsumo(item.id); setBusquedaInsumo(item.nombre); setMostrarSugerencias(false); };
 
     const ordenesFiltradas = ordenes.filter(oc => {
-        const matchNum = filtroNumero === '' || String(oc.id).includes(filtroNumero.replace(/^#/, '').trim());
         const matchProv = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
         const matchEst = filtroEstado.length === 0 || filtroEstado.includes(oc.estado);
         const matchDest = filtroDestino === '' || (oc.destino && oc.destino.toLowerCase().includes(filtroDestino.toLowerCase()));
         const fechaOC = oc.fecha_creacion.split(' ')[0];
         const matchFecha = filtroFecha ? fechaOC === filtroFecha : true;
-        return matchNum && matchProv && matchDest && matchEst && matchFecha;
+        return matchProv && matchDest && matchEst && matchFecha;
     });
 
     const getBadgeColor = (estado) => {
@@ -339,6 +369,17 @@ const Compras = () => {
                 type="danger" 
             />
 
+            <ConfirmModal
+                show={confirmReabrir.show}
+                onClose={() => setConfirmReabrir({ show: false, id: null })}
+                onConfirm={ejecutarReabrir}
+                title="Reabrir Orden de Compra"
+                message="¿Confirmas reabrir esta OC? Volverá al estado anterior (Recepción Parcial o Emitida según corresponda) para continuar recibiendo materiales pendientes."
+                confirmText="Sí, Reabrir"
+                cancelText="Cancelar"
+                type="warning"
+            />
+
             {actionMenu.show && (
                 <div className="floating-action-menu shadow rounded bg-white border" style={{ position: 'absolute', top: actionMenu.top, left: actionMenu.left, zIndex: 9999, minWidth: '180px', padding: '0.5rem 0' }}>
                     {actionMenu.estado !== 'Anulada' && can('compras_adjuntar') && (
@@ -364,6 +405,17 @@ const Compras = () => {
                             <i className="bi bi-lock-fill me-2"></i> Cierre Parcial
                         </button>
                     )}
+                    {actionMenu.estado === 'Cerrada Incompleta' && can('compras_recepcionar') && (
+                        <>
+                            <div className="dropdown-divider my-1"></div>
+                            <button
+                                className="dropdown-item py-2 px-3 d-flex align-items-center text-warning fw-bold"
+                                onClick={solicitarReabrir}
+                            >
+                                <i className="bi bi-arrow-counterclockwise me-2"></i> Reabrir OC
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
 
@@ -381,12 +433,6 @@ const Compras = () => {
 
                 <div className="bg-light p-3 border-bottom">
                     <div className="row g-2 align-items-center">
-                        <div className="col-md-1">
-                            <div className="input-group">
-                                <span className="input-group-text bg-white border-end-0"><i className="bi bi-hash text-muted"></i></span>
-                                <input type="text" className="form-control border-start-0 ps-0" placeholder="N° OC" value={filtroNumero} onChange={(e) => setFiltroNumero(e.target.value)} />
-                            </div>
-                        </div>
                         <div className="col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} /></div></div>
                         <div className="col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0"><i className="bi bi-geo-alt"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Destino..." value={filtroDestino} onChange={(e) => setFiltroDestino(e.target.value)} /></div></div>
                         <div className="col-md-3 position-relative" ref={wrapperRef}>
@@ -413,7 +459,7 @@ const Compras = () => {
                             )}
                         </div>
                         <div className="col-md-2"><input type="date" className="form-control" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} /></div>
-                        <div className="col-md-1 text-end">{(filtroNumero || filtroProveedor || filtroDestino || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros}><i className="bi bi-x-lg"></i></button>}</div>
+                        <div className="col-md-1 text-end">{(filtroProveedor || filtroDestino || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros}><i className="bi bi-x-lg"></i></button>}</div>
                     </div>
                 </div>
 

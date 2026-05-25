@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Repositories\InsumoRepository;
 use Exception;
+
 class InsumoService
 {
     private $repo;
@@ -45,7 +46,7 @@ class InsumoService
     {
         if (strlen($data['codigo_sku']) < 3)
             throw new Exception("El SKU es muy corto.");
-        if (empty($data['nombre']))
+        if (empty(trim($data['nombre'] ?? '')))
             throw new Exception("El nombre es obligatorio.");
 
         $data = $this->sanearDatos($data);
@@ -138,8 +139,7 @@ class InsumoService
         if (!is_array($ids)) {
             $ids = explode(',', $ids);
         }
-        $ids = array_map('intval', $ids);
-        $ids = array_filter($ids);
+        $ids = array_values(array_filter(array_map('intval', $ids)));
 
         if (empty($ids)) {
             throw new Exception("IDs de movimiento no válidos.");

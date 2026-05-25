@@ -29,13 +29,13 @@ class AuthMiddleware
         }
 
         try {
-            $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
+            $decoded = JWT::decode($jwt, new Key(Config::getJwtSecret(), Config::JWT_ALGO));
             $data = $decoded->data;
             $userId = $data->id;
             
             self::$currentUser = $data;
 
-            if (($data->rol ?? '') === 'Admin' || ($data->rol_id ?? 0) == 1) {
+            if (($data->rol ?? '') === 'Admin') {
                 return $userId;
             }
 
@@ -43,7 +43,7 @@ class AuthMiddleware
                 
                 if (is_string($requirement)) {
                     if (!self::checkDbPermission($userId, $requirement)) {
-                        self::jsonResponse(403, ["error" => "Permisos insuficientes.", "requiere" => $requirement]);
+                        self::jsonResponse(403, ["error" => "Permisos insuficientes."]);
                     }
                 }
                 
@@ -57,13 +57,22 @@ class AuthMiddleware
             return $userId;
 
         } catch (\Exception $e) {
-            self::jsonResponse(401, ["error" => "Acceso denegado. Token inválido o expirado.", "details" => $e->getMessage()]);
+            error_log('[Auth] Token error: ' . $e->getMessage());
+            self::jsonResponse(401, ["error" => "Acceso denegado. Token inválido o expirado."]);
         }
     }
 
     public static function getUser()
     {
         return self::$currentUser;
+    }
+
+    public static function getCurrentUserId(): ?int
+    {
+        if (self::$currentUser && isset(self::$currentUser->id)) {
+            return (int) self::$currentUser->id;
+        }
+        return null;
     }
 
     private static function checkDbPermission($userId, $permisoCodigo)
@@ -98,9 +107,9 @@ class AuthMiddleware
         }
 
         try {
-            $decoded = JWT::decode($jwt, new Key(Config::JWT_SECRET, Config::JWT_ALGO));
+            $decoded = JWT::decode($jwt, new Key(Config::getJwtSecret(), Config::JWT_ALGO));
             
-            if (($decoded->data->rol ?? '') === 'Admin' || ($decoded->data->rol_id ?? 0) == 1) {
+            if (($decoded->data->rol ?? '') === 'Admin') {
                 return true;
             }
 

@@ -38,6 +38,7 @@ const Dashboard = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [personalData, setPersonalData] = useState([]);
+    const [tipoMonto, setTipoMonto] = useState('neto');
     const [fechas, setFechas] = useState({
         start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
         end: new Date().toISOString().split('T')[0]
@@ -95,13 +96,16 @@ const Dashboard = () => {
     };
 
     // --- SECCIÓN: KPIs SUPERIORES ---
+    const montoVal = (total, neto) => tipoMonto === 'neto' ? (neto || 0) : (total || 0);
+    const montoLabel = tipoMonto === 'neto' ? 'Neto (sin IVA)' : 'Total (con IVA)';
     const renderResumenSuperior = () => (
         <div className="row g-3 mb-5 animate__animated animate__fadeIn">
             <div className="col-12 col-sm-6 col-lg-3">
                 <div className="card border-0 shadow-sm border-start border-4 border-primary h-100">
                     <div className="card-body">
                         <h6 className="text-muted text-uppercase small fw-bold">Gasto Total</h6>
-                        <h3 className="fw-bold text-dark mb-0">${parseInt(data.kpis?.total_gasto || 0).toLocaleString()}</h3>
+                        <h3 className="fw-bold text-dark mb-0">${parseInt(montoVal(data.kpis?.total_gasto, data.kpis?.total_neto)).toLocaleString()}</h3>
+                        <small className="text-muted">{montoLabel}</small>
                     </div>
                 </div>
             </div>
@@ -137,18 +141,41 @@ const Dashboard = () => {
         <div className="mb-5 animate__animated animate__fadeIn">
             <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h5 className="text-secondary mb-0"><i className="bi bi-cart3 me-2"></i>Gestión de Compras</h5>
-                <button className="btn btn-sm btn-outline-success shadow-sm" onClick={handleExportarRecepciones} title="Descargar historial de recepciones">
-                    <i className="bi bi-file-earmark-excel-fill me-2"></i>Exportar Recepciones
-                </button>
+                <div className="d-flex align-items-center gap-3">
+                    <div className="btn-group shadow-sm" role="group">
+                        <button
+                            type="button"
+                            className={`btn btn-sm fw-bold px-3 ${tipoMonto === 'neto' ? 'btn-primary' : 'btn-outline-primary'}`}
+                            onClick={() => setTipoMonto('neto')}
+                        >
+                            <i className="bi bi-tag me-1"></i>Monto Neto
+                        </button>
+                        <button
+                            type="button"
+                            className={`btn btn-sm fw-bold px-3 ${tipoMonto === 'total' ? 'btn-primary' : 'btn-outline-primary'}`}
+                            onClick={() => setTipoMonto('total')}
+                        >
+                            <i className="bi bi-receipt me-1"></i>Total c/IVA
+                        </button>
+                    </div>
+                    <button className="btn btn-sm btn-outline-success shadow-sm" onClick={handleExportarRecepciones} title="Descargar historial de recepciones">
+                        <i className="bi bi-file-earmark-excel-fill me-2"></i>Exportar Recepciones
+                    </button>
+                </div>
             </div>
 
             <div className="row g-4 mb-4">
-                {/* 1. KPI Gasto */}
+                {/* 1. KPI Inversión */}
                 <div className="col-12 col-lg-4">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body text-center d-flex flex-column justify-content-center">
                             <h6 className="text-muted">Inversión en el Periodo</h6>
-                            <h2 className="fw-bold text-primary display-6">${parseInt(data.kpis?.total_gasto || 0).toLocaleString()}</h2>
+                            <h2 className="fw-bold text-primary display-6">
+                                ${parseInt(montoVal(data.kpis?.total_gasto, data.kpis?.total_neto)).toLocaleString()}
+                            </h2>
+                            <span className={`badge mx-auto mt-1 ${tipoMonto === 'neto' ? 'bg-primary' : 'bg-secondary'}`} style={{width: 'fit-content'}}>
+                                {montoLabel}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -164,7 +191,7 @@ const Dashboard = () => {
                                     <YAxis style={{ fontSize: '12px' }} />
                                     <Tooltip formatter={(v) => `$${parseInt(v).toLocaleString()}`} />
                                     <Legend />
-                                    <Line type="monotone" dataKey="total" stroke="#0d6efd" name="Gasto $" strokeWidth={3} dot={{r: 4}} activeDot={{ r: 8 }} />
+                                    <Line type="monotone" dataKey={tipoMonto === 'neto' ? 'neto' : 'total'} stroke="#0d6efd" name={tipoMonto === 'neto' ? 'Neto $' : 'Total $'} strokeWidth={3} dot={{r: 4}} activeDot={{ r: 8 }} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -181,7 +208,7 @@ const Dashboard = () => {
                                     <XAxis type="number" hide />
                                     <YAxis dataKey="nombre" type="category" width={100} style={{fontSize: '11px'}} />
                                     <Tooltip formatter={(v) => `$${parseInt(v).toLocaleString()}`} />
-                                    <Bar dataKey="total" fill="#198754" name="Monto $" radius={[0, 4, 4, 0]} barSize={20} />
+                                    <Bar dataKey={tipoMonto === 'neto' ? 'neto' : 'total'} fill="#198754" name={tipoMonto === 'neto' ? 'Neto $' : 'Total $'} radius={[0, 4, 4, 0]} barSize={20} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -221,7 +248,7 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
-                {/* 6. Inversión por Categoría (Pie Chart) */}
+                {/* 6. Inversión por Categoría */}
                 <div className="col-12 col-lg-6">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">🍰 Inversión por Categoría</div>
@@ -233,7 +260,7 @@ const Dashboard = () => {
                                         cx="50%" cy="50%"
                                         innerRadius={60} outerRadius={80}
                                         paddingAngle={5}
-                                        dataKey="value"
+                                        dataKey={tipoMonto === 'neto' ? 'value_neto' : 'value'}
                                         nameKey="nombre"
                                     >
                                         {(data.compras?.gasto_por_categoria || []).map((entry, index) => (
@@ -268,7 +295,7 @@ const Dashboard = () => {
                                                 <td className="ps-4 fw-bold text-primary">#{oc.id}</td>
                                                 <td>{oc.proveedor}</td>
                                                 <td className="small text-muted">{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
-                                                <td className="text-end pe-4 fw-bold text-dark">${parseInt(oc.monto_total).toLocaleString()}</td>
+                                                <td className="text-end pe-4 fw-bold text-dark">${parseInt(tipoMonto === 'neto' ? (oc.monto_neto || 0) : (oc.monto_total || 0)).toLocaleString()}</td>
                                             </tr>
                                         ))
                                     ) : (

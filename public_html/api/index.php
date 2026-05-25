@@ -85,20 +85,24 @@ try {
     }
 
     if (preg_match('/^uploads\/(.+)$/', $path, $matches)) {
-        $relativePath = 'uploads/' . $matches[1];
-        $pathApi = __DIR__ . '/' . $relativePath;
-        $pathPublic = __DIR__ . '/../' . $relativePath;
-
+        AuthMiddleware::verify();
+        $uploadsBaseApi    = realpath(__DIR__ . '/uploads');
+        $uploadsBasePublic = realpath(__DIR__ . '/../uploads');
+        $candidateApi    = realpath(__DIR__ . '/uploads/' . $matches[1]);
+        $candidatePublic = realpath(__DIR__ . '/../uploads/' . $matches[1]);
         $fullPathOnDisk = null;
 
-        if (file_exists($pathApi) && is_file($pathApi)) {
-            $fullPathOnDisk = $pathApi;
-        } elseif (file_exists($pathPublic) && is_file($pathPublic)) {
-            $fullPathOnDisk = $pathPublic;
+        if ($candidateApi && $uploadsBaseApi &&
+            str_starts_with($candidateApi, $uploadsBaseApi) &&
+            is_file($candidateApi)) {
+            $fullPathOnDisk = $candidateApi;
+        } elseif ($candidatePublic && $uploadsBasePublic &&
+                  str_starts_with($candidatePublic, $uploadsBasePublic) &&
+                  is_file($candidatePublic)) {
+            $fullPathOnDisk = $candidatePublic;
         }
 
         if ($fullPathOnDisk) {
-            $fullPathOnDisk = realpath($fullPathOnDisk);
             $mime = mime_content_type($fullPathOnDisk);
             $fileSize = filesize($fullPathOnDisk);
 
@@ -133,6 +137,8 @@ try {
             }
             exit;
         }
+        jsonResponse(404, ["error" => "Archivo no encontrado."]);
+        exit;
     }
 
     if ($path === '')
@@ -197,7 +203,6 @@ try {
             break;
 
         // --- MANTENCIÓN ---
-        // --- MANTENCIÓN ---
         case 'mantencion':
             $c = new MantencionController();
             if ($method === 'GET') {
@@ -224,6 +229,12 @@ try {
             AuthMiddleware::hasPermission('mant_finalizar');
             if ($method === 'POST')
                 (new MantencionController())->finalizar();
+            break;
+
+        case 'mantencion/asignar-ot':
+            AuthMiddleware::hasPermission('mant_editar');
+            if ($method === 'POST')
+                (new MantencionController())->asignarOT();
             break;
 
         case 'mantencion/pdf':
@@ -295,6 +306,7 @@ try {
             break;
 
         case 'mantencion/plantilla':
+            AuthMiddleware::hasPermission('mant_crear');
             if ($method === 'POST')
                 (new MantencionController())->guardarPlantilla();
             break;
@@ -305,6 +317,7 @@ try {
             break;
 
         case 'mantencion/imagen':
+            AuthMiddleware::hasPermission('mant_editar');
             if ($method === 'DELETE') {
                 (new MantencionController())->eliminarImagen();
             }
@@ -356,6 +369,7 @@ try {
             break;
 
         case 'inventario/salida':
+            AuthMiddleware::hasPermission('inv_editar');
             $c = new InsumoController();
             if ($method === 'POST') {
                 $c->salidaManual();
@@ -363,12 +377,14 @@ try {
             break;
 
         case 'inventario/ots-activas':
+            AuthMiddleware::hasPermission('inv_ver');
             $c = new InsumoController();
             if ($method === 'GET')
                 $c->getOTsActivas();
             break;
 
         case 'inventario/comprobante':
+            AuthMiddleware::hasPermission('inv_ver');
             $c = new InsumoController();
             if ($method === 'GET') {
                 $c->comprobanteEntrega();
@@ -440,20 +456,33 @@ try {
             }
             break;
 
+        case 'compras/reabrir':
+            AuthMiddleware::verify('compras_recepcionar');
+            if ($method === 'POST') {
+                (new OrdenCompraController())->reabrirOC();
+            }
+            break;
+
         // --- PROVEEDORES ---
         case 'proveedores':
             $c = new ProveedorController();
-            if ($method === 'GET')
+            if ($method === 'GET') {
+                AuthMiddleware::hasPermission('compras_ver');
                 $c->index();
-            elseif ($method === 'POST')
+            } elseif ($method === 'POST') {
+                AuthMiddleware::hasPermission('compras_crear');
                 $c->store();
-            elseif ($method === 'PUT')
+            } elseif ($method === 'PUT') {
+                AuthMiddleware::hasPermission('compras_crear');
                 $c->update();
-            elseif ($method === 'DELETE')
+            } elseif ($method === 'DELETE') {
+                AuthMiddleware::verify(['Admin']);
                 $c->delete();
+            }
             break;
 
         case 'proveedores/auxiliares':
+            AuthMiddleware::hasPermission('compras_ver');
             (new ProveedorController())->auxiliares();
             break;
 
@@ -495,6 +524,7 @@ try {
             break;
 
         case 'usuarios/tecnicos':
+            AuthMiddleware::verify();
             (new UsuariosController())->getTecnicos();
             break;
 
@@ -549,52 +579,62 @@ try {
 
         // --- OPERARIO / ENTREGAS PERSONALES  ---
         case 'operario/asignar':
+            AuthMiddleware::hasPermission('ope_ver');
             if ($method === 'POST')
                 (new OperarioController())->asignar();
             break;
 
         case 'operario/mis-insumos':
+            AuthMiddleware::hasPermission('ope_ver');
             if ($method === 'GET')
                 (new OperarioController())->getMisInsumos();
             break;
 
         case 'operario/responder':
+            AuthMiddleware::hasPermission('ope_ver');
             if ($method === 'POST')
                 (new OperarioController())->responder();
             break;
 
         case 'operario/consumir':
+            AuthMiddleware::hasPermission('ope_ver');
             if ($method === 'POST')
                 (new OperarioController())->consumir();
             break;
 
         case 'operario/dashboard':
+            AuthMiddleware::hasPermission('ope_ver');
             if ($method === 'GET')
                 (new OperarioController())->dashboard();
             break;
 
         case 'operario/devolver':
+            AuthMiddleware::hasPermission('ope_ver');
             if ($method === 'POST')
                 (new OperarioController())->devolver();
             break;
 
         // --- MIS MANTENCIONES ---
         case 'mis-mantenciones':
+            AuthMiddleware::hasPermission('mant_ver');
             if ($method === 'GET')
                 (new MisMantencionesController())->index();
             break;
 
         case 'mis-mantenciones/guardar':
+            AuthMiddleware::hasPermission('mant_editar');
             if ($method === 'POST')
                 (new MisMantencionesController())->guardar();
             break;
 
         case 'mis-mantenciones/detalle':
+            AuthMiddleware::hasPermission('mant_ver');
             if ($method === 'GET')
                 (new MisMantencionesController())->detalle();
             break;
 
         case 'mis-mantenciones/cambiar-estado':
+            AuthMiddleware::hasPermission('mant_editar');
             if ($method === 'POST')
                 (new MisMantencionesController())->actualizarEstadoManual();
             break;
@@ -606,7 +646,7 @@ try {
             break;
 
         case 'dashboard/logs':
-            AuthMiddleware::verify();
+            AuthMiddleware::verify(['Admin']);
             (new DashboardController())->logs();
             break;
 
@@ -628,8 +668,36 @@ try {
 
         // --- EXPORTACION E IMPORTACION ---
         case 'exportar':
-            AuthMiddleware::verify();
-            (new ExportController())->exportar($_GET['modulo'] ?? '');
+            // A2 fix: validar permiso según módulo a exportar
+            $moduloExport = $_GET['modulo'] ?? '';
+            $permisoExport = [
+                // Inventario
+                'inventario'          => 'inv_ver',
+                // Mantencion
+                'mantencion'          => 'mant_ver',
+                'detalle_ot'          => 'mant_ver',
+                'activos'             => 'activos_ver',
+                // Compras
+                'compras'             => 'compras_exportar',
+                'detalle_oc'          => 'compras_exportar_detalle',
+                'compras_pendientes'  => 'compras_exportar',
+                'recepciones'         => 'compras_ver',
+                // Bodega
+                'bodega'              => 'bodega_despachar',
+                // Reportes
+                'dashboard_entregas'  => 'inv_ver',
+                // Proveedores
+                'proveedores'         => 'compras_ver',
+                // Usuarios
+                'usuarios'            => 'ver_usuarios',
+            ][$moduloExport] ?? null;
+
+            if ($permisoExport) {
+                AuthMiddleware::hasPermission($permisoExport);
+            } else {
+                AuthMiddleware::verify(['Admin']); // 'todo' y otros requieren Admin
+            }
+            (new ExportController())->exportar($moduloExport);
             break;
 
         case 'importar':
@@ -649,6 +717,7 @@ try {
 
         // --- COTIZACIONES ---
         case 'cotizaciones':
+            AuthMiddleware::hasPermission('compras_ver');
             $c = new App\Controllers\CotizacionController();
             if ($method === 'GET')
                 $c->index();
@@ -657,24 +726,28 @@ try {
             break;
 
         case 'cotizaciones/detalle':
+            AuthMiddleware::hasPermission('compras_ver');
             (new App\Controllers\CotizacionController())->show();
             break;
 
         case 'cotizaciones/estado':
+            AuthMiddleware::hasPermission('compras_crear');
             if ($method === 'POST')
                 (new App\Controllers\CotizacionController())->cambiarEstado();
             break;
 
         case 'cotizaciones/estados-lista':
+            AuthMiddleware::hasPermission('compras_ver');
             (new App\Controllers\CotizacionController())->getEstados();
             break;
         case 'cotizaciones/pdf':
+            AuthMiddleware::hasPermission('compras_pdf');
             (new App\Controllers\CotizacionController())->downloadPdf();
             break;
 
-        // --- MANTENEDORES (CONFIG) ---
+        // --- MANTENEDORES (CONFIG) - solo Admin ---
         case 'mantenedores/empleados':
-            AuthMiddleware::verify();
+            AuthMiddleware::verify(['Admin']);
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveEmpleado();
@@ -685,7 +758,7 @@ try {
             break;
 
         case 'mantenedores/centros':
-            AuthMiddleware::verify();
+            AuthMiddleware::verify(['Admin']);
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveCentro();
@@ -696,7 +769,7 @@ try {
             break;
 
         case 'mantenedores/areas':
-            AuthMiddleware::verify();
+            AuthMiddleware::verify(['Admin']);
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveArea();
@@ -707,7 +780,7 @@ try {
             break;
 
         case 'mantenedores/sectores':
-            AuthMiddleware::verify();
+            AuthMiddleware::verify(['Admin']);
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveSector();
@@ -718,7 +791,7 @@ try {
             break;
 
         case 'mantenedores/ubicaciones':
-            AuthMiddleware::verify();
+            AuthMiddleware::verify(['Admin']);
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveUbicacion();
@@ -729,7 +802,7 @@ try {
             break;
 
         case 'mantenedores/ubicaciones-envio':
-            AuthMiddleware::verify();
+            AuthMiddleware::verify(['Admin']);
             $controller = new MantenedoresController();
             if ($method === 'GET')
                 $controller->getUbicacionesEnvio();
@@ -740,7 +813,7 @@ try {
             break;
 
         case 'mantenedores/tipos-permiso':
-            AuthMiddleware::verify();
+            AuthMiddleware::verify(['Admin']);
             $c = new MantenedoresController();
             if ($method === 'GET')
                 $c->getTiposPermiso();
@@ -776,6 +849,7 @@ try {
 
         // --- CLIENTES ---
         case 'cliente/solicitudes':
+            AuthMiddleware::verify();
             $c = new ClienteController();
             if ($method === 'GET') {
                 $c->misSolicitudes();
@@ -785,6 +859,7 @@ try {
             break;
 
         case 'cliente/activos':
+            AuthMiddleware::verify();
             if ($method === 'GET') {
                 (new ClienteController())->activosParaCliente();
             }
@@ -795,8 +870,15 @@ try {
             break;
     }
 } catch (Throwable $e) {
-    jsonResponse(500, [
-        "success" => false,
-        "error" => "Error Fatal: " . $e->getMessage() . " en " . $e->getFile() . " línea " . $e->getLine()
-    ]);
+    error_log('[InsuOrders] Error fatal: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
+    $response = ["success" => false, "message" => "Error interno del servidor."];
+    if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {
+        $response["debug"] = [
+            "error" => $e->getMessage(),
+            "file" => basename($e->getFile()),
+            "line" => $e->getLine(),
+            "trace" => array_slice(explode("\n", $e->getTraceAsString()), 0, 5)
+        ];
+    }
+    jsonResponse(500, $response);
 }

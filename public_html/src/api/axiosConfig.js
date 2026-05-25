@@ -1,31 +1,28 @@
 import axios from 'axios';
-const baseURL = '/api'; 
+const baseURL = '/api';
+
+export const parseBlobError = async (error) => {
+    const data = error?.response?.data
+    if (data && typeof data.text === 'function' && data.type === 'application/json') {
+        try {
+            const text = await data.text()
+            const json = JSON.parse(text)
+            return json.error || json.message || 'Error desconocido.'
+        } catch { }
+    }
+    if (error?.response?.data?.error) return error.response.data.error
+    if (error?.response?.data?.message) return error.response.data.message
+    return null
+}
 
 const api = axios.create({
-    baseURL: baseURL, 
+    baseURL: baseURL,
+    withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     }
 });
-
-api.interceptors.request.use(
-    (config) => {
-        const storedUser = localStorage.getItem("insuorders_user");
-        if (storedUser) {
-            try {
-                const user = JSON.parse(storedUser);
-                if (user.token) {
-                    config.headers.Authorization = `Bearer ${user.token}`;
-                }
-            } catch (e) {
-                console.error("Error al leer token local", e);
-            }
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
 
 api.interceptors.response.use(
     (response) => response,
