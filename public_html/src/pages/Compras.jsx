@@ -34,6 +34,7 @@ const Compras = () => {
     const [confirmModal, setConfirmModal] = useState({ show: false, id: null });
     const [confirmOmitir, setConfirmOmitir] = useState({ show: false, ids: null, nombre: '' });
     const [confirmReabrir, setConfirmReabrir] = useState({ show: false, id: null });
+    const [editModal, setEditModal] = useState({ show: false, oc: null, items: [] });
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
     const [confirmCierreModal, setConfirmCierreModal] = useState({ show: false, id: null });
 
@@ -197,6 +198,35 @@ const Compras = () => {
 
     const solicitarAnulacion = () => { closeActionMenu(); if (actionMenu.id) setConfirmModal({ show: true, id: actionMenu.id }); };
 
+    const handleAbrirEditar = async () => {
+        const id = actionMenu.id;
+        closeActionMenu();
+        try {
+            const res = await api.get(`/index.php/compras/detalle?id=${id}`);
+            const oc  = res.data.data?.cabecera;
+            const det = res.data.data?.detalles || [];
+            const itemsFormateados = det.map(d => ({
+                id:          d.insumo_id,
+                insumo_id:   d.insumo_id,
+                nombre:      d.insumo,
+                codigo_sku:  d.codigo_sku,
+                cantidad:    d.cantidad_solicitada,
+                precio:      d.precio_unitario,
+                unidad_medida: d.unidad_medida,
+                descripcion_adicional: d.descripcion_adicional || '',
+            }));
+            setEditModal({ show: true, oc, items: itemsFormateados });
+        } catch (e) {
+            setMsg({ show: true, title: 'Error', text: 'No se pudo cargar la OC.', type: 'error' });
+        }
+    };
+
+    const handleGuardarEdicion = async (payload) => {
+        await api.put('/index.php/compras/editar', { id: editModal.oc.id, ...payload });
+        cargarOrdenes();
+        cargarPendientes();
+    };
+
     const solicitarReabrir = () => {
         closeActionMenu();
         if (actionMenu.id) setConfirmReabrir({ show: true, id: actionMenu.id });
@@ -333,6 +363,15 @@ const Compras = () => {
         <div className="container-fluid h-100 p-0 d-flex flex-column">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
             <NuevaOrdenModal show={showModal} onClose={() => setShowModal(false)} onSave={() => { cargarOrdenes(); cargarPendientes(); }} itemsIniciales={itemsPrecargados} />
+
+            <NuevaOrdenModal
+                show={editModal.show}
+                onClose={() => setEditModal({ show: false, oc: null, items: [] })}
+                onSave={handleGuardarEdicion}
+                itemsIniciales={editModal.items}
+                modoEdicion={true}
+                ocEditar={editModal.oc}
+            />
             <DetalleOrdenModal show={verModal.show} onHide={() => { setVerModal({ show: false, id: null }); cargarOrdenes(); }} ordenId={verModal.id} onDownloadPdf={() => { setVerModal({ show: false }); handleDescargarPdf(); }} onExportExcel={() => { setVerModal({ show: false }); handleDescargarExcel(); }} />
             <SubirArchivoModal show={uploadModal.show} onClose={() => setUploadModal({ show: false, id: null, url: null })} ordenId={uploadModal.id} currentUrl={uploadModal.url} onSave={cargarOrdenes} />
             <RecepcionCompraModal show={recepcionModal.show} onClose={() => setRecepcionModal({ show: false, id: null })} ordenId={recepcionModal.id} onSave={() => { cargarOrdenes(); cargarPendientes(); }} />
@@ -388,6 +427,14 @@ const Compras = () => {
                     {can('compras_pdf') && <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarPdf}><i className="bi bi-file-earmark-pdf text-danger me-2"></i> PDF</button>}
                     {can('compras_regenerar_pdf') && <button className="dropdown-item py-2 px-3 d-flex align-items-center text-primary" onClick={() => handleRegenerarPdf(actionMenu.id)}><i className="bi bi-arrow-clockwise me-2"></i> Regenerar PDF</button>}
                     {can('compras_exportar_detalle') && <button className="dropdown-item py-2 px-3 d-flex align-items-center" onClick={handleDescargarExcel}><i className="bi bi-file-earmark-excel text-success me-2"></i> Excel Detalle</button>}
+                    {!['Recepcion Parcial','Recepcion Total','Anulada','Cerrada Incompleta'].includes(actionMenu.estado) && can('compras_editar') && (
+                        <>
+                            <div className="dropdown-divider my-1"></div>
+                            <button className="dropdown-item py-2 px-3 d-flex align-items-center text-primary fw-bold" onClick={handleAbrirEditar}>
+                                <i className="bi bi-pencil-square me-2"></i> Editar OC
+                            </button>
+                        </>
+                    )}
                     {actionMenu.estado === 'Emitida' && can('compras_anular') && (
                         <>
                             <div className="dropdown-divider my-1"></div>

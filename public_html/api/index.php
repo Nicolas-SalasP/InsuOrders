@@ -463,6 +463,13 @@ try {
             }
             break;
 
+        case 'compras/editar':
+            AuthMiddleware::verify('compras_editar');
+            if ($method === 'PUT') {
+                (new OrdenCompraController())->editar();
+            }
+            break;
+
         // --- PROVEEDORES ---
         case 'proveedores':
             $c = new ProveedorController();

@@ -286,4 +286,19 @@ class OrdenCompraService
     {
         return $this->repo->reabrirOC($id);
     }
+
+    public function editarOrden($id, $data)
+    {
+        $orden = $this->repo->getById($id);
+        if (!$orden) {
+            throw new Exception("Orden no encontrada.");
+        }
+
+        $estadoId = (int) $orden['cabecera']['estado_id'];
+        if (in_array($estadoId, [3, 4, 5, 6])) {
+            throw new Exception("No se puede editar una OC que ya tiene recepciones, está anulada o cerrada.");
+        }
+
+        $this->repo->actualizarOrdenCompleta($id, $data, $orden['cabecera']);
+    }
 }

@@ -216,12 +216,13 @@ class OrdenCompraController
     {
         try {
             AuthMiddleware::verify();
-            AuthMiddleware::hasPermission('compras_crear_insumos'); 
+            AuthMiddleware::hasPermission('compras_crear_insumos');
 
             $input = json_decode(file_get_contents("php://input"), true);
             $ids = $input['ids'] ?? null;
 
-            if (!$ids) throw new Exception("Faltan identificadores.");
+            if (!$ids)
+                throw new Exception("Faltan identificadores.");
 
             $this->service->omitirPendientes($ids);
 
@@ -273,6 +274,27 @@ class OrdenCompraController
                 'success' => true,
                 'message' => "Orden reabierta. Estado actualizado a: $nombre."
             ]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function editar()
+    {
+        AuthMiddleware::verify();
+        $input = json_decode(file_get_contents("php://input"), true);
+        $id = $input['id'] ?? null;
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID de OC no proporcionado']);
+            return;
+        }
+
+        try {
+            $this->service->editarOrden($id, $input);
+            echo json_encode(['success' => true, 'message' => 'Orden actualizada correctamente.']);
         } catch (Exception $e) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
