@@ -105,14 +105,14 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                     return isVideo ? (
                         <div
                             key={idx}
-                            className="position-relative border rounded shadow-sm bg-dark cursor-pointer overflow-hidden d-flex align-items-center justify-content-center"
-                            style={{ height: '100px', width: '130px', background: '#1a1a1a' }}
+                            className="position-relative border rounded shadow-sm bg-dark cursor-pointer overflow-hidden d-flex align-items-center justify-content-center row-hover"
+                            style={{ height: '100px', width: '140px', background: '#1a1a1a' }}
                             onClick={() => setVideoModalUrl(`/api/${url}`)}
                             title="Haga clic para reproducir video"
                         >
                             <video src={`/api/${url}`} preload="metadata" className="w-100 h-100 opacity-60" style={{ objectFit: 'cover' }} />
                             <div className="position-absolute top-50 start-50 translate-middle text-white">
-                                <i className="bi bi-play-circle-fill fs-2 text-warning shadow-sm"></i>
+                                <i className="bi bi-play-circle-fill fs-3 text-warning shadow-sm"></i>
                             </div>
                         </div>
                     ) : (
@@ -120,7 +120,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                             key={idx}
                             src={`/api/${url}`}
                             alt={`Evidencia ${idx + 1}`}
-                            className="rounded border shadow-sm cursor-pointer"
+                            className="rounded border shadow-sm cursor-pointer image-hover"
                             style={{ height: '100px', width: '100px', objectFit: 'cover' }}
                             onClick={() => setEnlargedImage(`/api/${url}`)}
                         />
@@ -141,7 +141,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
             {enlargedImage && (
                 <div
                     className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1065 }}
+                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1060 }}
                     onClick={() => setEnlargedImage(null)}
                 >
                     <div className="position-relative text-center p-3" style={{ maxWidth: '100%', maxHeight: '100%' }}>
