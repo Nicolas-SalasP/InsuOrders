@@ -191,7 +191,6 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 formDataObj.append('galeria_files[]', file);
                 formDataObj.append('galeria_tipos[]', 'General');
             });
-            console.log("📤 Estado exacto despachado al backend:", formDataObj.get('estado_activo'));
 
             let res;
             if (activo) {
