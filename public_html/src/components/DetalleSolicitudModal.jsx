@@ -100,7 +100,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                 {archivos.map((url, idx) => {
                     const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
                     return isVideo ? (
-                        <video key={idx} src={`/api/${url}`} controls className="rounded border shadow-sm bg-dark" style={{ height: '100px', maxWidth: '100%' }}></video>
+                        <video key={idx} controls playsInline preload="metadata" className="rounded border shadow-sm bg-dark" style={{ height: '100px', width: '160px', maxWidth: '100%', display: 'block' }}><source src={`/api/${url}`} /></video>
                     ) : (
                         <img
                             key={idx}

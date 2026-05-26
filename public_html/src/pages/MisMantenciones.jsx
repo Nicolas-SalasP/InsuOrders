@@ -354,7 +354,7 @@ const MisMantenciones = () => {
                                     playsInline
                                     preload="metadata"
                                     className="rounded border shadow-sm bg-dark"
-                                    style={{ height: '120px', maxWidth: '100%' }}
+                                    style={{ height: '120px', width: '160px', maxWidth: '100%', display: 'block' }}
                                 >
                                     <source src={`/api/${url}`} type={
                                         url.toLowerCase().endsWith('.mp4') ? 'video/mp4' :

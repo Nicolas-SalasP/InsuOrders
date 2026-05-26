@@ -231,6 +231,12 @@ try {
                 (new MantencionController())->finalizar();
             break;
 
+        case 'mantencion/reabrir':
+            AuthMiddleware::hasPermission('mant_editar');
+            if ($method === 'POST')
+                (new MantencionController())->reabrirOT();
+            break;
+
         case 'mantencion/asignar-ot':
             AuthMiddleware::hasPermission('mant_editar');
             if ($method === 'POST')

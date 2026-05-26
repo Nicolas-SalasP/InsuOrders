@@ -94,6 +94,8 @@ class OrdenCompraRepository
     {
         $sql = "SELECT DISTINCT 
                     oc.id, oc.fecha_creacion, oc.monto_total, oc.url_archivo,
+                    oc.monto_neto, oc.impuesto, oc.impuesto_porcentaje,
+                    oc.numero_cotizacion, oc.moneda, oc.tipo_cambio,
                     p.nombre as proveedor, p.rut as proveedor_rut,
                     e.nombre as estado, e.id as estado_id,
                     u.nombre as creador,
