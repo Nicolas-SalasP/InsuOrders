@@ -189,6 +189,18 @@ class MantencionController
             echo json_encode(["success" => false, "message" => "Datos incompletos"]);
             return;
         }
+        if (!empty($data['estado_activo'])) {
+            $estadoUpper = strtoupper(trim($data['estado_activo']));
+            if ($estadoUpper === 'EN MANTENCION' || $estadoUpper === 'EN_MANTENCION' || $estadoUpper === 'EN MANTENCIÓN') {
+                $data['estado_activo'] = 'EN_MANTENCION';
+            } elseif ($estadoUpper === 'FUERA DE SERVICIO' || $estadoUpper === 'FUERA' || $estadoUpper === 'BAJA') {
+                $data['estado_activo'] = 'BAJA';
+            } else {
+                $data['estado_activo'] = 'OPERATIVO';
+            }
+        } else {
+            $data['estado_activo'] = 'OPERATIVO'; 
+        }
 
         try {
             $this->service->crearActivo($data, $files);
@@ -208,6 +220,18 @@ class MantencionController
             http_response_code(400);
             echo json_encode(["success" => false, "message" => "Falta ID"]);
             return;
+        }
+        if (!empty($data['estado_activo'])) {
+            $estadoUpper = strtoupper(trim($data['estado_activo']));
+            if ($estadoUpper === 'EN MANTENCION' || $estadoUpper === 'EN_MANTENCION' || $estadoUpper === 'EN MANTENCIÓN') {
+                $data['estado_activo'] = 'EN_MANTENCION';
+            } elseif ($estadoUpper === 'FUERA DE SERVICIO' || $estadoUpper === 'FUERA' || $estadoUpper === 'BAJA') {
+                $data['estado_activo'] = 'BAJA';
+            } else {
+                $data['estado_activo'] = 'OPERATIVO';
+            }
+        } else {
+            $data['estado_activo'] = 'OPERATIVO';
         }
 
         try {

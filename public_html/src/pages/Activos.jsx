@@ -9,7 +9,7 @@ import ConfirmModal from '../components/ConfirmModal';
 
 const Activos = () => {
     const { auth } = useContext(AuthContext);
-    
+
     const [activos, setActivos] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -18,11 +18,11 @@ const Activos = () => {
     const [showModal, setShowModal] = useState(false);
     const [showBuilder, setShowBuilder] = useState(false);
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null, type: 'danger', confirmText: '' });
-    
+
     const [modalImport, setModalImport] = useState({ show: false, tipo: 'activos' });
-    
-    const [activoSeleccionado, setActivoSeleccionado] = useState(null); 
-    const [activoParaPlantilla, setActivoParaPlantilla] = useState(null); 
+
+    const [activoSeleccionado, setActivoSeleccionado] = useState(null);
+    const [activoParaPlantilla, setActivoParaPlantilla] = useState(null);
 
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
 
@@ -31,8 +31,8 @@ const Activos = () => {
         return auth.permisos && auth.permisos.includes(permiso);
     };
 
-    useEffect(() => { 
-        if (hasPermission('activos_ver')) cargarActivos(); 
+    useEffect(() => {
+        if (hasPermission('activos_ver')) cargarActivos();
     }, []);
 
     const cargarActivos = async () => {
@@ -44,11 +44,11 @@ const Activos = () => {
             } else {
                 setMsgModal({ show: true, title: "Atención", message: "No se pudieron obtener los datos.", type: "warning" });
             }
-        } catch (e) { 
+        } catch (e) {
             console.error(e);
             setMsgModal({ show: true, title: "Error", message: "Error de conexión al cargar activos.", type: "error" });
-        } finally { 
-            setLoading(false); 
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -58,30 +58,29 @@ const Activos = () => {
         (a.codigo_maquina && a.codigo_maquina.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const esOperativo = (a) => (a.estado_activo || '').toUpperCase() === 'OPERATIVO';
-    const esFueraServicio = (a) => {
-        const e = (a.estado_activo || '').toUpperCase();
-        return e && e !== 'OPERATIVO';
-    };
+    const esFueraServicio = (a) => ['FUERA DE SERVICIO', 'FUERA', 'BAJA'].includes((a.estado_activo || '').toUpperCase());
+    const esEnMantencion = (a) => ['EN MANTENCION', 'EN_MANTENCION', 'EN MANTENCIÓN'].includes((a.estado_activo || '').toUpperCase());
 
     const conteoOperativos = activos.filter(esOperativo).length;
     const conteoFueraServicio = activos.filter(esFueraServicio).length;
+    const conteoEnMantencion = activos.filter(esEnMantencion).length;
 
     const activosFiltrados = activos.filter(a => {
         if (!matchTexto(a)) return false;
         if (filtroEstado === 'OPERATIVO') return esOperativo(a);
         if (filtroEstado === 'FUERA') return esFueraServicio(a);
+        if (filtroEstado === 'MANTENCION') return esEnMantencion(a);
         return true;
     });
 
-    // FUNCIÓN UNIFICADA PARA ABRIR MODAL
-    const handleOpenModal = (activo) => { 
-        setActivoSeleccionado(activo); 
-        setShowModal(true); 
+    const handleOpenModal = (activo) => {
+        setActivoSeleccionado(activo);
+        setShowModal(true);
     };
 
-    const handleNew = () => { 
-        setActivoSeleccionado(null); 
-        setShowModal(true); 
+    const handleNew = () => {
+        setActivoSeleccionado(null);
+        setShowModal(true);
     };
 
     const handlePlantilla = (activo) => {
@@ -116,11 +115,11 @@ const Activos = () => {
                                     cargarActivos();
                                 }
                             } catch (error) {
-                                setMsgModal({ 
-                                    show: true, 
-                                    title: 'No se pudo eliminar', 
-                                    message: error.response?.data?.message || 'El activo tiene historiales asociados.', 
-                                    type: 'error' 
+                                setMsgModal({
+                                    show: true,
+                                    title: 'No se pudo eliminar',
+                                    message: error.response?.data?.message || 'El activo tiene historiales asociados.',
+                                    type: 'error'
                                 });
                             }
                         }
@@ -139,7 +138,7 @@ const Activos = () => {
         setLoading(true);
         try {
             const response = await api.get('/index.php/exportar?modulo=activos', { responseType: 'blob' });
-            
+
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -153,8 +152,8 @@ const Activos = () => {
 
         } catch (error) {
             setMsgModal({ show: true, title: "Error", message: "No se pudo exportar el archivo.", type: "error" });
-        } finally { 
-            setLoading(false); 
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -162,38 +161,38 @@ const Activos = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
-            
-            <MessageModal 
-                show={msgModal.show} 
-                onClose={() => setMsgModal({...msgModal, show: false})} 
-                title={msgModal.title} 
-                message={msgModal.message} 
-                type={msgModal.type} 
+
+            <MessageModal
+                show={msgModal.show}
+                onClose={() => setMsgModal({ ...msgModal, show: false })}
+                title={msgModal.title}
+                message={msgModal.message}
+                type={msgModal.type}
             />
 
-            <ConfirmModal 
-                show={confirm.show} 
-                onClose={() => setConfirm({ ...confirm, show: false })} 
-                onConfirm={handleConfirmAction} 
-                title={confirm.title} 
-                message={confirm.message} 
-                confirmText={confirm.confirmText} 
-                type={confirm.type} 
+            <ConfirmModal
+                show={confirm.show}
+                onClose={() => setConfirm({ ...confirm, show: false })}
+                onConfirm={handleConfirmAction}
+                title={confirm.title}
+                message={confirm.message}
+                confirmText={confirm.confirmText}
+                type={confirm.type}
             />
             {(hasPermission('activos_crear') || hasPermission('activos_editar') || hasPermission('activos_detalle')) && (
                 <ActivoModal show={showModal} onClose={() => setShowModal(false)} activo={activoSeleccionado} onSave={cargarActivos} />
             )}
-            
-            <ModalCargaMasiva 
-                show={modalImport.show} 
-                onClose={() => setModalImport({ ...modalImport, show: false })} 
-                tipo={modalImport.tipo} 
+
+            <ModalCargaMasiva
+                show={modalImport.show}
+                onClose={() => setModalImport({ ...modalImport, show: false })}
+                tipo={modalImport.tipo}
                 titulo={modalImport.tipo === 'activos' ? 'Importar Máquinas' : 'Importar Kits de Repuestos'}
-                onSave={cargarActivos} 
+                onSave={cargarActivos}
             />
 
-            <PlantillaBuilderModal 
-                show={showBuilder} 
+            <PlantillaBuilderModal
+                show={showBuilder}
                 onHide={() => setShowBuilder(false)}
                 activo={activoParaPlantilla}
                 onSuccess={() => cargarActivos()}
@@ -239,28 +238,39 @@ const Activos = () => {
                                 onClick={() => setFiltroEstado('FUERA')}
                                 title="Mostrar activos fuera de servicio o de baja"
                             >
-                                <i className="bi bi-exclamation-triangle me-1"></i>Fuera de Servicio
+                                <i className="bi bi-x-octagon me-1"></i>Fuera de Servicio
                                 <span className={`badge ms-2 ${filtroEstado === 'FUERA' ? 'bg-white text-danger' : 'bg-danger text-white'}`}>
                                     {conteoFueraServicio}
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`btn btn-sm fw-bold ${filtroEstado === 'MANTENCION' ? 'btn-warning text-dark' : 'btn-outline-warning'}`}
+                                onClick={() => setFiltroEstado('MANTENCION')}
+                                title="Mostrar activos en mantención"
+                            >
+                                <i className="bi bi-tools me-1"></i>En Mantención
+                                <span className={`badge ms-2 ${filtroEstado === 'MANTENCION' ? 'bg-dark text-warning' : 'bg-warning text-dark'}`}>
+                                    {conteoEnMantencion}
                                 </span>
                             </button>
                         </div>
 
                         <div className="input-group" style={{ maxWidth: '250px' }}>
                             <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
-                            <input 
-                                type="text" 
-                                className="form-control border-start-0 ps-0" 
-                                placeholder="Buscar equipo..." 
-                                value={searchTerm} 
-                                onChange={e => setSearchTerm(e.target.value)} 
+                            <input
+                                type="text"
+                                className="form-control border-start-0 ps-0"
+                                placeholder="Buscar equipo..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
                             />
                         </div>
 
                         {hasPermission('activos_exportar') && (
-                            <button 
-                                className="btn btn-outline-success shadow-sm d-flex align-items-center py-2 px-3" 
-                                onClick={handleExport} 
+                            <button
+                                className="btn btn-outline-success shadow-sm d-flex align-items-center py-2 px-3"
+                                onClick={handleExport}
                                 disabled={loading}
                                 title="Exportar a Excel"
                             >
@@ -286,7 +296,7 @@ const Activos = () => {
                         )}
                     </div>
                 </div>
-                
+
                 <div className="card-body p-0 flex-grow-1 overflow-auto">
                     {loading && activos.length === 0 ? (
                         <div className="text-center p-5"><div className="spinner-border text-primary"></div></div>
@@ -308,78 +318,81 @@ const Activos = () => {
                             </thead>
                             <tbody>
                                 {activosFiltrados.map(a => {
-                                    const operativo = (a.estado_activo || '').toUpperCase() === 'OPERATIVO';
-                                    const rowClass = !operativo ? 'table-danger bg-opacity-25' : '';
+                                    const rowClass = esFueraServicio(a) ? 'table-danger bg-opacity-25' : esEnMantencion(a) ? 'table-warning bg-opacity-25' : '';
                                     return (
-                                    <tr key={a.id} className={rowClass}>
-                                        <td className="ps-4">
-                                            <div className="d-flex align-items-center">
-                                                <div className="avatar me-3 bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'40px', height:'40px'}}>
-                                                    {a.imagen_url ? 
-                                                        <img src={`/api${a.imagen_url}`} className="rounded" style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Activo" /> 
-                                                        : <i className="bi bi-box-seam text-secondary fs-4"></i>
-                                                    }
+                                        <tr key={a.id} className={rowClass}>
+                                            <td className="ps-4">
+                                                <div className="d-flex align-items-center">
+                                                    <div className="avatar me-3 bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
+                                                        {a.imagen_url ?
+                                                            <img src={`/api${a.imagen_url}`} className="rounded" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Activo" />
+                                                            : <i className="bi bi-box-seam text-secondary fs-4"></i>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <div className="fw-bold text-dark">{a.nombre}</div>
+                                                        <div className="small text-muted">{a.tipo || 'General'}</div>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <div className="fw-bold text-dark">{a.nombre}</div>
-                                                    <div className="small text-muted">{a.tipo || 'General'}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="font-monospace text-primary fw-bold">{a.codigo_interno}</td>
-                                        <td className="font-monospace">{a.codigo_maquina || '-'}</td> 
-                                        <td>{a.marca || '-'}</td>
-                                        <td className="text-muted">{a.modelo || '-'}</td>
-                                        <td>{a.anio || '-'}</td> 
-                                        <td>{a.ubicacion}</td>
-                                        <td>
-                                            {a.centro_costo_nombre ? (
-                                                <span className="badge bg-light text-secondary border fw-normal text-dark">
-                                                    {a.centro_costo_codigo ? `${a.centro_costo_codigo} - ` : ''}{a.centro_costo_nombre}
-                                                </span>
-                                            ) : (
-                                                <span className="text-muted small fst-italic">Sin asignar</span>
-                                            )}
-                                        </td>
-                                        <td className="text-center">
-                                            {operativo ? (
-                                                <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold px-2 py-1">
-                                                    <i className="bi bi-check-circle-fill me-1"></i>Operativo
-                                                </span>
-                                            ) : (
-                                                <span className="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold px-2 py-1">
-                                                    <i className="bi bi-x-octagon-fill me-1"></i>{a.estado_activo || 'BAJA'}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="text-end pe-4">
-                                            {(hasPermission('activos_detalle') || hasPermission('activos_editar')) && (
-                                                <button 
-                                                    className="btn btn-sm btn-outline-primary me-2" 
-                                                    onClick={() => handleOpenModal(a)} 
-                                                    title={hasPermission('activos_editar') ? "Editar Activo" : "Ver Detalle y Kit"}
-                                                >
-                                                    <i className={hasPermission('activos_editar') ? "bi bi-pencil" : "bi bi-eye"}></i>
-                                                </button>
-                                            )}
-
-                                            {hasPermission('activos_editar') && (
-                                                <>
-                                                    <button 
-                                                        className={`btn btn-sm me-2 ${a.plantilla_json ? 'btn-success text-white' : 'btn-outline-secondary'}`}
-                                                        onClick={() => handlePlantilla(a)}
-                                                        title="Diseñar Pauta de Mantención (Checklist)"
+                                            </td>
+                                            <td className="font-monospace text-primary fw-bold">{a.codigo_interno}</td>
+                                            <td className="font-monospace">{a.codigo_maquina || '-'}</td>
+                                            <td>{a.marca || '-'}</td>
+                                            <td className="text-muted">{a.modelo || '-'}</td>
+                                            <td>{a.anio || '-'}</td>
+                                            <td>{a.ubicacion}</td>
+                                            <td>
+                                                {a.centro_costo_nombre ? (
+                                                    <span className="badge bg-light text-secondary border fw-normal text-dark">
+                                                        {a.centro_costo_codigo ? `${a.centro_costo_codigo} - ` : ''}{a.centro_costo_nombre}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted small fst-italic">Sin asignar</span>
+                                                )}
+                                            </td>
+                                            <td className="text-center">
+                                                {esOperativo(a) ? (
+                                                    <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold px-2 py-1">
+                                                        <i className="bi bi-check-circle-fill me-1"></i>Operativo
+                                                    </span>
+                                                ) : esEnMantencion(a) ? (
+                                                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-bold px-2 py-1">
+                                                        <i className="bi bi-tools me-1"></i>En Mantención
+                                                    </span>
+                                                ) : (
+                                                    <span className="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold px-2 py-1">
+                                                        <i className="bi bi-x-octagon-fill me-1"></i>{(a.estado_activo || '').toUpperCase() === 'BAJA' ? 'Baja' : 'Fuera de Servicio'}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="text-end pe-4">
+                                                {(hasPermission('activos_detalle') || hasPermission('activos_editar')) && (
+                                                    <button
+                                                        className="btn btn-sm btn-outline-primary me-2"
+                                                        onClick={() => handleOpenModal(a)}
+                                                        title={hasPermission('activos_editar') ? "Editar Activo" : "Ver Detalle y Kit"}
                                                     >
-                                                        <i className="bi bi-clipboard-check"></i>
+                                                        <i className={hasPermission('activos_editar') ? "bi bi-pencil" : "bi bi-eye"}></i>
                                                     </button>
+                                                )}
 
-                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleEliminar(a.id)} title="Eliminar Activo">
-                                                        <i className="bi bi-trash"></i>
-                                                    </button>
-                                                </>
-                                            )}
-                                        </td>
-                                    </tr>
+                                                {hasPermission('activos_editar') && (
+                                                    <>
+                                                        <button
+                                                            className={`btn btn-sm me-2 ${a.plantilla_json ? 'btn-success text-white' : 'btn-outline-secondary'}`}
+                                                            onClick={() => handlePlantilla(a)}
+                                                            title="Diseñar Pauta de Mantención (Checklist)"
+                                                        >
+                                                            <i className="bi bi-clipboard-check"></i>
+                                                        </button>
+
+                                                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleEliminar(a.id)} title="Eliminar Activo">
+                                                            <i className="bi bi-trash"></i>
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </td>
+                                        </tr>
                                     );
                                 })}
                                 {activosFiltrados.length === 0 && (

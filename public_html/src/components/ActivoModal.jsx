@@ -85,6 +85,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
     useEffect(() => {
         if (show) {
+            setMsgModal({ show: false, title: '', message: '', type: 'info' });
             setTab('general');
 
             api.get('/index.php/mantencion/centros-costo').then(res => {
@@ -102,6 +103,10 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
             }).catch(console.error);
 
             if (activo) {
+                let estadoDb = (activo.estado_activo || '').toUpperCase().trim();
+                if (estadoDb === 'EN MANTENCION') estadoDb = 'EN_MANTENCION';
+                if (estadoDb === 'FUERA DE SERVICIO' || estadoDb === 'FUERA') estadoDb = 'BAJA';
+
                 setFormData({
                     codigo_interno: activo.codigo_interno || '',
                     codigo_maquina: activo.codigo_maquina || '',
@@ -112,9 +117,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                     anio: activo.anio || '',
                     numero_serie: activo.numero_serie || '',
                     ubicacion: activo.ubicacion || '',
-                    estado_activo: (['OPERATIVO','FUERA DE SERVICIO','EN MANTENCION','BAJA'].includes((activo.estado_activo || '').toUpperCase())
-                        ? (activo.estado_activo || '').toUpperCase()
-                        : 'OPERATIVO'),
+                    estado_activo: ['OPERATIVO', 'EN_MANTENCION', 'BAJA'].includes(estadoDb) ? estadoDb : 'OPERATIVO',
                     descripcion: activo.descripcion || '',
                     centro_costo: activo.centro_costo_id || '',
                     frecuencia_mantencion: activo.frecuencia_mantencion || '',
@@ -188,28 +191,24 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                 formDataObj.append('galeria_files[]', file);
                 formDataObj.append('galeria_tipos[]', 'General');
             });
+            console.log("📤 Estado exacto despachado al backend:", formDataObj.get('estado_activo'));
 
             let res;
             if (activo) {
                 formDataObj.append('id', activo.id);
-                res = await api.post('/index.php/mantencion/editar-activo', formDataObj, { headers: { 'Content-Type': 'multipart/form-data' } });
+                res = await api.post('/index.php/mantencion/editar-activo', formDataObj, { headers: { 'Content-Type': undefined } });
             } else {
-                res = await api.post('/index.php/mantencion/crear-activo', formDataObj, { headers: { 'Content-Type': 'multipart/form-data' } });
+                res = await api.post('/index.php/mantencion/crear-activo', formDataObj, { headers: { 'Content-Type': undefined } });
             }
 
             if (res.data.success) {
-                setMsgModal({ show: true, title: 'Éxito', message: 'Activo guardado correctamente.', type: 'success' });
+                setMsgModal({ show: true, title: 'Éxito', message: res.data.message || 'Activo guardado correctamente.', type: 'success' });
                 onSave();
-                if (!activo) {
-                    setTimeout(onClose, 1000);
-                } else {
-                    setMainImage(null);
-                    setGalleryItems([]);
-                    cargarGaleria(activo.id);
-                }
+                setTimeout(onClose, 900);
             }
         } catch (error) {
-            setMsgModal({ show: true, title: 'Error', message: error.response?.data?.message || 'Ocurrió un error al guardar.', type: 'error' });
+            console.error(error);
+            setMsgModal({ show: true, title: 'Error', message: error.response?.data?.message || 'Error de red.', type: 'error' });
         } finally {
             setSaving(false);
         }
@@ -246,7 +245,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         data.append('nombre_archivo', file.name);
 
         try {
-            await api.post('/index.php/mantencion/docs', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+            await api.post('/index.php/mantencion/docs', data, { headers: { 'Content-Type': undefined } });
             setFile(null);
             document.getElementById('fileInput').value = '';
             cargarDocs(activo.id);
@@ -409,10 +408,15 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                             </div>
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold text-muted small text-uppercase">Estado</label>
-                                                <select className="form-select fw-bold" value={formData.estado_activo} onChange={e => setFormData({ ...formData, estado_activo: e.target.value })} disabled={isReadOnly}>
+                                                <select
+                                                    className="form-select fw-bold"
+                                                    value={formData.estado_activo}
+                                                    onChange={e => setFormData({ ...formData, estado_activo: e.target.value })}
+                                                    disabled={isReadOnly}
+                                                >
                                                     <option value="OPERATIVO" className="text-success">🟢 Operativo</option>
-                                                    <option value="FUERA DE SERVICIO" className="text-danger">🔴 Fuera de Servicio</option>
-                                                    <option value="EN MANTENCION" className="text-warning">🟡 En Mantención</option>
+                                                    <option value="EN_MANTENCION" className="text-warning">🟡 En Mantención</option>
+                                                    <option value="BAJA" className="text-danger">🔴 Baja / Fuera de Servicio</option>
                                                 </select>
                                             </div>
 
