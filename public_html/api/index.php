@@ -231,6 +231,12 @@ try {
                 (new MantencionController())->finalizar();
             break;
 
+        case 'mantencion/reabrir':
+            AuthMiddleware::hasPermission('mant_editar');
+            if ($method === 'POST')
+                (new MantencionController())->reabrirOT();
+            break;
+
         case 'mantencion/asignar-ot':
             AuthMiddleware::hasPermission('mant_editar');
             if ($method === 'POST')
@@ -460,6 +466,13 @@ try {
             AuthMiddleware::verify('compras_recepcionar');
             if ($method === 'POST') {
                 (new OrdenCompraController())->reabrirOC();
+            }
+            break;
+
+        case 'compras/editar':
+            AuthMiddleware::verify('compras_editar');
+            if ($method === 'PUT') {
+                (new OrdenCompraController())->editar();
             }
             break;
 

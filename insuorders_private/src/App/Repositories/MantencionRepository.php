@@ -140,7 +140,7 @@ class MantencionRepository
             ':ubi' => $data['ubicacion'],
             ':desc' => $data['descripcion'] ?? '',
             ':cc' => $ccId,
-            ':est' => $data['estado_activo'] ?? 'OPERATIVO',
+            ':est' => (in_array(strtoupper(trim((string) ($data['estado_activo'] ?? ''))), ['OPERATIVO', 'FUERA DE SERVICIO', 'EN MANTENCION', 'BAJA'], true) ? strtoupper(trim($data['estado_activo'])) : 'OPERATIVO'),
             ':img' => $data['imagen_url'] ?? null,
             ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null,
             ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null,
@@ -164,6 +164,27 @@ class MantencionRepository
         $ccId = $this->resolveCentroCostoId($data['centro_costo'] ?? null);
         $padreId = !empty($data['activo_padre_id']) ? $data['activo_padre_id'] : null;
         $imgSql = !empty($data['imagen_url']) ? ", imagen_url = :img" : "";
+        $estadoIn = strtoupper(trim((string) ($data['estado_activo'] ?? '')));
+
+        if (in_array($estadoIn, ['EN MANTENCION', 'EN_MANTENCION', 'EN MANTENCIÓN'])) {
+            $estadoFinal = 'EN_MANTENCION';
+        } elseif (in_array($estadoIn, ['FUERA DE SERVICIO', 'FUERA', 'BAJA'])) {
+            $estadoFinal = 'BAJA';
+        } elseif ($estadoIn === 'OPERATIVO') {
+            $estadoFinal = 'OPERATIVO';
+        } else {
+            $stmtCur = $this->db->prepare("SELECT estado_activo FROM activos WHERE id = ?");
+            $stmtCur->execute([$data['id']]);
+            $estadoActual = strtoupper(trim((string) $stmtCur->fetchColumn()));
+
+            if (in_array($estadoActual, ['EN MANTENCION', 'EN_MANTENCION', 'EN MANTENCIÓN'])) {
+                $estadoFinal = 'EN_MANTENCION';
+            } elseif (in_array($estadoActual, ['FUERA DE SERVICIO', 'BAJA'])) {
+                $estadoFinal = 'BAJA';
+            } else {
+                $estadoFinal = 'OPERATIVO';
+            }
+        }
 
         $sql = "UPDATE activos SET 
                 codigo_interno=:cod, codigo_maquina=:cod_maq, nombre=:nom, tipo=:tipo, marca=:marca, modelo=:mod,
@@ -184,7 +205,7 @@ class MantencionRepository
             ':ubi' => $data['ubicacion'],
             ':desc' => $data['descripcion'] ?? '',
             ':cc' => $ccId,
-            ':est' => $data['estado_activo'] ?? 'OPERATIVO',
+            ':est' => $estadoFinal,
             ':frec' => !empty($data['frecuencia_mantencion']) ? $data['frecuencia_mantencion'] : null,
             ':uni' => !empty($data['unidad_frecuencia']) ? $data['unidad_frecuencia'] : null,
             ':padre' => $padreId,

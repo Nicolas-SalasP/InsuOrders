@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axiosConfig';
 import ConfirmModal from './ConfirmModal';
+import VideoModal from './VideoModal';
 
 const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
     const [detalle, setDetalle] = useState(null);
@@ -11,6 +12,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
     const [loadingFirma, setLoadingFirma] = useState(false);
     const [enlargedImage, setEnlargedImage] = useState(null);
     const currentUserId = parseInt(localStorage.getItem('user_id') || 0);
+    const [videoModalUrl, setVideoModalUrl] = useState(null);
 
     useEffect(() => {
         if (show && solicitudId) {
@@ -19,6 +21,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
             setDetalle(null);
             setNotaCierre('');
             setEnlargedImage(null);
+            setVideoModalUrl(null);
         }
     }, [show, solicitudId]);
 
@@ -100,13 +103,24 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                 {archivos.map((url, idx) => {
                     const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
                     return isVideo ? (
-                        <video key={idx} src={`/api/${url}`} controls className="rounded border shadow-sm bg-dark" style={{ height: '100px', maxWidth: '100%' }}></video>
+                        <div
+                            key={idx}
+                            className="position-relative border rounded shadow-sm bg-dark cursor-pointer overflow-hidden d-flex align-items-center justify-content-center row-hover"
+                            style={{ height: '100px', width: '140px', background: '#1a1a1a' }}
+                            onClick={() => setVideoModalUrl(`/api/${url}`)}
+                            title="Haga clic para reproducir video"
+                        >
+                            <video src={`/api/${url}`} preload="metadata" className="w-100 h-100 opacity-60" style={{ objectFit: 'cover' }} />
+                            <div className="position-absolute top-50 start-50 translate-middle text-white">
+                                <i className="bi bi-play-circle-fill fs-3 text-warning shadow-sm"></i>
+                            </div>
+                        </div>
                     ) : (
                         <img
                             key={idx}
                             src={`/api/${url}`}
                             alt={`Evidencia ${idx + 1}`}
-                            className="rounded border shadow-sm cursor-pointer"
+                            className="rounded border shadow-sm cursor-pointer image-hover"
                             style={{ height: '100px', width: '100px', objectFit: 'cover' }}
                             onClick={() => setEnlargedImage(`/api/${url}`)}
                         />
@@ -133,12 +147,11 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                     <div className="position-relative text-center p-3" style={{ maxWidth: '100%', maxHeight: '100%' }}>
                         <button
                             className="btn btn-light position-absolute top-0 end-0 m-4 rounded-circle shadow-sm d-flex justify-content-center align-items-center"
-                            style={{ zIndex: 1061, width: '45px', height: '45px', transform: 'translate(25%, -25%)' }}
+                            style={{ zIndex: 1066, width: '45px', height: '45px', transform: 'translate(25%, -25%)' }}
                             onClick={() => setEnlargedImage(null)}
                         >
                             <i className="bi bi-x-lg text-dark fw-bold fs-5"></i>
                         </button>
-
                         <img
                             src={enlargedImage}
                             alt="Ampliación"
@@ -149,6 +162,11 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                     </div>
                 </div>
             )}
+            <VideoModal
+                show={!!videoModalUrl}
+                onClose={() => setVideoModalUrl(null)}
+                videoUrl={videoModalUrl}
+            />
 
             <ConfirmModal
                 show={showFirmar}
@@ -161,20 +179,20 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
             />
 
             <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
-                <div className="modal-dialog modal-lg modal-dialog-scrollable">
-                    <div className="modal-content shadow-lg">
-                        <div className="modal-header bg-primary text-white">
-                            <h5 className="modal-title">Detalle OT #{solicitudId}</h5>
+                <div className="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+                    <div className="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
+                        <div className="modal-header bg-primary text-white py-3">
+                            <h5 className="modal-title fw-bold"><i className="bi bi-journal-text me-2"></i>Detalle OT #{solicitudId}</h5>
                             <button className="btn-close btn-close-white" onClick={onClose}></button>
                         </div>
 
-                        <div className="modal-body bg-light">
+                        <div className="modal-body bg-light p-4">
                             {loading ? (
                                 <div className="text-center py-5"><div className="spinner-border text-primary"></div></div>
                             ) : detalle ? (
                                 <div className="container-fluid p-0">
 
-                                    {/* --- ALERTA DE PREVENCIÓN DE RIESGOS (PERMISOS DE TRABAJO) --- */}
+                                    {/* --- ALERTA DE PERMISOS DE RIESGO --- */}
                                     {Number(detalle.requiere_permiso) === 1 && (
                                         <div className="alert shadow-sm mb-4" style={{ backgroundColor: '#fff3cd', borderLeft: '6px solid #dc3545', color: '#856404', padding: '1rem' }}>
                                             <div className="d-flex align-items-center">
@@ -199,22 +217,23 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                             </div>
                                         </div>
                                     )}
+
                                     {/* --- 1. AVANCE DEL EQUIPO --- */}
-                                    <div className="card mb-3 border-primary shadow-sm">
-                                        <div className="card-header bg-primary bg-opacity-10 text-primary fw-bold d-flex justify-content-between align-items-center">
+                                    <div className="card mb-4 border-0 shadow-sm rounded-3 overflow-hidden">
+                                        <div className="card-header bg-primary bg-opacity-10 text-primary fw-bold d-flex justify-content-between align-items-center py-3">
                                             <span><i className="bi bi-people-fill me-2"></i>Avance del Equipo</span>
-                                            <span className="badge bg-primary rounded-pill">{detalle.estado}</span>
+                                            <span className="badge bg-primary px-3 py-2 rounded-pill shadow-sm">{detalle.estado}</span>
                                         </div>
                                         <ul className="list-group list-group-flush">
                                             {detalle.asignaciones && detalle.asignaciones.length > 0 ? (
                                                 detalle.asignaciones.map((asig, idx) => (
-                                                    <li key={idx} className="list-group-item d-flex justify-content-between align-items-center">
+                                                    <li key={idx} className="list-group-item d-flex justify-content-between align-items-center p-3">
                                                         <div>
-                                                            <div className="fw-bold">{asig.nombre} {asig.apellido}</div>
-                                                            <small className="text-muted d-block">{asig.cargo || 'Técnico'}</small>
+                                                            <div className="fw-bold text-dark">{asig.nombre} {asig.apellido}</div>
+                                                            <small className="text-muted d-block mb-1">{asig.cargo || 'Técnico'}</small>
                                                             {parseInt(asig.completado) === 1 ? (
                                                                 asig.notas_cierre ? (
-                                                                    <div className="text-muted small fst-italic mt-1 border-start border-success ps-2">
+                                                                    <div className="text-muted small fst-italic mt-1 border-start border-success ps-2 bg-light p-1 rounded">
                                                                         "{asig.notas_cierre}"
                                                                     </div>
                                                                 ) : (
@@ -227,7 +246,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
 
                                                         {parseInt(asig.completado) === 1 ? (
                                                             <div className="text-end">
-                                                                <span className="badge bg-success shadow-sm">
+                                                                <span className="badge bg-success shadow-sm px-2 py-1">
                                                                     <i className="bi bi-check-circle-fill me-1"></i> Listo
                                                                 </span>
                                                                 <div className="text-muted mt-1" style={{ fontSize: '0.7rem' }}>
@@ -235,7 +254,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <span className="badge bg-warning text-dark shadow-sm">
+                                                            <span className="badge bg-warning text-dark shadow-sm px-2 py-1">
                                                                 <i className="bi bi-tools me-1"></i> Pendiente
                                                             </span>
                                                         )}
@@ -247,7 +266,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                         </ul>
 
                                         {soyAsignadoPendiente() && (
-                                            <div className="card-footer bg-white text-end p-3">
+                                            <div className="card-footer bg-white border-top text-end p-3">
                                                 <div className="mb-2 text-start">
                                                     <label className="form-label small fw-bold text-secondary">Nota de Término (Opcional):</label>
                                                     <input
@@ -259,7 +278,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                     />
                                                 </div>
                                                 <button
-                                                    className="btn btn-success fw-bold w-100"
+                                                    className="btn btn-success fw-bold w-100 py-2 shadow-sm"
                                                     onClick={() => setShowFirmar(true)}
                                                     disabled={loadingFirma}
                                                 >
@@ -270,16 +289,16 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                     </div>
 
                                     {/* --- 2. DATOS GENERALES Y EVIDENCIA CLIENTE --- */}
-                                    <div className="row mb-3 align-items-stretch">
+                                    <div className="row mb-4 align-items-stretch">
                                         <div className="col-md-6 mb-3 mb-md-0">
-                                            <div className="card h-100 border-0 shadow-sm">
-                                                <div className="card-body">
+                                            <div className="card h-100 border-0 shadow-sm rounded-3">
+                                                <div className="card-body p-3">
                                                     <small className="text-muted text-uppercase fw-bold">Máquina Principal</small>
                                                     <div className="fs-5 text-dark fw-bold">{detalle.activo}</div>
                                                     <div className="text-secondary small mb-2">{detalle.activo_codigo}</div>
 
                                                     {detalle.sub_activo_nombre && (
-                                                        <div className="mt-2 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded shadow-sm">
+                                                        <div className="mt-2 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded shadow-sm mb-3">
                                                             <small className="text-primary text-uppercase fw-bold" style={{ fontSize: '0.7rem' }}>
                                                                 <i className="bi bi-diagram-3-fill me-1"></i> Sub-Activo / Componente
                                                             </small>
@@ -287,7 +306,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                         </div>
                                                     )}
                                                     <small className="text-muted text-uppercase fw-bold d-block mt-2">Ubicación / Referencia</small>
-                                                    <div className="d-flex align-items-center mt-1 bg-light p-2 rounded border">
+                                                    <div className="d-flex align-items-center mt-1 bg-white p-2 rounded border shadow-inner">
                                                         <i className="bi bi-geo-alt-fill text-danger me-2 fs-5"></i>
                                                         <span className="fw-medium">{detalle.ubicacion || 'No especificada'}</span>
                                                     </div>
@@ -295,8 +314,8 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                             </div>
                                         </div>
                                         <div className="col-md-6">
-                                            <div className="card h-100 border-0 shadow-sm">
-                                                <div className="card-body">
+                                            <div className="card h-100 border-0 shadow-sm rounded-3">
+                                                <div className="card-body p-3">
                                                     <small className="text-muted text-uppercase fw-bold d-flex justify-content-between">
                                                         <span>Solicitante</span>
                                                         <span>{new Date(detalle.fecha_solicitud).toLocaleDateString()}</span>
@@ -310,42 +329,32 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                         </div>
                                     </div>
 
-                                    <div className="card mb-3 border-0 shadow-sm">
-                                        <div className="card-body">
+                                    <div className="card mb-4 border-0 shadow-sm rounded-3">
+                                        <div className="card-body p-4">
                                             <small className="text-muted text-uppercase fw-bold">Título de la Solicitud / Falla</small>
                                             <h5 className="fw-bold text-primary mt-1 border-bottom pb-2">{detalle.titulo || `OT #${detalle.id}`}</h5>
-                                            
+
                                             <small className="text-muted text-uppercase fw-bold mt-3 d-block">Descripción del Problema</small>
-                                            <p className="mb-0 mt-1 p-3 bg-white border rounded text-dark">{detalle.descripcion_trabajo || 'Sin descripción adicional.'}</p>
+                                            <p className="mb-0 mt-1 p-3 bg-white border rounded text-dark shadow-inner">{detalle.descripcion_trabajo || 'Sin descripción adicional.'}</p>
                                         </div>
                                     </div>
 
                                     {/* --- EVIDENCIA DEL TÉCNICO AL CERRAR --- */}
                                     {(detalle.comentarios_finales || detalle.evidencia_cierre || detalle.fecha_cierre) && (
-                                        <div className="card mb-3 border-success shadow-sm">
-                                            <div className="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center flex-wrap">
+                                        <div className="card mb-4 border-0 shadow-sm rounded-3 overflow-hidden border-start border-success border-4">
+                                            <div className="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center py-3">
                                                 <span><i className="bi bi-check2-all me-2"></i>Reporte Final del Técnico</span>
                                                 {detalle.fecha_cierre && (
                                                     <span className="badge bg-white text-success fw-bold">
-                                                        <i className="bi bi-calendar-check me-1"></i>
-                                                        Culminado: {new Date(detalle.fecha_cierre).toLocaleDateString()} {new Date(detalle.fecha_cierre).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        Culminado: {new Date(detalle.fecha_cierre).toLocaleDateString()}
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="card-body bg-light">
-                                                {detalle.fecha_cierre && (
-                                                    <div className="mb-3">
-                                                        <small className="text-muted text-uppercase fw-bold">Fecha de Culminación</small>
-                                                        <p className="mb-0 mt-1 p-2 bg-white border rounded text-dark fw-bold">
-                                                            <i className="bi bi-calendar-check-fill text-success me-2"></i>
-                                                            {new Date(detalle.fecha_cierre).toLocaleString()}
-                                                        </p>
-                                                    </div>
-                                                )}
+                                            <div className="card-body p-3">
                                                 {detalle.comentarios_finales && (
                                                     <div className="mb-3">
                                                         <small className="text-muted text-uppercase fw-bold">Trabajo Realizado / Notas</small>
-                                                        <p className="mb-0 mt-1 p-2 bg-white border rounded text-dark">{detalle.comentarios_finales}</p>
+                                                        <p className="mb-0 mt-1 p-2 bg-white border rounded text-dark shadow-inner">{detalle.comentarios_finales}</p>
                                                     </div>
                                                 )}
                                                 {detalle.evidencia_cierre && (
@@ -359,13 +368,13 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                     )}
 
                                     {/* --- 3. INSUMOS Y COSTOS --- */}
-                                    <div className="card border-0 shadow-sm mb-3">
-                                        <div className="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
-                                            <span><i className="bi bi-box-seam me-2 text-primary"></i>Insumos Utilizados</span>
+                                    <div className="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
+                                        <div className="card-header bg-white border-bottom fw-bold py-3 text-dark">
+                                            <i className="bi bi-box-seam me-2 text-primary"></i>Insumos Utilizados
                                         </div>
                                         <div className="table-responsive">
                                             <table className="table mb-0 align-middle">
-                                                <thead className="table-light small">
+                                                <thead className="table-light small text-uppercase">
                                                     <tr>
                                                         <th>Insumo</th>
                                                         <th className="text-center">Cant.</th>
@@ -377,9 +386,9 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                 <tbody>
                                                     {detalle.items && detalle.items.length > 0 ? detalle.items.map((item, i) => (
                                                         <tr key={i}>
-                                                            <td>
+                                                            <td className="ps-3">
                                                                 <div className="fw-bold">{item.nombre}</div>
-                                                                <small className="text-muted">{item.codigo_sku}</small>
+                                                                <small className="text-muted font-monospace">{item.codigo_sku}</small>
                                                             </td>
                                                             <td className="text-center fw-bold">{parseFloat(item.cantidad)} {item.unidad_medida}</td>
                                                             <td className="text-center">
@@ -387,23 +396,19 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                                     {item.estado_linea}
                                                                 </span>
                                                             </td>
-                                                            <td className="text-end text-muted small">
-                                                                {formatCurrency(item.costo_unitario_snapshot)}
-                                                            </td>
-                                                            <td className="text-end fw-bold text-dark pe-3">
-                                                                {formatCurrency(item.costo_total_linea)}
-                                                            </td>
+                                                            <td className="text-end text-muted small">{formatCurrency(item.costo_unitario_snapshot)}</td>
+                                                            <td className="text-end fw-bold text-dark pe-3">{formatCurrency(item.costo_total_linea)}</td>
                                                         </tr>
-                                                    )) : <tr><td colSpan="5" className="text-center text-muted py-4">Sin insumos requeridos.</td></tr>}
+                                                    )) : <tr><td colSpan="5" className="text-center text-muted py-4 fst-italic">Sin insumos requeridos.</td></tr>}
                                                 </tbody>
                                             </table>
                                         </div>
 
                                         {/* --- RESUMEN FINANCIERO --- */}
-                                        <div className="card-footer bg-light d-flex justify-content-end p-3 border-top">
+                                        <div className="card-footer bg-white border-top d-flex justify-content-end p-3">
                                             <div className="text-end">
                                                 <div className="small text-muted text-uppercase fw-bold mb-1">Costo Total de Reparación</div>
-                                                <div className="fs-3 fw-bold text-success">
+                                                <div className="fs-3 fw-bold text-success font-monospace">
                                                     {formatCurrency(detalle.costo_total_ot)}
                                                 </div>
 
@@ -429,7 +434,6 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                 )}
                                             </div>
                                         </div>
-
                                     </div>
 
                                 </div>
@@ -438,9 +442,9 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                             )}
                         </div>
 
-                        <div className="modal-footer bg-white d-flex justify-content-between">
+                        <div className="modal-footer bg-white d-flex justify-content-between py-3">
                             <button
-                                className="btn btn-outline-danger fw-bold"
+                                className="btn btn-outline-danger fw-bold d-flex align-items-center shadow-sm"
                                 onClick={descargarPdf}
                                 disabled={downloading || !detalle}
                             >
@@ -450,7 +454,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                     <><i className="bi bi-file-earmark-pdf-fill me-2"></i>Imprimir Reporte</>
                                 )}
                             </button>
-                            <button className="btn btn-secondary px-4" onClick={onClose}>Cerrar</button>
+                            <button className="btn btn-secondary px-4 fw-medium rounded-pill shadow-sm" onClick={onClose}>Cerrar</button>
                         </div>
                     </div>
                 </div>

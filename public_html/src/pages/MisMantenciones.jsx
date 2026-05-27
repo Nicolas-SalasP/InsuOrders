@@ -5,6 +5,7 @@ import AuthContext from '../context/AuthContext';
 import ChecklistRenderer from '../components/ChecklistRenderer';
 import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
+import VideoModal from '../components/VideoModal';
 import { usePermission } from '../hooks/usePermission';
 
 const MisMantenciones = () => {
@@ -32,6 +33,7 @@ const MisMantenciones = () => {
     const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
     const sigCanvas = useRef(null);
     const [enlargedImage, setEnlargedImage] = useState(null);
+    const [videoModalUrl, setVideoModalUrl] = useState(null);
 
     const esServicio = selectedOt && (!selectedOt.activo_id || selectedOt.codigo_interno === 'SERV');
 
@@ -112,6 +114,7 @@ const MisMantenciones = () => {
         setLoadingDetalle(true);
         if (!mantenerTab) setActiveTab('info');
         setEnlargedImage(null);
+        setVideoModalUrl(null);
 
         try {
             const res = await api.get(`/index.php/mantencion?detalle=true&id=${ot.id}`);
@@ -202,7 +205,7 @@ const MisMantenciones = () => {
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    const otsFiltradasRaw = ots.filter(ot => {
+    const solicitudesFiltradasRaw = ots.filter(ot => {
         if (filtroTecnico) {
             const asignados = ot.asignados_ids ? ot.asignados_ids.toString().split(',') : [];
             if (!asignados.includes(filtroTecnico.toString())) return false;
@@ -236,7 +239,7 @@ const MisMantenciones = () => {
 
     if (filtroEstado === 'futuras') {
         const agrupadas = {};
-        otsFiltradasRaw.forEach(ot => {
+        solicitudesFiltradasRaw.forEach(ot => {
             const key = `${ot.activo_id || 'general'}-${ot.titulo}`;
             if (!agrupadas[key]) {
                 agrupadas[key] = ot;
@@ -248,9 +251,9 @@ const MisMantenciones = () => {
         });
         otsAMostrar = Object.values(agrupadas).sort((a, b) => new Date(a.fecha_requerida) - new Date(b.fecha_requerida));
     } else if (filtroEstado === 'terminado') {
-        otsAMostrar = otsFiltradasRaw.sort((a, b) => new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud));
+        otsAMostrar = solicitudesFiltradasRaw.sort((a, b) => new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud));
     } else {
-        otsAMostrar = otsFiltradasRaw.sort((a, b) => new Date(a.fecha_solicitud) - new Date(b.fecha_solicitud));
+        otsAMostrar = solicitudesFiltradasRaw.sort((a, b) => new Date(a.fecha_solicitud) - new Date(b.fecha_solicitud));
     }
 
     const comprimirImagen = (file) => {
@@ -349,20 +352,17 @@ const MisMantenciones = () => {
                             )}
 
                             {isVideo ? (
-                                <video
-                                    controls
-                                    playsInline
-                                    preload="metadata"
-                                    className="rounded border shadow-sm bg-dark"
-                                    style={{ height: '120px', maxWidth: '100%' }}
+                                <div 
+                                    className="position-relative border rounded shadow-sm bg-dark cursor-pointer overflow-hidden d-flex align-items-center justify-content-center" 
+                                    style={{ height: '120px', width: '160px', background: '#1a1a1a' }}
+                                    onClick={() => setVideoModalUrl(`/api/${url}`)}
+                                    title="Haga clic para reproducir video"
                                 >
-                                    <source src={`/api/${url}`} type={
-                                        url.toLowerCase().endsWith('.mp4') ? 'video/mp4' :
-                                        url.toLowerCase().endsWith('.webm') ? 'video/webm' :
-                                        url.toLowerCase().endsWith('.ogg') ? 'video/ogg' :
-                                        'video/mp4'
-                                    } />
-                                </video>
+                                    <video src={`/api/${url}`} preload="metadata" className="w-100 h-100 opacity-60" style={{ objectFit: 'cover' }} />
+                                    <div className="position-absolute top-50 start-50 translate-middle text-white">
+                                        <i className="bi bi-play-circle-fill fs-2 text-warning shadow-sm"></i>
+                                    </div>
+                                </div>
                             ) : (
                                 <img
                                     src={`/api/${url}`}
@@ -512,6 +512,12 @@ const MisMantenciones = () => {
                     </div>
                 </div>
             )}
+
+            <VideoModal 
+                show={!!videoModalUrl} 
+                onClose={() => setVideoModalUrl(null)} 
+                videoUrl={videoModalUrl} 
+            />
 
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
             <ConfirmModal show={confirm.show} onClose={() => setConfirm({ ...confirm, show: false })} onConfirm={confirm.action} title={confirm.title} message={confirm.message} confirmText="Sí, Finalizar igual" cancelText="Cancelar" type="warning" />
@@ -896,7 +902,6 @@ const MisMantenciones = () => {
                                                 </div>
                                                 <div className="col-md-5">
                                                     <label className="text-muted small fw-bold text-uppercase mb-1">Evidencia (Cliente)</label>
-                                                    {/* Esta evidencia es del cliente, no se debe poder borrar por el técnico */}
                                                     {renderEvidencia(selectedOt.imagen_url, true)}
                                                 </div>
                                             </div>
@@ -937,7 +942,6 @@ const MisMantenciones = () => {
                                                         {selectedOt.evidencia_cierre && (
                                                             <div className="mb-3 p-3 bg-light rounded border border-success border-opacity-25">
                                                                 <span className="small text-success d-block mb-2 fw-bold"><i className="bi bi-check-circle-fill me-1"></i>Archivos Guardados Anteriormente:</span>
-                                                                {/* Renderizamos las evidencias y le pasamos el permiso de lectura */}
                                                                 {renderEvidencia(selectedOt.evidencia_cierre, isReadOnly)}
                                                             </div>
                                                         )}

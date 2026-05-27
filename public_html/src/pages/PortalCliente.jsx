@@ -1,6 +1,8 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../api/axiosConfig';
 import NuevaSolicitudClienteModal from '../components/NuevaSolicitudClienteModal';
+import DetalleSolicitudClienteModal from '../components/DetalleSolicitudClienteModal'; // <-- Importado
+import VideoModal from '../components/VideoModal'; // <-- Importado
 import AuthContext from '../context/AuthContext';
 
 const PortalCliente = () => {
@@ -12,6 +14,9 @@ const PortalCliente = () => {
     const [vistaPropiedad, setVistaPropiedad] = useState('TODAS');
     
     const [enlargedImage, setEnlargedImage] = useState(null);
+    const [videoModalUrl, setVideoModalUrl] = useState(null); // <-- Estado para video activo
+    const [selectedSolicitud, setSelectedSolicitud] = useState(null); // <-- Guardar solicitud para modal grande
+    const [showDetalleModal, setShowDetalleModal] = useState(false); // <-- Control de modal grande
 
     useEffect(() => {
         cargarSolicitudes();
@@ -70,10 +75,18 @@ const PortalCliente = () => {
                 {archivos.map((url, idx) => {
                     const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
                     return isVideo ? (
-                        <div key={idx} className="position-relative flex-shrink-0" style={{ width: '100px', height: '80px' }}>
+                        <div 
+                            key={idx} 
+                            className="position-relative flex-shrink-0 cursor-pointer" 
+                            style={{ width: '100px', height: '80px' }}
+                            onClick={(e) => {
+                                e.stopPropagation(); // <-- Frena la apertura del modal de solicitud
+                                setVideoModalUrl(`/api/${url}`);
+                            }}
+                        >
                             <video src={`/api/${url}`} className="w-100 h-100 rounded border shadow-sm bg-dark object-fit-cover"></video>
-                            <div className="position-absolute top-50 start-50 translate-middle text-white text-opacity-75">
-                                <i className="bi bi-play-circle-fill fs-3"></i>
+                            <div className="position-absolute top-50 start-50 translate-middle text-warning">
+                                <i className="bi bi-play-circle-fill fs-3 shadow-sm"></i>
                             </div>
                         </div>
                     ) : (
@@ -83,7 +96,10 @@ const PortalCliente = () => {
                             alt={`Evidencia ${idx+1}`} 
                             className="rounded border shadow-sm cursor-pointer flex-shrink-0 image-hover" 
                             style={{ width: '100px', height: '80px', objectFit: 'cover' }} 
-                            onClick={() => setEnlargedImage(`/api/${url}`)} 
+                            onClick={(e) => {
+                                e.stopPropagation(); // <-- Frena la apertura del modal de solicitud
+                                setEnlargedImage(`/api/${url}`);
+                            }} 
                         />
                     );
                 })}
@@ -105,14 +121,32 @@ const PortalCliente = () => {
                 {archivos.map((url, idx) => {
                     const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
                     return isVideo ? (
-                        <div key={idx} className="position-relative flex-shrink-0" style={{ width: '80px', height: '60px' }}>
+                        <div 
+                            key={idx} 
+                            className="position-relative flex-shrink-0 cursor-pointer" 
+                            style={{ width: '80px', height: '60px' }}
+                            onClick={(e) => {
+                                e.stopPropagation(); // <-- Frena la apertura del modal de solicitud
+                                setVideoModalUrl(`/api/${url}`);
+                            }}
+                        >
                             <video src={`/api/${url}`} className="w-100 h-100 rounded border shadow-sm bg-dark object-fit-cover"></video>
-                            <div className="position-absolute top-50 start-50 translate-middle text-white text-opacity-75">
-                                <i className="bi bi-play-circle-fill fs-4"></i>
+                            <div className="position-absolute top-50 start-50 translate-middle text-warning">
+                                <i className="bi bi-play-circle-fill fs-4 shadow-sm"></i>
                             </div>
                         </div>
                     ) : (
-                        <img key={idx} src={`/api/${url}`} alt={`Evidencia Cierre ${idx+1}`} className="rounded border shadow-sm cursor-pointer flex-shrink-0 image-hover" style={{ width: '80px', height: '60px', objectFit: 'cover' }} onClick={() => setEnlargedImage(`/api/${url}`)} />
+                        <img 
+                            key={idx} 
+                            src={`/api/${url}`} 
+                            alt={`Evidencia Cierre ${idx+1}`} 
+                            className="rounded border shadow-sm cursor-pointer flex-shrink-0 image-hover" 
+                            style={{ width: '80px', height: '60px', objectFit: 'cover' }} 
+                            onClick={(e) => {
+                                e.stopPropagation(); // <-- Frena la apertura del modal de solicitud
+                                setEnlargedImage(`/api/${url}`);
+                            }} 
+                        />
                     );
                 })}
             </div>
@@ -122,16 +156,17 @@ const PortalCliente = () => {
     return (
         <div className="container-fluid p-4 bg-light min-vh-100">
             
+            {/* Modal Zoom de Fotos */}
             {enlargedImage && (
                 <div 
                     className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
-                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1060 }} 
+                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1150 }} 
                     onClick={() => setEnlargedImage(null)}
                 >
                     <div className="position-relative text-center p-3" style={{ maxWidth: '100%', maxHeight: '100%' }}>
                         <button 
                             className="btn btn-light position-absolute top-0 end-0 m-4 rounded-circle shadow-sm d-flex justify-content-center align-items-center" 
-                            style={{ zIndex: 1061, width: '45px', height: '45px', transform: 'translate(25%, -25%)' }}
+                            style={{ zIndex: 1151, width: '45px', height: '45px', transform: 'translate(25%, -25%)' }}
                             onClick={() => setEnlargedImage(null)}
                         >
                             <i className="bi bi-x-lg text-dark fw-bold fs-5"></i>
@@ -146,6 +181,9 @@ const PortalCliente = () => {
                     </div>
                 </div>
             )}
+
+            {/* Modal Reproductor de Videos Reutilizable */}
+            <VideoModal show={!!videoModalUrl} onClose={() => setVideoModalUrl(null)} videoUrl={videoModalUrl} />
 
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3 bg-white p-4 rounded-4 shadow-sm">
                 <div>
@@ -220,7 +258,13 @@ const PortalCliente = () => {
                 <div className="row g-4">
                     {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(sol => (
                         <div key={sol.id} className="col-12 col-md-6 col-lg-4 col-xl-3">
-                            <div className="card h-100 shadow-sm border-0 rounded-4 overflow-hidden card-hover transition-all">
+                            <div 
+                                className="card h-100 shadow-sm border-0 rounded-4 overflow-hidden card-hover transition-all cursor-pointer"
+                                onClick={() => {
+                                    setSelectedSolicitud(sol); // Seteamos el objeto completo
+                                    setShowDetalleModal(true);  // Abrimos el modal extendido
+                                }}
+                            >
                                 <div className="card-header bg-white border-bottom-0 d-flex justify-content-between align-items-start pt-3 px-4 pb-0">
                                     <div className="d-flex flex-column gap-2">
                                         <span className={`badge ${getBadgeColor(sol.estado)} px-3 py-2 rounded-pill shadow-sm align-self-start`}>
@@ -316,6 +360,17 @@ const PortalCliente = () => {
                 show={showModal} 
                 onClose={() => setShowModal(false)} 
                 onSave={cargarSolicitudes} 
+            />
+
+            {/* Modal de Detalle Grande Exclusivo para Clientes */}
+            <DetalleSolicitudClienteModal 
+                show={showDetalleModal}
+                onClose={() => {
+                    setShowDetalleModal(false);
+                    setSelectedSolicitud(null);
+                }}
+                solicitud={selectedSolicitud}
+                getBadgeColor={getBadgeColor}
             />
         </div>
     );

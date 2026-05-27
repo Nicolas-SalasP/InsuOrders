@@ -450,24 +450,26 @@ class ExportController
 
         $repo = new MantencionRepository();
         $header = $repo->getOTHeader($id);
-        $detalles = $repo->getDetallesOT($id);
+        $detalles = $repo->getDetallesOT($id, 0);
 
         if (!$header)
             throw new \Exception("OT no encontrada");
 
         $sheet->setCellValue('A1', 'ORDEN DE TRABAJO #' . $id);
-        $sheet->mergeCells('A1:G1'); // Ampliamos hasta G
+        $sheet->mergeCells('A1:G1');
         $sheet->getStyle('A1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 16, 'color' => ['argb' => 'FF1F4E78']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
         ]);
 
+        $fechaCierre = !empty($header['fecha_cierre']) ? $header['fecha_cierre'] : '-';
         $info = [
             3 => ['Solicitante:', $header['solicitante_nombre'] . ' ' . $header['solicitante_apellido']],
             4 => ['Máquina:', ($header['activo'] ?? 'General') . ' (' . ($header['activo_codigo'] ?? '') . ')'],
-            5 => ['Fecha:', $header['fecha_solicitud']],
-            6 => ['Estado:', $header['estado']],
-            7 => ['Descripción:', $header['descripcion_trabajo']]
+            5 => ['Fecha Solicitud:', $header['fecha_solicitud']],
+            6 => ['Fecha Culminación:', $fechaCierre],
+            7 => ['Estado:', $header['estado']],
+            8 => ['Descripción:', $header['descripcion_trabajo']]
         ];
 
         foreach ($info as $r => $val) {
@@ -476,7 +478,7 @@ class ExportController
             $sheet->getStyle("A$r")->getFont()->setBold(true);
         }
 
-        $row = 9;
+        $row = 10;
         $headers = ['SKU', 'Insumo', 'Solicitado', 'Entregado', 'Estado', 'Costo Unitario ($)', 'Subtotal ($)'];
         $c = 'A';
         foreach ($headers as $h) {
@@ -489,27 +491,34 @@ class ExportController
         ]);
 
         $row++;
+        $totalInsumos = 0;
         foreach ($detalles as $d) {
+            $costoUnit = (float) ($d['precio_costo'] ?? 0);
+            $cantEntregada = (float) ($d['cantidad_entregada'] ?? 0);
+            $subtotal = $costoUnit * $cantEntregada;
+            $totalInsumos += $subtotal;
+
             $sheet->setCellValue("A$row", $d['codigo_sku']);
             $sheet->setCellValue("B$row", $d['nombre']);
             $sheet->setCellValue("C$row", $d['cantidad']);
-            $sheet->setCellValue("D$row", $d['cantidad_entregada']);
+            $sheet->setCellValue("D$row", $cantEntregada);
             $sheet->setCellValue("E$row", $d['estado_linea']);
-            $sheet->setCellValue("F$row", $d['costo_unitario_snapshot'] ?? 0);
-            $sheet->setCellValue("G$row", $d['costo_total_linea'] ?? 0);
+            $sheet->setCellValue("F$row", $costoUnit);
+            $sheet->setCellValue("G$row", $subtotal);
             $row++;
         }
 
         $row++;
         $sheet->setCellValue("F$row", 'TOTAL INSUMOS:');
-        $sheet->setCellValue("G$row", $header['costo_total_insumos'] ?? 0);
+        $sheet->setCellValue("G$row", $totalInsumos);
         $row++;
         $sheet->setCellValue("F$row", 'MANO DE OBRA:');
         $sheet->setCellValue("G$row", $header['costo_mano_obra'] ?? 0);
         $row++;
+        $totalOT = $totalInsumos + (float) ($header['costo_mano_obra'] ?? 0);
         $sheet->setCellValue("F$row", 'TOTAL OT:');
-        $sheet->setCellValue("G$row", $header['costo_total_ot'] ?? 0);
-        
+        $sheet->setCellValue("G$row", $totalOT);
+
         $sheet->getStyle("F" . ($row - 2) . ":G$row")->getFont()->setBold(true);
 
         foreach (range('A', 'G') as $col)
@@ -586,31 +595,31 @@ class ExportController
     {
         $sheet = $this->getSheet($s, $idx);
         $sheet->setTitle('Movimientos Realizados');
-        
+
         $start = $_GET['start'] ?? date('Y-m-01');
         $end = $_GET['end'] ?? date('Y-m-d 23:59:59');
         $empleadoId = $_GET['empleado_id'] ?? null;
-        
+
         $data = (new DashboardRepository())->getEntregasParaExcel($start, $end, $empleadoId);
-        
+
         $this->fillSheet(
             $sheet,
             [
-                'Fecha', 
-                'Hora', 
+                'Fecha',
+                'Hora',
                 'Tipo',
                 'Responsable',
-                'Receptor / Destino', 
-                'Ubicación Envío', 
+                'Receptor / Destino',
+                'Ubicación Envío',
                 'Observación',
-                'Producto', 
-                'SKU', 
-                'Cantidad', 
-                'Unidad', 
+                'Producto',
+                'SKU',
+                'Cantidad',
+                'Unidad',
                 'OT Ref'
-            ], 
+            ],
             $data,
-            function($d) {
+            function ($d) {
                 $obsRaw = $d['observacion'] ?? '';
                 $comentarioLimpio = $obsRaw;
 
@@ -618,7 +627,7 @@ class ExportController
                     $parts = explode('Obs: ', $obsRaw, 2);
                     $comentarioLimpio = trim($parts[1]);
                 }
-                
+
                 if ($comentarioLimpio === 'Sin obs') {
                     $comentarioLimpio = '';
                 }

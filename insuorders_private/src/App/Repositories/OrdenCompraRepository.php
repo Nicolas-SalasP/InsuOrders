@@ -14,10 +14,88 @@ class OrdenCompraRepository
         $this->db = Database::getConnection();
     }
 
+    public function getDb()
+    {
+        return $this->db;
+    }
+
+    public function actualizarOrdenCompleta($id, $data, $cabeceraActual)
+    {
+        $this->db->beginTransaction();
+        try {
+            $impuestoPct = (float) ($data['impuesto_porcentaje'] ?? $cabeceraActual['impuesto_porcentaje'] ?? 19);
+            $items = $data['items'] ?? [];
+
+            $totalNeto = 0;
+            foreach ($items as $item) {
+                $totalNeto += (float) ($item['cantidad'] ?? 0) * (float) ($item['precio'] ?? 0);
+            }
+            $impuesto = round($totalNeto * ($impuestoPct / 100), 2);
+            $totalFinal = round($totalNeto + $impuesto, 2);
+
+            $this->db->prepare(
+                "UPDATE ordenes_compra SET
+                    proveedor_id          = :proveedor_id,
+                    destino               = :destino,
+                    moneda                = :moneda,
+                    tipo_cambio           = :tipo_cambio,
+                    numero_cotizacion     = :numero_cotizacion,
+                    impuesto_porcentaje   = :impuesto_porcentaje,
+                    monto_neto            = :monto_neto,
+                    impuesto              = :impuesto,
+                    monto_total           = :monto_total
+                 WHERE id = :id"
+            )->execute([
+                        ':proveedor_id' => $data['proveedor_id'] ?? $cabeceraActual['proveedor_id'],
+                        ':destino' => $data['destino'] ?? $cabeceraActual['destino'],
+                        ':moneda' => $data['moneda'] ?? $cabeceraActual['moneda'],
+                        ':tipo_cambio' => $data['tipo_cambio'] ?? $cabeceraActual['tipo_cambio'],
+                        ':numero_cotizacion' => $data['numero_cotizacion'] ?? $cabeceraActual['numero_cotizacion'],
+                        ':impuesto_porcentaje' => $impuestoPct,
+                        ':monto_neto' => round($totalNeto, 2),
+                        ':impuesto' => $impuesto,
+                        ':monto_total' => $totalFinal,
+                        ':id' => $id,
+                    ]);
+
+            $this->db->prepare("DELETE FROM detalle_orden_compra WHERE orden_compra_id = :id")
+                ->execute([':id' => $id]);
+
+            $stmtDet = $this->db->prepare(
+                "INSERT INTO detalle_orden_compra
+                    (orden_compra_id, insumo_id, cantidad_solicitada, precio_unitario, total_linea)
+                 VALUES (:oc, :ins, :cant, :precio, :total)"
+            );
+
+            foreach ($items as $item) {
+                $insumoId = $item['insumo_id'] ?? $item['id'] ?? null;
+                if (!$insumoId)
+                    continue;
+                $cantidad = (float) ($item['cantidad'] ?? 0);
+                $precio = (float) ($item['precio'] ?? 0);
+                $stmtDet->execute([
+                    ':oc' => $id,
+                    ':ins' => $insumoId,
+                    ':cant' => $cantidad,
+                    ':precio' => $precio,
+                    ':total' => round($cantidad * $precio, 2),
+                ]);
+            }
+
+            $this->db->commit();
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function getAll($filtros = [])
     {
         $sql = "SELECT DISTINCT 
                     oc.id, oc.fecha_creacion, oc.monto_total, oc.url_archivo,
+                    oc.monto_neto, oc.impuesto, oc.impuesto_porcentaje,
+                    oc.numero_cotizacion, oc.moneda, oc.tipo_cambio,
                     p.nombre as proveedor, p.rut as proveedor_rut,
                     e.nombre as estado, e.id as estado_id,
                     u.nombre as creador,
@@ -385,7 +463,7 @@ class OrdenCompraRepository
         $nuevoEstado = 3;
         $algunaRecibida = false;
         foreach ($detalles as $d) {
-            if ((float)$d['cantidad_recibida'] > 0) {
+            if ((float) $d['cantidad_recibida'] > 0) {
                 $algunaRecibida = true;
                 break;
             }
