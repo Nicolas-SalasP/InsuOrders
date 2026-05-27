@@ -378,6 +378,8 @@ class MantencionRepository
     {
         $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.cantidad_entregada, d.estado_linea, 
                 i.nombre, i.codigo_sku, i.stock_actual, i.unidad_medida, i.precio_costo,
+                i.precio_costo AS costo_unitario_snapshot,
+                (d.cantidad_entregada * i.precio_costo) AS costo_total_linea,
                 oc.id as oc_id, prov.nombre as oc_proveedor,
                 (SELECT GROUP_CONCAT(DISTINCT emp.nombre_completo SEPARATOR ', ') FROM movimientos_inventario mi JOIN empleados emp ON mi.empleado_id = emp.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por,
                 COALESCE((
