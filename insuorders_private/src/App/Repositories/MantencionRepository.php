@@ -444,7 +444,7 @@ class MantencionRepository
                 $this->db->beginTransaction();
 
             $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, sub_activo_id, titulo, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, fecha_requerida, requiere_permiso, tipo_permiso_id, descripcion_permiso, prioridad, ubicacion) 
-                    VALUES (:uid, :aid, :subaid, :tit, :desc, :orig, :area, :cc, :ext, 1, NOW(), :freq, :req_perm, :tipo_perm, :desc_perm, :prio, :ubi)";
+                VALUES (:uid, :aid, :subaid, :tit, :desc, :orig, :area, :cc, :ext, 1, NOW(), :freq, :req_perm, :tipo_perm, :desc_perm, :prio, :ubi)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':uid' => $data['usuario_id'],
@@ -470,18 +470,12 @@ class MantencionRepository
             }
 
             $insumosFinales = [];
-            $vieneDeDesgloseManual = false;
 
             if (isset($data['items']) && is_array($data['items']) && count($data['items']) > 0) {
                 $insumosFinales = $data['items'];
-                $vieneDeDesgloseManual = true;
             } elseif (!empty($data['kit_id'])) {
                 $stmtKit = $this->db->prepare("SELECT insumo_id, cantidad_default as cantidad FROM activos_insumos WHERE activo_id = ?");
                 $stmtKit->execute([$data['kit_id']]);
-                $insumosFinales = $stmtKit->fetchAll(PDO::FETCH_ASSOC);
-            } elseif (!empty($data['activo_id'])) {
-                $stmtKit = $this->db->prepare("SELECT insumo_id, cantidad_default as cantidad FROM activos_insumos WHERE activo_id = ?");
-                $stmtKit->execute([$data['activo_id']]);
                 $insumosFinales = $stmtKit->fetchAll(PDO::FETCH_ASSOC);
             }
 
