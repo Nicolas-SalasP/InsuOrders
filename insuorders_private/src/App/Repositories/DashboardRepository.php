@@ -29,12 +29,12 @@ class DashboardRepository
     public function getGeneralKPIs($start, $end)
     {
         return [
-            'total_gasto'         => $this->db->query("SELECT COALESCE(SUM(monto_total), 0) FROM ordenes_compra WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'")->fetchColumn(),
-            'total_neto'          => $this->db->query("SELECT COALESCE(SUM(monto_neto), 0) FROM ordenes_compra WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'")->fetchColumn(),
-            'total_ots'           => $this->db->query("SELECT COUNT(*) FROM solicitudes_ot WHERE fecha_solicitud BETWEEN '$start' AND '$end'")->fetchColumn(),
-            'stock_bajo'          => $this->db->query("SELECT COUNT(*) FROM insumos WHERE stock_actual <= stock_minimo")->fetchColumn(),
+            'total_gasto' => $this->db->query("SELECT COALESCE(SUM(monto_total), 0) FROM ordenes_compra WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'")->fetchColumn(),
+            'total_neto' => $this->db->query("SELECT COALESCE(SUM(monto_neto), 0) FROM ordenes_compra WHERE estado_id != 5 AND fecha_creacion BETWEEN '$start' AND '$end'")->fetchColumn(),
+            'total_ots' => $this->db->query("SELECT COUNT(*) FROM solicitudes_ot WHERE fecha_solicitud BETWEEN '$start' AND '$end'")->fetchColumn(),
+            'stock_bajo' => $this->db->query("SELECT COUNT(*) FROM insumos WHERE stock_actual <= stock_minimo")->fetchColumn(),
             'proveedores_activos' => $this->db->query("SELECT COUNT(*) FROM proveedores")->fetchColumn(),
-            'insumos_usados'      => $this->db->query("SELECT COALESCE(SUM(cantidad), 0) FROM movimientos_inventario WHERE tipo_movimiento_id = 2 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn()
+            'insumos_usados' => $this->db->query("SELECT COALESCE(SUM(cantidad), 0) FROM movimientos_inventario WHERE tipo_movimiento_id = 2 AND fecha BETWEEN '$start' AND '$end'")->fetchColumn()
         ];
     }
 
@@ -87,14 +87,15 @@ class DashboardRepository
                         ORDER BY oc.fecha_creacion DESC LIMIT 5";
 
         return [
-            'tendencia_gasto'       => $this->safeQuery($sqlTendencia),
-            'top_proveedores'       => $this->safeQuery($sqlTopProv),
+            'tendencia_gasto' => $this->safeQuery($sqlTendencia),
+            'top_proveedores' => $this->safeQuery($sqlTopProv),
             'top_insumos_comprados' => $this->safeQuery($sqlTopInsumos),
-            'top_insumos_cantidad'  => $this->safeQuery($sqlTopInsumosQty),
-            'gasto_por_categoria'   => $this->safeQuery($sqlCategorias),
-            'ultimas_ordenes'       => $this->safeQuery($sqlUltimas)
+            'top_insumos_cantidad' => $this->safeQuery($sqlTopInsumosQty),
+            'gasto_por_categoria' => $this->safeQuery($sqlCategorias),
+            'ultimas_ordenes' => $this->safeQuery($sqlUltimas)
         ];
     }
+
     public function getMantencionAnalytics($start, $end)
     {
         $sqlTopMaq = "SELECT a.nombre, COUNT(s.id) as total_ots
@@ -138,8 +139,15 @@ class DashboardRepository
                                 WHEN m.tipo_movimiento_id = 3 THEN u_resp.nombre 
                                 ELSE COALESCE(e.nombre_completo, u.nombre, u_sol.nombre, 'Externo/Manual') 
                             END as retirado_por, 
-                            
-                            ds.solicitud_id as ot_id, 
+                            COALESCE(
+                                ds.solicitud_id,
+                                (SELECT ep.referencia_ot_id 
+                                 FROM entregas_personal ep 
+                                 WHERE ep.insumo_id = m.insumo_id 
+                                   AND ep.referencia_ot_id IS NOT NULL 
+                                   AND ABS(TIMESTAMPDIFF(SECOND, ep.fecha_entrega, m.fecha)) <= 10 
+                                 LIMIT 1)
+                            ) as ot_id, 
                             i.unidad_medida,
                             m.tipo_movimiento_id,
                             m.observacion,
@@ -147,14 +155,12 @@ class DashboardRepository
                         FROM movimientos_inventario m
                         JOIN insumos i ON m.insumo_id = i.id
                         LEFT JOIN usuarios u_resp ON m.usuario_id = u_resp.id 
-                        
                         LEFT JOIN empleados e ON m.empleado_id = e.id
                         LEFT JOIN usuarios u ON m.empleado_id = u.id
                         LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
                         LEFT JOIN solicitudes_ot sot ON ds.solicitud_id = sot.id
                         LEFT JOIN usuarios u_sol ON sot.usuario_solicitante_id = u_sol.id
                         LEFT JOIN ubicaciones_envio ue ON m.ubicacion_envio_id = ue.id
-                        
                         WHERE m.tipo_movimiento_id IN (2, 3) 
                         AND m.fecha BETWEEN '$start' AND '$end'";
 
@@ -193,7 +199,15 @@ class DashboardRepository
                     i.codigo_sku as codigo_producto,
                     m.cantidad as cuanto,
                     i.unidad_medida,
-                    ds.solicitud_id as ot_referencia,
+                    COALESCE(
+                        ds.solicitud_id,
+                        (SELECT ep.referencia_ot_id 
+                         FROM entregas_personal ep 
+                         WHERE ep.insumo_id = m.insumo_id 
+                           AND ep.referencia_ot_id IS NOT NULL 
+                           AND ABS(TIMESTAMPDIFF(SECOND, ep.fecha_entrega, m.fecha)) <= 10 
+                         LIMIT 1)
+                    ) as ot_referencia,
                     m.tipo_movimiento_id
                 FROM movimientos_inventario m
                 JOIN insumos i ON m.insumo_id = i.id
@@ -202,7 +216,6 @@ class DashboardRepository
                 LEFT JOIN usuarios u_rec ON m.empleado_id = u_rec.id
                 LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
                 LEFT JOIN ubicaciones_envio ue ON m.ubicacion_envio_id = ue.id
-                
                 WHERE m.tipo_movimiento_id IN (2, 3) 
                 AND m.fecha BETWEEN '$start' AND '$end'";
 
@@ -212,6 +225,6 @@ class DashboardRepository
 
         $sql .= " ORDER BY m.fecha DESC";
 
-        return $this->db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 }
