@@ -361,7 +361,12 @@ class MantencionRepository
                 CASE WHEN s.activo_id IS NOT NULL THEN a.nombre ELSE CONCAT('SERVICIO: ', COALESCE(s.area_negocio, 'General')) END as activo, 
                 COALESCE(a.codigo_interno, 'SERV') as activo_codigo, e.nombre as estado,
                 sa.nombre as sub_activo_nombre,
-                tpt.nombre as tipo_permiso_nombre
+                tpt.nombre as tipo_permiso_nombre,
+                COALESCE((SELECT SUM(ds.cantidad_entregada * COALESCE(NULLIF(ds.costo_unitario_snapshot, 0), ins.precio_costo, 0))
+                          FROM detalle_solicitud ds
+                          JOIN insumos ins ON ds.insumo_id = ins.id
+                          WHERE ds.solicitud_id = s.id
+                          AND ds.cantidad_entregada > 0), 0) as costo_total_ot
                 FROM solicitudes_ot s 
                 JOIN usuarios u ON s.usuario_solicitante_id = u.id 
                 LEFT JOIN activos a ON s.activo_id = a.id 
@@ -378,8 +383,8 @@ class MantencionRepository
     {
         $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.cantidad_entregada, d.estado_linea, 
                 i.nombre, i.codigo_sku, i.stock_actual, i.unidad_medida, i.precio_costo,
-                i.precio_costo AS costo_unitario_snapshot,
-                (d.cantidad_entregada * i.precio_costo) AS costo_total_linea,
+                COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0) AS costo_unitario_snapshot,
+                (d.cantidad_entregada * COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0)) AS costo_total_linea,
                 oc.id as oc_id, prov.nombre as oc_proveedor,
                 (SELECT GROUP_CONCAT(DISTINCT emp.nombre_completo SEPARATOR ', ') FROM movimientos_inventario mi JOIN empleados emp ON mi.empleado_id = emp.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por,
                 COALESCE((
@@ -398,6 +403,7 @@ class MantencionRepository
         $stmt->execute([':id' => $id, ':uid' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
     public function getAsignadosOT($otId)
     {
         $sql = "SELECT oa.usuario_id, u.nombre, u.apellido, u.email, oa.completado, oa.tarea_rol, oa.notas_cierre 
@@ -802,7 +808,7 @@ class MantencionRepository
             }
             $stmt = $this->db->prepare("SELECT COUNT(*) FROM detalle_solicitud WHERE solicitud_id = ? AND cantidad_entregada > 0");
             $stmt->execute([$id]);
-            $tieneEntregas = (int)$stmt->fetchColumn() > 0;
+            $tieneEntregas = (int) $stmt->fetchColumn() > 0;
             $nuevoEstado = $tieneEntregas ? 2 : 1;
             $sqlOT = "UPDATE solicitudes_ot SET estado_id = :estado, fecha_cierre = NULL WHERE id = :id";
             $this->db->prepare($sqlOT)->execute([':estado' => $nuevoEstado, ':id' => $id]);
