@@ -403,7 +403,7 @@ class MantencionRepository
         $stmt->execute([':id' => $id, ':uid' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     public function getAsignadosOT($otId)
     {
         $sql = "SELECT oa.usuario_id, u.nombre, u.apellido, u.email, oa.completado, oa.tarea_rol, oa.notas_cierre 
@@ -470,8 +470,15 @@ class MantencionRepository
             }
 
             $insumosFinales = [];
-            if (!empty($data['items']) && count($data['items']) > 0) {
+            $vieneDeDesgloseManual = false;
+
+            if (isset($data['items']) && is_array($data['items']) && count($data['items']) > 0) {
                 $insumosFinales = $data['items'];
+                $vieneDeDesgloseManual = true;
+            } elseif (!empty($data['kit_id'])) {
+                $stmtKit = $this->db->prepare("SELECT insumo_id, cantidad_default as cantidad FROM activos_insumos WHERE activo_id = ?");
+                $stmtKit->execute([$data['kit_id']]);
+                $insumosFinales = $stmtKit->fetchAll(PDO::FETCH_ASSOC);
             } elseif (!empty($data['activo_id'])) {
                 $stmtKit = $this->db->prepare("SELECT insumo_id, cantidad_default as cantidad FROM activos_insumos WHERE activo_id = ?");
                 $stmtKit->execute([$data['activo_id']]);
