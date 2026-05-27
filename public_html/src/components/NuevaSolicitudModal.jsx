@@ -23,7 +23,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [subActivoId, setSubActivoId] = useState('');
     const [solicitanteId, setSolicitanteId] = useState('');
     const [centroCostoOT, setCentroCostoOT] = useState('');
-    
+
     const [titulo, setTitulo] = useState('');
     const [observacion, setObservacion] = useState('');
 
@@ -64,11 +64,11 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     };
 
     const editable = esEditable(otEditar?.estado);
-    
+
     // FILTROS DE ACTIVOS
     const activosPrincipales = activos.filter(a => !a.activo_padre_id);
     const subActivosDisponibles = activos.filter(a => a.activo_padre_id && String(a.activo_padre_id) === String(activoId));
-    
+
     const activosFiltrados = activosPrincipales.filter(act =>
         (act.nombre || '').toLowerCase().includes(busquedaActivo.toLowerCase()) ||
         (act.codigo_interno || '').toLowerCase().includes(busquedaActivo.toLowerCase())
@@ -77,13 +77,13 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const normalizarPrioridad = (prio) => {
         if (!prio) return 'MEDIA';
         const p = prio.toString().toUpperCase().trim();
-        
+
         if (p === 'CRITICA' || p === 'CRÍTICO' || p === 'CRITICA' || p === 'CRÍTICA') return 'CRITICA';
         if (p === 'ALTA' || p === 'ALTO' || p === 'URGENTE') return 'ALTA';
         if (p === 'MEDIA' || p === 'MEDIO') return 'MEDIA';
         if (p === 'BAJA' || p === 'BAJO') return 'BAJA';
-        
-        return 'MEDIA'; 
+
+        return 'MEDIA';
     };
 
     useEffect(() => {
@@ -175,7 +175,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             if (otEditar.activo_id) {
                 setModo('maquina');
                 setActivoId(otEditar.activo_id);
-                setSubActivoId(otEditar.sub_activo_id || ''); 
+                setSubActivoId(otEditar.sub_activo_id || '');
                 setActivoNombreSeleccionado(`${otEditar.activo_codigo || ''} - ${otEditar.activo || 'Máquina'}`);
             } else {
                 setModo('servicio');
@@ -185,13 +185,13 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 setSolicitanteId(otEditar.usuario_solicitante_id || '');
                 setCentroCostoOT(otEditar.centro_costo_ot || '');
             }
-            
+
             setTitulo(otEditar.titulo || '');
             setObservacion(otEditar.descripcion_trabajo || '');
-            
+
             // CORRECCIÓN APLICADA: Forzamos la normalización de la prioridad proveniente de BD
             setPrioridad(normalizarPrioridad(otEditar.prioridad));
-            
+
             setUbicacion(otEditar.ubicacion || '');
             setRequierePermiso(otEditar.requiere_permiso == 1);
             setTipoPermisoId(otEditar.tipo_permiso_id || '');
@@ -310,7 +310,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
         if (append) {
             setItems(prev => {
-                const nuevosNoDuplicados = kitItems.filter(nk => 
+                const nuevosNoDuplicados = kitItems.filter(nk =>
                     !prev.some(p => String(p.id_producto) === String(nk.id_producto))
                 );
                 return [...prev, ...nuevosNoDuplicados];
@@ -412,7 +412,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
 
             const payload = {
                 id: otEditar ? otEditar.id : null,
-                titulo: titulo, 
+                titulo: titulo,
                 activo_id: modo === 'maquina' ? activoId : null,
                 sub_activo_id: modo === 'maquina' && subActivoId ? subActivoId : null,
                 observacion: observacion,
@@ -426,7 +426,8 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 asignados: asignados,
                 requiere_permiso: requierePermiso ? 1 : 0,
                 tipo_permiso_id: requierePermiso ? tipoPermisoId : null,
-                descripcion_permiso: requierePermiso ? descripcionPermiso : ''
+                descripcion_permiso: requierePermiso ? descripcionPermiso : '',
+                kit_id: items.length > 0 ? null : (modo === 'maquina' ? (subActivoId || activoId) : null)
             };
 
             if (otEditar) {
@@ -517,13 +518,13 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                             <label className="form-label fw-bold small text-muted text-uppercase">
                                                 Título de la Solicitud / Falla <span className="text-danger">*</span>
                                             </label>
-                                            <input 
-                                                type="text" 
-                                                className="form-control form-control-lg shadow-sm border-primary text-primary fw-bold" 
-                                                placeholder="Ej: Cambio de rodamientos motor principal..." 
-                                                value={titulo} 
-                                                onChange={e => setTitulo(e.target.value)} 
-                                                disabled={!editable} 
+                                            <input
+                                                type="text"
+                                                className="form-control form-control-lg shadow-sm border-primary text-primary fw-bold"
+                                                placeholder="Ej: Cambio de rodamientos motor principal..."
+                                                value={titulo}
+                                                onChange={e => setTitulo(e.target.value)}
+                                                disabled={!editable}
                                             />
                                         </div>
                                     </div>
@@ -534,17 +535,17 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 <>
                                                     <div className="mb-3 position-relative" ref={wrapperRefActivo}>
                                                         <label className="form-label fw-bold small text-muted text-uppercase">Máquina Principal</label>
-                                                        
+
                                                         {activoNombreSeleccionado ? (
                                                             <div className="input-group shadow-sm">
                                                                 <span className="input-group-text bg-primary text-white border-primary"><i className="bi bi-gear-fill"></i></span>
                                                                 <input type="text" className="form-control fw-bold border-primary text-primary bg-white" value={activoNombreSeleccionado} readOnly />
-                                                                <button className="btn btn-outline-danger" type="button" onClick={() => { 
-                                                                    if(!editable) return;
-                                                                    setActivoId(''); 
-                                                                    setSubActivoId(''); 
-                                                                    setActivoNombreSeleccionado(''); 
-                                                                    setMostrarListaActivo(true); 
+                                                                <button className="btn btn-outline-danger" type="button" onClick={() => {
+                                                                    if (!editable) return;
+                                                                    setActivoId('');
+                                                                    setSubActivoId('');
+                                                                    setActivoNombreSeleccionado('');
+                                                                    setMostrarListaActivo(true);
                                                                 }} disabled={!editable}>
                                                                     <i className="bi bi-x-lg"></i>
                                                                 </button>
@@ -662,11 +663,11 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 </div>
                                                 <div className="col-6">
                                                     <label className="form-label small text-muted">Ubicación / Área</label>
-                                                    <select 
-                                                        className="form-select shadow-sm" 
-                                                        value={ubicacion} 
-                                                        onChange={e => setUbicacion(e.target.value)} 
-                                                        disabled={!editable} 
+                                                    <select
+                                                        className="form-select shadow-sm"
+                                                        value={ubicacion}
+                                                        onChange={e => setUbicacion(e.target.value)}
+                                                        disabled={!editable}
                                                     >
                                                         <option value="">-- Seleccione Ubicación --</option>
                                                         <optgroup label="🏢 Insuban (Internos)">

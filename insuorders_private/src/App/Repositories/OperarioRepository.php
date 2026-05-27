@@ -119,32 +119,47 @@ class OperarioRepository
                 ':otid' => !empty($datos['ot_id']) ? $datos['ot_id'] : null
             ]);
 
-            if (!empty($datos['ot_id']) && !empty($usuarioOperarioId)) {
+            $stmtPrice = $this->db->prepare("SELECT precio_costo FROM insumos WHERE id = ?");
+            $stmtPrice->execute([$insumoId]);
+            $precioCosto = floatval($stmtPrice->fetchColumn() ?: 0);
+
+            if (!empty($datos['ot_id']) && $estadoId == 2) {
                 $stmtCheck = $this->db->prepare(
                     "SELECT id, cantidad, cantidad_entregada FROM detalle_solicitud 
                      WHERE solicitud_id = :ot AND insumo_id = :ins LIMIT 1"
                 );
                 $stmtCheck->execute([':ot' => $datos['ot_id'], ':ins' => $insumoId]);
-                $detalle = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
+                $detalle = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
                 if ($detalle) {
-                    $nuevaCantidadTotal = floatval($detalle['cantidad']) + $cantidadRequerida;
                     $nuevaEntregada = floatval($detalle['cantidad_entregada']) + $cantidadRequerida;
+                    $nuevaCantidadTotal = max(floatval($detalle['cantidad']), $nuevaEntregada); // Acumulador robusto
                     $nuevoEstadoLinea = ($nuevaEntregada >= $nuevaCantidadTotal) ? 'ENTREGADO' : 'PARCIAL';
+                    $nuevoCostoTotalLineas = $nuevaEntregada * $precioCosto;
 
                     $this->db->prepare(
-                        "UPDATE detalle_solicitud SET cantidad = :cant, cantidad_entregada = :ent, estado_linea = :st WHERE id = :id"
+                        "UPDATE detalle_solicitud SET cantidad = :cant, cantidad_entregada = :ent, costo_unitario_snapshot = :pre, costo_total_linea = :tot, estado_linea = :st WHERE id = :id"
                     )->execute([
                                 ':cant' => $nuevaCantidadTotal,
                                 ':ent' => $nuevaEntregada,
+                                ':pre' => $precioCosto,
+                                ':tot' => $nuevoCostoTotalLineas,
                                 ':st' => $nuevoEstadoLinea,
                                 ':id' => $detalle['id']
                             ]);
                 } else {
+                    $costoTotalLineas = $cantidadRequerida * $precioCosto;
                     $this->db->prepare(
-                        "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, estado_linea)
-                        VALUES (:ot, :ins, :cant, :ent, 'ENTREGADO')"
-                    )->execute([':ot' => $datos['ot_id'], ':ins' => $insumoId, ':cant' => $cantidadRequerida, ':ent' => $cantidadRequerida]);
+                        "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, costo_unitario_snapshot, costo_total_linea, estado_linea)
+                        VALUES (:ot, :ins, :cant, :ent, :pre, :tot, 'ENTREGADO')"
+                    )->execute([
+                                ':ot' => $datos['ot_id'],
+                                ':ins' => $insumoId,
+                                ':cant' => $cantidadRequerida,
+                                ':ent' => $cantidadRequerida,
+                                ':pre' => $precioCosto,
+                                ':tot' => $costoTotalLineas
+                            ]);
                 }
             }
 
@@ -286,9 +301,12 @@ class OperarioRepository
                 $this->db->prepare($sqlUpd)->execute([':est' => $nuevoEstado, ':id' => $entregaId]);
 
                 if (!empty($entrega['referencia_ot_id'])) {
+                    $stmtPrice = $this->db->prepare("SELECT precio_costo FROM insumos WHERE id = ?");
+                    $stmtPrice->execute([$entrega['insumo_id']]);
+                    $precioCosto = floatval($stmtPrice->fetchColumn() ?: 0);
+
                     $sqlDetalle = "SELECT id, cantidad, cantidad_entregada FROM detalle_solicitud 
-                       WHERE solicitud_id = :ot AND insumo_id = :ins 
-                       LIMIT 1";
+                                   WHERE solicitud_id = :ot AND insumo_id = :ins LIMIT 1";
                     $stmtD = $this->db->prepare($sqlDetalle);
                     $stmtD->execute([
                         ':ot' => $entrega['referencia_ot_id'],
@@ -296,18 +314,36 @@ class OperarioRepository
                     ]);
                     $detalle = $stmtD->fetch(PDO::FETCH_ASSOC);
 
+                    $montoEntregado = floatval($entrega['cantidad_entregada']);
+
                     if ($detalle) {
-                        $nuevaCantidadTotal = floatval($detalle['cantidad']) + floatval($entrega['cantidad_entregada']);
-                        $nuevaEntregada = floatval($detalle['cantidad_entregada']) + floatval($entrega['cantidad_entregada']);
+                        $nuevaEntregada = floatval($detalle['cantidad_entregada']) + $montoEntregado;
+                        $nuevaCantidadTotal = max(floatval($detalle['cantidad']), $nuevaEntregada); // Asegura suma limpia entre técnicos
                         $nuevoEstadoLinea = ($nuevaEntregada >= $nuevaCantidadTotal) ? 'ENTREGADO' : 'PARCIAL';
+                        $nuevoCostoTotalLineas = $nuevaEntregada * $precioCosto;
 
                         $this->db->prepare(
-                            "UPDATE detalle_solicitud SET cantidad = :cant, cantidad_entregada = :ent, estado_linea = :st WHERE id = :id"
+                            "UPDATE detalle_solicitud SET cantidad = :cant, cantidad_entregada = :ent, costo_unitario_snapshot = :pre, costo_total_linea = :tot, estado_linea = :st WHERE id = :id"
                         )->execute([
                                     ':cant' => $nuevaCantidadTotal,
                                     ':ent' => $nuevaEntregada,
+                                    ':pre' => $precioCosto,
+                                    ':tot' => $nuevoCostoTotalLineas,
                                     ':st' => $nuevoEstadoLinea,
                                     ':id' => $detalle['id']
+                                ]);
+                    } else {
+                        $costoTotalLineas = $montoEntregado * $precioCosto;
+                        $this->db->prepare(
+                            "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, costo_unitario_snapshot, costo_total_linea, estado_linea)
+                            VALUES (:ot, :ins, :cant, :ent, :pre, :tot, 'ENTREGADO')"
+                        )->execute([
+                                    ':ot' => $entrega['referencia_ot_id'],
+                                    ':ins' => $entrega['insumo_id'],
+                                    ':cant' => $montoEntregado,
+                                    ':ent' => $montoEntregado,
+                                    ':pre' => $precioCosto,
+                                    ':tot' => $costoTotalLineas
                                 ]);
                     }
                 }

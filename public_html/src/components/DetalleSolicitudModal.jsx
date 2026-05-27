@@ -390,7 +390,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                                                                 <div className="fw-bold">{item.nombre}</div>
                                                                 <small className="text-muted font-monospace">{item.codigo_sku}</small>
                                                             </td>
-                                                            <td className="text-center fw-bold">{parseFloat(item.cantidad)} {item.unidad_medida}</td>
+                                                            <td className="text-center fw-bold text-primary">{parseFloat(item.cantidad_entregada)} <span className="small text-muted fw-normal fw-bold">{item.unidad_medida}</span></td>
                                                             <td className="text-center">
                                                                 <span className={`badge rounded-pill ${item.estado_linea === 'ENTREGADO' ? 'bg-success' : 'bg-secondary'}`}>
                                                                     {item.estado_linea}
