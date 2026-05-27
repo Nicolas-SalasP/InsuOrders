@@ -24,7 +24,8 @@ class CotizacionController
             'estado_id' => $_GET['estado'] ?? null,
             'fecha_start' => $_GET['start'] ?? null,
             'fecha_end' => $_GET['end'] ?? null,
-            'usuario_id' => $_GET['usuario'] ?? null
+            'usuario_id' => $_GET['usuario'] ?? null,
+            'insumo' => $_GET['insumo'] ?? null
         ];
         
         try {

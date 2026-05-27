@@ -21,6 +21,10 @@ const Cotizaciones = () => {
 
     const [users, setUsers] = useState([]);
     const [estados, setEstados] = useState([]);
+    const [listaInsumos, setListaInsumos] = useState([]);
+    const [busquedaInsumo, setBusquedaInsumo] = useState('');
+    const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+
     const [filtros, setFiltros] = useState({
         id: '',
         estado_id: '',
@@ -39,6 +43,7 @@ const Cotizaciones = () => {
         cargarDatos();
         api.get('/index.php/usuarios').then(res => { if (res.data.success) setUsers(res.data.data); });
         api.get('/index.php/cotizaciones/estados-lista').then(res => { if (res.data.success) setEstados(res.data.data); });
+        api.get('/index.php/insumos/lista').then(res => { if (res.data.success) setListaInsumos(res.data.data); });
     }, []);
 
     const cargarDatos = async () => {
@@ -49,6 +54,7 @@ const Cotizaciones = () => {
         if (filtros.start) params.append('start', filtros.start);
         if (filtros.end) params.append('end', filtros.end);
         if (filtros.usuario) params.append('usuario', filtros.usuario);
+        if (busquedaInsumo) params.append('insumo', busquedaInsumo);
 
         try {
             const res = await api.get(`/index.php/cotizaciones?${params.toString()}`);
@@ -238,34 +244,65 @@ const Cotizaciones = () => {
                 )}
             </div>
 
-            {/* FILTROS */}
             <div className="card border-0 shadow-sm mb-4">
                 <div className="card-body bg-white rounded">
                     <h6 className="text-muted small fw-bold text-uppercase mb-3">Filtros de Búsqueda</h6>
-                    <div className="row g-2">
+                    <div className="row g-2 align-items-end">
                         <div className="col-6 col-md-2">
+                            <label className="form-label small fw-bold text-muted mb-1">ID Cotización</label>
                             <input type="text" className="form-control form-control-sm" placeholder="ID Cotización" value={filtros.id} onChange={e => setFiltros({ ...filtros, id: e.target.value })} />
                         </div>
                         <div className="col-6 col-md-2">
+                            <label className="form-label small fw-bold text-muted mb-1">Estado</label>
                             <select className="form-select form-select-sm" value={filtros.estado_id} onChange={e => setFiltros({ ...filtros, estado_id: e.target.value })}>
                                 <option value="">Todos los Estados</option>
                                 {estados.map(est => <option key={est.id} value={est.id}>{est.nombre}</option>)}
                             </select>
                         </div>
-                        <div className="col-6 col-md-2"><input type="date" className="form-control form-control-sm" value={filtros.start} onChange={e => setFiltros({ ...filtros, start: e.target.value })} /></div>
-                        <div className="col-6 col-md-2"><input type="date" className="form-control form-control-sm" value={filtros.end} onChange={e => setFiltros({ ...filtros, end: e.target.value })} /></div>
-                        <div className="col-12 col-md-2">
+                        <div className="col-6 col-md-1">
+                            <label className="form-label small fw-bold text-muted mb-1">Desde</label>
+                            <input type="date" className="form-control form-control-sm" value={filtros.start} onChange={e => setFiltros({ ...filtros, start: e.target.value })} />
+                        </div>
+                        <div className="col-6 col-md-1">
+                            <label className="form-label small fw-bold text-muted mb-1">Hasta</label>
+                            <input type="date" className="form-control form-control-sm" value={filtros.end} onChange={e => setFiltros({ ...filtros, end: e.target.value })} />
+                        </div>
+                        <div className="col-6 col-md-2">
+                            <label className="form-label small fw-bold text-muted mb-1">Solicitante</label>
                             <select className="form-select form-select-sm" value={filtros.usuario} onChange={e => setFiltros({ ...filtros, usuario: e.target.value })}>
                                 <option value="">Creado por...</option>
                                 {users.map(u => <option key={u.id} value={u.id}>{u.nombre} {u.apellido}</option>)}
                             </select>
                         </div>
-                        <div className="col-12 col-md-2"><button className="btn btn-secondary btn-sm w-100 fw-bold" onClick={cargarDatos}><i className="bi bi-search me-2"></i>Buscar</button></div>
+                        <div className="col-6 col-md-2 position-relative">
+                            <label className="form-label small fw-bold text-muted mb-1">Insumo</label>
+                            <input 
+                                type="text" 
+                                className="form-control form-control-sm" 
+                                placeholder="Buscar Insumo..." 
+                                value={busquedaInsumo} 
+                                onChange={(e) => { 
+                                    setBusquedaInsumo(e.target.value); 
+                                    setMostrarSugerencias(true);
+                                }} 
+                            />
+                            {mostrarSugerencias && busquedaInsumo && (
+                                <ul className="list-group position-absolute w-100 shadow-sm mt-1" style={{ zIndex: 1050, maxHeight: '200px', overflowY: 'auto' }}>
+                                    {listaInsumos.filter(i => i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase())).map(i => (
+                                        <li key={i.id} className="list-group-item list-group-item-action small" onClick={() => { setBusquedaInsumo(i.nombre); setMostrarSugerencias(false); }}>
+                                            {i.nombre}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        <div className="col-12 col-md-2">
+                            <button className="btn btn-secondary btn-sm w-100 fw-bold" onClick={cargarDatos}><i className="bi bi-search me-2"></i>Buscar</button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* TABLA */}
             <div className="card border-0 shadow-sm">
                 <div className="card-body p-0">
                     <div className="table-responsive">
@@ -291,8 +328,8 @@ const Cotizaciones = () => {
                                                 <td className="text-center"><span className="badge bg-light text-dark border">{cot.items_count}</span></td>
                                                 <td className="text-center">
                                                     <span className={`badge px-3 py-2 rounded-pill ${cot.estado_nombre === 'Aprobada' ? 'bg-success' :
-                                                            cot.estado_nombre === 'Rechazada' ? 'bg-danger' : 'bg-warning text-dark'
-                                                        }`}>{cot.estado_nombre}</span>
+                                                        cot.estado_nombre === 'Rechazada' ? 'bg-danger' : 'bg-warning text-dark'
+                                                    }`}>{cot.estado_nombre}</span>
                                                 </td>
                                                 <td className="text-end pe-4">
                                                     <div className="btn-group">
@@ -302,7 +339,6 @@ const Cotizaciones = () => {
                                                         <button className="btn btn-sm btn-outline-secondary" title="Descargar PDF" onClick={() => descargarPdf(cot.id)} disabled={downloading}>
                                                             {downloading ? <span className="spinner-border spinner-border-sm"></span> : <i className="bi bi-file-earmark-pdf"></i>}
                                                         </button>
-
                                                         {parseInt(cot.estado_id) === 1 && (
                                                             <>
                                                                 {can('cot_aprobar') && (
@@ -329,4 +365,5 @@ const Cotizaciones = () => {
         </div>
     );
 };
+
 export default Cotizaciones;

@@ -4,6 +4,7 @@ namespace App\Repositories;
 use App\Database\Database;
 use PDO;
 use Exception;
+
 class CotizacionRepository
 {
     private $db;
@@ -44,6 +45,10 @@ class CotizacionRepository
         if (!empty($filters['usuario_id'])) {
             $sql .= " AND c.usuario_id = :uid";
             $params[':uid'] = $filters['usuario_id'];
+        }
+        if (!empty($filters['insumo'])) {
+            $sql .= " AND EXISTS (SELECT 1 FROM detalle_cotizacion dc WHERE dc.cotizacion_id = c.id AND dc.nombre_item LIKE :insumo)";
+            $params[':insumo'] = '%' . $filters['insumo'] . '%';
         }
 
         $sql .= " ORDER BY c.id DESC";

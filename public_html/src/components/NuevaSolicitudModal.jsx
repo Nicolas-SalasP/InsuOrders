@@ -427,7 +427,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 requiere_permiso: requierePermiso ? 1 : 0,
                 tipo_permiso_id: requierePermiso ? tipoPermisoId : null,
                 descripcion_permiso: requierePermiso ? descripcionPermiso : '',
-                kit_id: items.length > 0 ? null : (modo === 'maquina' ? (subActivoId || activoId) : null)
+                kit_id: null
             };
 
             if (otEditar) {
