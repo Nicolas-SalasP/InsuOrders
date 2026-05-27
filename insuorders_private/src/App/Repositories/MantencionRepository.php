@@ -790,4 +790,41 @@ class MantencionRepository
         $sql = "SELECT * FROM tipos_permiso_trabajo WHERE activo = 1 ORDER BY nombre ASC";
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function reabrirOT($id)
+    {
+        $inTransaction = $this->db->inTransaction();
+        try {
+            if (!$inTransaction) {
+                $this->db->beginTransaction();
+            }
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM detalle_solicitud WHERE solicitud_id = ? AND cantidad_entregada > 0");
+            $stmt->execute([$id]);
+            $tieneEntregas = (int)$stmt->fetchColumn() > 0;
+            $nuevoEstado = $tieneEntregas ? 2 : 1;
+            $sqlOT = "UPDATE solicitudes_ot SET estado_id = :estado, fecha_cierre = NULL WHERE id = :id";
+            $this->db->prepare($sqlOT)->execute([':estado' => $nuevoEstado, ':id' => $id]);
+            $sqlItems = "UPDATE detalle_solicitud 
+                         SET estado_linea = CASE 
+                             WHEN cantidad_entregada >= cantidad THEN 'ENTREGADO'
+                             WHEN cantidad_entregada > 0 THEN 'PARCIAL'
+                             ELSE 'PENDIENTE'
+                         END
+                         WHERE solicitud_id = :id AND estado_linea IN ('CANCELADO', 'ANULADO')";
+            $this->db->prepare($sqlItems)->execute([':id' => $id]);
+
+            $sqlAsig = "UPDATE ot_asignaciones SET completado = 0, fecha_completado = NULL WHERE solicitud_id = ?";
+            $this->db->prepare($sqlAsig)->execute([$id]);
+
+            if (!$inTransaction) {
+                $this->db->commit();
+            }
+            return true;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
 }
