@@ -540,8 +540,9 @@ class OperarioRepository
                         $detalle = $stmtD->fetch(PDO::FETCH_ASSOC);
 
                         if ($detalle) {
-                            $nuevaCantidadTotal = floatval($detalle['cantidad']) + floatval($entrega['cantidad_entregada']);
                             $nuevaEntregada = floatval($detalle['cantidad_entregada']) + floatval($entrega['cantidad_entregada']);
+                            // max() y no suma: 'cantidad' es la cantidad requerida, no debe crecer con cada entrega
+                            $nuevaCantidadTotal = max(floatval($detalle['cantidad']), $nuevaEntregada);
                             $nuevoEstadoLinea = ($nuevaEntregada >= $nuevaCantidadTotal) ? 'ENTREGADO' : 'PARCIAL';
 
                             $this->db->prepare(

@@ -276,6 +276,15 @@ class MisMantencionesRepository
 
             $pendiente -= $aDescontar;
         }
+
+        // Si el tecnico no tenia stock suficiente en sus entregas para cubrir lo requerido,
+        // se descuenta lo disponible y se deja traza (antes se perdia en silencio).
+        if ($pendiente > 0.001) {
+            error_log(sprintf(
+                '[STOCK_INSUFICIENTE] usuario=%s insumo=%s faltante=%s al cerrar OT',
+                $userId, $insumoId, $pendiente
+            ));
+        }
     }
 
     public function actualizarEstadoOT($otId, $estadoId)

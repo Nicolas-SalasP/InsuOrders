@@ -97,7 +97,7 @@ class CronogramaRepository
             $data['hora_programada'] ?? null,
             $data['cantidad'] ?? null,
             $data['monto_estimado'] ?? null,
-            $data['estado'] ?? 'PROCESADO',
+            $data['estado'] ?? 'PENDIENTE',
             $data['icono'] ?? 'bi-tools',
             $data['color'] ?? '#0d6efd',
             $data['solicitud_ot_id'] ?? null,

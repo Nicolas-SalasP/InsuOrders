@@ -346,6 +346,11 @@ class OrdenCompraRepository
                     ':cant_update' => $cantidad
                 ]);
 
+                // Mantener insumos.stock_actual sincronizado con la suma por ubicacion
+                // (la recepcion antes solo tocaba insumo_stock_ubicacion -> descuadre del stock global)
+                $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")
+                    ->execute([$linea['insumo_id'], $linea['insumo_id']]);
+
                 $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, referencia_id, observacion, ubicacion_id, fecha) 
                                     VALUES (:iid, 1, :cant, :uid, :ref, 'Recepción OC', :ubi, NOW())")
                     ->execute([
