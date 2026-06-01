@@ -174,6 +174,8 @@ class MisMantencionesRepository
 
                 $sqlTotal = "UPDATE solicitudes_ot SET costo_total_insumos = COALESCE((SELECT SUM(costo_total_linea) FROM detalle_solicitud WHERE solicitud_id = ?), 0) WHERE id = ?";
                 $this->db->prepare($sqlTotal)->execute([$otId, $otId]);
+
+                (new \App\Repositories\MantencionRepository())->sincronizarEstadoActivoPorOT($otId);
             }
 
             if (!$inTransaction)
@@ -315,7 +317,9 @@ class MisMantencionesRepository
     public function iniciarTrabajoEnOrden($otId)
     {
         $stmt = $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = ? AND estado_id IN (1, 4)");
-        return $stmt->execute([$otId]);
+        $res = $stmt->execute([$otId]);
+        (new \App\Repositories\MantencionRepository())->sincronizarEstadoActivoPorOT($otId);
+        return $res;
     }
 
     public function guardarAvanceParcial($otId, $comentarios, $evidenciaStr = null)
