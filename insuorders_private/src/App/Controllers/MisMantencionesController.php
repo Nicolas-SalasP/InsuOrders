@@ -89,16 +89,22 @@ class MisMantencionesController
                 $this->service->ejecutarDescuentos($otId, $userId);
                 $this->service->guardarCierre($otId, $firma, $comentarios, $evidenciasStr);
                 if ($firma) {
-                    $datosReporte = $this->service->getDatosReporte($otId);
-                    $pdfService = new PDFService();
-                    $pdfUrl = $pdfService->generarReporteFinalOT(
-                        $datosReporte['header'],
-                        $itemsChecklist,
-                        $datosReporte['detalles'],
-                        $firma,
-                        $comentarios
-                    );
-                    $this->service->guardarUrlPdf($otId, $pdfUrl);
+                    // El PDF es un artefacto derivado: si su generacion falla, NO debe abortar el
+                    // cierre de la OT (que ya quedo consistente en BD). Se registra y puede regenerarse.
+                    try {
+                        $datosReporte = $this->service->getDatosReporte($otId);
+                        $pdfService = new PDFService();
+                        $pdfUrl = $pdfService->generarReporteFinalOT(
+                            $datosReporte['header'],
+                            $itemsChecklist,
+                            $datosReporte['detalles'],
+                            $firma,
+                            $comentarios
+                        );
+                        $this->service->guardarUrlPdf($otId, $pdfUrl);
+                    } catch (\Throwable $pdfErr) {
+                        error_log('[PDF cierre] OT ' . $otId . ' fallo en la generacion: ' . $pdfErr->getMessage());
+                    }
                 }
             } else {
                 $this->service->guardarAvanceParcial($otId, $comentarios, $evidenciasStr);

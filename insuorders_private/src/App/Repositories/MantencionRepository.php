@@ -641,6 +641,10 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")->execute([':id' => $id]);
+            // Nota de semantica: 'RESERVADO' es un estado de linea que el sistema NUNCA asigna hoy
+            // (solo se lee). Como el stock solo se descuenta al ENTREGAR, las porciones no entregadas
+            // jamas salieron de inventario; por eso al forzar el cierre no hay stock que reintegrar y
+            // este UPDATE es inerte. Se conserva como gancho por si se implementa reserva de stock.
             $this->db->prepare("UPDATE insumos i JOIN detalle_solicitud ds ON i.id = ds.insumo_id SET i.stock_actual = i.stock_actual + (ds.cantidad - ds.cantidad_entregada) WHERE ds.solicitud_id = :id AND ds.estado_linea = 'RESERVADO'")->execute([':id' => $id]);
             $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'CANCELADO' WHERE solicitud_id = :id AND estado_linea NOT IN ('ENTREGADO', 'FINALIZADO')")->execute([':id' => $id]);
             $this->sincronizarEstadoActivoPorOT($id);

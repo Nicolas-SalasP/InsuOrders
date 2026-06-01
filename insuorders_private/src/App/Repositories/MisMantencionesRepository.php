@@ -361,6 +361,14 @@ class MisMantencionesRepository
         $nuevoStr = empty($nuevoArr) ? null : json_encode($nuevoArr);
 
         $this->db->prepare("UPDATE solicitudes_ot SET evidencia_cierre = ? WHERE id = ?")->execute([$nuevoStr, $otId]);
+
+        // Borrar el archivo fisico para no dejar huerfanos en disco, validando que la ruta
+        // resuelta este DENTRO de /public_html/uploads (defensa ante path traversal).
+        $baseUploads = realpath(__DIR__ . '/../../../../public_html/uploads');
+        $rutaArchivo = realpath(__DIR__ . '/../../../../public_html/' . ltrim((string) $urlEliminar, '/'));
+        if ($rutaArchivo && $baseUploads && strpos($rutaArchivo, $baseUploads) === 0 && is_file($rutaArchivo)) {
+            @unlink($rutaArchivo);
+        }
         $mensajeLog = "\n[SISTEMA " . date('d-m-Y H:i') . "]: El técnico eliminó una evidencia adjunta previamente.";
 
         $sqlLog = "UPDATE ot_asignaciones SET notas_cierre = CONCAT(COALESCE(notas_cierre, ''), ?) WHERE solicitud_id = ? AND usuario_id = ?";
