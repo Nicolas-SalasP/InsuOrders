@@ -219,7 +219,8 @@ class DashboardRepository
                     m.cantidad as cuanto,
                     i.unidad_medida,
                     COALESCE(
-                        ds.solicitud_id,
+                        ot_ds.id,
+                        ot_dir.id,
                         (SELECT ep.referencia_ot_id
                          FROM entregas_personal ep
                          WHERE ep.insumo_id = m.insumo_id
@@ -227,6 +228,7 @@ class DashboardRepository
                            AND ABS(TIMESTAMPDIFF(SECOND, ep.fecha_entrega, m.fecha)) <= 10
                          LIMIT 1)
                     ) as ot_referencia,
+                    COALESCE(ot_ds.titulo, ot_dir.titulo) as ot_titulo,
                     m.tipo_movimiento_id
                 FROM movimientos_inventario m
                 JOIN insumos i ON m.insumo_id = i.id
@@ -234,6 +236,8 @@ class DashboardRepository
                 LEFT JOIN empleados e ON m.empleado_id = e.id
                 LEFT JOIN usuarios u_rec ON m.empleado_id = u_rec.id
                 LEFT JOIN detalle_solicitud ds ON m.referencia_id = ds.id
+                LEFT JOIN solicitudes_ot ot_ds ON ds.solicitud_id = ot_ds.id
+                LEFT JOIN solicitudes_ot ot_dir ON m.referencia_id = ot_dir.id
                 LEFT JOIN ubicaciones_envio ue ON m.ubicacion_envio_id = ue.id
                 WHERE m.tipo_movimiento_id IN (2, 3)
                 AND m.fecha BETWEEN :start AND :end";

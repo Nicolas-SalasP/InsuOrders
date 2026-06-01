@@ -616,7 +616,8 @@ class ExportController
                 'SKU',
                 'Cantidad',
                 'Unidad',
-                'OT Ref'
+                'OT Ref',
+                'Título OT'
             ],
             $data,
             function ($d) {
@@ -646,7 +647,8 @@ class ExportController
                     $d['codigo_producto'],
                     $d['cuanto'],
                     $d['unidad_medida'],
-                    $d['ot_referencia'] ?? '-'
+                    $d['ot_referencia'] ?? '-',
+                    $d['ot_titulo'] ?? '-'
                 ];
             }
         );
