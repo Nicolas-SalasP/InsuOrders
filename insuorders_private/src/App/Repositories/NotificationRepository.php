@@ -26,6 +26,9 @@ class NotificationRepository
 
     public function getByUser($userId, $limit = 20)
     {
+        // M8 fix: LIMIT no admite placeholder con prepares nativos; casteamos a entero
+        // para neutralizar cualquier inyección vía el parámetro $limit.
+        $limit = max(1, (int) $limit);
         $stmt = $this->db->prepare("SELECT * FROM notificaciones WHERE usuario_id = :uid ORDER BY created_at DESC LIMIT $limit");
         $stmt->execute([':uid' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

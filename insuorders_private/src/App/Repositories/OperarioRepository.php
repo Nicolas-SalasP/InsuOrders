@@ -138,20 +138,19 @@ class OperarioRepository
                     $nuevoCostoTotalLineas = $nuevaEntregada * $precioCosto;
 
                     $this->db->prepare(
-                        "UPDATE detalle_solicitud SET cantidad = :cant, cantidad_entregada = :ent, costo_unitario_snapshot = :pre, costo_total_linea = :tot, estado_linea = :st WHERE id = :id"
+                        "UPDATE detalle_solicitud SET cantidad = :cant, cantidad_entregada = :ent, costo_unitario_snapshot = :pre, estado_linea = :st WHERE id = :id"
                     )->execute([
                                 ':cant' => $nuevaCantidadTotal,
                                 ':ent' => $nuevaEntregada,
                                 ':pre' => $precioCosto,
-                                ':tot' => $nuevoCostoTotalLineas,
                                 ':st' => $nuevoEstadoLinea,
                                 ':id' => $detalle['id']
                             ]);
                 } else {
                     $costoTotalLineas = $cantidadRequerida * $precioCosto;
                     $this->db->prepare(
-                        "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, costo_unitario_snapshot, costo_total_linea, estado_linea)
-                        VALUES (:ot, :ins, :cant, :ent, :pre, :tot, 'ENTREGADO')"
+                        "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, costo_unitario_snapshot, estado_linea)
+                        VALUES (:ot, :ins, :cant, :ent, :pre, 'ENTREGADO')"
                     )->execute([
                                 ':ot' => $datos['ot_id'],
                                 ':ins' => $insumoId,
@@ -323,28 +322,25 @@ class OperarioRepository
                         $nuevoCostoTotalLineas = $nuevaEntregada * $precioCosto;
 
                         $this->db->prepare(
-                            "UPDATE detalle_solicitud SET cantidad = :cant, cantidad_entregada = :ent, costo_unitario_snapshot = :pre, costo_total_linea = :tot, estado_linea = :st WHERE id = :id"
+                            "UPDATE detalle_solicitud SET cantidad = :cant, cantidad_entregada = :ent, costo_unitario_snapshot = :pre, estado_linea = :st WHERE id = :id"
                         )->execute([
                                     ':cant' => $nuevaCantidadTotal,
                                     ':ent' => $nuevaEntregada,
                                     ':pre' => $precioCosto,
-                                    ':tot' => $nuevoCostoTotalLineas,
-                                    ':st' => $nuevoEstadoLinea,
+                                        ':st' => $nuevoEstadoLinea,
                                     ':id' => $detalle['id']
                                 ]);
                     } else {
                         $costoTotalLineas = $montoEntregado * $precioCosto;
                         $this->db->prepare(
-                            "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, costo_unitario_snapshot, costo_total_linea, estado_linea)
-                            VALUES (:ot, :ins, :cant, :ent, :pre, :tot, 'ENTREGADO')"
+                            "INSERT INTO detalle_solicitud (solicitud_id, insumo_id, cantidad, cantidad_entregada, costo_unitario_snapshot, estado_linea)
+                            VALUES (:ot, :ins, :cant, :ent, :pre, 'ENTREGADO')"
                         )->execute([
                                     ':ot' => $entrega['referencia_ot_id'],
                                     ':ins' => $entrega['insumo_id'],
                                     ':cant' => $montoEntregado,
                                     ':ent' => $montoEntregado,
-                                    ':pre' => $precioCosto,
-                                    ':tot' => $costoTotalLineas
-                                ]);
+                                    ':pre' => $precioCosto                                ]);
                     }
                 }
             }

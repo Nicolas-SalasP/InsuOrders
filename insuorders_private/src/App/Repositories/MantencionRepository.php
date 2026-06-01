@@ -575,7 +575,9 @@ class MantencionRepository
                         $idLinea = $item['id_linea'];
                         $estadoActual = $estadosPorId[$idLinea];
                         if (in_array($estadoActual, ['PENDIENTE', 'REQUIERE_COMPRA'])) {
-                            $iid = $this->db->query("SELECT insumo_id FROM detalle_solicitud WHERE id = $idLinea")->fetchColumn();
+                            $stmtIid = $this->db->prepare("SELECT insumo_id FROM detalle_solicitud WHERE id = :idLinea");
+                            $stmtIid->execute([':idLinea' => $idLinea]);
+                            $iid = $stmtIid->fetchColumn();
                             $stmtStock->execute([$iid]);
                             $stock = $stmtStock->fetchColumn() ?: 0;
                             $nuevoEst = ($stock >= $cant) ? 'PENDIENTE' : 'REQUIERE_COMPRA';
@@ -611,7 +613,9 @@ class MantencionRepository
             $sql = "UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW(), notas_cierre = :notas WHERE solicitud_id = :otId AND usuario_id = :uid";
             $this->db->prepare($sql)->execute([':notas' => $notas, ':otId' => $otId, ':uid' => $usuarioId]);
 
-            $pendientes = $this->db->query("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = $otId AND completado = 0")->fetchColumn();
+            $stmtPend = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = :otId AND completado = 0");
+            $stmtPend->execute([':otId' => $otId]);
+            $pendientes = $stmtPend->fetchColumn();
 
             if ($pendientes == 0) {
                 $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);

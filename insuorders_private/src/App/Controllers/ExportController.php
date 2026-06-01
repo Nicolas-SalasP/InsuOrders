@@ -671,6 +671,7 @@ class ExportController
                 'Cant. Recibida',
                 'Precio Unit.',
                 'Total Línea',
+                'OT(s) Asociada(s)',
                 'Recepcionado Por'
             ],
             $data,
@@ -685,6 +686,7 @@ class ExportController
                 $d['cantidad_recibida'],
                 $d['precio_unitario'],
                 $d['total_linea'],
+                $d['ot_titulos'] ?? '-',
                 $d['recepcionado_por']
             ]
         );

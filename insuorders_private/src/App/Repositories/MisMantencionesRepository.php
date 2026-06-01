@@ -168,8 +168,7 @@ class MisMantencionesRepository
                 $this->db->prepare($sqlConsolidar)->execute($paramsConsolidar);
 
                 $sqlSnapshot = "UPDATE detalle_solicitud ds JOIN insumos i ON ds.insumo_id = i.id 
-                                SET ds.costo_unitario_snapshot = i.precio_costo,
-                                    ds.costo_total_linea = i.precio_costo * ds.cantidad_entregada
+                                SET ds.costo_unitario_snapshot = i.precio_costo
                                 WHERE ds.solicitud_id = ? AND (ds.costo_unitario_snapshot IS NULL OR ds.costo_unitario_snapshot = 0)";
                 $this->db->prepare($sqlSnapshot)->execute([$otId]);
 

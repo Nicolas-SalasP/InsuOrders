@@ -32,7 +32,16 @@ class AuthMiddleware
             $decoded = JWT::decode($jwt, new Key(Config::getJwtSecret(), Config::JWT_ALGO));
             $data = $decoded->data;
             $userId = $data->id;
-            
+
+            // A2 fix: revalidar contra BD que el usuario siga activo y usar el rol VIGENTE
+            // (no el cacheado en el JWT). Así un usuario bloqueado o con rol cambiado
+            // deja de tener acceso de inmediato, sin esperar a que expire el token.
+            $estado = self::getFreshUserState($userId);
+            if (!$estado) {
+                self::jsonResponse(401, ["error" => "Sesión inválida. Usuario inactivo o inexistente."]);
+            }
+            $data->rol = $estado['rol'];
+
             self::$currentUser = $data;
 
             if (($data->rol ?? '') === 'Admin') {
@@ -75,6 +84,24 @@ class AuthMiddleware
         return null;
     }
 
+    /**
+     * Devuelve el estado vigente del usuario desde la BD (activo + rol actual),
+     * o null si no existe o está inactivo. Usado para no confiar ciegamente en el JWT.
+     */
+    private static function getFreshUserState($userId)
+    {
+        $db = Database::getConnection();
+        $stmt = $db->prepare(
+            "SELECT r.nombre AS rol
+             FROM usuarios u
+             JOIN roles r ON u.rol_id = r.id
+             WHERE u.id = :id AND u.activo = 1"
+        );
+        $stmt->execute([':id' => $userId]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
     private static function checkDbPermission($userId, $permisoCodigo)
     {
         $db = Database::getConnection();
@@ -108,8 +135,14 @@ class AuthMiddleware
 
         try {
             $decoded = JWT::decode($jwt, new Key(Config::getJwtSecret(), Config::JWT_ALGO));
-            
-            if (($decoded->data->rol ?? '') === 'Admin') {
+
+            // A2 fix: validar estado vigente del usuario también en los checks silenciosos
+            $estado = self::getFreshUserState($decoded->data->id);
+            if (!$estado) {
+                return false;
+            }
+
+            if ($estado['rol'] === 'Admin') {
                 return true;
             }
 

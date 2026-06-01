@@ -126,10 +126,15 @@ class OrdenCompraRepository
 
         if (!empty($filtros['estado'])) {
             if (is_array($filtros['estado'])) {
-                $estadosStr = implode("','", array_map(function ($s) {
-                    return htmlspecialchars($s);
-                }, $filtros['estado']));
-                $sql .= " AND e.nombre IN ('$estadosStr')";
+                $placeholders = [];
+                foreach (array_values($filtros['estado']) as $i => $estadoVal) {
+                    $key = ":estado_$i";
+                    $placeholders[] = $key;
+                    $params[$key] = $estadoVal;
+                }
+                if (!empty($placeholders)) {
+                    $sql .= " AND e.nombre IN (" . implode(',', $placeholders) . ")";
+                }
             } else {
                 $sql .= " AND e.nombre = :estado";
                 $params[':estado'] = $filtros['estado'];
@@ -390,6 +395,10 @@ class OrdenCompraRepository
                     doc.cantidad_recibida,
                     doc.precio_unitario,
                     (doc.cantidad_recibida * doc.precio_unitario) as total_linea,
+                    (SELECT GROUP_CONCAT(DISTINCT sot.titulo SEPARATOR ' | ')
+                       FROM detalle_solicitud ds
+                       JOIN solicitudes_ot sot ON ds.solicitud_id = sot.id
+                      WHERE ds.orden_compra_id = oc.id AND ds.insumo_id = doc.insumo_id) AS ot_titulos,
                     'No Registrado' as recepcionado_por
                 FROM ordenes_compra oc
                 JOIN proveedores p ON oc.proveedor_id = p.id
