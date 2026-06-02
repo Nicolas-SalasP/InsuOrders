@@ -13,6 +13,9 @@ const Usuarios = () => {
     const [showPermisos, setShowPermisos] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(null);
 
+    // Evita doble click en el toggle de estado (activar/bloquear)
+    const [togglingId, setTogglingId] = useState(null);
+
     useEffect(() => {
         cargarUsuarios();
     }, []);
@@ -29,14 +32,18 @@ const Usuarios = () => {
     };
 
     const handleToggle = async (id, estadoActual) => {
+        if (togglingId) return; // ya hay un cambio en curso
         const accion = estadoActual == 1 ? "Bloquear" : "Activar";
         if (!window.confirm(`¿Seguro que deseas ${accion} este usuario?`)) return;
-        
+
         try {
+            setTogglingId(id);
             await api.post('/index.php/usuarios/toggle', { id });
-            cargarUsuarios(); // Recargar la lista para ver el cambio
+            await cargarUsuarios(); // Recargar la lista para ver el cambio
         } catch (e) {
             alert("Error al cambiar estado");
+        } finally {
+            setTogglingId(null);
         }
     };
 
@@ -169,12 +176,15 @@ const Usuarios = () => {
                                         </button>
                                         
                                         {/* Botón Activar/Bloquear */}
-                                        <button 
-                                            className={`btn btn-sm ${u.activo == 1 ? 'btn-outline-danger' : 'btn-outline-success'}`} 
+                                        <button
+                                            className={`btn btn-sm ${u.activo == 1 ? 'btn-outline-danger' : 'btn-outline-success'}`}
                                             onClick={() => handleToggle(u.id, u.activo)}
+                                            disabled={togglingId === u.id}
                                             title={u.activo == 1 ? "Bloquear Acceso" : "Desbloquear"}
                                         >
-                                            <i className={`bi ${u.activo == 1 ? 'bi-lock' : 'bi-unlock'}`}></i>
+                                            {togglingId === u.id
+                                                ? <span className="spinner-border spinner-border-sm"></span>
+                                                : <i className={`bi ${u.activo == 1 ? 'bi-lock' : 'bi-unlock'}`}></i>}
                                         </button>
                                     </td>
                                 </tr>

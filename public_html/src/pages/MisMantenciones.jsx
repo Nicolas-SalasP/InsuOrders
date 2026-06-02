@@ -333,7 +333,7 @@ const MisMantenciones = () => {
             <div className="d-flex flex-wrap gap-2 mt-1">
                 {archivos.map((url, idx) => {
                     if (!url || typeof url !== 'string' || url === 'null') return null;
-                    const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                    const isVideo = /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?.*)?$/i.test(url);
                     return (
                         <div key={idx} className="position-relative d-inline-block">
                             {!readOnly && (

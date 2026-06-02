@@ -152,8 +152,7 @@ const Cotizaciones = () => {
                                     <div className="text-center py-5"><div className="spinner-border text-primary"></div></div>
                                 ) : previewModal.data ? (() => {
                                     const cot = previewModal.data;
-                                    const total = cot.items?.reduce((s, i) => s + parseFloat(i.cantidad || 0) * parseFloat(i.precio_unitario || 0), 0) ?? 0;
-                                    const fmtCLP = (v) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(isNaN(v) ? 0 : v);
+                                    // La cotizacion es una lista de insumos a solicitar (sin precios): no se muestra total estimado.
                                     const badgeClass = cot.estado_nombre === 'Aprobada' ? 'bg-success' : cot.estado_nombre === 'Rechazada' ? 'bg-danger' : 'bg-warning text-dark';
                                     return (
                                         <>
@@ -170,10 +169,6 @@ const Cotizaciones = () => {
                                                     <small className="text-muted text-uppercase fw-bold d-block">Estado</small>
                                                     <span className={`badge px-3 py-2 rounded-pill ${badgeClass}`}>{cot.estado_nombre}</span>
                                                 </div>
-                                                <div className="col-md-3">
-                                                    <small className="text-muted text-uppercase fw-bold d-block">Total Estimado</small>
-                                                    <span className="fw-bold text-primary fs-5">{fmtCLP(total)}</span>
-                                                </div>
                                             </div>
                                             {cot.observacion && (
                                                 <div className="alert alert-light border mb-3 py-2">
@@ -188,9 +183,7 @@ const Cotizaciones = () => {
                                                             <th className="ps-3">#</th>
                                                             <th>Insumo / Ítem</th>
                                                             <th>SKU</th>
-                                                            <th className="text-center">Cantidad</th>
-                                                            <th className="text-end">Precio Unit.</th>
-                                                            <th className="text-end pe-3">Subtotal</th>
+                                                            <th className="text-center pe-3">Cantidad</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -199,20 +192,12 @@ const Cotizaciones = () => {
                                                                 <td className="ps-3 text-muted small">{idx + 1}</td>
                                                                 <td className="fw-bold text-dark">{item.nombre_item}</td>
                                                                 <td><span className="badge bg-light text-muted border font-monospace">{item.codigo_sku || '—'}</span></td>
-                                                                <td className="text-center fw-bold">{parseFloat(item.cantidad)} {item.unidad_medida || 'UN'}</td>
-                                                                <td className="text-end">{fmtCLP(item.precio_unitario)}</td>
-                                                                <td className="text-end pe-3 fw-bold text-primary">{fmtCLP(parseFloat(item.cantidad || 0) * parseFloat(item.precio_unitario || 0))}</td>
+                                                                <td className="text-center fw-bold pe-3">{parseFloat(item.cantidad)} {item.unidad_medida || 'UN'}</td>
                                                             </tr>
                                                         )) : (
-                                                            <tr><td colSpan="6" className="text-center text-muted py-4">Sin ítems.</td></tr>
+                                                            <tr><td colSpan="4" className="text-center text-muted py-4">Sin ítems.</td></tr>
                                                         )}
                                                     </tbody>
-                                                    <tfoot className="table-light">
-                                                        <tr>
-                                                            <td colSpan="5" className="text-end fw-bold pe-2">TOTAL ESTIMADO:</td>
-                                                            <td className="text-end pe-3 fw-bold text-primary fs-6">{fmtCLP(total)}</td>
-                                                        </tr>
-                                                    </tfoot>
                                                 </table>
                                             </div>
                                         </>

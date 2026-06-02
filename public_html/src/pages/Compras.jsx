@@ -615,7 +615,7 @@ const Compras = () => {
                                             <td><div className="fw-medium text-dark">{oc.proveedor}</div><small className="text-muted">{oc.proveedor_rut}</small></td>
                                             <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
                                             <td>{oc.destino ? <span className="badge bg-light text-dark border fw-normal">{oc.destino}</span> : <span className="text-muted small">-</span>}</td>
-                                            <td className="fw-bold text-dark">${parseInt(oc.monto_total).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}</td>
+                                            <td className="fw-bold text-dark">${(parseInt(oc.monto_total) || 0).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}</td>
                                             <td><span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span></td>
                                             <td className="text-end pe-4">
                                                 <div className="d-flex justify-content-end gap-2">
