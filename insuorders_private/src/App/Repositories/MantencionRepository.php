@@ -575,7 +575,9 @@ class MantencionRepository
                         $idLinea = $item['id_linea'];
                         $estadoActual = $estadosPorId[$idLinea];
                         if (in_array($estadoActual, ['PENDIENTE', 'REQUIERE_COMPRA'])) {
-                            $iid = $this->db->query("SELECT insumo_id FROM detalle_solicitud WHERE id = $idLinea")->fetchColumn();
+                            $stmtIid = $this->db->prepare("SELECT insumo_id FROM detalle_solicitud WHERE id = :idLinea");
+                            $stmtIid->execute([':idLinea' => $idLinea]);
+                            $iid = $stmtIid->fetchColumn();
                             $stmtStock->execute([$iid]);
                             $stock = $stmtStock->fetchColumn() ?: 0;
                             $nuevoEst = ($stock >= $cant) ? 'PENDIENTE' : 'REQUIERE_COMPRA';
@@ -611,18 +613,23 @@ class MantencionRepository
             $sql = "UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW(), notas_cierre = :notas WHERE solicitud_id = :otId AND usuario_id = :uid";
             $this->db->prepare($sql)->execute([':notas' => $notas, ':otId' => $otId, ':uid' => $usuarioId]);
 
-            $pendientes = $this->db->query("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = $otId AND completado = 0")->fetchColumn();
+            $stmtPend = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = :otId AND completado = 0");
+            $stmtPend->execute([':otId' => $otId]);
+            $pendientes = $stmtPend->fetchColumn();
 
             if ($pendientes == 0) {
                 $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
+                $this->sincronizarEstadoActivoPorOT($otId);
                 return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
             } else {
                 $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'En Proceso') WHERE id = :id")->execute([':id' => $otId]);
+                $this->sincronizarEstadoActivoPorOT($otId);
                 return ['status' => 'partial', 'message' => 'Tarea registrada. OT sigue abierta.'];
             }
         } else {
             $this->db->prepare("UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW() WHERE solicitud_id = :id")->execute([':id' => $otId]);
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
+            $this->sincronizarEstadoActivoPorOT($otId);
             return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
         }
     }
@@ -634,8 +641,13 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")->execute([':id' => $id]);
+            // Nota de semantica: 'RESERVADO' es un estado de linea que el sistema NUNCA asigna hoy
+            // (solo se lee). Como el stock solo se descuenta al ENTREGAR, las porciones no entregadas
+            // jamas salieron de inventario; por eso al forzar el cierre no hay stock que reintegrar y
+            // este UPDATE es inerte. Se conserva como gancho por si se implementa reserva de stock.
             $this->db->prepare("UPDATE insumos i JOIN detalle_solicitud ds ON i.id = ds.insumo_id SET i.stock_actual = i.stock_actual + (ds.cantidad - ds.cantidad_entregada) WHERE ds.solicitud_id = :id AND ds.estado_linea = 'RESERVADO'")->execute([':id' => $id]);
             $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'CANCELADO' WHERE solicitud_id = :id AND estado_linea NOT IN ('ENTREGADO', 'FINALIZADO')")->execute([':id' => $id]);
+            $this->sincronizarEstadoActivoPorOT($id);
             if (!$inTransaction)
                 $this->db->commit();
         } catch (Exception $e) {
@@ -653,6 +665,7 @@ class MantencionRepository
                 $this->db->beginTransaction();
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 6 WHERE id = :id")->execute([':id' => $id]);
             $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'ANULADO' WHERE solicitud_id = :id")->execute([':id' => $id]);
+            $this->sincronizarEstadoActivoPorOT($id);
             if (!$inTransaction)
                 $this->db->commit();
         } catch (Exception $e) {
@@ -725,6 +738,7 @@ class MantencionRepository
             $nuevoEstado = ($nuevaEntregada >= floatval($linea['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
             $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $linea['solicitud_id']]);
+            $this->sincronizarEstadoActivoPorOT($linea['solicitud_id']);
 
             if (!$inTransaction)
                 $this->db->commit();
@@ -755,6 +769,11 @@ class MantencionRepository
 
         $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant) ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd")->execute([':iid' => $linea['insumo_id'], ':uid' => $ubicacionDestinoId, ':cant' => $cantidadDevolver, ':cant_upd' => $cantidadDevolver]);
         $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, ubicacion_id, fecha) VALUES (:iid, 1, :cant, :uid, 'Devolución de OT', :ref, :ubi, NOW())")->execute([':iid' => $linea['insumo_id'], ':cant' => $cantidadDevolver, ':uid' => $bodegueroId, ':ref' => $detalleId, ':ubi' => $ubicacionDestinoId]);
+
+        // Mantener stock_actual sincronizado con la suma por ubicacion (la devolucion reintegra stock)
+        $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")->execute([$linea['insumo_id'], $linea['insumo_id']]);
+
+        $this->sincronizarEstadoActivoPorOT($linea['solicitud_id']);
 
         return $linea['insumo_id'];
     }
@@ -825,6 +844,8 @@ class MantencionRepository
             $sqlAsig = "UPDATE ot_asignaciones SET completado = 0, fecha_completado = NULL WHERE solicitud_id = ?";
             $this->db->prepare($sqlAsig)->execute([$id]);
 
+            $this->sincronizarEstadoActivoPorOT($id);
+
             if (!$inTransaction) {
                 $this->db->commit();
             }
@@ -834,6 +855,41 @@ class MantencionRepository
                 $this->db->rollBack();
             }
             throw $e;
+        }
+    }
+
+    /**
+     * Sincroniza activos.estado_activo segun el ciclo de OT:
+     * EN_MANTENCION si el activo (directo o como sub-activo) tiene alguna OT EN CURSO
+     * (Aprobada=2 o En Proceso=4); OPERATIVO si no. No toca activos en BAJA.
+     * Las OTs Pendientes (incluidas las preventivas futuras del cronograma) NO cuentan.
+     * Va envuelta en try/catch para no interrumpir nunca la operacion principal de la OT.
+     */
+    public function sincronizarEstadoActivoPorOT($otId)
+    {
+        try {
+            $stmt = $this->db->prepare("SELECT activo_id, sub_activo_id FROM solicitudes_ot WHERE id = ?");
+            $stmt->execute([$otId]);
+            $ot = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$ot)
+                return;
+
+            $sql = "UPDATE activos a SET a.estado_activo = (
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM solicitudes_ot s
+                            WHERE (s.activo_id = a.id OR s.sub_activo_id = a.id)
+                              AND s.estado_id IN (2, 4)
+                        ) THEN 'EN_MANTENCION' ELSE 'OPERATIVO' END)
+                    WHERE a.id = :aid AND a.estado_activo <> 'BAJA'";
+            $upd = $this->db->prepare($sql);
+
+            foreach ([$ot['activo_id'], $ot['sub_activo_id']] as $aid) {
+                if (!empty($aid)) {
+                    $upd->execute([':aid' => $aid]);
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log('[estado_activo] sync OT ' . $otId . ': ' . $e->getMessage());
         }
     }
 }

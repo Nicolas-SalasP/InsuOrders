@@ -168,13 +168,14 @@ class MisMantencionesRepository
                 $this->db->prepare($sqlConsolidar)->execute($paramsConsolidar);
 
                 $sqlSnapshot = "UPDATE detalle_solicitud ds JOIN insumos i ON ds.insumo_id = i.id 
-                                SET ds.costo_unitario_snapshot = i.precio_costo,
-                                    ds.costo_total_linea = i.precio_costo * ds.cantidad_entregada
+                                SET ds.costo_unitario_snapshot = i.precio_costo
                                 WHERE ds.solicitud_id = ? AND (ds.costo_unitario_snapshot IS NULL OR ds.costo_unitario_snapshot = 0)";
                 $this->db->prepare($sqlSnapshot)->execute([$otId]);
 
                 $sqlTotal = "UPDATE solicitudes_ot SET costo_total_insumos = COALESCE((SELECT SUM(costo_total_linea) FROM detalle_solicitud WHERE solicitud_id = ?), 0) WHERE id = ?";
                 $this->db->prepare($sqlTotal)->execute([$otId, $otId]);
+
+                (new \App\Repositories\MantencionRepository())->sincronizarEstadoActivoPorOT($otId);
             }
 
             if (!$inTransaction)
@@ -277,6 +278,15 @@ class MisMantencionesRepository
 
             $pendiente -= $aDescontar;
         }
+
+        // Si el tecnico no tenia stock suficiente en sus entregas para cubrir lo requerido,
+        // se descuenta lo disponible y se deja traza (antes se perdia en silencio).
+        if ($pendiente > 0.001) {
+            error_log(sprintf(
+                '[STOCK_INSUFICIENTE] usuario=%s insumo=%s faltante=%s al cerrar OT',
+                $userId, $insumoId, $pendiente
+            ));
+        }
     }
 
     public function actualizarEstadoOT($otId, $estadoId)
@@ -307,7 +317,9 @@ class MisMantencionesRepository
     public function iniciarTrabajoEnOrden($otId)
     {
         $stmt = $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = ? AND estado_id IN (1, 4)");
-        return $stmt->execute([$otId]);
+        $res = $stmt->execute([$otId]);
+        (new \App\Repositories\MantencionRepository())->sincronizarEstadoActivoPorOT($otId);
+        return $res;
     }
 
     public function guardarAvanceParcial($otId, $comentarios, $evidenciaStr = null)
@@ -349,6 +361,14 @@ class MisMantencionesRepository
         $nuevoStr = empty($nuevoArr) ? null : json_encode($nuevoArr);
 
         $this->db->prepare("UPDATE solicitudes_ot SET evidencia_cierre = ? WHERE id = ?")->execute([$nuevoStr, $otId]);
+
+        // Borrar el archivo fisico para no dejar huerfanos en disco, validando que la ruta
+        // resuelta este DENTRO de /public_html/uploads (defensa ante path traversal).
+        $baseUploads = realpath(__DIR__ . '/../../../../public_html/uploads');
+        $rutaArchivo = realpath(__DIR__ . '/../../../../public_html/' . ltrim((string) $urlEliminar, '/'));
+        if ($rutaArchivo && $baseUploads && strpos($rutaArchivo, $baseUploads) === 0 && is_file($rutaArchivo)) {
+            @unlink($rutaArchivo);
+        }
         $mensajeLog = "\n[SISTEMA " . date('d-m-Y H:i') . "]: El técnico eliminó una evidencia adjunta previamente.";
 
         $sqlLog = "UPDATE ot_asignaciones SET notas_cierre = CONCAT(COALESCE(notas_cierre, ''), ?) WHERE solicitud_id = ? AND usuario_id = ?";

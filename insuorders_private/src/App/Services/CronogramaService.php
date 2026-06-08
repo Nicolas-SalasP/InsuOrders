@@ -106,6 +106,11 @@ class CronogramaService
                     $fechaLimite = (clone $fechaInicial)->modify("+{$proyCant} {$proyUnidad}");
                     $fechaIterativa = clone $fechaInicial;
 
+                    // Tope duro de seguridad: evita una explosion de OTs si la combinacion
+                    // frecuencia/proyeccion es muy grande o la unidad de proyeccion es invalida.
+                    $maxOcurrencias = 260;
+                    $generadas = 0;
+
                     while (true) {
                         switch ($unidad) {
                             case 'DIAS':
@@ -126,6 +131,11 @@ class CronogramaService
                         }
 
                         if ($fechaIterativa > $fechaLimite) {
+                            break;
+                        }
+
+                        if (++$generadas > $maxOcurrencias) {
+                            error_log("Cronograma: proyeccion truncada en {$maxOcurrencias} ocurrencias (OT base {$id})");
                             break;
                         }
 

@@ -59,6 +59,9 @@ const PortalCliente = () => {
         return 'bg-secondary text-white';
     };
 
+    // Detecta video tolerando query strings y mas extensiones (antes el $ rompia con ?v=...)
+    const esVideo = (url) => /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?.*)?$/i.test(url || '');
+
     const renderEvidencia = (evidenciaStr) => {
         if (!evidenciaStr) return null;
 
@@ -73,7 +76,7 @@ const PortalCliente = () => {
         return (
             <div className="d-flex gap-2 mt-3 pb-2 overflow-auto custom-scrollbar" style={{ whiteSpace: 'nowrap' }}>
                 {archivos.map((url, idx) => {
-                    const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                    const isVideo = esVideo(url);
                     return isVideo ? (
                         <div 
                             key={idx} 
@@ -119,7 +122,7 @@ const PortalCliente = () => {
         return (
             <div className="d-flex gap-2 mt-2 pb-2 overflow-auto custom-scrollbar" style={{ whiteSpace: 'nowrap' }}>
                 {archivos.map((url, idx) => {
-                    const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                    const isVideo = esVideo(url);
                     return isVideo ? (
                         <div 
                             key={idx} 

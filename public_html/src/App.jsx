@@ -137,6 +137,16 @@ function App() {
                                 </PermissionGuard>
                             } />
                             <Route path="/portal-cliente" element={<PortalCliente />} />
+
+                            {/* 404: cualquier ruta desconocida (estando autenticado) */}
+                            <Route path="*" element={
+                                <div className="p-5 text-center">
+                                    <i className="bi bi-compass fs-1 text-muted"></i>
+                                    <h3 className="text-muted mt-3">404 — Página no encontrada</h3>
+                                    <p className="text-muted">La dirección que ingresaste no existe.</p>
+                                    <a href="/dashboard" className="btn btn-primary mt-2">Volver al inicio</a>
+                                </div>
+                            } />
                         </Route>
                     </Route>
                 </Routes>

@@ -100,7 +100,7 @@ class OrdenCompraService
                     $idsSolicitudes = array_merge($idsSolicitudes, $ids);
                 }
 
-                $subtotal = $item['cantidad'] * $item['precio'];
+                $subtotal = round($item['cantidad'] * $item['precio'], 2);
                 $montoNeto += $subtotal;
 
                 $itemsProcesados[] = [
@@ -113,14 +113,15 @@ class OrdenCompraService
             }
 
             $porcIVA = isset($data['impuesto_porcentaje']) ? floatval($data['impuesto_porcentaje']) : 19.0;
-            $iva = $montoNeto * ($porcIVA / 100);
+            $montoNeto = round($montoNeto, 2);
+            $iva = round($montoNeto * ($porcIVA / 100), 2);
 
             $datosCabecera = [
                 'proveedor_id' => $data['proveedor_id'],
                 'usuario_id' => $usuarioId,
                 'neto' => $montoNeto,
                 'impuesto' => $iva,
-                'total' => $montoNeto + $iva,
+                'total' => round($montoNeto + $iva, 2),
                 'moneda' => $data['moneda'] ?? 'CLP',
                 'tipo_cambio' => $data['tipo_cambio'] ?? 1,
                 'numero_cotizacion' => $data['numero_cotizacion'] ?? null,

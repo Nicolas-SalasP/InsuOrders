@@ -33,7 +33,6 @@ class CotizacionService
             throw new Exception("La cotización debe tener al menos un ítem.");
         }
 
-        $total = 0;
         foreach ($data['items'] as $item) {
             if (empty($item['nombre_item'])) {
                 throw new Exception("Todos los ítems deben tener un nombre.");
@@ -41,10 +40,11 @@ class CotizacionService
             if ($item['cantidad'] <= 0) {
                 throw new Exception("La cantidad debe ser mayor a 0.");
             }
-            $total += ($item['cantidad'] * $item['precio']);
         }
 
-        return $this->repo->create($data, $userId, $total);
+        // La cotizacion es solo una lista de insumos a solicitar a proveedores (sin precios):
+        // no se calcula un total estimado (siempre quedaba en 0 porque no hay precio_unitario).
+        return $this->repo->create($data, $userId, 0);
     }
 
     public function gestionarEstado($id, $accion)

@@ -138,6 +138,7 @@ const Bodega = () => {
             cargarDevoluciones(true);
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al aprobar", type: "error" });
+        } finally {
             setLoading(false);
         }
     };
@@ -158,6 +159,7 @@ const Bodega = () => {
             cargarDevoluciones(true);
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.error || "Error al rechazar", type: "error" });
+        } finally {
             setLoading(false);
         }
     };

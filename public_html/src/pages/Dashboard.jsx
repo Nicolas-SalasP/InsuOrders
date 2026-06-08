@@ -184,16 +184,20 @@ const Dashboard = () => {
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">📉 Tendencia de Gasto</div>
                         <div className="card-body" style={{ height: '300px' }}>
+                            {!(data.compras?.tendencia_gasto?.length) ? (
+                                <div className="d-flex h-100 align-items-center justify-content-center text-muted">Sin datos en el período seleccionado</div>
+                            ) : (
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={data.compras?.tendencia_gasto || []}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="mes" style={{ fontSize: '12px' }} />
                                     <YAxis style={{ fontSize: '12px' }} />
-                                    <Tooltip formatter={(v) => `$${parseInt(v).toLocaleString()}`} />
+                                    <Tooltip formatter={(v) => `$${(parseInt(v) || 0).toLocaleString()}`} />
                                     <Legend />
                                     <Line type="monotone" dataKey={tipoMonto === 'neto' ? 'neto' : 'total'} stroke="#0d6efd" name={tipoMonto === 'neto' ? 'Neto $' : 'Total $'} strokeWidth={3} dot={{r: 4}} activeDot={{ r: 8 }} />
                                 </LineChart>
                             </ResponsiveContainer>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -207,7 +211,7 @@ const Dashboard = () => {
                                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                                     <XAxis type="number" hide />
                                     <YAxis dataKey="nombre" type="category" width={100} style={{fontSize: '11px'}} />
-                                    <Tooltip formatter={(v) => `$${parseInt(v).toLocaleString()}`} />
+                                    <Tooltip formatter={(v) => `$${(parseInt(v) || 0).toLocaleString()}`} />
                                     <Bar dataKey={tipoMonto === 'neto' ? 'neto' : 'total'} fill="#198754" name={tipoMonto === 'neto' ? 'Neto $' : 'Total $'} radius={[0, 4, 4, 0]} barSize={20} />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -224,7 +228,7 @@ const Dashboard = () => {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="nombre" style={{fontSize: '10px'}} interval={0} angle={-15} textAnchor="end" height={60} />
                                     <YAxis style={{ fontSize: '11px' }} />
-                                    <Tooltip formatter={(v) => `$${parseInt(v).toLocaleString()}`} />
+                                    <Tooltip formatter={(v) => `$${(parseInt(v) || 0).toLocaleString()}`} />
                                     <Bar dataKey="total_gasto" fill="#6610f2" name="Total Invertido" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -241,7 +245,7 @@ const Dashboard = () => {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="nombre" style={{fontSize: '10px'}} interval={0} angle={-15} textAnchor="end" height={60} />
                                     <YAxis style={{ fontSize: '11px' }} />
-                                    <Tooltip formatter={(v) => `${parseInt(v).toLocaleString()} un.`} />
+                                    <Tooltip formatter={(v) => `${(parseInt(v) || 0).toLocaleString()} un.`} />
                                     <Bar dataKey="total_cantidad" fill="#ffc107" name="Unidades Compradas" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -253,6 +257,9 @@ const Dashboard = () => {
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white fw-bold py-3 border-0">🍰 Inversión por Categoría</div>
                         <div className="card-body" style={{ height: '350px' }}>
+                            {!(data.compras?.gasto_por_categoria?.length) ? (
+                                <div className="d-flex h-100 align-items-center justify-content-center text-muted">Sin datos en el período seleccionado</div>
+                            ) : (
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
@@ -267,10 +274,11 @@ const Dashboard = () => {
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(v) => `$${parseInt(v).toLocaleString()}`} />
+                                    <Tooltip formatter={(v) => `$${(parseInt(v) || 0).toLocaleString()}`} />
                                     <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{fontSize: '11px'}} />
                                 </PieChart>
                             </ResponsiveContainer>
+                            )}
                         </div>
                     </div>
                 </div>

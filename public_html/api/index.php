@@ -177,7 +177,8 @@ try {
             break;
 
         case 'test':
-            echo json_encode(["message" => "API Online", "ruta" => $path]);
+            // M7 fix: no reflejar la ruta solicitada (evita reconocimiento/eco de input)
+            echo json_encode(["message" => "API Online"]);
             break;
 
         // --- CRONOGRAMA ---

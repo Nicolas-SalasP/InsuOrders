@@ -84,10 +84,13 @@ class UsuariosRepository
 
     public function findByUsername($username)
     {
-        $sql = "SELECT u.*, r.nombre as rol_nombre 
-                FROM usuarios u 
-                INNER JOIN roles r ON u.rol_id = r.id 
-                WHERE u.username = :username 
+        // A5 fix: traer solo las columnas necesarias para el login (incluido el hash),
+        // evitando SELECT * que arrastra a memoria todos los campos del usuario.
+        $sql = "SELECT u.id, u.nombre, u.apellido, u.username, u.password_hash,
+                       u.email, u.telefono, u.rol_id, u.activo, r.nombre as rol_nombre
+                FROM usuarios u
+                INNER JOIN roles r ON u.rol_id = r.id
+                WHERE u.username = :username
                 AND u.activo = 1";
 
         $stmt = $this->db->prepare($sql);

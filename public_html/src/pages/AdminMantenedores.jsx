@@ -43,7 +43,11 @@ const AdminMantenedores = () => {
 
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
 
-    useEffect(() => { cargarDatos(); }, [activeTab]);
+    useEffect(() => {
+        // Al cambiar de pestaña, cerrar modales abiertos (evita editar en la tab equivocada)
+        setModales(prev => Object.fromEntries(Object.keys(prev).map(k => [k, { show: false, data: null }])));
+        cargarDatos();
+    }, [activeTab]);
 
     const cargarDatos = async () => {
         setLoading(true);
@@ -104,9 +108,11 @@ const AdminMantenedores = () => {
     const abrirModal = (tipo, data = null) => setModales(prev => ({ ...prev, [tipo]: { show: true, data } }));
     const cerrarModal = (tipo) => setModales(prev => ({ ...prev, [tipo]: { show: false, data: null } }));
 
-    const handleDelete = async (endpoint, id) => {
-        if (!window.confirm("¿Seguro de eliminar o desactivar este registro?")) return;
-        
+    const handleDelete = async (endpoint, id, registro = null) => {
+        const nombre = registro?.nombre_completo || registro?.nombre || registro?.codigo || registro?.titulo || '';
+        const queEs = nombre ? `"${nombre}"` : 'este registro';
+        if (!window.confirm(`¿Seguro que deseas eliminar/desactivar ${queEs}? Esta acción no se puede deshacer.`)) return;
+
         // Ajuste para ruta de categorías que está en la raíz del router
         const urlBase = endpoint === 'categorias' ? '/index.php/' : '/index.php/mantenedores/';
         
@@ -214,7 +220,7 @@ const AdminMantenedores = () => {
                                                         </td>
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('empleado', e)}><i className="bi bi-pencil-square"></i></button>
-                                                            {e.activo == 1 && <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('empleados', e.id)}><i className="bi bi-person-x"></i></button>}
+                                                            {e.activo == 1 && <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('empleados', e.id, e)}><i className="bi bi-person-x"></i></button>}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -240,7 +246,7 @@ const AdminMantenedores = () => {
                                                         <td><span className="badge bg-light text-dark border">{s.codigo || 'N/A'}</span></td>
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('sector', s)}><i className="bi bi-pencil-square"></i></button>
-                                                            <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('sectores', s.id)}><i className="bi bi-trash"></i></button>
+                                                            <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('sectores', s.id, s)}><i className="bi bi-trash"></i></button>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -268,7 +274,7 @@ const AdminMantenedores = () => {
                                                         <td className="small text-muted">{u.descripcion}</td>
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('ubicacion', u)}><i className="bi bi-pencil-square"></i></button>
-                                                            <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('ubicaciones', u.id)}><i className="bi bi-trash"></i></button>
+                                                            <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('ubicaciones', u.id, u)}><i className="bi bi-trash"></i></button>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -296,7 +302,7 @@ const AdminMantenedores = () => {
                                                         <td>{c.area_nombre || '-'}</td>
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('centro', c)}><i className="bi bi-pencil-square"></i></button>
-                                                            <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('centros', c.id)}><i className="bi bi-trash"></i></button>
+                                                            <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('centros', c.id, c)}><i className="bi bi-trash"></i></button>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -322,7 +328,7 @@ const AdminMantenedores = () => {
                                                         <td>{a.nombre}</td>
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('area', a)}><i className="bi bi-pencil-square"></i></button>
-                                                            <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('areas', a.id)}><i className="bi bi-trash"></i></button>
+                                                            <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('areas', a.id, a)}><i className="bi bi-trash"></i></button>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -359,7 +365,7 @@ const AdminMantenedores = () => {
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('ubicacionEnvio', u)} title="Editar"><i className="bi bi-pencil-square"></i></button>
                                                             {u.activo == 1 && (
-                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('ubicaciones-envio', u.id)} title="Desactivar"><i className="bi bi-trash"></i></button>
+                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('ubicaciones-envio', u.id, u)} title="Desactivar"><i className="bi bi-trash"></i></button>
                                                             )}
                                                         </td>
                                                     </tr>
@@ -402,7 +408,7 @@ const AdminMantenedores = () => {
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('tipoPermiso', p)} title="Editar"><i className="bi bi-pencil-square"></i></button>
                                                             {p.activo == 1 && (
-                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('tipos-permiso', p.id)} title="Desactivar"><i className="bi bi-trash"></i></button>
+                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('tipos-permiso', p.id, p)} title="Desactivar"><i className="bi bi-trash"></i></button>
                                                             )}
                                                         </td>
                                                     </tr>
@@ -447,7 +453,7 @@ const AdminMantenedores = () => {
                                                                 </button>
                                                             )}
                                                             {can('eliminar_categorias') && (
-                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('categorias', cat.id)} title="Eliminar">
+                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('categorias', cat.id, cat)} title="Eliminar">
                                                                     <i className="bi bi-trash"></i>
                                                                 </button>
                                                             )}

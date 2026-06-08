@@ -101,7 +101,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
         return (
             <div className="d-flex flex-wrap gap-2 mt-2">
                 {archivos.map((url, idx) => {
-                    const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                    const isVideo = /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?.*)?$/i.test(url || '');
                     return isVideo ? (
                         <div
                             key={idx}
