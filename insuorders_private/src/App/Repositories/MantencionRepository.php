@@ -329,6 +329,11 @@ class MantencionRepository
 
     public function addInsumoToKit($activoId, $insumoId, $cant)
     {
+        $stmtInsumo = $this->db->prepare("SELECT id FROM insumos WHERE id = :i");
+        $stmtInsumo->execute([':i' => $insumoId]);
+        if (!$stmtInsumo->fetch())
+            throw new Exception("Insumo ID $insumoId no existe.");
+
         $check = $this->db->prepare("SELECT id FROM activos_insumos WHERE activo_id=:a AND insumo_id=:i");
         $check->execute([':a' => $activoId, ':i' => $insumoId]);
         $sql = $check->fetch() ? "UPDATE activos_insumos SET cantidad_default = :c WHERE activo_id=:a AND insumo_id=:i"
@@ -641,11 +646,6 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")->execute([':id' => $id]);
-            // Nota de semantica: 'RESERVADO' es un estado de linea que el sistema NUNCA asigna hoy
-            // (solo se lee). Como el stock solo se descuenta al ENTREGAR, las porciones no entregadas
-            // jamas salieron de inventario; por eso al forzar el cierre no hay stock que reintegrar y
-            // este UPDATE es inerte. Se conserva como gancho por si se implementa reserva de stock.
-            $this->db->prepare("UPDATE insumos i JOIN detalle_solicitud ds ON i.id = ds.insumo_id SET i.stock_actual = i.stock_actual + (ds.cantidad - ds.cantidad_entregada) WHERE ds.solicitud_id = :id AND ds.estado_linea = 'RESERVADO'")->execute([':id' => $id]);
             $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'CANCELADO' WHERE solicitud_id = :id AND estado_linea NOT IN ('ENTREGADO', 'FINALIZADO')")->execute([':id' => $id]);
             $this->sincronizarEstadoActivoPorOT($id);
             if (!$inTransaction)
@@ -711,7 +711,7 @@ class MantencionRepository
                 throw new Exception("Línea no encontrada");
 
             $pendiente = floatval($linea['cantidad']) - floatval($linea['cantidad_entregada']);
-            if ($cantidadEntregar > ($pendiente + 0.001))
+            if ($cantidadEntregar > ($pendiente + 1e-9))
                 throw new Exception("Exceso de entrega.");
 
             $stmtStock = $this->db->prepare("SELECT ubicacion_id, cantidad FROM insumo_stock_ubicacion WHERE insumo_id = :id AND cantidad > 0 ORDER BY cantidad DESC FOR UPDATE");
@@ -737,6 +737,7 @@ class MantencionRepository
             $nuevaEntregada = floatval($linea['cantidad_entregada']) + $cantidadEntregar;
             $nuevoEstado = ($nuevaEntregada >= floatval($linea['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
             $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
+            $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")->execute([$linea['insumo_id'], $linea['insumo_id']]);
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $linea['solicitud_id']]);
             $this->sincronizarEstadoActivoPorOT($linea['solicitud_id']);
 
@@ -752,30 +753,42 @@ class MantencionRepository
 
     public function devolverMaterial($detalleId, $cantidadDevolver, $bodegueroId, $ubicacionDestinoId = 1)
     {
-        $stmt = $this->db->prepare("SELECT * FROM detalle_solicitud WHERE id = :id");
-        $stmt->execute([':id' => $detalleId]);
-        $linea = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$linea)
-            throw new Exception("Línea no encontrada");
+        $inTransaction = $this->db->inTransaction();
+        try {
+            if (!$inTransaction)
+                $this->db->beginTransaction();
 
-        if ($cantidadDevolver > $linea['cantidad_entregada'])
-            throw new Exception("No puedes devolver más de lo entregado.");
+            $stmt = $this->db->prepare("SELECT * FROM detalle_solicitud WHERE id = :id FOR UPDATE");
+            $stmt->execute([':id' => $detalleId]);
+            $linea = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$linea)
+                throw new Exception("Línea no encontrada");
 
-        $nuevaEntregada = floatval($linea['cantidad_entregada']) - floatval($cantidadDevolver);
-        $nuevoEstado = ($nuevaEntregada <= 0) ? 'PENDIENTE' : (($nuevaEntregada < floatval($linea['cantidad'])) ? 'PENDIENTE' : 'ENTREGADO');
+            if ($cantidadDevolver > $linea['cantidad_entregada'])
+                throw new Exception("No puedes devolver más de lo entregado.");
 
-        $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
-        $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 1 WHERE id = :id AND estado_id = 2")->execute([':id' => $linea['solicitud_id']]);
+            $nuevaEntregada = floatval($linea['cantidad_entregada']) - floatval($cantidadDevolver);
+            // PARCIAL cuando hay entrega parcial; PENDIENTE solo cuando nada fue entregado
+            $nuevoEstado = ($nuevaEntregada <= 0) ? 'PENDIENTE' : (($nuevaEntregada < floatval($linea['cantidad'])) ? 'PARCIAL' : 'ENTREGADO');
 
-        $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant) ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd")->execute([':iid' => $linea['insumo_id'], ':uid' => $ubicacionDestinoId, ':cant' => $cantidadDevolver, ':cant_upd' => $cantidadDevolver]);
-        $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, ubicacion_id, fecha) VALUES (:iid, 1, :cant, :uid, 'Devolución de OT', :ref, :ubi, NOW())")->execute([':iid' => $linea['insumo_id'], ':cant' => $cantidadDevolver, ':uid' => $bodegueroId, ':ref' => $detalleId, ':ubi' => $ubicacionDestinoId]);
+            $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
+            $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 1 WHERE id = :id AND estado_id = 2")->execute([':id' => $linea['solicitud_id']]);
 
-        // Mantener stock_actual sincronizado con la suma por ubicacion (la devolucion reintegra stock)
-        $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")->execute([$linea['insumo_id'], $linea['insumo_id']]);
+            $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant) ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd")->execute([':iid' => $linea['insumo_id'], ':uid' => $ubicacionDestinoId, ':cant' => $cantidadDevolver, ':cant_upd' => $cantidadDevolver]);
+            $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, ubicacion_id, fecha) VALUES (:iid, 1, :cant, :uid, 'Devolución de OT', :ref, :ubi, NOW())")->execute([':iid' => $linea['insumo_id'], ':cant' => $cantidadDevolver, ':uid' => $bodegueroId, ':ref' => $detalleId, ':ubi' => $ubicacionDestinoId]);
+            $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")->execute([$linea['insumo_id'], $linea['insumo_id']]);
 
-        $this->sincronizarEstadoActivoPorOT($linea['solicitud_id']);
+            $this->sincronizarEstadoActivoPorOT($linea['solicitud_id']);
 
-        return $linea['insumo_id'];
+            if (!$inTransaction)
+                $this->db->commit();
+
+            return $linea['insumo_id'];
+        } catch (Exception $e) {
+            if (!$inTransaction)
+                $this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function savePlantillaActivo($id, $jsonStr)

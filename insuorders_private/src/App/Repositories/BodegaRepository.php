@@ -61,8 +61,8 @@ class BodegaRepository
             if (!$dev)
                 throw new Exception("Devolución no encontrada o ya fue aprobada.");
 
-            $requiereOrg = isset($dev['requiere_organizacion']) ? $dev['requiere_organizacion'] : 1;
-            $reintegra = isset($dev['reintegra_stock']) ? $dev['reintegra_stock'] : 1;
+            $requiereOrg = $dev['requiere_organizacion'] ?? 1;
+            $reintegra = $dev['reintegra_stock'] ?? 1;
 
             $this->db->prepare("UPDATE devoluciones_pendientes SET estado = 'APROBADA' WHERE id = :id")
                 ->execute([':id' => $devolucionId]);

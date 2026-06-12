@@ -31,7 +31,7 @@ const PrivateRoute = () => {
 const PermissionGuard = ({ children, permiso, redirectTo = "/dashboard" }) => {
     const { auth } = useContext(AuthContext);
 
-    if (auth.rol === 'Admin' || auth.rol === 1) return children;
+    if (auth.rol === 'Admin') return children;
 
     if (Array.isArray(permiso)) {
         const tieneAlguno = permiso.some(p => auth.permisos && auth.permisos.includes(p));

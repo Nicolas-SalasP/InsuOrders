@@ -41,6 +41,14 @@ class BodegaService
             throw new Exception("Cantidad inválida");
 
         if (!empty($data['empleado_id']) && empty($data['detalle_id'])) {
+            $db = Database::getConnection();
+            $stmtEmp = $db->prepare(
+                "SELECT id FROM empleados WHERE id = ? AND activo = 1"
+            );
+            $stmtEmp->execute([(int) $data['empleado_id']]);
+            if (!$stmtEmp->fetch())
+                throw new Exception("El empleado seleccionado no existe o está inactivo.");
+
             $datosEntrega = [
                 'insumo_id'  => $data['insumo_id'],
                 'cantidad'   => (float) $cantidad,

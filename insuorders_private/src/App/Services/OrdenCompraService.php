@@ -83,6 +83,11 @@ class OrdenCompraService
                 $insumoId = $item['id'] ?? null;
 
                 if (!$insumoId) {
+                    $stmtCat = $this->db->prepare("SELECT id FROM categorias_insumo WHERE id = 1");
+                    $stmtCat->execute();
+                    if (!$stmtCat->fetch())
+                        throw new Exception("Categoría por defecto (ID 1) no existe. Configure una categoría antes de crear insumos automáticos.");
+
                     $nuevoInsumo = [
                         'codigo_sku' => null,
                         'nombre' => $item['nombre'],
@@ -263,6 +268,11 @@ class OrdenCompraService
                     'high'
                 );
             }
+        }
+
+        // Cerrar automáticamente OCs que ya no tienen demanda pendiente de OT
+        if ($resultado) {
+            $this->repo->cerrarOCsSinDemandaPendiente($ids);
         }
 
         return $resultado;

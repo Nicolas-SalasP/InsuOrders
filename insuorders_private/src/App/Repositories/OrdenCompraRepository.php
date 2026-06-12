@@ -310,7 +310,8 @@ class OrdenCompraRepository
         try {
             $this->db->beginTransaction();
 
-            $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id");
+            // FOR UPDATE: bloquea el registro de la OC para evitar recepciones simultáneas que dupliquen stock
+            $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id FOR UPDATE");
             $stmt->execute([':id' => $ordenId]);
             $estadoActual = $stmt->fetchColumn();
 
@@ -427,6 +428,38 @@ class OrdenCompraRepository
 
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($idsArray);
+    }
+
+    public function cerrarOCsSinDemandaPendiente(array $idsDetalleSolicitud): void
+    {
+        if (empty($idsDetalleSolicitud))
+            return;
+
+        $placeholders = implode(',', array_fill(0, count($idsDetalleSolicitud), '?'));
+
+        // OCs vinculadas a los ítems que se acaban de omitir
+        $stmtOCs = $this->db->prepare(
+            "SELECT DISTINCT orden_compra_id FROM detalle_solicitud
+             WHERE id IN ($placeholders) AND orden_compra_id IS NOT NULL"
+        );
+        $stmtOCs->execute($idsDetalleSolicitud);
+        $ocIds = $stmtOCs->fetchAll(PDO::FETCH_COLUMN);
+
+        foreach ($ocIds as $ocId) {
+            // ¿Quedan líneas de OT activas vinculadas a esta OC?
+            $stmtPend = $this->db->prepare(
+                "SELECT COUNT(*) FROM detalle_solicitud
+                 WHERE orden_compra_id = ?
+                   AND estado_linea NOT IN ('OMITIDO','ENTREGADO','CANCELADO','FINALIZADO','EN_BODEGA')"
+            );
+            $stmtPend->execute([$ocId]);
+            if ((int) $stmtPend->fetchColumn() === 0) {
+                // Sin demanda activa: cerrar la OC si está en estado Emitida(2) o Parcial(3)
+                $this->db->prepare(
+                    "UPDATE ordenes_compra SET estado_id = 6 WHERE id = ? AND estado_id IN (2, 3)"
+                )->execute([$ocId]);
+            }
+        }
     }
 
     public function obtenerDatosParaNotificar($idsArray)

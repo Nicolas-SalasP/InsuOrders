@@ -49,9 +49,13 @@ class MantencionController
                 throw new Exception("Usuario no identificado");
             }
 
+            if (empty($data['titulo']) || trim($data['titulo']) === '') {
+                throw new Exception("El título de la OT es obligatorio.");
+            }
+
             $payload = [
                 'usuario_id' => $usuarioId,
-                'titulo' => $data['titulo'] ?? null,
+                'titulo' => trim($data['titulo']),
                 'activo_id' => $data['activo_id'] ?? null,
                 'sub_activo_id' => $data['sub_activo_id'] ?? null,
                 'observacion' => $data['observacion'] ?? '',
