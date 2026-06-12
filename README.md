@@ -1,136 +1,144 @@
-# 🛠️ InsuOrders - Sistema CMMS & ERP
+# InsuOrders — CMMS & Gestión de Inventario
 
-**InsuOrders** es un sistema integral de Gestión de Mantenimiento Computarizado (CMMS) y Planificación de Recursos Empresariales (ERP), diseñado para administrar eficientemente órdenes de trabajo, mantenimientos preventivos, inventario de bodega, gestión de activos y compras.
-
-Este proyecto garantiza la trazabilidad operativa, desde que un cliente solicita un servicio, pasando por la asignación a técnicos, consumo de inventario, hasta la firma de conformidad y el reporte final.
+Sistema de gestión de mantenimiento (CMMS) desarrollado para **Insuban Ltda.** Centraliza órdenes de trabajo, inventario de bodega, compras, activos y portal de solicitudes en una sola plataforma.
 
 ---
 
-## ✨ Características Principales
+## Stack tecnológico
 
-* **📋 Gestión de Órdenes de Trabajo (OTs):**
-    * Ciclo de vida completo: Creación, Asignación, En Proceso, Pausada y Finalizada.
-    * Panel dedicado para Técnicos (`Mis Mantenciones`) con control de stock personal y adjunto de evidencias (fotos/videos).
-    * Cierre de OT con firma digital y generación automática de reportes en PDF.
-* **📅 Mantenimiento Preventivo (Cronograma):**
-    * Programación y proyección inteligente de tareas periódicas a futuro (meses o años) sin saturar las vistas del día a día.
-* **📦 Bodega e Inventario:**
-    * Control estricto de stock de insumos.
-    * Entregas de material al personal (Técnicos) y validación de déficit.
-    * Asignación de "Kits de Mantenimiento" a Máquinas/Activos y Sub-activos.
-* **🛒 Módulo de Compras:**
-    * Creación de Órdenes de Compra (OC) manuales o automáticas basadas en el déficit de stock.
-    * Recepción de compras (Total o Parcial) con actualización automática del inventario.
-    * Gestión de facturas/documentos y exportación.
-* **👥 Portal Cliente:**
-    * Interfaz exclusiva para que los solicitantes creen tickets y sigan el estado de sus requerimientos en tiempo real.
-    * Acceso al reporte final del técnico con fecha de cierre y evidencias multimedia.
-* **🔒 Roles y Permisos Dinámicos:**
-    * Control de acceso granular (Administrador, Jefe de Mantención, Técnico, Bodeguero, Cliente, etc.). 
-    * Modos de "solo lectura" adaptables a cada vista según el rol.
+| Capa | Tecnología |
+|---|---|
+| Frontend | React 18 + Vite, Bootstrap 5, React Router v6 |
+| Backend | PHP 8+ · Patrón MVC propio (Controllers / Services / Repositories) |
+| Base de datos | MySQL / MariaDB · PDO |
+| Auth | JWT en cookie HttpOnly + validación de rol en BD por request |
+| PDF / Excel | TCPDF · PhpSpreadsheet |
+| Tests | Vitest + React Testing Library |
 
 ---
 
-## 🏗️ Arquitectura y Tecnologías
+## Módulos
 
-El proyecto está dividido en dos capas principales totalmente desacopladas por seguridad y escalabilidad:
-
-### Frontend + API Pública (`/public_html`)
-Desarrollado como una Single Page Application (SPA) y actúa como la capa expuesta a Internet.
-* **Framework:** React.js + Vite.
-* **Estilos:** Bootstrap 5, Bootstrap Icons, CSS personalizado.
-* **Librerías clave:** `axios` (peticiones HTTP), `react-router-dom` (navegación), `sweetalert2` (alertas), `react-signature-canvas` (firma digital).
-* **API Router:** Contiene la carpeta `/api` con su propio `.htaccess` y un `index.php` que actúa como puente seguro hacia el core privado.
-
-### Backend Privado (`/insuorders_private`)
-API RESTful construida de forma nativa con PHP, siguiendo el patrón de diseño por capas (Controladores, Servicios, Repositorios). **Esta carpeta no debe ser accesible públicamente por el servidor web.**
-* **Lenguaje:** PHP 8+
-* **Base de Datos:** MySQL (concepción relacional usando PDO).
-* **Dependencias (Composer):** Utiliza librerías como TCPDF (Reportes PDF), PhpSpreadsheet (Exportación Excel) y JWT.
-* **Autenticación:** Basada en tokens seguros gestionados por middleware propio.
-
----
-
-## 🚀 Instalación y Configuración (Desarrollo)
-
-### 1. Requisitos Previos
-* Servidor web (Apache/Nginx).
-* PHP 8.0 o superior.
-* MySQL 5.7+ o MariaDB.
-* Composer (Para dependencias PHP).
-* Node.js (v16+) y npm (para compilar el frontend).
-
-### 2. Configuración de la Base de Datos
-1.  Crea una base de datos vacía en tu gestor MySQL (ej: `insuban_db`).
-2.  Importa el script SQL incluido en la raíz del proyecto (`insuban_db.sql`).
-
-### 3. Configuración del Backend (API Privada)
-1.  Abre una terminal, navega a la carpeta `insuorders_private/` e instala las dependencias de PHP:
-    ```bash
-    composer install
-    ```
-2.  Ubica la carpeta `insuorders_private/src/App/Config/`.
-3.  Edita o verifica el archivo `Config.php` para apuntar a tus credenciales de base de datos locales:
-    ```php
-    define('DB_HOST', 'localhost');
-    define('DB_NAME', 'insuban_db');
-    define('DB_USER', 'tu_usuario');
-    define('DB_PASS', 'tu_contraseña');
-    ```
-4.  Asegúrate de que la carpeta pública de archivos (`public_html/uploads/`) tenga permisos de escritura (`chmod 777` en entornos locales o `755` en producción) para guardar fotos y PDFs.
-
-### 4. Configuración del Frontend
-1.  Abre una terminal y navega a la carpeta pública: `cd public_html`.
-2.  Instala las dependencias de Node:
-    ```bash
-    npm install
-    ```
-3.  Verifica la URL base de tu API en `public_html/src/api/axiosConfig.js`. Por defecto apunta a tu servidor local:
-    ```javascript
-    baseURL: 'http://localhost/api' // Ajusta según tu entorno
-    ```
-4.  Inicia el servidor de desarrollo de Vite:
-    ```bash
-    npm run dev
-    ```
+| Módulo | Descripción |
+|---|---|
+| **Portal de Solicitudes** | Interfaz para clientes/solicitantes. Crean tickets, siguen su estado y ven el reporte de cierre del técnico con fotos |
+| **Mantención** | Ciclo completo de OTs: creación, asignación, avance con checklist, carga de evidencias, firma digital y cierre. Permisos de trabajo seguro configurables por OT |
+| **Mis Mantenciones** | Vista exclusiva del técnico. Panel split con lista de OTs propias y detalle en tiempo real. Funciona en celular |
+| **Bodega** | Entrega de materiales a técnicos (unitaria y masiva), procesamiento de devoluciones con 3 tipos (sobrante, daño, no recibido) y organización de stock por ubicación |
+| **Mis Insumos** | El técnico acepta, consume o devuelve los materiales que bodega le asignó |
+| **Inventario** | Catálogo de insumos con stock por ubicación, alertas de stock mínimo, ajustes manuales y movimientos trazables |
+| **Compras** | OC manuales o basadas en déficit de OTs. Recepción total/parcial con actualización automática de stock. Exportación a Excel con 14 columnas financieras (neto + IVA + total) |
+| **Activos** | Ficha técnica de equipos: datos generales, kit de repuestos, galería y documentos. Exportación del kit a Excel |
+| **Cotizaciones** | Creación, previsualización (sin descargar), descarga en PDF corporativo y flujo de aprobación/rechazo |
+| **Cronograma** | Calendario de mantenciones preventivas y compras programadas. Vistas día / semana / mes |
+| **Dashboard** | KPIs de compras y mantención. Selector Neto / Total c/IVA que actualiza todos los gráficos simultáneamente. Filtros por fecha y técnico |
+| **Usuarios** | Gestión de usuarios con roles base y permisos granulares por módulo. El jefe puede revocar accesos sin tocar el rol global |
 
 ---
 
-## 📂 Estructura de Directorios Principal
+## Roles
 
-```text
-/
-├── insuban_db.sql                # Dump principal de la base de datos
-├── public_html/                  # Frontend (React) y acceso público de la API
-│   ├── api/                      # Router de la API pública
-│   │   ├── .htaccess             # Redirección limpia de rutas de la API
-│   │   └── index.php             # Front Controller (puente hacia insuorders_private)
-│   ├── assets/                   # Recursos estáticos globales (ej: imágenes, logos)
-│   │   └── img/
-│   ├── public/                   # Archivos estáticos de Vite (favicon, .htaccess frontend)
-│   ├── src/                      # Código fuente de React (SPA)
-│   │   ├── api/                  # Configuración de Axios (axiosConfig.js)
-│   │   ├── assets/               # Recursos estáticos propios de React
-│   │   ├── components/           # Componentes reutilizables, UI y modales
-│   │   ├── context/              # AuthContext (Estado global de sesión)
-│   │   ├── hooks/                # Custom hooks (ej: usePermission)
-│   │   ├── pages/                # Vistas principales (Compras, Mantencion, etc.)
-│   │   ├── App.jsx               # Enrutador principal (React Router)
-│   │   └── main.jsx              # Punto de montaje de React
-│   ├── uploads/                  # Directorio destino de archivos (cierre, ordenes)
-│   ├── index.html                # Plantilla HTML base
-│   ├── package.json              # Dependencias de Node (React, Vite, Bootstrap)
-│   └── vite.config.js            # Configuración de empaquetado del frontend
-└── insuorders_private/           # Backend (PHP Core - Protegido, fuera del acceso web)
-    ├── composer.json             # Declaración de dependencias PHP
-    ├── composer.lock             # Versiones fijadas de dependencias PHP
-    └── src/
-        ├── App/                  # Lógica de la aplicación
-        │   ├── Config/           # Conexión a BD y variables constantes
-        │   ├── Controllers/      # Endpoints de la API
-        │   ├── Database/         # Manejador de conexión PDO
-        │   ├── Middleware/       # Verificación de Tokens y Permisos
-        │   ├── Repositories/     # Consultas SQL directas (Data Access Layer)
-        │   └── Services/         # Lógica de Negocio y Generación PDF/Excel
-        └── core/                 # Inicialización del núcleo
-            └── init.php          # Carga de clases, autoloader y configuración base
+| Rol | Acceso |
+|---|---|
+| Admin | Todo |
+| Jefe de Mantención | Mantención, activos, cronograma, reportes |
+| Técnico / Operario | Mis Mantenciones, Mis Insumos, Activos (lectura) |
+| Bodeguero | Bodega, Inventario |
+| Compras | Órdenes de compra, cotizaciones, proveedores |
+| Cliente | Portal de Solicitudes únicamente |
+
+Los permisos son granulares: un usuario puede tener rol Técnico pero con permiso adicional de `inv_ver` para ver el inventario.
+
+---
+
+## Estructura del proyecto
+
+```
+InsuOrders/
+├── insuban_db.sql                    # Esquema completo de la BD
+│
+├── public_html/                      # Frontend React + punto de entrada de la API
+│   ├── api/
+│   │   ├── index.php                 # Router principal de la API (Front Controller)
+│   │   └── .htaccess                 # Rewrite rules
+│   ├── src/
+│   │   ├── pages/                    # Vistas por módulo
+│   │   ├── components/               # Componentes y modales reutilizables
+│   │   ├── context/AuthContext.jsx   # Sesión global (JWT cookie + localStorage UI)
+│   │   ├── hooks/                    # usePermission y otros custom hooks
+│   │   └── api/axiosConfig.js        # Cliente HTTP + interceptor 401
+│   └── uploads/                      # Fotos, PDFs y evidencias (generado en runtime)
+│
+└── insuorders_private/               # Backend PHP — NO debe ser público en el servidor
+    └── src/App/
+        ├── Controllers/              # 19 controladores (uno por recurso)
+        ├── Services/                 # Lógica de negocio y generación de documentos
+        ├── Repositories/             # Data Access Layer (PDO directo)
+        └── Middleware/AuthMiddleware.php  # Validación JWT + permisos en BD
+```
+
+---
+
+## Instalación local
+
+### Requisitos
+- PHP 8.0+, Composer
+- MySQL 5.7+ o MariaDB
+- Node.js 18+, npm
+
+### Pasos
+
+```bash
+# 1. Base de datos
+mysql -u root -p -e "CREATE DATABASE insuban_db CHARACTER SET utf8mb4"
+mysql -u root -p insuban_db < insuban_db.sql
+
+# 2. Backend
+cd insuorders_private
+composer install
+# Editar src/App/Config/Config.php con las credenciales de BD y JWT_SECRET
+
+# 3. Frontend
+cd ../public_html
+npm install
+npm run dev          # http://localhost:5173
+```
+
+La API PHP debe servirse desde un servidor Apache/Nginx apuntando a `public_html/` como document root. El directorio `insuorders_private/` debe estar **fuera** del document root.
+
+### Variables de configuración (`Config.php`)
+
+```php
+const DB_HOST     = 'localhost';
+const DB_NAME     = 'insuban_db';
+const DB_USER     = 'tu_usuario';
+const DB_PASS     = 'tu_contraseña';
+const JWT_SECRET  = 'clave-secreta-larga';
+```
+
+---
+
+## Tests
+
+```bash
+cd public_html
+npm test          # Vitest — 119 tests en 12 suites
+```
+
+Cobertura: AuthContext, PermissionGuard, Login, Sidebar, ChecklistRenderer, hooks de permisos, parseBlobError, interceptor Axios.
+
+---
+
+## Seguridad aplicada
+
+- JWT en cookie `HttpOnly` — el token nunca es accesible desde JS
+- Validación de rol y permisos en BD en **cada request** (no sólo en el JWT)
+- `SELECT ... FOR UPDATE` en recepciones de OC y entregas de material (prevención de race conditions)
+- Revalidación de permisos frescos en cada carga de app y evento `focus` de ventana
+- Permisos granulares: revocación inmediata sin esperar expiración del token
+
+---
+
+## CI/CD
+
+El repositorio incluye un workflow de GitHub Actions (`.github/workflows/`) que ejecuta los tests de frontend en cada push a `main` y `dev/NicolasSalas`.

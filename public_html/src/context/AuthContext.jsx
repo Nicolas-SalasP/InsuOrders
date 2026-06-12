@@ -20,10 +20,13 @@ export const AuthProvider = ({ children }) => {
                 setAuth(userData);
                 localStorage.setItem("insuorders_user", JSON.stringify(userData));
             }
-        } catch {
-            // Sesión expirada o revocada: limpiar estado local
-            setAuth({});
-            localStorage.removeItem("insuorders_user");
+        } catch (err) {
+            // Solo limpiar si el servidor confirma 401 (sesión revocada).
+            // Errores de red o servidor caído mantienen la sesión local.
+            if (err?.response?.status === 401) {
+                setAuth({});
+                localStorage.removeItem("insuorders_user");
+            }
         }
     }, []);
 
