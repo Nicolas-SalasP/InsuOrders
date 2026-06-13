@@ -63,8 +63,8 @@ class OrdenCompraRepository
 
             $stmtDet = $this->db->prepare(
                 "INSERT INTO detalle_orden_compra
-                    (orden_compra_id, insumo_id, cantidad_solicitada, precio_unitario, total_linea)
-                 VALUES (:oc, :ins, :cant, :precio, :total)"
+                    (orden_compra_id, insumo_id, cantidad_solicitada, precio_unitario, total_linea, nota_linea)
+                 VALUES (:oc, :ins, :cant, :precio, :total, :nota)"
             );
 
             foreach ($items as $item) {
@@ -79,6 +79,7 @@ class OrdenCompraRepository
                     ':cant' => $cantidad,
                     ':precio' => $precio,
                     ':total' => round($cantidad * $precio, 2),
+                    ':nota' => $item['nota_linea'] ?? null,
                 ]);
             }
 

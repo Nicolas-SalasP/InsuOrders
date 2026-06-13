@@ -214,7 +214,7 @@ const Compras = () => {
                 cantidad:    d.cantidad_solicitada,
                 precio:      d.precio_unitario,
                 unidad_medida: d.unidad_medida,
-                descripcion_adicional: d.descripcion_adicional || '',
+                nota_linea: d.nota_linea || '',
             }));
             setEditModal({ show: true, oc, items: itemsFormateados });
         } catch (e) {
