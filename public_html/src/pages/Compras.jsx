@@ -616,7 +616,7 @@ const Compras = () => {
                                         <th className="fw-semibold py-3">Proveedor</th>
                                         <th className="fw-semibold py-3">Fecha</th>
                                         <th className="fw-semibold py-3">Destino</th>
-                                        <th className="fw-semibold py-3">Monto Total</th>
+                                        <th className="fw-semibold py-3">Monto Neto / Total</th>
                                         <th className="fw-semibold py-3">Estado</th>
                                         <th className="text-end pe-4 fw-semibold py-3">Acciones</th>
                                     </tr>
@@ -630,7 +630,10 @@ const Compras = () => {
                                             <td><div className="fw-medium text-dark">{oc.proveedor}</div><small className="text-muted">{oc.proveedor_rut}</small></td>
                                             <td className="text-muted">{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
                                             <td>{oc.destino ? <span className="badge bg-light text-dark border fw-normal">{oc.destino}</span> : <span className="text-muted small">—</span>}</td>
-                                            <td className="fw-bold text-dark">${(parseInt(oc.monto_total) || 0).toLocaleString('es-CL')} {oc.moneda !== 'CLP' ? <small className="text-muted fw-normal">{oc.moneda}</small> : ''}</td>
+                                            <td>
+                                                <div className="fw-bold text-dark">${(parseInt(oc.monto_neto) || 0).toLocaleString('es-CL')} {oc.moneda !== 'CLP' ? <small className="text-muted fw-normal">{oc.moneda}</small> : ''}</div>
+                                                <small className="text-muted">Total: ${(parseInt(oc.monto_total) || 0).toLocaleString('es-CL')}</small>
+                                            </td>
                                             <td><span className="badge rounded-pill px-3 py-1" style={{ fontSize: '0.78rem', ...getBadgeStyle(oc.estado) }}>{oc.estado}</span></td>
                                             <td className="text-end pe-4">
                                                 <div className="d-flex justify-content-end gap-2">
