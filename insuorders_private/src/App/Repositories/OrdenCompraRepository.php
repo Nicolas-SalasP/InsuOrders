@@ -238,9 +238,15 @@ class OrdenCompraRepository
             return;
 
         if (is_array($idsDetalleSolicitud))
-            $idsStr = implode(',', array_map('intval', $idsDetalleSolicitud));
+            $ids = array_map('intval', $idsDetalleSolicitud);
         else
-            $idsStr = $idsDetalleSolicitud;
+            $ids = array_map('intval', explode(',', (string)$idsDetalleSolicitud));
+
+        $ids = array_filter($ids, fn($v) => $v > 0);
+        if (empty($ids))
+            return;
+
+        $idsStr = implode(',', $ids);
 
         if (empty($idsStr))
             return;
@@ -327,9 +333,12 @@ class OrdenCompraRepository
                 if ($cantidad <= 0)
                     continue;
 
-                $stmtDet = $this->db->prepare("SELECT insumo_id, cantidad_solicitada, cantidad_recibida FROM detalle_orden_compra WHERE id = :id FOR UPDATE");
-                $stmtDet->execute([':id' => $detalleId]);
+                $stmtDet = $this->db->prepare("SELECT insumo_id, cantidad_solicitada, cantidad_recibida FROM detalle_orden_compra WHERE id = :id AND orden_compra_id = :oc FOR UPDATE");
+                $stmtDet->execute([':id' => $detalleId, ':oc' => $ordenId]);
                 $linea = $stmtDet->fetch(PDO::FETCH_ASSOC);
+
+                if (!$linea)
+                    throw new Exception("Línea de detalle inválida o no pertenece a esta orden.");
 
                 if ($cantidad + $linea['cantidad_recibida'] > $linea['cantidad_solicitada'])
                     throw new Exception("Exceso de recepción en insumo ID: " . $linea['insumo_id']);

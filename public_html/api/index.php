@@ -533,7 +533,7 @@ try {
             break;
 
         case 'usuarios/permisos/update':
-            AuthMiddleware::hasPermission('ver_usuarios');
+            AuthMiddleware::verify(['Admin']);
             (new UsuariosController())->actualizarPermisos();
             break;
 

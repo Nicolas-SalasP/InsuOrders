@@ -25,6 +25,11 @@ class MantencionService
     // 1. GESTIÓN DE OTs
     // =================================================================================
 
+    public function getRepo(): \App\Repositories\MantencionRepository
+    {
+        return $this->repo;
+    }
+
     public function listarSolicitudes()
     {
         return $this->repo->getAll($_GET);
@@ -303,8 +308,28 @@ class MantencionService
             throw new Exception("Error en la subida del archivo: Código " . $file['error']);
         }
 
+        $allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'gif', 'webp'];
+        $allowedMimes = [
+            'application/pdf', 'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+        ];
+
         $nombreOriginal = $file['name'];
-        $ext = pathinfo($nombreOriginal, PATHINFO_EXTENSION);
+        $ext = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
+
+        if (!in_array($ext, $allowedExtensions, true)) {
+            throw new Exception("Tipo de archivo no permitido.");
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($file['tmp_name']);
+        if (!in_array($mime, $allowedMimes, true)) {
+            throw new Exception("Tipo de archivo no permitido.");
+        }
+
         $nuevoNombre = "DOC_{$activoId}_" . uniqid() . "." . $ext;
 
         $targetDir = $this->uploadBaseDir;
@@ -419,11 +444,28 @@ class MantencionService
 
     private function subirArchivo($file, $subFolder = '')
     {
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi', 'mkv', 'pdf'];
+        $allowedMimes = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+            'application/pdf',
+        ];
+
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($extension, $allowedExtensions, true)) {
+            throw new \Exception("Tipo de archivo no permitido.");
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($file['tmp_name']);
+        if (!in_array($mime, $allowedMimes, true)) {
+            throw new \Exception("Tipo de archivo no permitido.");
+        }
+
         $targetDir = $this->uploadBaseDir . $subFolder;
         if (!file_exists($targetDir))
             mkdir($targetDir, 0777, true);
 
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
         $filename = uniqid('ACT_') . '.' . $extension;
 
         $pathRel = $subFolder ? $subFolder . '/' . $filename : $filename;

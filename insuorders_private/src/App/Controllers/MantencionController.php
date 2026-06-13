@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\MantencionService;
 use App\Services\PDFService;
@@ -31,7 +32,18 @@ class MantencionController
             echo json_encode(["success" => false, "message" => "Faltan datos"]);
             return;
         }
+
         $userId = AuthMiddleware::getCurrentUserId() ?: 0;
+        $rol = AuthMiddleware::getUser()->rol ?? '';
+
+        if ($rol !== 'Admin') {
+            if (!$this->service->getRepo()->isUserAssignedToOT((int)$id, (int)$userId)) {
+                http_response_code(403);
+                echo json_encode(["success" => false, "message" => "Acceso denegado."]);
+                return;
+            }
+        }
+
         echo json_encode(["success" => true, "data" => $this->service->obtenerDetalleOT($id, $userId)]);
     }
 
@@ -65,7 +77,7 @@ class MantencionController
                 'solicitante_externo' => $data['solicitante_externo'] ?? null,
                 'prioridad' => $data['prioridad'] ?? 'MEDIA',
                 'ubicacion' => $data['ubicacion'] ?? null,
-                'usuario_solicitante_id' => !empty($data['usuario_solicitante_id']) ? $data['usuario_solicitante_id'] : $usuarioId,
+                'usuario_solicitante_id' => $usuarioId,
                 'asignados' => $data['asignados'] ?? [],
                 'items' => $data['items'] ?? [],
                 'requiere_permiso' => $data['requiere_permiso'] ?? 0,
@@ -78,7 +90,7 @@ class MantencionController
             echo json_encode(["success" => true, "message" => "Solicitud #$id creada correctamente"]);
         } catch (Exception $e) {
             http_response_code(400); 
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -98,7 +110,7 @@ class MantencionController
             echo json_encode(["success" => true, "message" => "OT Actualizada y Sincronizada correctamente"]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Error al actualizar: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error al actualizar: " . ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -116,7 +128,7 @@ class MantencionController
             echo json_encode(["success" => true, "message" => "Orden anulada correctamente"]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -137,7 +149,7 @@ class MantencionController
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -165,7 +177,7 @@ class MantencionController
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -211,7 +223,7 @@ class MantencionController
             echo json_encode(["success" => true, "message" => "Activo creado con imágenes"]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -243,7 +255,7 @@ class MantencionController
             echo json_encode(["success" => true, "message" => "Activo actualizado"]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -260,9 +272,9 @@ class MantencionController
             $this->service->eliminarActivo($id);
             echo json_encode(["success" => true, "message" => "Activo eliminado correctamente."]);
         } catch (Exception $e) {
-            $code = (strpos($e->getMessage(), 'No se puede eliminar') !== false) ? 400 : 500;
+            $code = (strpos(ErrorHelper::safeMessage($e), 'No se puede eliminar') !== false) ? 400 : 500;
             http_response_code($code);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -297,7 +309,7 @@ class MantencionController
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Error al eliminar: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error al eliminar: " . ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -319,7 +331,7 @@ class MantencionController
             echo json_encode(["success" => true]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -331,7 +343,7 @@ class MantencionController
             echo json_encode(["success" => true]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -348,7 +360,7 @@ class MantencionController
             echo json_encode(["success" => true]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -375,7 +387,7 @@ class MantencionController
             echo json_encode(["success" => true, "url" => $url]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -387,7 +399,7 @@ class MantencionController
             echo json_encode(["success" => true]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -418,7 +430,7 @@ class MantencionController
             exit;
         } catch (Exception $e) {
             http_response_code(500);
-            echo "Error generando PDF: " . $e->getMessage();
+            echo "Error generando PDF: " . ErrorHelper::safeMessage($e);
         }
     }
 
@@ -439,7 +451,7 @@ class MantencionController
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -456,7 +468,7 @@ class MantencionController
             ]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -483,7 +495,7 @@ class MantencionController
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -508,7 +520,7 @@ class MantencionController
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -530,7 +542,7 @@ class MantencionController
             echo json_encode(["success" => true, "message" => "OT cerrada administrativamente y stock liberado."]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -551,7 +563,7 @@ class MantencionController
             echo json_encode(["success" => true, "message" => "Asignación actualizada."]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 }

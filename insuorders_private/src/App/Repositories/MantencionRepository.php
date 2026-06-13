@@ -609,6 +609,13 @@ class MantencionRepository
         }
     }
 
+    public function isUserAssignedToOT(int $otId, int $userId): bool
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = :id AND usuario_id = :uid");
+        $stmt->execute([':id' => $otId, ':uid' => $userId]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
     public function finalizarTareaTecnico($otId, $usuarioId, $notas = '')
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = :id AND usuario_id = :uid");
@@ -633,10 +640,7 @@ class MantencionRepository
                 return ['status' => 'partial', 'message' => 'Tarea registrada. OT sigue abierta.'];
             }
         } else {
-            $this->db->prepare("UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW() WHERE solicitud_id = :id")->execute([':id' => $otId]);
-            $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
-            $this->sincronizarEstadoActivoPorOT($otId);
-            return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
+            throw new \Exception("No tienes una asignación activa en esta OT.");
         }
     }
 
