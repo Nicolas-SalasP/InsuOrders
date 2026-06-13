@@ -28,9 +28,11 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            const isLoginRequest = error.config.url && error.config.url.includes('login');
+            const url = error.config.url || '';
+            const isLoginRequest = url.includes('login');
+            const isAuthMeRequest = url.includes('auth/me');
 
-            if (!isLoginRequest) {
+            if (!isLoginRequest && !isAuthMeRequest) {
                 console.warn("Sesión expirada. Redirigiendo al login...");
                 localStorage.removeItem("insuorders_user");
                 window.location.href = "/login";
