@@ -33,6 +33,7 @@ const MisMantenciones = () => {
     const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
     const sigCanvas = useRef(null);
     const [enlargedImage, setEnlargedImage] = useState(null);
+    const [zoomLevel, setZoomLevel] = useState(1);
     const [videoModalUrl, setVideoModalUrl] = useState(null);
 
     const esServicio = selectedOt && (!selectedOt.activo_id || selectedOt.codigo_interno === 'SERV');
@@ -492,23 +493,34 @@ const MisMantenciones = () => {
                 <div
                     className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
                     style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999 }}
-                    onClick={() => setEnlargedImage(null)}
+                    onClick={() => { setEnlargedImage(null); setZoomLevel(1); }}
+                    onWheel={(e) => { e.preventDefault(); setZoomLevel(prev => Math.min(5, Math.max(0.5, prev + (e.deltaY < 0 ? 0.2 : -0.2)))); }}
                 >
                     <div className="position-relative text-center p-3" style={{ maxWidth: '100%', maxHeight: '100%' }}>
                         <button
                             className="btn btn-light position-absolute top-0 end-0 m-4 rounded-circle shadow-sm d-flex justify-content-center align-items-center"
                             style={{ zIndex: 10000, width: '45px', height: '45px', transform: 'translate(25%, -25%)' }}
-                            onClick={() => setEnlargedImage(null)}
+                            onClick={() => { setEnlargedImage(null); setZoomLevel(1); }}
                         >
                             <i className="bi bi-x-lg text-dark fw-bold fs-5"></i>
                         </button>
-                        <img
-                            src={enlargedImage}
-                            alt="Ampliación"
-                            className="img-fluid rounded shadow-lg"
-                            style={{ maxHeight: '90vh', maxWidth: '100%', objectFit: 'contain' }}
+                        <div
+                            className="position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-2"
+                            style={{ zIndex: 10000 }}
                             onClick={(e) => e.stopPropagation()}
-                        />
+                        >
+                            <button className="btn btn-light rounded-circle shadow-sm fw-bold fs-5" style={{ width: '42px', height: '42px', lineHeight: 1 }} onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.3))}>−</button>
+                            <span className="btn btn-dark btn-sm d-flex align-items-center px-3" style={{ borderRadius: '20px', fontSize: '0.85rem' }}>{Math.round(zoomLevel * 100)}%</span>
+                            <button className="btn btn-light rounded-circle shadow-sm fw-bold fs-5" style={{ width: '42px', height: '42px', lineHeight: 1 }} onClick={() => setZoomLevel(prev => Math.min(5, prev + 0.3))}>+</button>
+                        </div>
+                        <div style={{ overflow: 'auto', maxHeight: '85vh', maxWidth: '95vw' }} onClick={(e) => e.stopPropagation()}>
+                            <img
+                                src={enlargedImage}
+                                alt="Ampliación"
+                                className="rounded shadow-lg"
+                                style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center', transition: 'transform 0.15s ease', maxHeight: zoomLevel <= 1 ? '85vh' : 'none', maxWidth: zoomLevel <= 1 ? '95vw' : 'none', display: 'block' }}
+                            />
+                        </div>
                     </div>
                 </div>
             )}
@@ -952,7 +964,6 @@ const MisMantenciones = () => {
                                                                     type="file"
                                                                     className="form-control mb-2"
                                                                     accept="image/*,video/*"
-                                                                    capture="environment"
                                                                     multiple
                                                                     onChange={handleFileChange}
                                                                 />

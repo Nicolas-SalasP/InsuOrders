@@ -71,6 +71,7 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                 unidad_medida: insumo.unidad_medida || 'UN'
             });
 
+            setImagenFile(null);
             if (insumo.imagen_url) {
                 const url = insumo.imagen_url.startsWith('http') ? insumo.imagen_url : `${BASE_URL_IMAGENES}${insumo.imagen_url}`;
                 setImagenPreview(url);

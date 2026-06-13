@@ -391,7 +391,8 @@ class MantencionRepository
                 COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0) AS costo_unitario_snapshot,
                 (d.cantidad_entregada * COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0)) AS costo_total_linea,
                 oc.id as oc_id, prov.nombre as oc_proveedor,
-                (SELECT GROUP_CONCAT(DISTINCT emp.nombre_completo SEPARATOR ', ') FROM movimientos_inventario mi JOIN empleados emp ON mi.empleado_id = emp.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por,
+                (SELECT GROUP_CONCAT(DISTINCT COALESCE(emp.nombre_completo, CONCAT(u.nombre, ' ', COALESCE(u.apellido,''))) SEPARATOR ', ') FROM movimientos_inventario mi LEFT JOIN empleados emp ON mi.empleado_id = emp.id LEFT JOIN usuarios u ON mi.usuario_id = u.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por,
+                (SELECT DATE_FORMAT(mi.fecha, '%d/%m/%Y %H:%i') FROM movimientos_inventario mi WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2 ORDER BY mi.fecha ASC LIMIT 1) as fecha_retiro,
                 COALESCE((
                     SELECT SUM(ep.cantidad_entregada - ep.cantidad_utilizada)
                     FROM entregas_personal ep

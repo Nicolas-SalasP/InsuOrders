@@ -759,9 +759,9 @@ try {
             (new App\Controllers\CotizacionController())->downloadPdf();
             break;
 
-        // --- MANTENEDORES (CONFIG) - solo Admin ---
+        // --- MANTENEDORES (CONFIG) ---
         case 'mantenedores/empleados':
-            AuthMiddleware::verify(['Admin']);
+            AuthMiddleware::hasPermission('ver_config');
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveEmpleado();
@@ -772,7 +772,7 @@ try {
             break;
 
         case 'mantenedores/centros':
-            AuthMiddleware::verify(['Admin']);
+            AuthMiddleware::hasPermission('ver_config');
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveCentro();
@@ -783,7 +783,7 @@ try {
             break;
 
         case 'mantenedores/areas':
-            AuthMiddleware::verify(['Admin']);
+            AuthMiddleware::hasPermission('ver_config');
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveArea();
@@ -794,7 +794,7 @@ try {
             break;
 
         case 'mantenedores/sectores':
-            AuthMiddleware::verify(['Admin']);
+            AuthMiddleware::hasPermission('ver_config');
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveSector();
@@ -805,7 +805,7 @@ try {
             break;
 
         case 'mantenedores/ubicaciones':
-            AuthMiddleware::verify(['Admin']);
+            AuthMiddleware::hasPermission('ver_config');
             $c = new MantenedoresController();
             if ($method === 'POST')
                 $c->saveUbicacion();
@@ -818,19 +818,19 @@ try {
         case 'mantenedores/ubicaciones-envio':
             $controller = new MantenedoresController();
             if ($method === 'GET') {
-                AuthMiddleware::verify(); 
+                AuthMiddleware::verify();
                 $controller->getUbicacionesEnvio();
             } elseif ($method === 'POST') {
-                AuthMiddleware::verify(['Admin']); 
+                AuthMiddleware::hasPermission('ver_config');
                 $controller->saveUbicacionEnvio();
             } elseif ($method === 'DELETE') {
-                AuthMiddleware::verify(['Admin']); 
+                AuthMiddleware::hasPermission('ver_config');
                 $controller->deleteUbicacionEnvio();
             }
             break;
 
         case 'mantenedores/tipos-permiso':
-            AuthMiddleware::verify(['Admin']);
+            AuthMiddleware::hasPermission('ver_config');
             $c = new MantenedoresController();
             if ($method === 'GET')
                 $c->getTiposPermiso();
