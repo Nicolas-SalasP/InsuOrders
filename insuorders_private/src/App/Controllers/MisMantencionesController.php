@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\MisMantencionesService;
 use App\Services\PDFService;
@@ -25,8 +26,8 @@ class MisMantencionesController
             $data = $this->service->listarMisOts($userId);
             echo json_encode(["success" => true, "data" => $data]);
         } catch (Exception $e) {
-            http_response_code($e->getMessage() === 'No tienes permiso' ? 403 : 500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            http_response_code(ErrorHelper::safeMessage($e) === 'No tienes permiso' ? 403 : 500);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -68,7 +69,7 @@ class MisMantencionesController
                             $evidenciaUrls[] = 'uploads/cierre/' . $filename;
                         } catch (\InvalidArgumentException $e) {
                             // Archivo inválido: ignorar y continuar con los demás
-                            error_log('[Upload] Archivo rechazado en cierre OT: ' . $e->getMessage());
+                            error_log('[Upload] Archivo rechazado en cierre OT: ' . ErrorHelper::safeMessage($e));
                         }
                     }
                 }
@@ -118,7 +119,7 @@ class MisMantencionesController
                 $this->service->repository->rollBack();
             }
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => "Error en proceso: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error en proceso: " . ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -136,7 +137,7 @@ class MisMantencionesController
             echo json_encode(["success" => true, "data" => $data]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -161,7 +162,7 @@ class MisMantencionesController
             echo json_encode(["success" => true, "message" => "Estado actualizado"]);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 }

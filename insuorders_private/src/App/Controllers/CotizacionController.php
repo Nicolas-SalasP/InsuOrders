@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\CotizacionService;
 use App\Services\PDFService;
@@ -33,7 +34,7 @@ class CotizacionController
             echo json_encode(['success' => true, 'data' => $data]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -47,7 +48,7 @@ class CotizacionController
             echo json_encode(['success' => true, 'message' => 'Cotización creada exitosamente.', 'id' => $id]);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -61,7 +62,7 @@ class CotizacionController
             echo json_encode(['success' => true, 'data' => $data]);
         } catch (Exception $e) {
             http_response_code(404);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -86,7 +87,7 @@ class CotizacionController
             echo json_encode(['success' => true, 'message' => "Cotización actualizada correctamente."]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
     
@@ -97,7 +98,7 @@ class CotizacionController
             echo json_encode(['success' => true, 'data' => $data]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -114,7 +115,7 @@ class CotizacionController
         } catch (Exception $e) {
             http_response_code(404);
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => "Error PDF: " . $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => "Error PDF: " . ErrorHelper::safeMessage($e)]);
         }
     }
 }

@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\CronogramaService;
 use App\Middleware\AuthMiddleware;
@@ -54,7 +55,7 @@ class CronogramaController
             echo json_encode(["success" => true, "id" => $id, "message" => "Evento agendado y OT generada"]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -78,7 +79,7 @@ class CronogramaController
             echo json_encode(["success" => true, "message" => "Evento y OT actualizados"]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -98,7 +99,7 @@ class CronogramaController
             echo json_encode(["success" => true, "message" => "Evento eliminado"]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["error" => $e->getMessage()]);
+            echo json_encode(["error" => ErrorHelper::safeMessage($e)]);
         }
     }
 

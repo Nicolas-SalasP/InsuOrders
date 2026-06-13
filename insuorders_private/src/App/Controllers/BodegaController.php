@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\BodegaService;
 use App\Middleware\AuthMiddleware;
@@ -21,7 +22,7 @@ class BodegaController
             echo json_encode(["success" => true, "data" => $this->service->getPendientes()]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -32,7 +33,7 @@ class BodegaController
             echo json_encode(["success" => true, "data" => $this->service->getPorOrganizar()]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -50,7 +51,7 @@ class BodegaController
             echo json_encode(["success" => true, "message" => $msg]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -63,7 +64,7 @@ class BodegaController
             echo json_encode(["success" => true, "message" => "Stock movido correctamente"]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -83,7 +84,7 @@ class BodegaController
             echo json_encode(["success" => true, "message" => $msg]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -95,7 +96,7 @@ class BodegaController
             echo json_encode(["success" => true, "data" => $this->service->getDevolucionesPendientes()]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -113,7 +114,7 @@ class BodegaController
             echo json_encode(["success" => true, "message" => "Devolución aprobada. Stock en zona de Organización."]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -132,7 +133,7 @@ class BodegaController
             echo json_encode(["success" => true, "message" => "Devolución rechazada correctamente."]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -142,7 +143,7 @@ class BodegaController
         echo json_encode(['success' => true, 'data' => $tipos]);
     } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
     }
 }
 }

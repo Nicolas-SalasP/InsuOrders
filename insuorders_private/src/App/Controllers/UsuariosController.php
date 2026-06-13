@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Repositories\UsuariosRepository;
 use App\Middleware\AuthMiddleware;
@@ -34,7 +35,7 @@ class UsuariosController
             echo json_encode(["success" => true, "message" => "Usuario creado exitosamente."]);
         } catch (\Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -49,7 +50,7 @@ class UsuariosController
             echo json_encode(["success" => true, "message" => "Usuario actualizado."]);
         } catch (\Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -63,7 +64,7 @@ class UsuariosController
             echo json_encode(["success" => true, "message" => "Estado cambiado."]);
         } catch (\Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -75,7 +76,7 @@ class UsuariosController
             echo json_encode(['success' => true, 'data' => $permisos]);
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -100,7 +101,7 @@ class UsuariosController
             echo json_encode(['success' => true, 'data' => $asignados]);
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -137,7 +138,7 @@ class UsuariosController
         } catch (\Exception $e) {
             $db->rollBack();
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Error al guardar: ' . $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'Error al guardar: ' . ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -153,7 +154,7 @@ class UsuariosController
             echo json_encode(["success" => true, "data" => $data]);
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 }

@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\OrdenCompraService;
 use App\Middleware\AuthMiddleware;
@@ -29,7 +30,7 @@ class OrdenCompraController
             echo json_encode(["success" => true, "data" => $data]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -41,7 +42,7 @@ class OrdenCompraController
             echo json_encode(["success" => true, "data" => $data['insumos']]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -53,7 +54,7 @@ class OrdenCompraController
             echo json_encode(["success" => true, "data" => $data]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -77,7 +78,7 @@ class OrdenCompraController
             }
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -97,7 +98,7 @@ class OrdenCompraController
             echo json_encode(["success" => true, "message" => "Orden creada exitosamente", "id" => $id]);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -119,7 +120,7 @@ class OrdenCompraController
             echo json_encode(["success" => true, "data" => $resultado]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -143,7 +144,7 @@ class OrdenCompraController
             exit;
         } catch (Exception $e) {
             http_response_code(500);
-            die("Error PDF: " . $e->getMessage());
+            die("Error PDF: " . ErrorHelper::safeMessage($e));
         }
     }
 
@@ -163,7 +164,7 @@ class OrdenCompraController
             echo json_encode(["success" => true, "message" => "Archivo subido correctamente", "url" => $url]);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -184,7 +185,7 @@ class OrdenCompraController
             echo json_encode(['success' => true, 'message' => 'Orden cancelada correctamente.']);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -208,7 +209,7 @@ class OrdenCompraController
             ]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Error regenerando: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error regenerando: " . ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -230,7 +231,7 @@ class OrdenCompraController
 
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -251,7 +252,7 @@ class OrdenCompraController
             echo json_encode(['success' => true, 'message' => 'Orden cerrada por recepción parcial exitosamente.']);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -276,7 +277,7 @@ class OrdenCompraController
             ]);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -297,7 +298,7 @@ class OrdenCompraController
             echo json_encode(['success' => true, 'message' => 'Orden actualizada correctamente.']);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 }

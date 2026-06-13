@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Repositories\InsumoRepository;
 use App\Repositories\ProveedorRepository;
@@ -116,12 +117,12 @@ class ImportController
                 ]);
                 $ok++;
             } catch (\Exception $e) {
-                if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                if ($e->getCode() == 23000 || strpos(ErrorHelper::safeMessage($e), 'Duplicate entry') !== false) {
                     $dup++;
                     $detalles[] = ['fila' => $f, 'item' => $d[1], 'tipo' => 'duplicado', 'msg' => 'SKU ya existe (Omitido)'];
                 } else {
                     $err++;
-                    $detalles[] = ['fila' => $f, 'item' => $d[1], 'tipo' => 'error', 'msg' => $e->getMessage()];
+                    $detalles[] = ['fila' => $f, 'item' => $d[1], 'tipo' => 'error', 'msg' => ErrorHelper::safeMessage($e)];
                 }
             }
         }
@@ -161,12 +162,12 @@ class ImportController
                 ]);
                 $ok++;
             } catch (\Exception $e) {
-                if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                if ($e->getCode() == 23000 || strpos(ErrorHelper::safeMessage($e), 'Duplicate entry') !== false) {
                     $dup++;
                     $detalles[] = ['fila' => $f, 'item' => $d[1], 'tipo' => 'duplicado', 'msg' => 'RUT ya registrado (Omitido)'];
                 } else {
                     $err++;
-                    $detalles[] = ['fila' => $f, 'item' => $d[1], 'tipo' => 'error', 'msg' => $e->getMessage()];
+                    $detalles[] = ['fila' => $f, 'item' => $d[1], 'tipo' => 'error', 'msg' => ErrorHelper::safeMessage($e)];
                 }
             }
         }
@@ -228,7 +229,7 @@ class ImportController
                 $ok++;
             } catch (\Exception $e) {
                 $err++;
-                $detalles[] = ['fila' => $f, 'item' => $d[0], 'tipo' => 'error', 'msg' => $e->getMessage()];
+                $detalles[] = ['fila' => $f, 'item' => $d[0], 'tipo' => 'error', 'msg' => ErrorHelper::safeMessage($e)];
             }
         }
         fclose($h);
@@ -282,7 +283,7 @@ class ImportController
                 $ok++;
             } catch (\Exception $e) {
                 $err++;
-                $detalles[] = ['fila' => $f, 'item' => "$d[0] - $d[1]", 'tipo' => 'error', 'msg' => $e->getMessage()];
+                $detalles[] = ['fila' => $f, 'item' => "$d[0] - $d[1]", 'tipo' => 'error', 'msg' => ErrorHelper::safeMessage($e)];
             }
         }
         fclose($h);

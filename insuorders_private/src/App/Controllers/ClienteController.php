@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\ClienteService;
 use App\Middleware\AuthMiddleware;
@@ -21,7 +22,7 @@ class ClienteController
             echo json_encode(["success" => true, "data" => $data]);
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -33,7 +34,7 @@ class ClienteController
             echo json_encode(["success" => true, "data" => $data]);
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -53,7 +54,7 @@ class ClienteController
             ]);
         } catch (\Throwable $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 }

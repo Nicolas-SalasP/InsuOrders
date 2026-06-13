@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -120,7 +121,7 @@ class ExportController
                 header('Content-Type: application/json');
                 http_response_code(500);
             }
-            echo json_encode(["success" => false, "message" => "Error generando Excel: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error generando Excel: " . ErrorHelper::safeMessage($e)]);
             exit;
         }
     }
