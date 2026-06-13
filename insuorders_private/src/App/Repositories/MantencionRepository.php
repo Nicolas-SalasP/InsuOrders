@@ -879,6 +879,26 @@ class MantencionRepository
      * Las OTs Pendientes (incluidas las preventivas futuras del cronograma) NO cuentan.
      * Va envuelta en try/catch para no interrumpir nunca la operacion principal de la OT.
      */
+    public function getEmailsPrevencion()
+    {
+        $raw = $_ENV['PREVENCION_EMAILS'] ?? getenv('PREVENCION_EMAILS') ?? '';
+        if (empty(trim($raw))) return [];
+        return array_values(array_filter(array_map('trim', explode(',', $raw))));
+    }
+
+    public function getTipoPermisoNombre($id)
+    {
+        if (!$id) return null;
+        try {
+            $stmt = $this->db->prepare("SELECT nombre FROM tipos_permiso_trabajo WHERE id = :id LIMIT 1");
+            $stmt->execute([':id' => (int)$id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ? $row['nombre'] : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     public function sincronizarEstadoActivoPorOT($otId)
     {
         try {
