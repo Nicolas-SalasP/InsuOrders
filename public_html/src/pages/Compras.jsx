@@ -43,6 +43,7 @@ const Compras = () => {
     const [expandirPendientes, setExpandirPendientes] = useState(false); 
 
     // Filtros
+    const [filtroOC, setFiltroOC] = useState('');
     const [filtroProveedor, setFiltroProveedor] = useState('');
     const [filtroDestino, setFiltroDestino] = useState('');
     const [filtroEstado, setFiltroEstado] = useState([]);
@@ -334,28 +335,29 @@ const Compras = () => {
     };
 
     const limpiarFiltros = () => {
-        setFiltroProveedor(''); setFiltroDestino(''); setFiltroEstado([]); setFiltroFecha(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes();
+        setFiltroOC(''); setFiltroProveedor(''); setFiltroDestino(''); setFiltroEstado([]); setFiltroFecha(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes();
     };
 
     const seleccionarInsumo = (item) => { setFiltroInsumo(item.id); setBusquedaInsumo(item.nombre); setMostrarSugerencias(false); };
 
     const ordenesFiltradas = ordenes.filter(oc => {
+        const matchOC = !filtroOC.trim() || String(oc.id).includes(filtroOC.trim());
         const matchProv = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
         const matchEst = filtroEstado.length === 0 || filtroEstado.includes(oc.estado);
         const matchDest = filtroDestino === '' || (oc.destino && oc.destino.toLowerCase().includes(filtroDestino.toLowerCase()));
         const fechaOC = oc.fecha_creacion.split(' ')[0];
         const matchFecha = filtroFecha ? fechaOC === filtroFecha : true;
-        return matchProv && matchDest && matchEst && matchFecha;
+        return matchOC && matchProv && matchDest && matchEst && matchFecha;
     });
 
-    const getBadgeColor = (estado) => {
+    const getBadgeStyle = (estado) => {
         switch (estado) {
-            case 'Emitida': return 'bg-primary';
-            case 'Recepcion Parcial': return 'bg-warning text-dark';
-            case 'Recepcion Total': return 'bg-success';
-            case 'Anulada': return 'bg-danger';
-            case 'Cerrada Incompleta': return 'bg-danger';
-            default: return 'bg-secondary';
+            case 'Emitida':           return { background: '#3b82f6', color: '#fff' };
+            case 'Recepcion Parcial': return { background: '#f59e0b', color: '#1a1a1a' };
+            case 'Recepcion Total':   return { background: '#22c55e', color: '#fff' };
+            case 'Anulada':           return { background: '#ef4444', color: '#fff' };
+            case 'Cerrada Incompleta':return { background: '#dc2626', color: '#fff' };
+            default:                  return { background: '#6b7280', color: '#fff' };
         }
     };
 
@@ -467,24 +469,35 @@ const Compras = () => {
             )}
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                <div className="card-header border-bottom py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #f8faff 0%, #ffffff 100%)' }}>
                     <div className="d-flex align-items-center">
-                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block"><i className="bi bi-cart3 fs-3"></i></div>
-                        <h4 className="mb-0 fw-bold text-dark">Gestión de Compras</h4>
+                        <div className="rounded-3 me-3 d-none d-sm-flex align-items-center justify-content-center" style={{ width: 44, height: 44, background: 'rgba(59,130,246,0.1)' }}>
+                            <i className="bi bi-cart3 text-primary fs-4"></i>
+                        </div>
+                        <div>
+                            <h4 className="mb-0 fw-bold text-dark">Gestión de Compras</h4>
+                            <div className="text-muted small">{ordenesFiltradas.length} orden{ordenesFiltradas.length !== 1 ? 'es' : ''}</div>
+                        </div>
                     </div>
                     <div className="d-flex gap-2 justify-content-center flex-wrap">
-                        {can('compras_exportar') && <button className="btn btn-outline-success shadow-sm py-2 px-3" onClick={handleExportar} disabled={loading}><i className="bi bi-file-earmark-excel me-2"></i>Exportar</button>}
-                        {can('compras_crear') && <button className="btn btn-primary shadow-sm py-2 px-3" onClick={handleNewOrder}><i className="bi bi-plus-lg me-2"></i>Nueva Orden</button>}
+                        {can('compras_exportar') && <button className="btn btn-outline-success py-2 px-3" onClick={handleExportar} disabled={loading}><i className="bi bi-file-earmark-excel me-2"></i>Exportar</button>}
+                        {can('compras_crear') && <button className="btn btn-primary py-2 px-3" onClick={handleNewOrder}><i className="bi bi-plus-lg me-2"></i>Nueva Orden</button>}
                     </div>
                 </div>
 
-                <div className="bg-light p-3 border-bottom">
+                <div className="p-3 border-bottom" style={{ background: '#f8f9fb' }}>
                     <div className="row g-2 align-items-center">
-                        <div className="col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} /></div></div>
-                        <div className="col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0"><i className="bi bi-geo-alt"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Destino..." value={filtroDestino} onChange={(e) => setFiltroDestino(e.target.value)} /></div></div>
-                        <div className="col-md-3 position-relative" ref={wrapperRef}>
+                        <div className="col-6 col-md-1">
                             <div className="input-group">
-                                <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-primary'}`}><i className="bi bi-box-seam"></i></span>
+                                <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-hash"></i></span>
+                                <input type="text" className="form-control border-start-0 ps-0" placeholder="# OC" value={filtroOC} onChange={(e) => setFiltroOC(e.target.value)} style={{ maxWidth: 90 }} />
+                            </div>
+                        </div>
+                        <div className="col-6 col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} /></div></div>
+                        <div className="col-6 col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-geo-alt"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Destino..." value={filtroDestino} onChange={(e) => setFiltroDestino(e.target.value)} /></div></div>
+                        <div className="col-6 col-md-3 position-relative" ref={wrapperRef}>
+                            <div className="input-group">
+                                <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-muted'}`}><i className="bi bi-box-seam"></i></span>
                                 <input type="text" className="form-control border-start-0 ps-0" placeholder="Insumo..." value={busquedaInsumo} onChange={(e) => { setBusquedaInsumo(e.target.value); setMostrarSugerencias(true); if (e.target.value === '') setFiltroInsumo(''); }} onFocus={() => setMostrarSugerencias(true)} />
                                 {filtroInsumo && <button className="btn btn-outline-secondary border-start-0" type="button" onClick={() => { setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes(); }}><i className="bi bi-x"></i></button>}
                             </div>
@@ -494,8 +507,8 @@ const Compras = () => {
                                 </ul>
                             )}
                         </div>
-                        <div className="col-md-2 position-relative" ref={estadoRef}>
-                            <button className="form-select text-start" onClick={() => setShowEstadoDropdown(!showEstadoDropdown)}>{filtroEstado.length === 0 ? "Estado" : `${filtroEstado.length} selec.`}</button>
+                        <div className="col-6 col-md-2 position-relative" ref={estadoRef}>
+                            <button className="form-select text-start" onClick={() => setShowEstadoDropdown(!showEstadoDropdown)}>{filtroEstado.length === 0 ? <span className="text-muted">Estado</span> : `${filtroEstado.length} seleccionado${filtroEstado.length > 1 ? 's' : ''}`}</button>
                             {showEstadoDropdown && (
                                 <div className="card position-absolute w-100 shadow-sm mt-1 p-2" style={{ zIndex: 1050 }}>
                                     {['Emitida', 'Recepcion Parcial', 'Recepcion Total', 'Anulada', 'Cerrada Incompleta'].map(estado => (
@@ -505,8 +518,8 @@ const Compras = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="col-md-2"><input type="date" className="form-control" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} /></div>
-                        <div className="col-md-1 text-end">{(filtroProveedor || filtroDestino || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros}><i className="bi bi-x-lg"></i></button>}</div>
+                        <div className="col-6 col-md-1"><input type="date" className="form-control" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} /></div>
+                        <div className="col-md-1 text-end">{(filtroOC || filtroProveedor || filtroDestino || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros} title="Limpiar filtros"><i className="bi bi-x-lg"></i></button>}</div>
                     </div>
                 </div>
 
@@ -597,35 +610,37 @@ const Compras = () => {
                     {loading ? <div className="text-center p-5"><div className="spinner-border text-primary"></div><p className="mt-2 text-muted">Cargando...</p></div> : (
                         <div className="table-responsive">
                             <table className="table table-hover align-middle mb-0 bg-white" style={{ minWidth: '900px' }}>
-                                <thead className="bg-light sticky-top text-uppercase text-muted small">
+                                <thead className="sticky-top text-uppercase small" style={{ background: '#f1f3f7', color: '#6b7280', letterSpacing: '0.04em' }}>
                                     <tr>
-                                        <th className="ps-4">N° Orden</th>
-                                        <th>Proveedor</th>
-                                        <th>Fecha</th>
-                                        <th>Destino</th>
-                                        <th>Monto Total</th>
-                                        <th>Estado</th>
-                                        <th className="text-end pe-4">Acciones</th>
+                                        <th className="ps-4 fw-semibold py-3">N° Orden</th>
+                                        <th className="fw-semibold py-3">Proveedor</th>
+                                        <th className="fw-semibold py-3">Fecha</th>
+                                        <th className="fw-semibold py-3">Destino</th>
+                                        <th className="fw-semibold py-3">Monto Total</th>
+                                        <th className="fw-semibold py-3">Estado</th>
+                                        <th className="text-end pe-4 fw-semibold py-3">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {ordenesFiltradas.length > 0 ? ordenesFiltradas.map(oc => (
-                                        <tr key={oc.id}>
-                                            <td className="ps-4 fw-bold text-primary">#{oc.id}</td>
+                                        <tr key={oc.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                            <td className="ps-4">
+                                                <span className="fw-bold text-primary" style={{ fontSize: '0.95rem' }}>#{oc.id}</span>
+                                            </td>
                                             <td><div className="fw-medium text-dark">{oc.proveedor}</div><small className="text-muted">{oc.proveedor_rut}</small></td>
-                                            <td>{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
-                                            <td>{oc.destino ? <span className="badge bg-light text-dark border fw-normal">{oc.destino}</span> : <span className="text-muted small">-</span>}</td>
-                                            <td className="fw-bold text-dark">${(parseInt(oc.monto_total) || 0).toLocaleString()} {oc.moneda !== 'CLP' ? oc.moneda : ''}</td>
-                                            <td><span className={`badge ${getBadgeColor(oc.estado)}`}>{oc.estado}</span></td>
+                                            <td className="text-muted">{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
+                                            <td>{oc.destino ? <span className="badge bg-light text-dark border fw-normal">{oc.destino}</span> : <span className="text-muted small">—</span>}</td>
+                                            <td className="fw-bold text-dark">${(parseInt(oc.monto_total) || 0).toLocaleString('es-CL')} {oc.moneda !== 'CLP' ? <small className="text-muted fw-normal">{oc.moneda}</small> : ''}</td>
+                                            <td><span className="badge rounded-pill px-3 py-1" style={{ fontSize: '0.78rem', ...getBadgeStyle(oc.estado) }}>{oc.estado}</span></td>
                                             <td className="text-end pe-4">
                                                 <div className="d-flex justify-content-end gap-2">
-                                                    {can('compras_detalle') && <button className="btn btn-sm btn-outline-primary" onClick={() => setVerModal({ show: true, id: oc.id })} title="Ver"><i className="bi bi-eye"></i></button>}
-                                                    {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && oc.estado !== 'Cerrada Incompleta' && can('compras_recepcionar') && (<button className="btn btn-sm btn-warning text-dark" onClick={() => setRecepcionModal({ show: true, id: oc.id })} title="Recepcionar"><i className="bi bi-truck"></i></button>)}
-                                                    <button className={`btn btn-sm btn-light border-0 action-menu-trigger ${actionMenu.id === oc.id && actionMenu.show ? 'active bg-light border' : ''}`} type="button" onClick={(e) => handleActionMenuClick(e, oc)}><i className="bi bi-three-dots-vertical"></i></button>
+                                                    {can('compras_detalle') && <button className="btn btn-sm btn-outline-primary rounded-2" onClick={() => setVerModal({ show: true, id: oc.id })} title="Ver detalle"><i className="bi bi-eye"></i></button>}
+                                                    {oc.estado !== 'Anulada' && oc.estado !== 'Recepcion Total' && oc.estado !== 'Cerrada Incompleta' && can('compras_recepcionar') && (<button className="btn btn-sm btn-warning text-dark rounded-2" onClick={() => setRecepcionModal({ show: true, id: oc.id })} title="Recepcionar"><i className="bi bi-truck"></i></button>)}
+                                                    <button className={`btn btn-sm rounded-2 action-menu-trigger ${actionMenu.id === oc.id && actionMenu.show ? 'btn-secondary' : 'btn-light border'}`} type="button" onClick={(e) => handleActionMenuClick(e, oc)}><i className="bi bi-three-dots-vertical"></i></button>
                                                 </div>
                                             </td>
                                         </tr>
-                                    )) : <tr><td colSpan="7" className="text-center py-5 text-muted">No se encontraron órdenes con esos filtros</td></tr>}
+                                    )) : <tr><td colSpan="7" className="text-center py-5 text-muted"><i className="bi bi-inbox fs-2 d-block mb-2 opacity-25"></i>No se encontraron órdenes con esos filtros</td></tr>}
                                 </tbody>
                             </table>
                         </div>
