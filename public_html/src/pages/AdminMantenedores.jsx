@@ -53,14 +53,15 @@ const AdminMantenedores = () => {
         setLoading(true);
         try {
             if (activeTab === 'empleados') {
-                const [resE, resC, resU] = await Promise.all([
+                const requests = [
                     api.get('/index.php/mantenedores/empleados'),
                     api.get('/index.php/mantenedores/centros'),
-                    api.get('/index.php/usuarios')
-                ]);
+                    can('ver_usuarios') ? api.get('/index.php/usuarios') : Promise.resolve(null),
+                ];
+                const [resE, resC, resU] = await Promise.all(requests);
                 if (resE.data.success) setEmpleados(resE.data.data);
                 if (resC.data.success) setCentros(resC.data.data);
-                if (resU.data.success) setUsuarios(resU.data.data);
+                if (resU?.data?.success) setUsuarios(resU.data.data);
             } 
             else if (activeTab === 'centros') {
                 const [resC, resA] = await Promise.all([
