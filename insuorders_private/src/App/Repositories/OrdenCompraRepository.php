@@ -502,36 +502,41 @@ class OrdenCompraRepository
 
     public function reabrirOC($id)
     {
-        $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-        $estado = (int) $stmt->fetchColumn();
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id FOR UPDATE");
+            $stmt->execute([':id' => $id]);
+            $estado = (int) $stmt->fetchColumn();
 
-        if ($estado !== 6) {
-            throw new Exception("Solo se pueden reabrir OCs en estado Cerrada Incompleta.");
-        }
-
-        $stmtDet = $this->db->prepare(
-            "SELECT cantidad_solicitada, cantidad_recibida
-             FROM detalle_orden_compra WHERE orden_compra_id = :id"
-        );
-        $stmtDet->execute([':id' => $id]);
-        $detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
-
-        $nuevoEstado = 3;
-        $algunaRecibida = false;
-        foreach ($detalles as $d) {
-            if ((float) $d['cantidad_recibida'] > 0) {
-                $algunaRecibida = true;
-                break;
+            if ($estado !== 6) {
+                $this->db->rollBack();
+                throw new Exception("Solo se pueden reabrir OCs en estado Cerrada Incompleta.");
             }
-        }
-        if (!$algunaRecibida) {
-            $nuevoEstado = 2;
-        }
 
-        $this->db->prepare("UPDATE ordenes_compra SET estado_id = :st WHERE id = :id")
-            ->execute([':st' => $nuevoEstado, ':id' => $id]);
+            $stmtDet = $this->db->prepare(
+                "SELECT cantidad_solicitada, cantidad_recibida
+                 FROM detalle_orden_compra WHERE orden_compra_id = :id"
+            );
+            $stmtDet->execute([':id' => $id]);
+            $detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
 
-        return $nuevoEstado;
+            $algunaRecibida = false;
+            foreach ($detalles as $d) {
+                if ((float) $d['cantidad_recibida'] > 0) {
+                    $algunaRecibida = true;
+                    break;
+                }
+            }
+            $nuevoEstado = $algunaRecibida ? 3 : 2;
+
+            $this->db->prepare("UPDATE ordenes_compra SET estado_id = :st WHERE id = :id")
+                ->execute([':st' => $nuevoEstado, ':id' => $id]);
+
+            $this->db->commit();
+            return $nuevoEstado;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
     }
 }
