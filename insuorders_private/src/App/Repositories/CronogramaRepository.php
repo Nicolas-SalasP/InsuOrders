@@ -205,8 +205,8 @@ class CronogramaRepository
 
     public function getResumen(string $mes): array
     {
-        // Últimas OTs pendientes (activas), ordenadas por prioridad
-        $pendientes = $this->db->query("
+        // OTs activas del mes, ordenadas por prioridad
+        $stmtPend = $this->db->prepare("
             SELECT s.id, s.titulo, s.prioridad, s.fecha_solicitud, s.fecha_requerida,
                    e.nombre AS estado, e.id AS estado_id,
                    COALESCE(a.nombre, CONCAT('SERV / ', COALESCE(s.area_negocio,'General'))) AS activo,
@@ -218,6 +218,7 @@ class CronogramaRepository
             JOIN estados_solicitud e ON s.estado_id = e.id
             LEFT JOIN activos a ON s.activo_id = a.id
             WHERE s.estado_id NOT IN (5,6)
+              AND DATE_FORMAT(s.fecha_solicitud,'%Y-%m') = :mes
             ORDER BY
                 CASE UPPER(TRIM(s.prioridad))
                     WHEN 'CRITICO'  THEN 1 WHEN 'CRÍTICO' THEN 1
@@ -228,7 +229,9 @@ class CronogramaRepository
                     ELSE 6
                 END ASC, s.id DESC
             LIMIT 10
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        ");
+        $stmtPend->execute([':mes' => $mes]);
+        $pendientes = $stmtPend->fetchAll(PDO::FETCH_ASSOC);
 
         // Resumen del mes por estado
         $stmt = $this->db->prepare("
