@@ -567,10 +567,10 @@ const Compras = () => {
                                                         <th className="ps-3 text-center" style={{width: '40px'}}>
                                                             <input type="checkbox" className="form-check-input" checked={pendientes.length > 0 && seleccionados.length === pendientes.length} onChange={(e) => setSeleccionados(e.target.checked ? pendientes.map(p => p.id) : [])} />
                                                         </th>
-                                                        <th>SKU</th>
+                                                        <th className="d-none d-md-table-cell">SKU</th>
                                                         <th>Insumo</th>
                                                         <th className="text-center">Déficit</th>
-                                                        <th className="text-center">Stock</th>
+                                                        <th className="text-center d-none d-md-table-cell">Stock</th>
                                                         <th className="text-end pe-3">Acciones</th>
                                                     </tr>
                                                 </thead>
@@ -580,7 +580,7 @@ const Compras = () => {
                                                             <td className="ps-3 text-center">
                                                                 <input type="checkbox" className="form-check-input" checked={seleccionados.includes(p.id)} onChange={() => toggleSeleccion(p.id)} />
                                                             </td>
-                                                            <td className="font-monospace text-muted">{p.codigo_sku}</td>
+                                                            <td className="font-monospace text-muted d-none d-md-table-cell">{p.codigo_sku}</td>
                                                             <td className="fw-bold text-primary">
                                                                 <div className="d-flex align-items-center gap-2">
                                                                     {p.nombre}
@@ -590,7 +590,7 @@ const Compras = () => {
                                                                 <div className="text-muted fw-normal fst-italic" style={{fontSize: '0.7rem'}}>Requerido en OTs: {p.lista_ots}</div>
                                                             </td>
                                                             <td className="text-center text-danger fw-bold">-{p.cantidad_total} {p.unidad_medida}</td>
-                                                            <td className="text-center text-muted">{p.stock_actual}</td>
+                                                            <td className="text-center text-muted d-none d-md-table-cell">{p.stock_actual}</td>
                                                             <td className="text-end pe-3">
                                                                 <button className="btn btn-xs btn-outline-danger border-0" title="Omitir (No comprar)" onClick={() => handleOmitirClick(p)}>
                                                                     <i className="bi bi-trash"></i>
@@ -609,14 +609,14 @@ const Compras = () => {
 
                     {loading ? <div className="text-center p-5"><div className="spinner-border text-primary"></div><p className="mt-2 text-muted">Cargando...</p></div> : (
                         <div className="table-responsive">
-                            <table className="table table-hover align-middle mb-0 bg-white" style={{ minWidth: '900px' }}>
+                            <table className="table table-hover align-middle mb-0 bg-white">
                                 <thead className="sticky-top text-uppercase small" style={{ background: '#f1f3f7', color: '#6b7280', letterSpacing: '0.04em' }}>
                                     <tr>
                                         <th className="ps-4 fw-semibold py-3">N° Orden</th>
                                         <th className="fw-semibold py-3">Proveedor</th>
-                                        <th className="fw-semibold py-3">Fecha</th>
-                                        <th className="fw-semibold py-3">Destino</th>
-                                        <th className="fw-semibold py-3">Monto Neto / Total</th>
+                                        <th className="fw-semibold py-3 d-none d-md-table-cell">Fecha</th>
+                                        <th className="fw-semibold py-3 d-none d-md-table-cell">Destino</th>
+                                        <th className="fw-semibold py-3 d-none d-lg-table-cell">Monto Neto / Total</th>
                                         <th className="fw-semibold py-3">Estado</th>
                                         <th className="text-end pe-4 fw-semibold py-3">Acciones</th>
                                     </tr>
@@ -628,9 +628,9 @@ const Compras = () => {
                                                 <span className="fw-bold text-primary" style={{ fontSize: '0.95rem' }}>#{oc.id}</span>
                                             </td>
                                             <td><div className="fw-medium text-dark">{oc.proveedor}</div><small className="text-muted">{oc.proveedor_rut}</small></td>
-                                            <td className="text-muted">{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
-                                            <td>{oc.destino ? <span className="badge bg-light text-dark border fw-normal">{oc.destino}</span> : <span className="text-muted small">—</span>}</td>
-                                            <td>
+                                            <td className="text-muted d-none d-md-table-cell">{new Date(oc.fecha_creacion).toLocaleDateString()}</td>
+                                            <td className="d-none d-md-table-cell">{oc.destino ? <span className="badge bg-light text-dark border fw-normal">{oc.destino}</span> : <span className="text-muted small">—</span>}</td>
+                                            <td className="d-none d-lg-table-cell">
                                                 <div className="fw-bold text-dark">${(parseInt(oc.monto_neto) || 0).toLocaleString('es-CL')} {oc.moneda !== 'CLP' ? <small className="text-muted fw-normal">{oc.moneda}</small> : ''}</div>
                                                 <small className="text-muted">Total: ${(parseInt(oc.monto_total) || 0).toLocaleString('es-CL')}</small>
                                             </td>

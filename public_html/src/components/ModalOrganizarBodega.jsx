@@ -46,7 +46,7 @@ const ModalOrganizarBodega = ({ show, onClose, insumo, onSave }) => {
         <>
             <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
             <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-                <div className="modal-dialog">
+                <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                     <div className="modal-content shadow border-0">
                         <div className="modal-header bg-primary text-white">
                             <h5 className="modal-title fw-bold">📍 Organizar en Estantería</h5>

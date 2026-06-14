@@ -17,7 +17,7 @@ const AdminMantenedores = () => {
     const { can } = usePermission();
     const [activeTab, setActiveTab] = useState('empleados');
     const [loading, setLoading] = useState(false);
-    
+
     // Datos de las listas
     const [empleados, setEmpleados] = useState([]);
     const [centros, setCentros] = useState([]);
@@ -25,7 +25,7 @@ const AdminMantenedores = () => {
     const [sectores, setSectores] = useState([]);
     const [ubicaciones, setUbicaciones] = useState([]);
     const [ubicacionesEnvio, setUbicacionesEnvio] = useState([]);
-    const [categorias, setCategorias] = useState([]); 
+    const [categorias, setCategorias] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
     const [tiposPermiso, setTiposPermiso] = useState([]);
 
@@ -62,7 +62,7 @@ const AdminMantenedores = () => {
                 if (resE.data.success) setEmpleados(resE.data.data);
                 if (resC.data.success) setCentros(resC.data.data);
                 if (resU?.data?.success) setUsuarios(resU.data.data);
-            } 
+            }
             else if (activeTab === 'centros') {
                 const [resC, resA] = await Promise.all([
                     api.get('/index.php/mantenedores/centros'),
@@ -116,7 +116,7 @@ const AdminMantenedores = () => {
 
         // Ajuste para ruta de categorías que está en la raíz del router
         const urlBase = endpoint === 'categorias' ? '/index.php/' : '/index.php/mantenedores/';
-        
+
         try {
             await api.delete(`${urlBase}${endpoint}?id=${id}`);
             cargarDatos();
@@ -127,7 +127,7 @@ const AdminMantenedores = () => {
     };
 
     const TableHeader = ({ title, btnAction, btnLabel }) => (
-        <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
             <h5 className="text-primary fw-bold mb-0">{title}</h5>
             <button className="btn btn-primary shadow-sm btn-sm px-3 fw-bold" onClick={btnAction}>
                 <i className="bi bi-plus-lg me-2"></i>{btnLabel}
@@ -136,7 +136,7 @@ const AdminMantenedores = () => {
     );
 
     return (
-        <div className="container-fluid p-4 bg-light min-vh-100">
+        <div className="container-fluid p-3 p-md-4 bg-light min-vh-100">
             <MessageModal show={msg.show} onClose={() => setMsg({ ...msg, show: false })} title={msg.title} message={msg.text} type={msg.type} />
 
             {/* MODALES */}
@@ -149,7 +149,7 @@ const AdminMantenedores = () => {
             <CategoriaModal show={modales.categoria.show} onClose={() => cerrarModal('categoria')} onSave={cargarDatos} data={modales.categoria.data} />
             <TipoPermisoModal show={modales.tipoPermiso.show} onClose={() => cerrarModal('tipoPermiso')} onSave={cargarDatos} data={modales.tipoPermiso.data} />
 
-            <div className="d-flex align-items-center justify-content-between mb-4">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
                 <div>
                     <h3 className="fw-bold text-dark mb-0"><i className="bi bi-sliders me-2 text-primary"></i>Configuración</h3>
                     <p className="text-muted small mb-0">Gestión de tablas maestras del sistema</p>
@@ -170,7 +170,7 @@ const AdminMantenedores = () => {
                             {id: 'categorias', label: 'Categorías Insumos', show: can('ver_categorias')}
                         ].filter(t => t.show).map(tab => (
                             <li className="nav-item" key={tab.id}>
-                                <button 
+                                <button
                                     className={`nav-link fw-bold px-4 py-2 ${activeTab === tab.id ? 'active border-bottom-0 text-primary' : 'text-muted border-0'}`}
                                     onClick={() => setActiveTab(tab.id)}
                                     style={{ borderTop: activeTab === tab.id ? '3px solid #0d6efd' : 'none' }}
@@ -182,7 +182,7 @@ const AdminMantenedores = () => {
                     </ul>
                 </div>
 
-                <div className="card-body p-4 bg-white" style={{ minHeight: '400px' }}>
+                <div className="card-body p-3 p-md-4 bg-white" style={{ minHeight: '400px' }}>
                     {loading ? (
                         <div className="d-flex flex-column align-items-center justify-content-center py-5 opacity-50">
                             <div className="spinner-border text-primary mb-2" role="status"></div>
@@ -198,25 +198,25 @@ const AdminMantenedores = () => {
                                         <table className="table table-hover align-middle mb-0">
                                             <thead className="bg-light text-secondary small text-uppercase">
                                                 <tr>
-                                                    <th className="ps-4">RUT</th>
+                                                    <th className="ps-4 d-none d-md-table-cell">RUT</th>
                                                     <th>Nombre</th>
-                                                    <th>Centro Costo</th>
-                                                    <th className="text-center">Estado</th>
+                                                    <th className="d-none d-md-table-cell">Centro Costo</th>
+                                                    <th className="text-center d-none d-md-table-cell">Estado</th>
                                                     <th className="text-end pe-4">Acciones</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {empleados.map(e => (
                                                     <tr key={e.id} className={e.activo == 0 ? 'bg-light text-muted' : ''}>
-                                                        <td className="ps-4 font-monospace fw-bold text-primary">{e.rut}</td>
+                                                        <td className="ps-4 font-monospace fw-bold text-primary d-none d-md-table-cell">{e.rut}</td>
                                                         <td className="fw-500">
                                                             {e.nombre_completo}
                                                             {e.cargo && <div className="small text-muted fst-italic">{e.cargo}</div>}
                                                         </td>
-                                                        <td><span className="badge bg-light text-dark border">{e.cc_codigo}</span> <span className="small">{e.cc_nombre}</span></td>
-                                                        <td className="text-center">
-                                                            {e.activo == 1 
-                                                                ? <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-3">Activo</span> 
+                                                        <td className="d-none d-md-table-cell"><span className="badge bg-light text-dark border">{e.cc_codigo}</span> <span className="small">{e.cc_nombre}</span></td>
+                                                        <td className="text-center d-none d-md-table-cell">
+                                                            {e.activo == 1
+                                                                ? <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-3">Activo</span>
                                                                 : <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3">Inactivo</span>}
                                                         </td>
                                                         <td className="text-end pe-4">
@@ -238,13 +238,17 @@ const AdminMantenedores = () => {
                                     <div className="table-responsive rounded border">
                                         <table className="table table-hover align-middle mb-0">
                                             <thead className="bg-light text-secondary small text-uppercase">
-                                                <tr><th className="ps-4">Nombre</th><th>Código</th><th className="text-end pe-4">Acciones</th></tr>
+                                                <tr>
+                                                    <th className="ps-4">Nombre</th>
+                                                    <th className="d-none d-md-table-cell">Código</th>
+                                                    <th className="text-end pe-4">Acciones</th>
+                                                </tr>
                                             </thead>
                                             <tbody>
                                                 {sectores.map(s => (
                                                     <tr key={s.id}>
                                                         <td className="ps-4 fw-bold">{s.nombre}</td>
-                                                        <td><span className="badge bg-light text-dark border">{s.codigo || 'N/A'}</span></td>
+                                                        <td className="d-none d-md-table-cell"><span className="badge bg-light text-dark border">{s.codigo || 'N/A'}</span></td>
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('sector', s)}><i className="bi bi-pencil-square"></i></button>
                                                             <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('sectores', s.id, s)}><i className="bi bi-trash"></i></button>
@@ -264,15 +268,21 @@ const AdminMantenedores = () => {
                                     <div className="table-responsive rounded border">
                                         <table className="table table-hover align-middle mb-0">
                                             <thead className="bg-light text-secondary small text-uppercase">
-                                                <tr><th className="ps-4">Nombre</th><th>Código</th><th>Sector</th><th>Descripción</th><th className="text-end pe-4">Acciones</th></tr>
+                                                <tr>
+                                                    <th className="ps-4">Nombre</th>
+                                                    <th className="d-none d-md-table-cell">Código</th>
+                                                    <th>Sector</th>
+                                                    <th className="d-none d-md-table-cell">Descripción</th>
+                                                    <th className="text-end pe-4">Acciones</th>
+                                                </tr>
                                             </thead>
                                             <tbody>
                                                 {ubicaciones.map(u => (
                                                     <tr key={u.id}>
                                                         <td className="ps-4 fw-bold text-primary">{u.nombre}</td>
-                                                        <td><span className="badge bg-light text-dark border">{u.codigo || 'S/C'}</span></td>
+                                                        <td className="d-none d-md-table-cell"><span className="badge bg-light text-dark border">{u.codigo || 'S/C'}</span></td>
                                                         <td><span className="badge bg-warning bg-opacity-10 text-dark border border-warning">{u.sector_nombre}</span></td>
-                                                        <td className="small text-muted">{u.descripcion}</td>
+                                                        <td className="small text-muted d-none d-md-table-cell">{u.descripcion}</td>
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('ubicacion', u)}><i className="bi bi-pencil-square"></i></button>
                                                             <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('ubicaciones', u.id, u)}><i className="bi bi-trash"></i></button>
@@ -292,15 +302,21 @@ const AdminMantenedores = () => {
                                     <div className="table-responsive rounded border">
                                         <table className="table table-hover align-middle mb-0">
                                             <thead className="bg-light text-secondary small text-uppercase">
-                                                <tr><th className="ps-4">Código</th><th>Nombre</th><th>Alias</th><th>Área</th><th className="text-end pe-4">Acciones</th></tr>
+                                                <tr>
+                                                    <th className="ps-4 d-none d-md-table-cell">Código</th>
+                                                    <th>Nombre</th>
+                                                    <th className="d-none d-md-table-cell">Alias</th>
+                                                    <th className="d-none d-md-table-cell">Área</th>
+                                                    <th className="text-end pe-4">Acciones</th>
+                                                </tr>
                                             </thead>
                                             <tbody>
                                                 {centros.map(c => (
                                                     <tr key={c.id}>
-                                                        <td className="ps-4 fw-bold font-monospace text-dark">{c.codigo}</td>
+                                                        <td className="ps-4 fw-bold font-monospace text-dark d-none d-md-table-cell">{c.codigo}</td>
                                                         <td>{c.nombre}</td>
-                                                        <td>{c.alias || '-'}</td>
-                                                        <td>{c.area_nombre || '-'}</td>
+                                                        <td className="d-none d-md-table-cell">{c.alias || '-'}</td>
+                                                        <td className="d-none d-md-table-cell">{c.area_nombre || '-'}</td>
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('centro', c)}><i className="bi bi-pencil-square"></i></button>
                                                             <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('centros', c.id, c)}><i className="bi bi-trash"></i></button>
@@ -320,12 +336,16 @@ const AdminMantenedores = () => {
                                     <div className="table-responsive rounded border">
                                         <table className="table table-hover align-middle mb-0">
                                             <thead className="bg-light text-secondary small text-uppercase">
-                                                <tr><th className="ps-4">Código</th><th>Nombre</th><th className="text-end pe-4">Acciones</th></tr>
+                                                <tr>
+                                                    <th className="ps-4 d-none d-md-table-cell">Código</th>
+                                                    <th>Nombre</th>
+                                                    <th className="text-end pe-4">Acciones</th>
+                                                </tr>
                                             </thead>
                                             <tbody>
                                                 {areas.map(a => (
                                                     <tr key={a.id}>
-                                                        <td className="ps-4 fw-bold font-monospace">{a.codigo}</td>
+                                                        <td className="ps-4 fw-bold font-monospace d-none d-md-table-cell">{a.codigo}</td>
                                                         <td>{a.nombre}</td>
                                                         <td className="text-end pe-4">
                                                             <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('area', a)}><i className="bi bi-pencil-square"></i></button>
@@ -348,7 +368,7 @@ const AdminMantenedores = () => {
                                             <thead className="bg-light text-secondary small text-uppercase">
                                                 <tr>
                                                     <th className="ps-4">Nombre</th>
-                                                    <th>Descripción</th>
+                                                    <th className="d-none d-md-table-cell">Descripción</th>
                                                     <th className="text-center">Estado</th>
                                                     <th className="text-end pe-4">Acciones</th>
                                                 </tr>
@@ -357,10 +377,10 @@ const AdminMantenedores = () => {
                                                 {ubicacionesEnvio.map(u => (
                                                     <tr key={u.id} className={u.activo == 0 ? 'bg-light text-muted' : ''}>
                                                         <td className="ps-4 fw-bold text-dark">{u.nombre}</td>
-                                                        <td className="small">{u.descripcion || '-'}</td>
+                                                        <td className="small d-none d-md-table-cell">{u.descripcion || '-'}</td>
                                                         <td className="text-center">
-                                                            {u.activo == 1 
-                                                                ? <span className="badge bg-success bg-opacity-10 text-success rounded-pill">Activo</span> 
+                                                            {u.activo == 1
+                                                                ? <span className="badge bg-success bg-opacity-10 text-success rounded-pill">Activo</span>
                                                                 : <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">Inactivo</span>}
                                                         </td>
                                                         <td className="text-end pe-4">
@@ -389,7 +409,7 @@ const AdminMantenedores = () => {
                                             <thead className="bg-light text-secondary small text-uppercase">
                                                 <tr>
                                                     <th className="ps-4">Nombre del Permiso</th>
-                                                    <th>Descripción</th>
+                                                    <th className="d-none d-md-table-cell">Descripción</th>
                                                     <th className="text-center">Estado</th>
                                                     <th className="text-end pe-4">Acciones</th>
                                                 </tr>
@@ -400,10 +420,10 @@ const AdminMantenedores = () => {
                                                         <td className="ps-4 fw-bold text-danger">
                                                             <i className="bi bi-shield-exclamation me-2"></i>{p.nombre}
                                                         </td>
-                                                        <td className="small">{p.descripcion || '-'}</td>
+                                                        <td className="small d-none d-md-table-cell">{p.descripcion || '-'}</td>
                                                         <td className="text-center">
-                                                            {p.activo == 1 
-                                                                ? <span className="badge bg-success bg-opacity-10 text-success rounded-pill">Activo</span> 
+                                                            {p.activo == 1
+                                                                ? <span className="badge bg-success bg-opacity-10 text-success rounded-pill">Activo</span>
                                                                 : <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">Inactivo</span>}
                                                         </td>
                                                         <td className="text-end pe-4">
@@ -426,16 +446,16 @@ const AdminMantenedores = () => {
                             {/* --- CATEGORÍAS --- */}
                             {activeTab === 'categorias' && (
                                 <div className="animate__animated animate__fadeIn">
-                                    <TableHeader 
-                                        title="Categorías de Insumos" 
-                                        btnAction={() => can('crear_categorias') && abrirModal('categoria')} 
-                                        btnLabel="Nueva Categoría" 
+                                    <TableHeader
+                                        title="Categorías de Insumos"
+                                        btnAction={() => can('crear_categorias') && abrirModal('categoria')}
+                                        btnLabel="Nueva Categoría"
                                     />
                                     <div className="table-responsive rounded border">
                                         <table className="table table-hover align-middle mb-0">
                                             <thead className="bg-light text-secondary small text-uppercase">
                                                 <tr>
-                                                    <th className="ps-4" style={{width: '100px'}}>ID</th>
+                                                    <th className="ps-4 d-none d-md-table-cell">ID</th>
                                                     <th>Nombre</th>
                                                     <th className="text-end pe-4">Acciones</th>
                                                 </tr>
@@ -443,7 +463,7 @@ const AdminMantenedores = () => {
                                             <tbody>
                                                 {categorias.map(cat => (
                                                     <tr key={cat.id}>
-                                                        <td className="ps-4">
+                                                        <td className="ps-4 d-none d-md-table-cell">
                                                             <span className="badge bg-light text-dark border font-monospace">#{cat.id}</span>
                                                         </td>
                                                         <td className="fw-bold text-primary">{cat.nombre}</td>

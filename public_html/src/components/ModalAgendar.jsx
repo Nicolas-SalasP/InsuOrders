@@ -241,7 +241,7 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
     return (
         <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1060, overflowY: 'auto' }}>
-            <div className="modal-dialog modal-lg shadow-lg my-4">
+            <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable shadow-lg">
                 <form className="modal-content border-0 rounded-4 overflow-hidden" onSubmit={handleSubmit}>
 
                     <div className={`p-3 text-white border-bottom border-secondary ${readOnly ? 'bg-secondary' : (isCompra ? 'bg-success' : 'bg-dark')}`}>

@@ -181,7 +181,7 @@ const Bodega = () => {
                                 <h5 className="modal-title fw-bold"><i className="bi bi-x-circle me-2"></i>Rechazar Devolución</h5>
                                 <button type="button" className="btn-close btn-close-white" onClick={() => setRechazoModal({ show: false, devId: null, motivo: '' })}></button>
                             </div>
-                            <div className="modal-body p-4">
+                            <div className="modal-body p-3 p-md-4">
                                 <p className="text-muted mb-3">El stock devuelto volverá a ser responsabilidad del técnico y se le notificará el rechazo.</p>
                                 <label className="fw-bold mb-2 small text-uppercase text-muted">Motivo del rechazo</label>
                                 <textarea className="form-control shadow-sm" rows="3" placeholder="Ej: Material incompleto, el técnico lo rompió, etc." value={rechazoModal.motivo} onChange={(e) => setRechazoModal({ ...rechazoModal, motivo: e.target.value })}></textarea>
@@ -196,8 +196,8 @@ const Bodega = () => {
             )}
 
             {/* HEADER */}
-            <div className="px-4 pt-4 pb-0 flex-shrink-0">
-                <div className="d-flex justify-content-between align-items-start mb-3">
+            <div className="px-3 px-md-4 pt-4 pb-0 flex-shrink-0">
+                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
                     <div>
                         <h3 className="fw-bold mb-1" style={{ color: '#1a1d23' }}>
                             <i className="bi bi-inboxes-fill me-2 text-primary"></i>Bodega
@@ -220,9 +220,9 @@ const Bodega = () => {
                 </div>
 
                 {/* TABS + SEARCH */}
-                <div className="d-flex justify-content-between align-items-end gap-3">
+                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2">
                     {/* Tabs */}
-                    <div className="d-flex gap-1 p-1 rounded-3 shadow-sm" style={{ backgroundColor: '#e9ecef' }}>
+                    <div className="d-flex flex-wrap gap-1 p-1 rounded-3 shadow-sm" style={{ backgroundColor: '#e9ecef' }}>
                         {[
                             { key: 'salidas', icon: 'bi-box-arrow-right', label: 'Despacho', count: totalPendienteItems || null, countClass: 'bg-warning text-dark' },
                             { key: 'entradas', icon: 'bi-box-arrow-in-down', label: 'Por Organizar', count: porOrganizar.length || null, countClass: 'bg-primary' },
@@ -243,7 +243,7 @@ const Bodega = () => {
 
                     {/* Search + collapse controls */}
                     <div className="d-flex align-items-center gap-2 mb-1">
-                        <div className="input-group shadow-sm" style={{ width: '260px' }}>
+                        <div className="input-group shadow-sm" style={{ maxWidth: '260px', width: '100%' }}>
                             <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
                             <input
                                 type="text"
@@ -270,7 +270,7 @@ const Bodega = () => {
             </div>
 
             {/* CONTENT */}
-            <div className="flex-grow-1 overflow-auto px-4 py-3">
+            <div className="flex-grow-1 overflow-auto px-3 px-md-4 py-3">
                 {loading ? (
                     <div className="d-flex justify-content-center align-items-center" style={{ height: '60vh' }}>
                         <div className="text-center">
@@ -292,17 +292,17 @@ const Bodega = () => {
                                 <div key={grupo.ot_id} className="card border-0 shadow-sm overflow-hidden" style={{ borderRadius: '12px' }}>
                                     {/* GROUP HEADER — clickable to toggle */}
                                     <div
-                                        className="d-flex justify-content-between align-items-center px-4 py-3 cursor-pointer"
+                                        className="d-flex justify-content-between align-items-center px-3 px-md-4 py-3 cursor-pointer"
                                         style={{ backgroundColor: '#fffbf0', borderBottom: colapsado ? 'none' : '1px solid #f0e8c8', cursor: 'pointer' }}
                                         onClick={() => toggleGrupo(grupo.ot_id)}
                                     >
-                                        <div className="d-flex align-items-center gap-3">
+                                        <div className="d-flex align-items-center gap-2 flex-wrap">
                                             <span className="badge fs-6 px-3 py-2 fw-bold shadow-sm" style={{ backgroundColor: '#f59e0b', color: '#fff', borderRadius: '8px' }}>
                                                 OT #{grupo.ot_id}
                                             </span>
                                             <div>
                                                 <span className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{grupo.maquina}</span>
-                                                <span className="text-muted ms-2 small"><i className="bi bi-person me-1"></i>{grupo.solicitante}</span>
+                                                <span className="text-muted ms-2 small d-none d-md-inline"><i className="bi bi-person me-1"></i>{grupo.solicitante}</span>
                                             </div>
                                             <span className="badge bg-secondary bg-opacity-10 text-secondary border px-2 py-1" style={{ fontSize: '0.75rem' }}>
                                                 {grupo.items.length} ítem{grupo.items.length !== 1 ? 's' : ''}
@@ -313,8 +313,8 @@ const Bodega = () => {
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="d-flex align-items-center gap-3">
-                                            <span className="text-muted small"><i className="bi bi-calendar3 me-1"></i>{new Date(grupo.fecha).toLocaleDateString()}</span>
+                                        <div className="d-flex align-items-center gap-2 gap-md-3">
+                                            <span className="text-muted small d-none d-md-inline"><i className="bi bi-calendar3 me-1"></i>{new Date(grupo.fecha).toLocaleDateString()}</span>
                                             <i className={`bi ${colapsado ? 'bi-chevron-down' : 'bi-chevron-up'} text-muted`}></i>
                                         </div>
                                     </div>
@@ -322,56 +322,58 @@ const Bodega = () => {
                                     {/* GROUP BODY */}
                                     {!colapsado && (
                                         <div className="bg-white">
-                                            <table className="table table-hover mb-0 align-middle" style={{ fontSize: '0.9rem' }}>
-                                                <thead style={{ backgroundColor: '#fafbfc', borderBottom: '2px solid #f0f0f0' }}>
-                                                    <tr className="text-muted small text-uppercase" style={{ letterSpacing: '0.04em' }}>
-                                                        <th style={{ width: '40px' }} className="text-center ps-3 py-3 fw-semibold">#</th>
-                                                        <th className="py-3 fw-semibold">Insumo</th>
-                                                        <th className="py-3 fw-semibold">SKU</th>
-                                                        <th className="py-3 fw-semibold">Ubicación</th>
-                                                        <th className="text-center py-3 fw-semibold">Stock</th>
-                                                        <th className="text-center py-3 fw-semibold text-danger">Pendiente</th>
-                                                        <th className="text-end pe-4 py-3 fw-semibold">Acción</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {grupo.items.map(p => (
-                                                        <tr key={p.detalle_id} style={{ backgroundColor: selectedIds.includes(p.detalle_id) ? '#f0fdf4' : '' }}>
-                                                            <td className="text-center ps-3">
-                                                                {hasPermission('bodega_despachar') && (
-                                                                    <input type="checkbox" className="form-check-input" style={{ cursor: 'pointer' }} checked={selectedIds.includes(p.detalle_id)} onChange={() => handleCheckItem(p.detalle_id)} />
-                                                                )}
-                                                            </td>
-                                                            <td className="fw-semibold text-dark">{p.insumo}</td>
-                                                            <td className="font-monospace text-muted small">{p.codigo_sku}</td>
-                                                            <td className="small text-muted">
-                                                                <span className="badge bg-light text-secondary border px-2 py-1">
-                                                                    <i className="bi bi-geo-alt me-1"></i>{p.ubicacion || 'General'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="text-center text-muted small">{parseFloat(p.stock_actual)}</td>
-                                                            <td className="text-center">
-                                                                <span className="fw-bold text-danger" style={{ fontSize: '1.1rem' }}>
-                                                                    {parseFloat(p.cantidad_pendiente)}
-                                                                </span>
-                                                                <span className="text-muted small ms-1">{p.unidad_medida}</span>
-                                                            </td>
-                                                            <td className="text-end pe-4">
-                                                                {hasPermission('bodega_despachar') && (
-                                                                    <button
-                                                                        className="btn btn-sm fw-semibold px-3 shadow-sm"
-                                                                        style={{ backgroundColor: '#22c55e', color: '#fff', borderRadius: '8px', border: 'none' }}
-                                                                        onClick={() => setEntregaModal({ show: true, item: p })}
-                                                                        title="Entregar este ítem"
-                                                                    >
-                                                                        <i className="bi bi-box-seam me-1"></i>Entregar
-                                                                    </button>
-                                                                )}
-                                                            </td>
+                                            <div className="table-responsive">
+                                                <table className="table table-hover mb-0 align-middle" style={{ fontSize: '0.9rem' }}>
+                                                    <thead style={{ backgroundColor: '#fafbfc', borderBottom: '2px solid #f0f0f0' }}>
+                                                        <tr className="text-muted small text-uppercase" style={{ letterSpacing: '0.04em' }}>
+                                                            <th style={{ width: '40px' }} className="text-center ps-3 py-3 fw-semibold">#</th>
+                                                            <th className="py-3 fw-semibold">Insumo</th>
+                                                            <th className="py-3 fw-semibold d-none d-md-table-cell">SKU</th>
+                                                            <th className="py-3 fw-semibold d-none d-md-table-cell">Ubicación</th>
+                                                            <th className="text-center py-3 fw-semibold d-none d-md-table-cell">Stock</th>
+                                                            <th className="text-center py-3 fw-semibold text-danger">Pendiente</th>
+                                                            <th className="text-end pe-4 py-3 fw-semibold">Acción</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody>
+                                                        {grupo.items.map(p => (
+                                                            <tr key={p.detalle_id} style={{ backgroundColor: selectedIds.includes(p.detalle_id) ? '#f0fdf4' : '' }}>
+                                                                <td className="text-center ps-3">
+                                                                    {hasPermission('bodega_despachar') && (
+                                                                        <input type="checkbox" className="form-check-input" style={{ cursor: 'pointer' }} checked={selectedIds.includes(p.detalle_id)} onChange={() => handleCheckItem(p.detalle_id)} />
+                                                                    )}
+                                                                </td>
+                                                                <td className="fw-semibold text-dark">{p.insumo}</td>
+                                                                <td className="font-monospace text-muted small d-none d-md-table-cell">{p.codigo_sku}</td>
+                                                                <td className="small text-muted d-none d-md-table-cell">
+                                                                    <span className="badge bg-light text-secondary border px-2 py-1">
+                                                                        <i className="bi bi-geo-alt me-1"></i>{p.ubicacion || 'General'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="text-center text-muted small d-none d-md-table-cell">{parseFloat(p.stock_actual)}</td>
+                                                                <td className="text-center">
+                                                                    <span className="fw-bold text-danger" style={{ fontSize: '1.1rem' }}>
+                                                                        {parseFloat(p.cantidad_pendiente)}
+                                                                    </span>
+                                                                    <span className="text-muted small ms-1">{p.unidad_medida}</span>
+                                                                </td>
+                                                                <td className="text-end pe-4">
+                                                                    {hasPermission('bodega_despachar') && (
+                                                                        <button
+                                                                            className="btn btn-sm fw-semibold px-3 shadow-sm"
+                                                                            style={{ backgroundColor: '#22c55e', color: '#fff', borderRadius: '8px', border: 'none' }}
+                                                                            onClick={() => setEntregaModal({ show: true, item: p })}
+                                                                            title="Entregar este ítem"
+                                                                        >
+                                                                            <i className="bi bi-box-seam me-1"></i>Entregar
+                                                                        </button>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -380,111 +382,115 @@ const Bodega = () => {
                     </div>
                 ) : vista === 'entradas' ? (
                     <div className="card border-0 shadow-sm overflow-hidden" style={{ borderRadius: '12px' }}>
-                        <table className="table table-hover align-middle mb-0 bg-white" style={{ fontSize: '0.9rem' }}>
-                            <thead style={{ backgroundColor: '#fafbfc', borderBottom: '2px solid #f0f0f0' }}>
-                                <tr className="text-muted small text-uppercase" style={{ letterSpacing: '0.04em' }}>
-                                    <th className="ps-4 py-3 fw-semibold">SKU</th>
-                                    <th className="py-3 fw-semibold">Insumo</th>
-                                    <th className="text-center py-3 fw-semibold">Stock Total</th>
-                                    <th className="text-center py-3 fw-semibold text-danger">Por Organizar</th>
-                                    <th className="text-end pe-4 py-3 fw-semibold">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {itemsPorOrganizarFiltrados.length > 0 ? itemsPorOrganizarFiltrados.map(p => (
-                                    <tr key={p.id}>
-                                        <td className="ps-4 font-monospace text-muted small">{p.codigo_sku}</td>
-                                        <td><div className="fw-semibold text-dark">{p.nombre}</div></td>
-                                        <td className="text-center text-muted">{parseFloat(p.stock_actual)}</td>
-                                        <td className="text-center">
-                                            <span className="badge fw-bold px-3 py-2" style={{ backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px' }}>
-                                                {parseFloat(p.por_organizar)}
-                                            </span>
-                                        </td>
-                                        <td className="text-end pe-4">
-                                            {hasPermission('bodega_organizar') && (
-                                                <button className="btn btn-sm fw-semibold px-3 shadow-sm" style={{ backgroundColor: '#3b82f6', color: '#fff', borderRadius: '8px', border: 'none' }} onClick={() => setOrganizarModal({ show: true, item: p })}>
-                                                    <i className="bi bi-arrow-down-square me-2"></i>Ubicación
-                                                </button>
-                                            )}
-                                        </td>
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0 bg-white" style={{ fontSize: '0.9rem' }}>
+                                <thead style={{ backgroundColor: '#fafbfc', borderBottom: '2px solid #f0f0f0' }}>
+                                    <tr className="text-muted small text-uppercase" style={{ letterSpacing: '0.04em' }}>
+                                        <th className="ps-4 py-3 fw-semibold d-none d-md-table-cell">SKU</th>
+                                        <th className="py-3 fw-semibold">Insumo</th>
+                                        <th className="text-center py-3 fw-semibold d-none d-md-table-cell">Stock Total</th>
+                                        <th className="text-center py-3 fw-semibold text-danger">Por Organizar</th>
+                                        <th className="text-end pe-4 py-3 fw-semibold">Acción</th>
                                     </tr>
-                                )) : (
-                                    <tr><td colSpan="5" className="text-center py-5 text-muted">
-                                        <i className="bi bi-check-circle-fill fs-1 d-block mb-3 text-success opacity-50"></i>
-                                        {busqueda ? `Sin resultados para "${busqueda}"` : 'No hay ítems por organizar.'}
-                                    </td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {itemsPorOrganizarFiltrados.length > 0 ? itemsPorOrganizarFiltrados.map(p => (
+                                        <tr key={p.id}>
+                                            <td className="ps-4 font-monospace text-muted small d-none d-md-table-cell">{p.codigo_sku}</td>
+                                            <td><div className="fw-semibold text-dark">{p.nombre}</div></td>
+                                            <td className="text-center text-muted d-none d-md-table-cell">{parseFloat(p.stock_actual)}</td>
+                                            <td className="text-center">
+                                                <span className="badge fw-bold px-3 py-2" style={{ backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px' }}>
+                                                    {parseFloat(p.por_organizar)}
+                                                </span>
+                                            </td>
+                                            <td className="text-end pe-4">
+                                                {hasPermission('bodega_organizar') && (
+                                                    <button className="btn btn-sm fw-semibold px-3 shadow-sm" style={{ backgroundColor: '#3b82f6', color: '#fff', borderRadius: '8px', border: 'none' }} onClick={() => setOrganizarModal({ show: true, item: p })}>
+                                                        <i className="bi bi-arrow-down-square me-2"></i>Ubicación
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan="5" className="text-center py-5 text-muted">
+                                            <i className="bi bi-check-circle-fill fs-1 d-block mb-3 text-success opacity-50"></i>
+                                            {busqueda ? `Sin resultados para "${busqueda}"` : 'No hay ítems por organizar.'}
+                                        </td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 ) : (
                     <div className="card border-0 shadow-sm overflow-hidden" style={{ borderRadius: '12px' }}>
-                        <table className="table table-hover align-middle mb-0 bg-white" style={{ fontSize: '0.9rem' }}>
-                            <thead style={{ backgroundColor: '#fafbfc', borderBottom: '2px solid #f0f0f0' }}>
-                                <tr className="text-muted small text-uppercase" style={{ letterSpacing: '0.04em' }}>
-                                    <th className="ps-4 py-3 fw-semibold">Técnico</th>
-                                    <th className="py-3 fw-semibold">Insumo / SKU</th>
-                                    <th className="text-center py-3 fw-semibold">Cantidad</th>
-                                    <th className="py-3 fw-semibold">Motivo / Comentario</th>
-                                    <th className="py-3 fw-semibold">Fecha</th>
-                                    <th className="text-end pe-4 py-3 fw-semibold">Resolución</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {devolucionesFiltradas.length > 0 ? devolucionesFiltradas.map(dev => (
-                                    <tr key={dev.id}>
-                                        <td className="ps-4">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="rounded-circle d-flex align-items-center justify-content-center text-secondary" style={{ width: '34px', height: '34px', backgroundColor: '#f1f5f9', flexShrink: 0 }}>
-                                                    <i className="bi bi-person-fill"></i>
-                                                </div>
-                                                <span className="fw-semibold text-dark">{dev.tecnico_nombre} {dev.tecnico_apellido}</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="fw-semibold text-dark">{dev.insumo}</div>
-                                            <div className="font-monospace text-muted small">{dev.codigo_sku}</div>
-                                        </td>
-                                        <td className="text-center">
-                                            <span className="badge bg-light text-dark border px-3 py-2 shadow-sm fw-bold" style={{ fontSize: '0.95rem' }}>
-                                                {parseFloat(dev.cantidad)} <span className="text-muted fw-normal">{dev.unidad_medida}</span>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="d-flex flex-column gap-1">
-                                                {dev.tipo_codigo === 'SOBRANTE' && <span className="badge px-2 py-1" style={{ backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px' }}><i className="bi bi-box-seam me-1"></i>Sobrante</span>}
-                                                {dev.tipo_codigo === 'DANO' && <span className="badge px-2 py-1" style={{ backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px' }}><i className="bi bi-exclamation-triangle me-1"></i>Daño / Merma</span>}
-                                                {dev.tipo_codigo === 'NO_RECIBIDO' && <span className="badge px-2 py-1" style={{ backgroundColor: '#fffbeb', color: '#92400e', border: '1px solid #fde68a', borderRadius: '6px' }}><i className="bi bi-truck-flatbed me-1"></i>No Recibido</span>}
-                                                {!dev.tipo_codigo && <span className="badge px-2 py-1" style={{ backgroundColor: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '6px' }}>General</span>}
-                                                {dev.comentario_tecnico && (
-                                                    <div className="text-muted small fst-italic mt-1" style={{ maxWidth: '280px', fontSize: '0.8rem' }}>"{dev.comentario_tecnico}"</div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="text-muted small">
-                                            <div><i className="bi bi-calendar3 me-1"></i>{new Date(dev.fecha).toLocaleDateString()}</div>
-                                            <div className="mt-1"><i className="bi bi-clock me-1"></i>{new Date(dev.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                        </td>
-                                        <td className="text-end pe-4">
-                                            <div className="d-flex justify-content-end gap-2">
-                                                <button className="btn btn-sm fw-semibold px-3 shadow-sm" style={{ backgroundColor: '#22c55e', color: '#fff', borderRadius: '8px', border: 'none' }} onClick={() => aprobarDevolucion(dev.id, dev.tipo_codigo)}>
-                                                    <i className="bi bi-check2-circle me-1"></i>Aceptar
-                                                </button>
-                                                <button className="btn btn-sm fw-semibold px-3 shadow-sm" style={{ backgroundColor: '#ef4444', color: '#fff', borderRadius: '8px', border: 'none' }} onClick={() => setRechazoModal({ show: true, devId: dev.id, motivo: '' })}>
-                                                    <i className="bi bi-x-circle me-1"></i>Rechazar
-                                                </button>
-                                            </div>
-                                        </td>
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0 bg-white" style={{ fontSize: '0.9rem' }}>
+                                <thead style={{ backgroundColor: '#fafbfc', borderBottom: '2px solid #f0f0f0' }}>
+                                    <tr className="text-muted small text-uppercase" style={{ letterSpacing: '0.04em' }}>
+                                        <th className="ps-4 py-3 fw-semibold">Técnico</th>
+                                        <th className="py-3 fw-semibold">Insumo / SKU</th>
+                                        <th className="text-center py-3 fw-semibold">Cantidad</th>
+                                        <th className="py-3 fw-semibold d-none d-md-table-cell">Motivo / Comentario</th>
+                                        <th className="py-3 fw-semibold d-none d-md-table-cell">Fecha</th>
+                                        <th className="text-end pe-4 py-3 fw-semibold">Resolución</th>
                                     </tr>
-                                )) : (
-                                    <tr><td colSpan="6" className="text-center py-5 text-muted">
-                                        <i className="bi bi-inboxes-fill fs-1 d-block mb-3 opacity-25"></i>
-                                        {busqueda ? `Sin resultados para "${busqueda}"` : <><h5 className="mb-1">Sin devoluciones pendientes</h5><p className="small mb-0">Todas las solicitudes han sido procesadas.</p></>}
-                                    </td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {devolucionesFiltradas.length > 0 ? devolucionesFiltradas.map(dev => (
+                                        <tr key={dev.id}>
+                                            <td className="ps-4">
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <div className="rounded-circle d-flex align-items-center justify-content-center text-secondary" style={{ width: '34px', height: '34px', backgroundColor: '#f1f5f9', flexShrink: 0 }}>
+                                                        <i className="bi bi-person-fill"></i>
+                                                    </div>
+                                                    <span className="fw-semibold text-dark">{dev.tecnico_nombre} {dev.tecnico_apellido}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="fw-semibold text-dark">{dev.insumo}</div>
+                                                <div className="font-monospace text-muted small">{dev.codigo_sku}</div>
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="badge bg-light text-dark border px-3 py-2 shadow-sm fw-bold" style={{ fontSize: '0.95rem' }}>
+                                                    {parseFloat(dev.cantidad)} <span className="text-muted fw-normal">{dev.unidad_medida}</span>
+                                                </span>
+                                            </td>
+                                            <td className="d-none d-md-table-cell">
+                                                <div className="d-flex flex-column gap-1">
+                                                    {dev.tipo_codigo === 'SOBRANTE' && <span className="badge px-2 py-1" style={{ backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px' }}><i className="bi bi-box-seam me-1"></i>Sobrante</span>}
+                                                    {dev.tipo_codigo === 'DANO' && <span className="badge px-2 py-1" style={{ backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px' }}><i className="bi bi-exclamation-triangle me-1"></i>Daño / Merma</span>}
+                                                    {dev.tipo_codigo === 'NO_RECIBIDO' && <span className="badge px-2 py-1" style={{ backgroundColor: '#fffbeb', color: '#92400e', border: '1px solid #fde68a', borderRadius: '6px' }}><i className="bi bi-truck-flatbed me-1"></i>No Recibido</span>}
+                                                    {!dev.tipo_codigo && <span className="badge px-2 py-1" style={{ backgroundColor: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '6px' }}>General</span>}
+                                                    {dev.comentario_tecnico && (
+                                                        <div className="text-muted small fst-italic mt-1" style={{ maxWidth: '280px', fontSize: '0.8rem' }}>"{dev.comentario_tecnico}"</div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="text-muted small d-none d-md-table-cell">
+                                                <div><i className="bi bi-calendar3 me-1"></i>{new Date(dev.fecha).toLocaleDateString()}</div>
+                                                <div className="mt-1"><i className="bi bi-clock me-1"></i>{new Date(dev.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                            </td>
+                                            <td className="text-end pe-4">
+                                                <div className="d-flex justify-content-end gap-2">
+                                                    <button className="btn btn-sm fw-semibold px-3 shadow-sm" style={{ backgroundColor: '#22c55e', color: '#fff', borderRadius: '8px', border: 'none' }} onClick={() => aprobarDevolucion(dev.id, dev.tipo_codigo)}>
+                                                        <i className="bi bi-check2-circle me-1"></i>Aceptar
+                                                    </button>
+                                                    <button className="btn btn-sm fw-semibold px-3 shadow-sm" style={{ backgroundColor: '#ef4444', color: '#fff', borderRadius: '8px', border: 'none' }} onClick={() => setRechazoModal({ show: true, devId: dev.id, motivo: '' })}>
+                                                        <i className="bi bi-x-circle me-1"></i>Rechazar
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan="6" className="text-center py-5 text-muted">
+                                            <i className="bi bi-inboxes-fill fs-1 d-block mb-3 opacity-25"></i>
+                                            {busqueda ? `Sin resultados para "${busqueda}"` : <><h5 className="mb-1">Sin devoluciones pendientes</h5><p className="small mb-0">Todas las solicitudes han sido procesadas.</p></>}
+                                        </td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </div>

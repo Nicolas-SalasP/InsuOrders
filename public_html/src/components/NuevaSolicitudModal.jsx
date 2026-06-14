@@ -482,7 +482,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             />
 
             <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto', zIndex: 1050 }}>
-                <div className="modal-dialog modal-xl">
+                <div className="modal-dialog modal-xl modal-dialog-scrollable">
                     <div className="modal-content shadow-lg border-0">
 
                         <div className="modal-header bg-warning text-dark border-bottom border-warning">

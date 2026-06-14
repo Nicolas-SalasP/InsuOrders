@@ -11,7 +11,7 @@ const MisInsumos = () => {
     const [consumo, setConsumo] = useState({});
     const [busqueda, setBusqueda] = useState('');
     const [tiposDevolucion, setTiposDevolucion] = useState([]);
-    
+
     const [modalDevolucion, setModalDevolucion] = useState({
         show: false,
         item: null,
@@ -20,11 +20,11 @@ const MisInsumos = () => {
         comentario: ''
     });
 
-    const [rechazoPendienteModal, setRechazoPendienteModal] = useState({ 
-        show: false, 
-        items: null, 
-        tipoId: 1, 
-        motivo: '' 
+    const [rechazoPendienteModal, setRechazoPendienteModal] = useState({
+        show: false,
+        items: null,
+        tipoId: 1,
+        motivo: ''
     });
 
     const [seleccionados, setSeleccionados] = useState([]);
@@ -76,21 +76,21 @@ const MisInsumos = () => {
 
     const agruparPorSku = (items) => {
         const agrupados = {};
-        
+
         items.forEach(item => {
-            const key = item.insumo_id; 
-            
+            const key = item.insumo_id;
+
             if (!agrupados[key]) {
                 agrupados[key] = {
                     ...item,
                     saldo_total: 0,
-                    entregas: [] 
+                    entregas: []
                 };
             }
-            
+
             agrupados[key].saldo_total += parseFloat(item.saldo_actual);
             agrupados[key].entregas.push(item);
-            
+
             if (item.observacion && item.observacion.toLowerCase().includes('rechazad')) {
                 let motivoLimpio = item.observacion.split('Motivo:');
                 agrupados[key].observacion_rechazo = motivoLimpio.length > 1 ? motivoLimpio[1].trim() : item.observacion;
@@ -103,7 +103,7 @@ const MisInsumos = () => {
     const iniciarRespuesta = (entregaIdOrArray, accion) => {
         const isArray = Array.isArray(entregaIdOrArray);
         const cantidad = isArray ? entregaIdOrArray.length : 1;
-        
+
         // Si la acción es RECHAZAR, abrimos el modal detallado
         if (accion === 'RECHAZAR') {
             setRechazoPendienteModal({
@@ -132,7 +132,7 @@ const MisInsumos = () => {
                 return;
             }
 
-            const payload = Array.isArray(items) 
+            const payload = Array.isArray(items)
                 ? { entregas_ids: items, accion: 'RECHAZAR', tipo_devolucion_id: parseInt(tipoId), observacion: motivo.trim() }
                 : { entrega_id: items, accion: 'RECHAZAR', tipo_devolucion_id: parseInt(tipoId), observacion: motivo.trim() };
 
@@ -148,7 +148,7 @@ const MisInsumos = () => {
 
     const procesarRespuesta = async (entregaIdOrArray, accion) => {
         try {
-            const payload = Array.isArray(entregaIdOrArray) 
+            const payload = Array.isArray(entregaIdOrArray)
                 ? { entregas_ids: entregaIdOrArray, accion }
                 : { entrega_id: entregaIdOrArray, accion };
 
@@ -162,9 +162,9 @@ const MisInsumos = () => {
         }
     };
 
-    const iniciarDevolucion = (itemAgrupado) => { 
+    const iniciarDevolucion = (itemAgrupado) => {
         const cantInput = parseInt(consumo[itemAgrupado.insumo_id], 10);
-        
+
         if (!cantInput || cantInput <= 0 || isNaN(cantInput)) {
             setMsg({ show: true, title: "Cantidad Inválida", text: "Ingresa una cantidad entera válida mayor a 0.", type: "warning" });
             return;
@@ -200,7 +200,7 @@ const MisInsumos = () => {
 
         try {
             await api.post('/operario/devolver', payload);
-            
+
             setConsumo(prev => {
                 const newState = { ...prev };
                 delete newState[item.insumo_id];
@@ -245,15 +245,15 @@ const MisInsumos = () => {
                                 </h5>
                                 <button type="button" className="btn-close btn-close-white" onClick={() => setRechazoPendienteModal({show: false, items: null, tipoId: 1, motivo: ''})}></button>
                             </div>
-                            <div className="modal-body p-4 bg-light">
+                            <div className="modal-body p-3 p-md-4 bg-light">
                                 <div className="alert alert-warning border-warning small shadow-sm mb-3">
                                     <i className="bi bi-exclamation-triangle-fill me-2"></i>
                                     Al rechazar, la solicitud pasará a revisión por bodega. Debes devolver el material físico al bodeguero si corresponde.
                                 </div>
-                                
+
                                 <div className="mb-3">
                                     <label className="form-label fw-bold small text-uppercase text-muted">1. Motivo del Rechazo</label>
-                                    <select 
+                                    <select
                                         className="form-select border-primary shadow-sm"
                                         value={rechazoPendienteModal.tipoId}
                                         onChange={(e) => setRechazoPendienteModal({...rechazoPendienteModal, tipoId: e.target.value})}
@@ -273,9 +273,9 @@ const MisInsumos = () => {
                                         2. Comentario / Justificación
                                         {parseInt(rechazoPendienteModal.tipoId) > 1 && <span className="text-danger ms-1">*</span>}
                                     </label>
-                                    <textarea 
+                                    <textarea
                                         className={`form-control shadow-sm ${parseInt(rechazoPendienteModal.tipoId) > 1 && rechazoPendienteModal.motivo.trim() === '' ? 'border-danger' : ''}`}
-                                        rows="3" 
+                                        rows="3"
                                         placeholder="Ej: Material incompleto, venía dañado, error de la bodega, etc."
                                         value={rechazoPendienteModal.motivo}
                                         onChange={(e) => setRechazoPendienteModal({...rechazoPendienteModal, motivo: e.target.value})}
@@ -304,7 +304,7 @@ const MisInsumos = () => {
                                 </h5>
                                 <button type="button" className="btn-close btn-close-white" onClick={cerrarModalDevolucion}></button>
                             </div>
-                            <div className="modal-body p-4 bg-light">
+                            <div className="modal-body p-3 p-md-4 bg-light">
                                 <div className="d-flex justify-content-between align-items-center mb-3 p-3 bg-white border rounded shadow-sm">
                                     <div>
                                         <div className="fw-bold text-dark">{modalDevolucion.item?.insumo}</div>
@@ -317,7 +317,7 @@ const MisInsumos = () => {
 
                                 <div className="mb-3">
                                     <label className="form-label fw-bold small text-uppercase text-muted">1. Motivo del Retorno</label>
-                                    <select 
+                                    <select
                                         className="form-select border-primary shadow-sm"
                                         value={modalDevolucion.tipoId}
                                         onChange={(e) => setModalDevolucion({...modalDevolucion, tipoId: e.target.value})}
@@ -334,12 +334,12 @@ const MisInsumos = () => {
 
                                 <div className="mb-2">
                                     <label className="form-label fw-bold small text-uppercase text-muted">
-                                        2. Comentario / Justificación 
+                                        2. Comentario / Justificación
                                         {isComentarioObligatorio && <span className="text-danger ms-1">*</span>}
                                     </label>
-                                    <textarea 
+                                    <textarea
                                         className={`form-control shadow-sm ${isComentarioObligatorio && modalDevolucion.comentario.trim() === '' ? 'border-danger' : ''}`}
-                                        rows="3" 
+                                        rows="3"
                                         placeholder={isComentarioObligatorio ? "Explica brevemente por qué rechazas este insumo..." : "Opcional: Algún comentario para bodega..."}
                                         value={modalDevolucion.comentario}
                                         onChange={(e) => setModalDevolucion({...modalDevolucion, comentario: e.target.value})}
@@ -357,23 +357,23 @@ const MisInsumos = () => {
                 </div>
             )}
 
-            <div className="row align-items-center mb-4 g-3">
-                <div className="col-12 col-md-6">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+                <div>
                     <h3 className="fw-bold text-dark mb-0"><i className="bi bi-tools me-2 text-primary"></i>Mis Insumos</h3>
                     <small className="text-muted">Gestiona tu stock personal y devoluciones</small>
                 </div>
-                <div className="col-12 col-md-6 d-flex gap-2">
-                    <div className="input-group shadow-sm">
+                <div className="d-flex gap-2" style={{ maxWidth: '400px', width: '100%' }}>
+                    <div className="input-group shadow-sm flex-grow-1">
                         <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
-                        <input 
-                            type="text" 
-                            className="form-control border-start-0 ps-0" 
-                            placeholder="Buscar por Nombre o SKU..." 
+                        <input
+                            type="text"
+                            className="form-control border-start-0 ps-0"
+                            placeholder="Buscar por Nombre o SKU..."
                             value={busqueda}
                             onChange={(e) => setBusqueda(e.target.value)}
                         />
                     </div>
-                    <button className="btn btn-primary shadow-sm" onClick={cargarDatos} title="Actualizar Datos">
+                    <button className="btn btn-primary shadow-sm flex-shrink-0" onClick={cargarDatos} title="Actualizar Datos">
                         <i className="bi bi-arrow-clockwise"></i>
                     </button>
                 </div>
@@ -387,12 +387,12 @@ const MisInsumos = () => {
                             <div>
                                 <span className="fw-bold d-block"><i className="bi bi-bell-fill me-2"></i> Tienes entregas de bodega por confirmar ({data.pendientes.length})</span>
                                 <div className="form-check mt-1">
-                                    <input 
-                                        className="form-check-input" 
-                                        type="checkbox" 
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
                                         id="selectAll"
-                                        checked={seleccionados.length === data.pendientes.length && data.pendientes.length > 0} 
-                                        onChange={toggleAll} 
+                                        checked={seleccionados.length === data.pendientes.length && data.pendientes.length > 0}
+                                        onChange={toggleAll}
                                         style={{cursor: 'pointer'}}
                                     />
                                     <label className="form-check-label fw-bold text-dark user-select-none" htmlFor="selectAll" style={{cursor: 'pointer'}}>
@@ -400,10 +400,10 @@ const MisInsumos = () => {
                                     </label>
                                 </div>
                             </div>
-                            
+
                             {/* BOTONES MASIVOS APARECEN AL SELECCIONAR */}
                             {seleccionados.length > 0 && (
-                                <div className="d-flex gap-2 bg-white p-2 rounded shadow-sm border">
+                                <div className="d-flex flex-wrap gap-2 bg-white p-2 rounded shadow-sm border">
                                     <button className="btn btn-success btn-sm fw-bold" onClick={() => iniciarRespuesta(seleccionados, 'ACEPTAR')}>
                                         <i className="bi bi-check-all me-1"></i> Aceptar Selec. ({seleccionados.length})
                                     </button>
@@ -414,13 +414,13 @@ const MisInsumos = () => {
                             )}
                         </div>
                     </div>
-                    
+
                     <div className="row g-3">
                         {data.pendientes.map(p => {
                             const isSelected = seleccionados.includes(p.id);
                             return (
                                 <div key={p.id} className="col-12 col-md-6 col-lg-4">
-                                    <div 
+                                    <div
                                         className={`card border-start border-4 shadow-sm h-100 ${isSelected ? 'border-primary bg-primary bg-opacity-10' : 'border-warning bg-white'}`}
                                         onClick={() => toggleSeleccion(p.id)}
                                         style={{ cursor: 'pointer', transition: 'all 0.2s ease-in-out' }}
@@ -428,11 +428,11 @@ const MisInsumos = () => {
                                         <div className="card-body">
                                             <div className="d-flex justify-content-between align-items-start mb-2">
                                                 <div className="form-check" onClick={e => e.stopPropagation()}>
-                                                    <input 
-                                                        className="form-check-input fs-5 mt-0" 
-                                                        type="checkbox" 
-                                                        checked={isSelected} 
-                                                        onChange={() => toggleSeleccion(p.id)} 
+                                                    <input
+                                                        className="form-check-input fs-5 mt-0"
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => toggleSeleccion(p.id)}
                                                         style={{cursor: 'pointer'}}
                                                     />
                                                 </div>
@@ -441,10 +441,10 @@ const MisInsumos = () => {
                                                     <div className="small text-muted" style={{fontSize:'0.7rem'}}>{new Date(p.fecha_entrega).toLocaleDateString()}</div>
                                                 </div>
                                             </div>
-                                            
+
                                             <h6 className="fw-bold mb-1 text-truncate" title={p.insumo}>{p.insumo}</h6>
                                             <div className="text-muted small mb-3"><i className="bi bi-person-fill me-1"></i>De: {p.bodeguero_nombre}</div>
-                                            
+
                                             <div className={`d-flex justify-content-between align-items-center p-2 rounded mb-3 border ${isSelected ? 'bg-white' : 'bg-light'}`}>
                                                 <span className="small fw-bold text-uppercase">Recibido:</span>
                                                 <span className="fs-5 fw-bold text-dark">{parseInt(p.cantidad_entregada, 10)} {p.unidad_medida}</span>
@@ -477,8 +477,8 @@ const MisInsumos = () => {
             ) : (
                 Object.entries(inventarioAgrupado).map(([titulo, items]) => {
                     const itemsUnicos = agruparPorSku(items);
-                    const itemsFiltrados = itemsUnicos.filter(i => 
-                        i.insumo.toLowerCase().includes(busqueda.toLowerCase()) || 
+                    const itemsFiltrados = itemsUnicos.filter(i =>
+                        i.insumo.toLowerCase().includes(busqueda.toLowerCase()) ||
                         i.codigo_sku.toLowerCase().includes(busqueda.toLowerCase())
                     );
 
@@ -489,7 +489,7 @@ const MisInsumos = () => {
                             <h6 className="text-uppercase fw-bold text-primary border-bottom pb-2 mb-3 d-flex align-items-center">
                                 <i className="bi bi-folder2-open me-2"></i> {titulo}
                             </h6>
-                            
+
                             <div className="row g-3">
                                 {itemsFiltrados.map(i => (
                                     <div key={i.insumo_id} className="col-12 col-sm-6 col-lg-3">
@@ -504,17 +504,17 @@ const MisInsumos = () => {
                                                     </span>
                                                 </div>
 
-                                                <h6 className="fw-bold mb-1 text-dark" style={{ 
-                                                    display: '-webkit-box', 
-                                                    WebkitLineClamp: 2, 
-                                                    WebkitBoxOrient: 'vertical', 
+                                                <h6 className="fw-bold mb-1 text-dark" style={{
+                                                    display: '-webkit-box',
+                                                    WebkitLineClamp: 2,
+                                                    WebkitBoxOrient: 'vertical',
                                                     overflow: 'hidden',
-                                                    height: '2.5rem', 
+                                                    height: '2.5rem',
                                                     lineHeight: '1.25rem'
                                                 }} title={i.insumo}>
                                                     {i.insumo}
                                                 </h6>
-                                                
+
                                                 <div className="flex-grow-1">
                                                     {i.observacion_rechazo && (
                                                         <div className="alert alert-danger p-2 small mt-2 mb-2 d-flex flex-column" style={{fontSize: '0.75rem'}}>
@@ -528,12 +528,12 @@ const MisInsumos = () => {
 
                                                 <div className="mt-auto pt-3 border-top">
                                                     <div className="input-group mb-2 input-group-sm shadow-sm">
-                                                        <input 
-                                                            type="number" 
-                                                            className="form-control text-center fw-bold" 
+                                                        <input
+                                                            type="number"
+                                                            className="form-control text-center fw-bold"
                                                             placeholder="0"
-                                                            min="1" 
-                                                            step="1" 
+                                                            min="1"
+                                                            step="1"
                                                             max={parseInt(i.saldo_total, 10)}
                                                             value={consumo[i.insumo_id] || ''}
                                                             onKeyDown={(e) => {
@@ -548,9 +548,9 @@ const MisInsumos = () => {
                                                         />
                                                         <span className="input-group-text bg-white small text-muted">{i.unidad_medida}</span>
                                                     </div>
-                                                    
-                                                    <button 
-                                                        className="btn btn-sm btn-outline-danger w-100 fw-bold" 
+
+                                                    <button
+                                                        className="btn btn-sm btn-outline-danger w-100 fw-bold"
                                                         onClick={() => iniciarDevolucion(i)}
                                                         disabled={!consumo[i.insumo_id]}
                                                     >

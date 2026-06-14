@@ -189,7 +189,7 @@ const Proveedores = () => {
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
 
                 {/* --- ENCABEZADO --- */}
-                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 flex-shrink-0">
 
                     <div className="d-flex align-items-center">
                         <div className="bg-success bg-opacity-10 p-2 rounded me-3 text-success d-none d-sm-block">
@@ -203,7 +203,6 @@ const Proveedores = () => {
                         {can('prov_exportar') && (
                             <button
                                 className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
-                                style={{ minWidth: '95px' }}
                                 onClick={handleExportar}
                                 disabled={loading}
                             >
@@ -215,7 +214,6 @@ const Proveedores = () => {
                         {can('prov_importar') && (
                             <button
                                 className="btn btn-outline-dark shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
-                                style={{ minWidth: '95px' }}
                                 onClick={() => setShowImport(true)}
                             >
                                 <i className="bi bi-file-earmark-arrow-up fs-5 mb-1 mb-md-0 me-md-2"></i>
@@ -226,7 +224,6 @@ const Proveedores = () => {
                         {can('prov_crear') && (
                             <button
                                 className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
-                                style={{ minWidth: '95px' }}
                                 onClick={handleNew}
                             >
                                 <i className="bi bi-plus-lg fs-5 mb-1 mb-md-0 me-md-2"></i>
@@ -239,7 +236,7 @@ const Proveedores = () => {
                 {/* --- FILTROS --- */}
                 <div className="p-3 border-bottom bg-light">
                     <div className="row g-2">
-                        <div className="col-md-3">
+                        <div className="col-12 col-md-3">
                             <div className="input-group">
                                 <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
                                 <input
@@ -252,35 +249,35 @@ const Proveedores = () => {
                             </div>
                         </div>
 
-                        <div className="col-md-2">
+                        <div className="col-12 col-md-2">
                             <select className="form-select" value={filtroPais} onChange={(e) => { setFiltroPais(e.target.value); setFiltroRegion(''); setFiltroComuna(''); }}>
                                 <option value="">País...</option>
                                 {listas.paises.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                             </select>
                         </div>
 
-                        <div className="col-md-2">
+                        <div className="col-12 col-md-2">
                             <select className="form-select" value={filtroRegion} onChange={(e) => setFiltroRegion(e.target.value)}>
                                 <option value="">Región...</option>
                                 {regionesDisponibles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                             </select>
                         </div>
 
-                        <div className="col-md-2">
+                        <div className="col-12 col-md-2">
                             <select className="form-select" value={filtroComuna} onChange={(e) => setFiltroComuna(e.target.value)} disabled={!filtroRegion && comunasDisponibles.length > 100}>
                                 <option value="">Comuna...</option>
                                 {comunasDisponibles.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                             </select>
                         </div>
 
-                        <div className="col-md-2">
+                        <div className="col-12 col-md-2">
                             <select className="form-select" value={filtroTipoVenta} onChange={(e) => setFiltroTipoVenta(e.target.value)}>
                                 <option value="">Condición...</option>
                                 {listas.tipos_venta.map(t => <option key={t.id} value={t.id}>{t.descripcion}</option>)}
                             </select>
                         </div>
 
-                        <div className="col-md-1 d-grid">
+                        <div className="col-12 col-md-1 d-grid">
                             {(busqueda || filtroPais || filtroRegion || filtroComuna || filtroTipoVenta) && (
                                 <button className="btn btn-outline-secondary" onClick={limpiarFiltros} title="Limpiar Filtros">
                                     <i className="bi bi-x-lg"></i>
@@ -301,77 +298,79 @@ const Proveedores = () => {
                             <span className="text-muted">Cargando proveedores...</span>
                         </div>
                     ) : (
-                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '1000px' }}>
-                            <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
-                                <tr>
-                                    <th className="ps-4 py-3">RUT</th>
-                                    <th className="py-3">Razón Social</th>
-                                    <th className="py-3">Contacto</th>
-                                    <th className="py-3">Ubicación</th>
-                                    <th className="py-3">Condición Venta</th>
-                                    <th className="text-end pe-4 py-3">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {proveedoresFiltrados.length > 0 ? proveedoresFiltrados.map((p) => (
-                                    <tr key={p.id}>
-                                        <td className="ps-4 font-monospace fw-bold">{p.rut}</td>
-                                        <td>
-                                            <div className="fw-bold text-primary">{p.nombre}</div>
-                                            <div className="small text-muted">{p.email}</div>
-                                        </td>
-                                        <td>
-                                            <div className="text-truncate" style={{ maxWidth: '150px' }} title={p.contacto_vendedor}>
-                                                {p.contacto_vendedor || <span className="text-muted fst-italic">--</span>}
-                                            </div>
-                                            <div className="small text-muted">{p.telefono}</div>
-                                        </td>
-                                        <td>
-                                            <div className="d-flex flex-column">
-                                                <div className="text-truncate" style={{ maxWidth: '200px' }} title={p.direccion}>
-                                                    {p.direccion}
-                                                </div>
-                                                <small className="text-muted">
-                                                    {p.comuna_nombre ? `${p.comuna_nombre}, ${p.region_nombre}` : 'Sin dirección'}
-                                                </small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span className={`badge rounded-pill ${p.tipo_venta_nombre === 'Contado' || p.tipo_venta_nombre === 'Efectivo'
-                                                    ? 'bg-success'
-                                                    : p.tipo_venta_nombre === 'Crédito' ? 'bg-primary' : 'bg-secondary'
-                                                }`}>
-                                                {p.tipo_venta_nombre || 'N/A'}
-                                            </span>
-                                        </td>
-                                        <td className="text-end pe-4">
-                                            {/* Ver Detalle (Ojo) */}
-                                            {can('prov_ver') && (
-                                                <button className="btn btn-sm btn-link text-info" onClick={() => handleView(p)} title="Ver Detalle">
-                                                    <i className="bi bi-eye"></i>
-                                                </button>
-                                            )}
-
-                                            {/* Editar */}
-                                            {can('prov_editar') && (
-                                                <button className="btn btn-sm btn-link text-secondary" onClick={() => handleEdit(p)} title="Editar">
-                                                    <i className="bi bi-pencil"></i>
-                                                </button>
-                                            )}
-
-                                            {/* Eliminar */}
-                                            {can('prov_eliminar') && (
-                                                <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteClick(p)} title="Eliminar">
-                                                    <i className="bi bi-trash"></i>
-                                                </button>
-                                            )}
-                                        </td>
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0">
+                                <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
+                                    <tr>
+                                        <th className="ps-4 py-3 d-none d-md-table-cell">RUT</th>
+                                        <th className="py-3">Razón Social</th>
+                                        <th className="py-3 d-none d-md-table-cell">Contacto</th>
+                                        <th className="py-3 d-none d-lg-table-cell">Ubicación</th>
+                                        <th className="py-3 d-none d-md-table-cell">Condición Venta</th>
+                                        <th className="text-end pe-4 py-3">Acciones</th>
                                     </tr>
-                                )) : (
-                                    <tr><td colSpan="6" className="text-center py-5 text-muted">No se encontraron proveedores con los filtros seleccionados</td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {proveedoresFiltrados.length > 0 ? proveedoresFiltrados.map((p) => (
+                                        <tr key={p.id}>
+                                            <td className="ps-4 font-monospace fw-bold d-none d-md-table-cell">{p.rut}</td>
+                                            <td>
+                                                <div className="fw-bold text-primary">{p.nombre}</div>
+                                                <div className="small text-muted">{p.email}</div>
+                                            </td>
+                                            <td className="d-none d-md-table-cell">
+                                                <div className="text-truncate" style={{ maxWidth: '150px' }} title={p.contacto_vendedor}>
+                                                    {p.contacto_vendedor || <span className="text-muted fst-italic">--</span>}
+                                                </div>
+                                                <div className="small text-muted">{p.telefono}</div>
+                                            </td>
+                                            <td className="d-none d-lg-table-cell">
+                                                <div className="d-flex flex-column">
+                                                    <div className="text-truncate" style={{ maxWidth: '200px' }} title={p.direccion}>
+                                                        {p.direccion}
+                                                    </div>
+                                                    <small className="text-muted">
+                                                        {p.comuna_nombre ? `${p.comuna_nombre}, ${p.region_nombre}` : 'Sin dirección'}
+                                                    </small>
+                                                </div>
+                                            </td>
+                                            <td className="d-none d-md-table-cell">
+                                                <span className={`badge rounded-pill ${p.tipo_venta_nombre === 'Contado' || p.tipo_venta_nombre === 'Efectivo'
+                                                        ? 'bg-success'
+                                                        : p.tipo_venta_nombre === 'Crédito' ? 'bg-primary' : 'bg-secondary'
+                                                    }`}>
+                                                    {p.tipo_venta_nombre || 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td className="text-end pe-4">
+                                                {/* Ver Detalle (Ojo) */}
+                                                {can('prov_ver') && (
+                                                    <button className="btn btn-sm btn-link text-info" onClick={() => handleView(p)} title="Ver Detalle">
+                                                        <i className="bi bi-eye"></i>
+                                                    </button>
+                                                )}
+
+                                                {/* Editar */}
+                                                {can('prov_editar') && (
+                                                    <button className="btn btn-sm btn-link text-secondary" onClick={() => handleEdit(p)} title="Editar">
+                                                        <i className="bi bi-pencil"></i>
+                                                    </button>
+                                                )}
+
+                                                {/* Eliminar */}
+                                                {can('prov_eliminar') && (
+                                                    <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteClick(p)} title="Eliminar">
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan="6" className="text-center py-5 text-muted">No se encontraron proveedores con los filtros seleccionados</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
             </div>

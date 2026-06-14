@@ -149,7 +149,7 @@ const Sidebar = ({ onClose }) => {
                             </span>
                         )}
                         {showNotifDetails && (
-                            <div className="position-absolute bg-white text-dark rounded shadow-lg" style={{ top: '35px', left: '10px', width: '280px', zIndex: 1050, maxHeight: '400px', overflowY: 'auto' }}>
+                            <div className="position-absolute bg-white text-dark rounded shadow-lg" style={{ top: '35px', right: '-10px', width: '280px', maxWidth: 'calc(100vw - 24px)', zIndex: 1050, maxHeight: '400px', overflowY: 'auto' }}>
                                 <div className="bg-light p-2 border-bottom fw-bold small text-uppercase d-flex justify-content-between">
                                     <span>Notificaciones</span>
                                     {countVisible > 0 && <span className="badge bg-danger rounded-pill">{countVisible}</span>}

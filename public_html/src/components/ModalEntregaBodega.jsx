@@ -55,7 +55,7 @@ const ModalEntregaBodega = ({ show, onClose, onConfirm, item }) => {
         <>
             <MessageModal show={msgModal.show} onClose={() => setMsgModal({ ...msgModal, show: false })} title={msgModal.title} message={msgModal.message} type={msgModal.type} />
             <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                <div className="modal-dialog">
+                <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                     <div className="modal-content">
                         <div className="modal-header bg-warning text-dark">
                             <h5 className="modal-title fw-bold">📦 Entregar Material</h5>
