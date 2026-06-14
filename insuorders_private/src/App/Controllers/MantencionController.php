@@ -294,8 +294,14 @@ class MantencionController
         try {
             if ($tipo === 'principal' && $activoId) {
                 $db = \App\Database\Database::getConnection();
-                $db->prepare("UPDATE activos SET imagen_url = NULL WHERE id = ?")->execute([$activoId]);
-                
+                $stmtChk = $db->prepare("SELECT id FROM activos WHERE id = ?");
+                $stmtChk->execute([(int) $activoId]);
+                if (!$stmtChk->fetch()) {
+                    http_response_code(404);
+                    echo json_encode(["success" => false, "message" => "Activo no encontrado."]);
+                    return;
+                }
+                $db->prepare("UPDATE activos SET imagen_url = NULL WHERE id = ?")->execute([(int) $activoId]);
                 echo json_encode(["success" => true, "message" => "Portada principal eliminada"]);
                 return;
             }

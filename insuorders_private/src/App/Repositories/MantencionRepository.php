@@ -329,6 +329,10 @@ class MantencionRepository
 
     public function addInsumoToKit($activoId, $insumoId, $cant)
     {
+        $cant = (float) $cant;
+        if ($cant <= 0)
+            throw new Exception("La cantidad del kit debe ser mayor a cero.");
+
         $stmtInsumo = $this->db->prepare("SELECT id FROM insumos WHERE id = :i");
         $stmtInsumo->execute([':i' => $insumoId]);
         if (!$stmtInsumo->fetch())
@@ -348,6 +352,9 @@ class MantencionRepository
     }
     public function updateKitQuantity($activoId, $insumoId, $cantidad)
     {
+        $cantidad = (float) $cantidad;
+        if ($cantidad <= 0)
+            throw new Exception("La cantidad del kit debe ser mayor a cero.");
         $this->db->prepare("UPDATE activos_insumos SET cantidad_default = :c WHERE activo_id = :a AND insumo_id = :i")->execute([':c' => $cantidad, ':a' => $activoId, ':i' => $insumoId]);
         $this->recalcularMinimoInsumo($insumoId);
     }

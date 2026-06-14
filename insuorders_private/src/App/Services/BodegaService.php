@@ -60,9 +60,13 @@ class BodegaService
             $this->operarioRepo->asignarInsumo($datosEntrega);
             return "Material entregado al empleado correctamente";
         } elseif (!empty($data['detalle_id']) && !empty($data['receptor_id'])) {
-            $this->mantencionRepo->entregarMaterial((int) $data['detalle_id'], (int) $usuarioId, (float) $cantidad, (int) $data['receptor_id']);
-
             $db = Database::getConnection();
+            $stmtRec = $db->prepare("SELECT id FROM empleados WHERE id = ? AND activo = 1");
+            $stmtRec->execute([(int) $data['receptor_id']]);
+            if (!$stmtRec->fetch())
+                throw new Exception("El receptor seleccionado no existe o está inactivo.");
+
+            $this->mantencionRepo->entregarMaterial((int) $data['detalle_id'], (int) $usuarioId, (float) $cantidad, (int) $data['receptor_id']);
             $stmt = $db->prepare("SELECT insumo_id, solicitud_id FROM detalle_solicitud WHERE id = ?");
             $stmt->execute([$data['detalle_id']]);
             $fila = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -85,7 +89,6 @@ class BodegaService
     public function entregarMasivo($items, $receptorId, $usuarioId)
     {
         $db = Database::getConnection();
-        $errores = [];
         $procesados = 0;
 
         try {
@@ -93,36 +96,28 @@ class BodegaService
             $stmtInfo = $db->prepare("SELECT insumo_id, solicitud_id FROM detalle_solicitud WHERE id = ?");
 
             foreach ($items as $item) {
-                try {
-                    $cantidad = (float) $item['cantidad'];
-                    $detalleId = (int) $item['detalle_id'];
-                    $this->mantencionRepo->entregarMaterial($detalleId, (int) $usuarioId, $cantidad, $receptorId);
+                $cantidad = (float) $item['cantidad'];
+                $detalleId = (int) $item['detalle_id'];
 
-                    $stmtInfo->execute([$detalleId]);
-                    $info = $stmtInfo->fetch(PDO::FETCH_ASSOC);
-                    if ($info) {
-                        $this->operarioRepo->vincularEntregaOT([
-                            'insumo_id' => $info['insumo_id'],
-                            'cantidad' => $cantidad,
-                            'empleado_id' => $receptorId,
-                            'observacion' => "Entrega Masiva OT #" . $info['solicitud_id'],
-                            'bodeguero_id' => $usuarioId,
-                            'ot_id' => $info['solicitud_id']
-                        ]);
-                        $procesados++;
-                    }
-                } catch (Exception $e) {
-                    $errores[] = "Item ID $detalleId: " . $e->getMessage();
+                $this->mantencionRepo->entregarMaterial($detalleId, (int) $usuarioId, $cantidad, $receptorId);
+
+                $stmtInfo->execute([$detalleId]);
+                $info = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+                if ($info) {
+                    $this->operarioRepo->vincularEntregaOT([
+                        'insumo_id' => $info['insumo_id'],
+                        'cantidad' => $cantidad,
+                        'empleado_id' => $receptorId,
+                        'observacion' => "Entrega Masiva OT #" . $info['solicitud_id'],
+                        'bodeguero_id' => $usuarioId,
+                        'ot_id' => $info['solicitud_id']
+                    ]);
                 }
-            }
-
-            if ($procesados === 0 && count($errores) > 0) {
-                $db->rollBack();
-                throw new Exception("Fallaron todos los ítems: " . implode(", ", $errores));
+                $procesados++;
             }
 
             $db->commit();
-            return ["procesados" => $procesados, "errores" => $errores];
+            return ["procesados" => $procesados, "errores" => []];
         } catch (Exception $e) {
             if ($db->inTransaction())
                 $db->rollBack();
