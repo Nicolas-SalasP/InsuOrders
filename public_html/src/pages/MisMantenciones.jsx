@@ -32,11 +32,23 @@ const MisMantenciones = () => {
 
     const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
     const sigCanvas = useRef(null);
+    const overlayRef = useRef(null);
     const [enlargedImage, setEnlargedImage] = useState(null);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [videoModalUrl, setVideoModalUrl] = useState(null);
 
     const esServicio = selectedOt && (!selectedOt.activo_id || selectedOt.codigo_interno === 'SERV');
+
+    useEffect(() => {
+        const el = overlayRef.current;
+        if (!el || !enlargedImage) return;
+        const handleWheel = (e) => {
+            e.preventDefault();
+            setZoomLevel(prev => Math.min(5, Math.max(0.5, prev + (e.deltaY < 0 ? 0.2 : -0.2))));
+        };
+        el.addEventListener('wheel', handleWheel, { passive: false });
+        return () => el.removeEventListener('wheel', handleWheel);
+    }, [enlargedImage]);
 
     useEffect(() => {
         if (activeTab === 'checklist' && sigCanvas.current) {
@@ -491,10 +503,10 @@ const MisMantenciones = () => {
 
             {enlargedImage && (
                 <div
+                    ref={overlayRef}
                     className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
                     style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999 }}
                     onClick={() => { setEnlargedImage(null); setZoomLevel(1); }}
-                    onWheel={(e) => { e.preventDefault(); setZoomLevel(prev => Math.min(5, Math.max(0.5, prev + (e.deltaY < 0 ? 0.2 : -0.2)))); }}
                 >
                     <div className="position-relative text-center p-3" style={{ maxWidth: '100%', maxHeight: '100%' }}>
                         <button
@@ -603,11 +615,27 @@ const MisMantenciones = () => {
                             <input type="text" className="form-control border-start-0 ps-0" placeholder="Título, #OT o Solicitante..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
                         </div>
 
-                        <div className="btn-group w-100 shadow-sm mt-2" role="group">
-                            <button className={`btn btn-sm ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('pendientes')}>Hoy/Atrás</button>
-                            <button className={`btn btn-sm ${filtroEstado === 'futuras' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('futuras')}>Programadas</button>
-                            <button className={`btn btn-sm ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('proceso')}>En Proceso</button>
-                            <button className={`btn btn-sm ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('terminado')}>Historial</button>
+                        <div className="row g-1 mt-2">
+                            <div className="col-6">
+                                <button className={`btn btn-sm w-100 ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('pendientes')}>
+                                    <i className="bi bi-clock me-1"></i>Hoy/Atrás
+                                </button>
+                            </div>
+                            <div className="col-6">
+                                <button className={`btn btn-sm w-100 ${filtroEstado === 'futuras' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('futuras')}>
+                                    <i className="bi bi-calendar me-1"></i>Programadas
+                                </button>
+                            </div>
+                            <div className="col-6">
+                                <button className={`btn btn-sm w-100 ${filtroEstado === 'proceso' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('proceso')}>
+                                    <i className="bi bi-gear me-1"></i>En Proceso
+                                </button>
+                            </div>
+                            <div className="col-6">
+                                <button className={`btn btn-sm w-100 ${filtroEstado === 'terminado' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('terminado')}>
+                                    <i className="bi bi-archive me-1"></i>Historial
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -703,48 +731,50 @@ const MisMantenciones = () => {
                     {selectedOt ? (
                         <>
                             <div className="bg-white border-bottom shadow-sm sticky-top" style={{ zIndex: 1020 }}>
-                                <div className="d-flex justify-content-between align-items-center p-3 p-md-4 pb-md-2">
-                                    <div className="d-flex align-items-center overflow-hidden">
-                                        <button className="btn btn-link text-dark d-md-none me-2 p-0" onClick={() => setSelectedOt(null)}>
+                                <div className="d-flex justify-content-between align-items-start align-items-sm-center p-3 p-md-4 pb-md-2 gap-2">
+                                    <div className="d-flex align-items-center overflow-hidden flex-grow-1 min-w-0">
+                                        <button className="btn btn-link text-dark d-md-none me-2 p-0 flex-shrink-0" onClick={() => setSelectedOt(null)}>
                                             <i className="bi bi-arrow-left display-6"></i>
                                         </button>
-                                        <div className="text-truncate">
-                                            <h4 className="fw-bold mb-0 text-truncate text-primary">{selectedOt.titulo || 'Sin Título'}</h4>
+                                        <div className="text-truncate min-w-0">
+                                            <h5 className="fw-bold mb-0 text-truncate text-primary">{selectedOt.titulo || 'Sin Título'}</h5>
 
-                                            <div className="text-dark fw-bold small d-flex flex-wrap align-items-center mt-1 gap-2">
-                                                <span><i className="bi bi-gear-wide-connected me-1"></i> {selectedOt.activo}</span>
+                                            <div className="text-dark fw-bold small d-flex flex-wrap align-items-center mt-1 gap-1 gap-sm-2">
+                                                <span className="text-truncate"><i className="bi bi-gear-wide-connected me-1"></i>{selectedOt.activo}</span>
                                                 {selectedOt.sub_activo_nombre && (
-                                                    <span className="text-primary bg-primary bg-opacity-10 px-2 py-1 rounded">
-                                                        <i className="bi bi-diagram-3-fill me-1"></i> ↳ {selectedOt.sub_activo_nombre}
+                                                    <span className="text-primary bg-primary bg-opacity-10 px-1 px-sm-2 py-1 rounded d-none d-sm-inline">
+                                                        <i className="bi bi-diagram-3-fill me-1"></i>↳ {selectedOt.sub_activo_nombre}
                                                     </span>
                                                 )}
-                                                <span className="text-muted"><i className="bi bi-upc-scan me-1"></i> {selectedOt.codigo_interno}</span>
+                                                <span className="text-muted d-none d-sm-inline"><i className="bi bi-upc-scan me-1"></i>{selectedOt.codigo_interno}</span>
                                             </div>
-                                            <div className="text-muted small mt-1">
-                                                <i className="bi bi-person-fill me-1"></i> Solicita: {selectedOt.solicitante_nombre} {selectedOt.solicitante_apellido}
+                                            <div className="text-muted small mt-1 d-none d-sm-block">
+                                                <i className="bi bi-person-fill me-1"></i>Solicita: {selectedOt.solicitante_nombre} {selectedOt.solicitante_apellido}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="ps-3 d-flex gap-2">
+                                    <div className="d-flex gap-2 flex-shrink-0">
                                         {loadingDetalle ? (
                                             <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
                                         ) : isReadOnly ? (
-                                            <div className="alert alert-success m-0 py-2 px-3 fw-bold shadow-sm d-flex align-items-center" style={{ fontSize: '0.85rem' }}>
-                                                <i className="bi bi-check-circle-fill me-2 fs-5"></i> ¡Ya entregaste tu parte!
+                                            <div className="alert alert-success m-0 py-1 py-sm-2 px-2 px-sm-3 fw-bold shadow-sm d-flex align-items-center" style={{ fontSize: '0.75rem' }}>
+                                                <i className="bi bi-check-circle-fill me-1 me-sm-2 fs-5"></i>
+                                                <span className="d-none d-sm-inline">¡Ya entregaste tu parte!</span>
+                                                <span className="d-sm-none">Entregado</span>
                                             </div>
                                         ) : (
                                             <>
                                                 <button
-                                                    className="btn btn-outline-primary fw-bold px-3 shadow-sm d-flex align-items-center"
+                                                    className="btn btn-outline-primary fw-bold px-2 px-sm-3 shadow-sm d-flex align-items-center"
                                                     onClick={() => iniciarGuardado(false)}
                                                     disabled={guardando}
                                                 >
-                                                    {guardando ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-save-fill me-1 me-sm-2"></i>}
+                                                    {guardando ? <span className="spinner-border spinner-border-sm me-1 me-sm-2"></span> : <i className="bi bi-save-fill me-1 me-sm-2"></i>}
                                                     <span className="d-none d-sm-inline">Guardar Avance</span>
                                                 </button>
                                                 <button
-                                                    className="btn btn-success fw-bold px-3 px-sm-4 shadow d-flex align-items-center"
+                                                    className="btn btn-success fw-bold px-2 px-sm-4 shadow d-flex align-items-center"
                                                     onClick={() => iniciarGuardado(true)}
                                                     disabled={guardando}
                                                 >
@@ -771,25 +801,28 @@ const MisMantenciones = () => {
                                 )}
 
                                 <div className="px-3 px-md-4 mt-2 mb-2">
-                                    <ul className="nav nav-pills nav-fill gap-2 p-1 bg-light rounded-pill" role="tablist" style={{ maxWidth: '600px' }}>
+                                    <ul className="nav nav-pills nav-fill gap-1 gap-sm-2 p-1 bg-light rounded-pill w-100" role="tablist">
                                         <li className="nav-item">
                                             <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 ${activeTab === 'info' ? 'active shadow-sm' : 'text-muted'}`}
                                                 onClick={() => setActiveTab('info')}>
-                                                <i className="bi bi-info-circle me-2 fs-5"></i>Info. Solicitud
+                                                <i className="bi bi-info-circle fs-5"></i>
+                                                <span className="d-none d-sm-inline ms-2">Info. Solicitud</span>
                                             </button>
                                         </li>
                                         <li className="nav-item">
                                             <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 ${activeTab === 'checklist' ? 'active shadow-sm' : 'text-muted'}`}
                                                 onClick={() => setActiveTab('checklist')}>
-                                                <i className="bi bi-list-check me-2 fs-5"></i>Avance / Cierre
+                                                <i className="bi bi-list-check fs-5"></i>
+                                                <span className="d-none d-sm-inline ms-2">Avance / Cierre</span>
                                             </button>
                                         </li>
                                         <li className="nav-item">
                                             <button className={`nav-link rounded-pill fw-bold d-flex align-items-center justify-content-center py-2 position-relative ${activeTab === 'materiales' ? 'active shadow-sm' : 'text-muted'}`}
                                                 onClick={() => setActiveTab('materiales')}>
-                                                <i className="bi bi-tools me-2 fs-5"></i>Materiales
+                                                <i className="bi bi-tools fs-5"></i>
+                                                <span className="d-none d-sm-inline ms-2">Materiales</span>
                                                 {detallesOt.insumos.length > 0 &&
-                                                    <span className="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle border border-light">{detallesOt.insumos.length}</span>
+                                                    <span className="badge rounded-pill bg-danger position-absolute top-0 end-0 translate-middle-y border border-light" style={{ fontSize: '0.6rem' }}>{detallesOt.insumos.length}</span>
                                                 }
                                             </button>
                                         </li>
