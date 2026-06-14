@@ -114,7 +114,7 @@ const Mantencion = () => {
 
     const cargarListaInsumos = async () => {
         try {
-            const res = await api.get('/index.php/compras/filtros');
+            const res = await api.get('/index.php/mantencion/insumos');
             if (res.data.success) setListaInsumos(res.data.data);
         } catch (e) { console.error(e); }
     };

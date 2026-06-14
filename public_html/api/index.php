@@ -209,6 +209,14 @@ try {
             }
             break;
 
+        // Catálogo de insumos accesible para usuarios de mantenimiento
+        case 'mantencion/insumos':
+            if ($method === 'GET') {
+                AuthMiddleware::hasPermission('mant_ver');
+                (new MantencionController())->insumosParaOT();
+            }
+            break;
+
         // --- MANTENCIÓN ---
         case 'mantencion':
             $c = new MantencionController();
@@ -508,14 +516,16 @@ try {
 
         // --- USUARIOS ---
         case 'usuarios':
-            AuthMiddleware::hasPermission('ver_usuarios');
-            $c = new UsuariosController();
-            if ($method === 'GET')
-                $c->index();
-            elseif ($method === 'POST')
-                $c->store();
-            elseif ($method === 'PUT')
-                $c->update();
+            if ($method === 'GET') {
+                AuthMiddleware::hasPermission('ver_usuarios');
+                (new UsuariosController())->index();
+            } elseif ($method === 'POST') {
+                AuthMiddleware::verify(['Admin']);
+                (new UsuariosController())->store();
+            } elseif ($method === 'PUT') {
+                AuthMiddleware::verify(['Admin']);
+                (new UsuariosController())->update();
+            }
             break;
 
         case 'usuarios/roles':

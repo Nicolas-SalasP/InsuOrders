@@ -5,6 +5,7 @@ use App\Utils\ErrorHelper;
 use App\Services\MantencionService;
 use App\Services\PDFService;
 use App\Middleware\AuthMiddleware;
+use App\Database\Database;
 use Exception;
 
 class MantencionController
@@ -14,6 +15,19 @@ class MantencionController
     public function __construct()
     {
         $this->service = new MantencionService();
+    }
+
+    // Catálogo liviano de insumos para usuarios de mantenimiento (crear/editar OTs)
+    public function insumosParaOT()
+    {
+        try {
+            $db = Database::getConnection();
+            $stmt = $db->query("SELECT id, nombre, codigo_sku, unidad_medida, stock_actual FROM insumos WHERE deleted_at IS NULL ORDER BY nombre ASC");
+            echo json_encode(["success" => true, "data" => $stmt->fetchAll(\PDO::FETCH_ASSOC)]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
+        }
     }
 
     // =================================================================================
@@ -36,7 +50,8 @@ class MantencionController
         $userId = AuthMiddleware::getCurrentUserId() ?: 0;
         $rol = AuthMiddleware::getUser()->rol ?? '';
 
-        if ($rol !== 'Admin') {
+        $tieneMantVer = AuthMiddleware::checkPermissionSilently('mant_ver');
+        if ($rol !== 'Admin' && !$tieneMantVer) {
             if (!$this->service->getRepo()->isUserAssignedToOT((int)$id, (int)$userId)) {
                 http_response_code(403);
                 echo json_encode(["success" => false, "message" => "Acceso denegado."]);

@@ -112,7 +112,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             setLoading(true);
             const [resActivos, resInsumos, resCC, resPersonal, resPermisos] = await Promise.all([
                 api.get('/index.php/mantencion/activos'),
-                api.get('/index.php/inventario'),
+                api.get('/index.php/mantencion/insumos'),
                 api.get('/index.php/mantencion/centros-costo'),
                 api.get('/index.php/personal'),
                 api.get('/index.php/mantencion/tipos-permiso')
