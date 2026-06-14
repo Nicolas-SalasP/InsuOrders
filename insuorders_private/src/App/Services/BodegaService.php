@@ -41,12 +41,7 @@ class BodegaService
             throw new Exception("Cantidad inválida");
 
         if (!empty($data['empleado_id']) && empty($data['detalle_id'])) {
-            $db = Database::getConnection();
-            $stmtEmp = $db->prepare(
-                "SELECT id FROM empleados WHERE id = ? AND activo = 1"
-            );
-            $stmtEmp->execute([(int) $data['empleado_id']]);
-            if (!$stmtEmp->fetch())
+            if (!$this->operarioRepo->existeEmpleadoActivo((int) $data['empleado_id']))
                 throw new Exception("El empleado seleccionado no existe o está inactivo.");
 
             $datosEntrega = [
@@ -60,12 +55,10 @@ class BodegaService
             $this->operarioRepo->asignarInsumo($datosEntrega);
             return "Material entregado al empleado correctamente";
         } elseif (!empty($data['detalle_id']) && !empty($data['receptor_id'])) {
-            $db = Database::getConnection();
-            $stmtRec = $db->prepare("SELECT id FROM empleados WHERE id = ? AND activo = 1");
-            $stmtRec->execute([(int) $data['receptor_id']]);
-            if (!$stmtRec->fetch())
+            if (!$this->operarioRepo->existeEmpleadoActivo((int) $data['receptor_id']))
                 throw new Exception("El receptor seleccionado no existe o está inactivo.");
 
+            $db = Database::getConnection();
             $this->mantencionRepo->entregarMaterial((int) $data['detalle_id'], (int) $usuarioId, (float) $cantidad, (int) $data['receptor_id']);
             $stmt = $db->prepare("SELECT insumo_id, solicitud_id FROM detalle_solicitud WHERE id = ?");
             $stmt->execute([$data['detalle_id']]);

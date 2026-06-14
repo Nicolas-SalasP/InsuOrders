@@ -14,6 +14,13 @@ class OperarioRepository
         $this->db = Database::getConnection();
     }
 
+    public function existeEmpleadoActivo(int $id): bool
+    {
+        $stmt = $this->db->prepare("SELECT id FROM empleados WHERE id = ? AND activo = 1");
+        $stmt->execute([$id]);
+        return (bool) $stmt->fetch();
+    }
+
     public function asignarInsumo($datos)
     {
         try {

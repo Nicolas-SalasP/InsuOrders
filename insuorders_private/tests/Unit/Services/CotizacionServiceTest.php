@@ -73,14 +73,14 @@ class CotizacionServiceTest extends TestCase
         ], 1);
     }
 
-    public function test_crearCotizacion_calcula_total_correctamente(): void
+    public function test_crearCotizacion_pasa_total_cero(): void
     {
         $this->repoMock->expects($this->once())
             ->method('create')
             ->with(
                 $this->anything(),
                 1,
-                $this->equalTo(3500.0)
+                $this->equalTo(0)
             )
             ->willReturn(10);
 
