@@ -12,6 +12,7 @@ const ModalEntregaBodega = ({ show, onClose, onConfirm, item }) => {
     const wrapperRef = useRef(null);
     const [loading, setLoading] = useState(false);
     const [msgModal, setMsgModal] = useState({ show: false, title: '', message: '', type: 'info' });
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
     useEffect(() => {
         if (show && item) {
@@ -87,10 +88,10 @@ const ModalEntregaBodega = ({ show, onClose, onConfirm, item }) => {
                                         <>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                                                <input type="text" className="form-control" placeholder="Buscar empleado..." value={busqueda} onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }} onFocus={() => setMostrarLista(true)} />
+                                                <input type="text" className="form-control" placeholder="Buscar empleado..." value={busqueda} onChange={e => { setBusqueda(e.target.value); setMostrarLista(true); }} onFocus={() => { if (wrapperRef.current) { const r = wrapperRef.current.getBoundingClientRect(); setDropdownPos({ top: r.bottom, left: r.left, width: r.width }); } setMostrarLista(true); }} />
                                             </div>
                                             {mostrarLista && (
-                                                <ul className="list-group position-absolute w-100 shadow mt-1 bg-white" style={{ zIndex: 1050, maxHeight: '200px', overflowY: 'auto' }}>
+                                                <ul className="list-group shadow bg-white" style={{ position: 'fixed', top: dropdownPos.top + 4, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, maxHeight: '220px', overflowY: 'auto' }}>
                                                     {personalFiltrado.map(p => (
                                                         <li key={p.id} className="list-group-item list-group-item-action cursor-pointer" onClick={() => handleSeleccionarPersonal(p)}>
                                                             <div className="fw-bold">{p.nombre_completo}</div><small className="text-muted">{p.rut}</small>
