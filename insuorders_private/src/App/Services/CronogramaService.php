@@ -269,4 +269,9 @@ class CronogramaService
     {
         $this->repo->syncByOT($otId, $otData);
     }
+
+    public function obtenerResumen(string $mes): array
+    {
+        return $this->repo->getResumen($mes);
+    }
 }

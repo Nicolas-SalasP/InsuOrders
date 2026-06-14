@@ -66,9 +66,9 @@ export default function CalendarioCronograma({ events, onDayClick, onEventClick 
       {/* ── Cabecera ── */}
       <div className="card-header bg-white border-bottom px-3 px-md-4 pt-3 pb-0">
         <div className="d-flex align-items-center justify-content-between mb-3">
-          <h6 className="fw-bold text-dark mb-0 text-capitalize fs-6">
+          <h5 className="fw-bold text-dark mb-0 text-capitalize">
             {MESES[month]} {year}
-          </h6>
+          </h5>
           <div className="d-flex align-items-center gap-1">
             <button
               className="btn btn-sm btn-light rounded-circle lh-1 p-0 d-flex align-items-center justify-content-center"
@@ -121,7 +121,7 @@ export default function CalendarioCronograma({ events, onDayClick, onEventClick 
             const dayEvts = byDate[dateStr] || [];
 
             const cellBase = {
-              minHeight: 72,
+              minHeight: 100,
               cursor: 'pointer',
               transition: 'background 0.15s',
             };

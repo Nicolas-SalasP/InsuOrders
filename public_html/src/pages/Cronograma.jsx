@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import CalendarioCronograma from '../components/CalendarioCronograma';
 import ModalAgendar from '../components/ModalAgendar';
 import axios from '../api/axiosConfig';
@@ -12,8 +12,36 @@ function toDateStr(d) {
   return `${y}-${m}-${day}`;
 }
 
+function getMesActual() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+const PRIORIDAD_COLOR = {
+  CRITICO: 'danger', CRÍTICO: 'danger',
+  URGENTE: 'warning',
+  ALTA: 'primary',
+  MEDIA: 'info',
+  BAJA: 'secondary',
+};
+
+const ESTADO_COLOR = {
+  Pendiente: 'warning',
+  'En Proceso': 'primary',
+  Pausada: 'secondary',
+  Completada: 'success',
+  Cancelada: 'danger',
+};
+
+const MESES_ES = [
+  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
+];
+
 const Cronograma = () => {
   const [events, setEvents] = useState([]);
+  const [resumen, setResumen] = useState(null);
+  const [loadingResumen, setLoadingResumen] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -21,30 +49,39 @@ const Cronograma = () => {
   const [isReadOnly, setIsReadOnly] = useState(false);
   const { can } = usePermission();
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
       const response = await axios.get('/index.php/cronograma');
       if (response.data.success) {
-        const formattedEvents = response.data.data.map(evt => ({
+        setEvents(response.data.data.map(evt => ({
           id: evt.id,
           title: evt.titulo,
           start: evt.fecha_programada,
           backgroundColor: evt.color || (evt.tipo_evento === 'COMPRA' ? '#198754' : '#0d6efd'),
-          extendedProps: {
-            ...evt,
-            estado: evt.estado || 'PENDIENTE',
-          },
-        }));
-        setEvents(formattedEvents);
+          extendedProps: { ...evt, estado: evt.estado || 'PENDIENTE' },
+        })));
       }
     } catch (error) {
       console.error('Error cargando eventos', error);
     }
-  };
+  }, []);
+
+  const fetchResumen = useCallback(async () => {
+    setLoadingResumen(true);
+    try {
+      const { data } = await axios.get(`/index.php/cronograma/resumen?mes=${getMesActual()}`);
+      if (data.success) setResumen(data.data);
+    } catch {
+      // silencioso — resumen no crítico
+    } finally {
+      setLoadingResumen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEvents();
+    fetchResumen();
+  }, [fetchEvents, fetchResumen]);
 
   const handleDayClick = async (date) => {
     const fechaSeleccionada = toDateStr(date);
@@ -117,16 +154,25 @@ const Cronograma = () => {
     const esFinalizada = props.ot_estado == 5 || props.ot_estado == 6;
     const sinPermisoMant = props.tipo_evento === 'MANTENCION' && !can('cron_mant_editar');
     const sinPermisoComp = props.tipo_evento === 'COMPRA' && !can('cron_compra_editar');
-    const soloLectura = sinPermisoMant || sinPermisoComp || esPasado || esFinalizada;
 
     setSelectedEvent(props);
     setModoModal(props.tipo_evento);
-    setIsReadOnly(soloLectura);
+    setIsReadOnly(sinPermisoMant || sinPermisoComp || esPasado || esFinalizada);
     setShowModal(true);
   };
 
+  // ── Totales para stat cards ──────────────────────────────────────────────
+  const totalMes = resumen?.stats?.reduce((s, r) => s + Number(r.total), 0) ?? 0;
+  const totalPendientes = resumen?.pendientes?.length ?? 0;
+
+  const mesLabel = (() => {
+    const now = new Date();
+    return `${MESES_ES[now.getMonth()]} ${now.getFullYear()}`;
+  })();
+
   return (
     <div className="container-fluid py-4 fade-in">
+      {/* ── Cabecera ── */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
         <div>
           <h3 className="fw-bold text-dark mb-1">
@@ -135,7 +181,6 @@ const Cronograma = () => {
           </h3>
           <p className="text-muted mb-0 small">Gestión unificada de activos y abastecimiento.</p>
         </div>
-
         <div className="d-flex gap-2 mt-3 mt-md-0">
           <span className="badge rounded-pill bg-primary bg-opacity-10 text-primary px-3 py-2 border border-primary border-opacity-25">
             <i className="bi bi-tools me-2"></i> Mantenciones
@@ -146,17 +191,167 @@ const Cronograma = () => {
         </div>
       </div>
 
+      {/* ── Calendario ── */}
       <CalendarioCronograma
         events={events}
         onDayClick={handleDayClick}
         onEventClick={handleEventClick}
       />
 
+      {/* ── Panel resumen ── */}
+      {!loadingResumen && resumen && (
+        <div className="row g-3 mt-2">
+
+          {/* Stat cards */}
+          <div className="col-12">
+            <div className="row g-3">
+              <div className="col-6 col-md-3">
+                <div className="card border-0 shadow-sm rounded-4 h-100">
+                  <div className="card-body d-flex align-items-center gap-3 py-3">
+                    <div className="bg-primary bg-opacity-10 rounded-3 p-2 flex-shrink-0">
+                      <i className="bi bi-calendar3 text-primary fs-5"></i>
+                    </div>
+                    <div>
+                      <div className="fw-bold fs-4 lh-1 text-dark">{totalMes}</div>
+                      <div className="text-muted small">OTs en {mesLabel}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {resumen.stats.map(s => (
+                <div key={s.estado_id} className="col-6 col-md-3">
+                  <div className="card border-0 shadow-sm rounded-4 h-100">
+                    <div className="card-body d-flex align-items-center gap-3 py-3">
+                      <div className={`bg-${ESTADO_COLOR[s.estado] ?? 'secondary'} bg-opacity-10 rounded-3 p-2 flex-shrink-0`}>
+                        <i className={`bi bi-circle-fill text-${ESTADO_COLOR[s.estado] ?? 'secondary'} fs-5`}></i>
+                      </div>
+                      <div>
+                        <div className="fw-bold fs-4 lh-1 text-dark">{s.total}</div>
+                        <div className="text-muted small">{s.estado}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Últimas OTs pendientes */}
+          {resumen.pendientes?.length > 0 && (
+            <div className="col-12">
+              <div className="card border-0 shadow-sm rounded-4">
+                <div className="card-header bg-white border-0 px-4 pt-4 pb-2 d-flex align-items-center justify-content-between">
+                  <div>
+                    <h6 className="fw-bold mb-0">
+                      <i className="bi bi-hourglass-split text-warning me-2"></i>
+                      OTs Pendientes
+                    </h6>
+                    <p className="text-muted small mb-0">{totalPendientes} órdenes activas ordenadas por prioridad</p>
+                  </div>
+                </div>
+                <div className="card-body p-0">
+                  <div className="table-responsive">
+                    <table className="table table-hover align-middle mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th className="ps-4 py-2 fw-semibold text-muted small border-0" style={{ width: 60 }}>#OT</th>
+                          <th className="py-2 fw-semibold text-muted small border-0">Título</th>
+                          <th className="py-2 fw-semibold text-muted small border-0 d-none d-md-table-cell">Activo</th>
+                          <th className="py-2 fw-semibold text-muted small border-0 d-none d-lg-table-cell">Asignado a</th>
+                          <th className="py-2 fw-semibold text-muted small border-0">Estado</th>
+                          <th className="py-2 fw-semibold text-muted small border-0">Prioridad</th>
+                          <th className="pe-4 py-2 fw-semibold text-muted small border-0 d-none d-md-table-cell">Fecha req.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {resumen.pendientes.map(ot => {
+                          const prioColor = PRIORIDAD_COLOR[ot.prioridad?.toUpperCase()] ?? 'secondary';
+                          const estColor = ESTADO_COLOR[ot.estado] ?? 'secondary';
+                          const vencida = ot.fecha_requerida && ot.fecha_requerida < toDateStr(new Date());
+                          return (
+                            <tr key={ot.id}>
+                              <td className="ps-4 py-3">
+                                <span className="badge bg-light text-dark border fw-normal font-monospace">
+                                  #{ot.id}
+                                </span>
+                              </td>
+                              <td className="py-3">
+                                <div className="fw-semibold text-dark" style={{ maxWidth: 260 }}>
+                                  {ot.titulo}
+                                </div>
+                              </td>
+                              <td className="py-3 d-none d-md-table-cell">
+                                <span className="text-muted small">{ot.activo}</span>
+                                {ot.activo_codigo !== 'N/A' && (
+                                  <span className="d-block text-muted" style={{ fontSize: '0.7rem' }}>
+                                    {ot.activo_codigo}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 d-none d-lg-table-cell">
+                                <span className="text-muted small">
+                                  {ot.asignados || <em className="text-muted">Sin asignar</em>}
+                                </span>
+                              </td>
+                              <td className="py-3">
+                                <span className={`badge rounded-pill bg-${estColor} bg-opacity-10 text-${estColor} border border-${estColor} border-opacity-25`}
+                                  style={{ fontSize: '0.72rem' }}>
+                                  {ot.estado}
+                                </span>
+                              </td>
+                              <td className="py-3">
+                                <span className={`badge rounded-pill bg-${prioColor} bg-opacity-10 text-${prioColor} border border-${prioColor} border-opacity-25`}
+                                  style={{ fontSize: '0.72rem' }}>
+                                  {ot.prioridad || 'Media'}
+                                </span>
+                              </td>
+                              <td className="pe-4 py-3 d-none d-md-table-cell">
+                                {ot.fecha_requerida ? (
+                                  <span className={`small ${vencida ? 'text-danger fw-semibold' : 'text-muted'}`}>
+                                    {vencida && <i className="bi bi-exclamation-triangle-fill me-1"></i>}
+                                    {new Date(ot.fecha_requerida + 'T00:00:00').toLocaleDateString('es-CL')}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted small">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Skeleton mientras carga */}
+      {loadingResumen && (
+        <div className="row g-3 mt-2">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="col-6 col-md-3">
+              <div className="card border-0 shadow-sm rounded-4">
+                <div className="card-body py-3">
+                  <div className="placeholder-glow">
+                    <span className="placeholder col-8 rounded"></span>
+                    <span className="placeholder col-5 rounded mt-1"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {showModal && (
         <ModalAgendar
           show={showModal}
           onClose={() => { setShowModal(false); setSelectedEvent(null); setIsReadOnly(false); }}
-          onSave={() => { fetchEvents(); setShowModal(false); setSelectedEvent(null); setIsReadOnly(false); }}
+          onSave={() => { fetchEvents(); fetchResumen(); setShowModal(false); setSelectedEvent(null); setIsReadOnly(false); }}
           initialDate={selectedDate}
           eventData={selectedEvent}
           mode={modoModal}

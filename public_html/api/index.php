@@ -182,6 +182,11 @@ try {
             break;
 
         // --- CRONOGRAMA ---
+        case 'cronograma/resumen':
+            if ($method === 'GET')
+                (new CronogramaController())->resumen();
+            break;
+
         case 'cronograma':
             AuthMiddleware::hasPermission('cron_ver');
 

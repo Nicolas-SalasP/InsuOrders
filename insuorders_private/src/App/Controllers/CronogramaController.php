@@ -118,4 +118,21 @@ class CronogramaController
 
         echo json_encode(["success" => !!$data, "data" => $data]);
     }
+
+    public function resumen()
+    {
+        AuthMiddleware::hasPermission('cron_ver');
+        $mes = $_GET['mes'] ?? date('Y-m');
+        if (!preg_match('/^\d{4}-\d{2}$/', $mes)) {
+            http_response_code(400);
+            echo json_encode(["error" => "Parámetro mes inválido."]);
+            return;
+        }
+        try {
+            echo json_encode(["success" => true, "data" => $this->service->obtenerResumen($mes)]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(["error" => ErrorHelper::safeMessage($e)]);
+        }
+    }
 }
