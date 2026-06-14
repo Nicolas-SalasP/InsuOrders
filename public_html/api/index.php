@@ -2,6 +2,7 @@
 
 $allowed_origins = [
     'http://localhost:5173',
+    'http://localhost:5174',
     //'https://tu-dominio-produccion.com' // IP Insuban
 ];
 
