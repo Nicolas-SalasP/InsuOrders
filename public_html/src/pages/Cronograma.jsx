@@ -12,9 +12,8 @@ function toDateStr(d) {
   return `${y}-${m}-${day}`;
 }
 
-function getMesActual() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+function dateToMes(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 const PRIORIDAD_COLOR = {
@@ -39,6 +38,8 @@ const MESES_ES = [
 ];
 
 const Cronograma = () => {
+  const today = new Date();
+  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [events, setEvents] = useState([]);
   const [resumen, setResumen] = useState(null);
   const [loadingResumen, setLoadingResumen] = useState(true);
@@ -66,10 +67,10 @@ const Cronograma = () => {
     }
   }, []);
 
-  const fetchResumen = useCallback(async () => {
+  const fetchResumen = useCallback(async (mes) => {
     setLoadingResumen(true);
     try {
-      const { data } = await axios.get(`/index.php/cronograma/resumen?mes=${getMesActual()}`);
+      const { data } = await axios.get(`/index.php/cronograma/resumen?mes=${mes}`);
       if (data.success) setResumen(data.data);
     } catch {
       // silencioso — resumen no crítico
@@ -80,8 +81,11 @@ const Cronograma = () => {
 
   useEffect(() => {
     fetchEvents();
-    fetchResumen();
-  }, [fetchEvents, fetchResumen]);
+  }, [fetchEvents]);
+
+  useEffect(() => {
+    fetchResumen(dateToMes(viewDate));
+  }, [viewDate, fetchResumen]);
 
   const handleDayClick = async (date) => {
     const fechaSeleccionada = toDateStr(date);
@@ -165,10 +169,7 @@ const Cronograma = () => {
   const totalMes = resumen?.stats?.reduce((s, r) => s + Number(r.total), 0) ?? 0;
   const totalPendientes = resumen?.pendientes?.length ?? 0;
 
-  const mesLabel = (() => {
-    const now = new Date();
-    return `${MESES_ES[now.getMonth()]} ${now.getFullYear()}`;
-  })();
+  const mesLabel = `${MESES_ES[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
 
   return (
     <div className="container-fluid py-4 fade-in">
@@ -196,6 +197,8 @@ const Cronograma = () => {
         events={events}
         onDayClick={handleDayClick}
         onEventClick={handleEventClick}
+        viewDate={viewDate}
+        onViewDateChange={setViewDate}
       />
 
       {/* ── Panel resumen ── */}
@@ -351,7 +354,7 @@ const Cronograma = () => {
         <ModalAgendar
           show={showModal}
           onClose={() => { setShowModal(false); setSelectedEvent(null); setIsReadOnly(false); }}
-          onSave={() => { fetchEvents(); fetchResumen(); setShowModal(false); setSelectedEvent(null); setIsReadOnly(false); }}
+          onSave={() => { fetchEvents(); fetchResumen(dateToMes(viewDate)); setShowModal(false); setSelectedEvent(null); setIsReadOnly(false); }}
           initialDate={selectedDate}
           eventData={selectedEvent}
           mode={modoModal}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -36,11 +36,8 @@ function buildGrid(year, month) {
 
 const MAX_VISIBLE = 3;
 
-export default function CalendarioCronograma({ events, onDayClick, onEventClick }) {
+export default function CalendarioCronograma({ events, onDayClick, onEventClick, viewDate, onViewDateChange }) {
   const today = new Date();
-  const [viewDate, setViewDate] = useState(
-    new Date(today.getFullYear(), today.getMonth(), 1)
-  );
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -57,9 +54,9 @@ export default function CalendarioCronograma({ events, onDayClick, onEventClick 
     return map;
   }, [events]);
 
-  const prev = () => setViewDate(new Date(year, month - 1, 1));
-  const next = () => setViewDate(new Date(year, month + 1, 1));
-  const goToday = () => setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  const prev = () => onViewDateChange(new Date(year, month - 1, 1));
+  const next = () => onViewDateChange(new Date(year, month + 1, 1));
+  const goToday = () => onViewDateChange(new Date(today.getFullYear(), today.getMonth(), 1));
 
   return (
     <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
