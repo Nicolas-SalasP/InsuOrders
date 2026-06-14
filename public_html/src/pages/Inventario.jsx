@@ -139,7 +139,7 @@ const Inventario = () => {
         if (filtroUbicacion) {
             const ubiObj = listas.ubicaciones.find(u => u.id.toString() === filtroUbicacion);
             if (ubiObj) {
-                const nombreUbi = ubiObj.nombre.toLowerCase();
+                const nombreUbi = `${ubiObj.sector_nombre || 'General'} - ${ubiObj.nombre}`.toLowerCase();
                 const stringUbicaciones = (i.ubicaciones_multiples || i.ubicacion_defecto || '').toLowerCase();
                 matchUbi = stringUbicaciones.includes(nombreUbi);
             }
