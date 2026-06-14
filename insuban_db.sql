@@ -5167,9 +5167,10 @@ INSERT INTO `tipos_devolucion` (`codigo`, `nombre`, `descripcion`, `reintegra_st
 ('RECHAZO_DANIO',  'Rechazo por Daño',            'El técnico recibió el producto pero está dañado. No vuelve al stock disponible.',     0, 0),
 ('RECHAZO_NO_REC', 'Rechazo por No Recibido',     'El técnico nunca recibió el producto físicamente. Se reintegra el stock de inmediato.', 1, 0);
 
--- Agregar columna tipo_devolucion_id a devoluciones_pendientes si no existe
+-- Agregar columnas faltantes a devoluciones_pendientes
 ALTER TABLE `devoluciones_pendientes`
-  ADD COLUMN IF NOT EXISTS `tipo_devolucion_id` int(11) DEFAULT 1;
+  ADD COLUMN IF NOT EXISTS `tipo_devolucion_id` int(11) DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS `comentario_tecnico` text DEFAULT NULL;
 
 COMMIT;
 

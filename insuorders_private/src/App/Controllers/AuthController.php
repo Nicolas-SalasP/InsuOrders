@@ -215,10 +215,10 @@ class AuthController
             $permisos = $stmt->fetchAll(\PDO::FETCH_COLUMN);
 
             $stmtUser = $this->db->prepare("
-                SELECT u.nombre, r.nombre as rol_nombre 
+                SELECT u.nombre, r.nombre as rol_nombre
                 FROM usuarios u
                 JOIN roles r ON u.rol_id = r.id
-                WHERE u.id = :uid
+                WHERE u.id = :uid AND u.activo = 1
             ");
             $stmtUser->execute([':uid' => $userId]);
             $userData = $stmtUser->fetch(\PDO::FETCH_ASSOC);
