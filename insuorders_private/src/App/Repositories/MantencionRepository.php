@@ -398,8 +398,16 @@ class MantencionRepository
                 COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0) AS costo_unitario_snapshot,
                 (d.cantidad_entregada * COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0)) AS costo_total_linea,
                 oc.id as oc_id, prov.nombre as oc_proveedor,
-                (SELECT GROUP_CONCAT(DISTINCT COALESCE(emp.nombre_completo, NULLIF(TRIM(CONCAT(COALESCE(u.nombre,''), ' ', COALESCE(u.apellido,''))), '')) SEPARATOR ', ') FROM movimientos_inventario mi LEFT JOIN empleados emp ON mi.empleado_id = emp.id LEFT JOIN usuarios u ON mi.usuario_id = u.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por,
-                (SELECT DATE_FORMAT(mi.fecha, '%d/%m/%Y %H:%i') FROM movimientos_inventario mi WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2 ORDER BY mi.fecha ASC LIMIT 1) as fecha_retiro,
+                COALESCE(
+                    (SELECT NULLIF(GROUP_CONCAT(DISTINCT NULLIF(COALESCE(NULLIF(emp.nombre_completo,''), NULLIF(TRIM(CONCAT(COALESCE(u.nombre,''), ' ', COALESCE(u.apellido,''))), '')), '') SEPARATOR ', '), '')
+                     FROM movimientos_inventario mi LEFT JOIN empleados emp ON mi.empleado_id = emp.id LEFT JOIN usuarios u ON mi.usuario_id = u.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2),
+                    (SELECT NULLIF(COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u_op.nombre,''), ' ', COALESCE(u_op.apellido,''))), ''), ep.receptor_externo), '')
+                     FROM entregas_personal ep LEFT JOIN usuarios u_op ON ep.usuario_operario_id = u_op.id WHERE ep.insumo_id = d.insumo_id AND ep.referencia_ot_id = d.solicitud_id ORDER BY ep.fecha_entrega DESC LIMIT 1)
+                ) as retirado_por,
+                COALESCE(
+                    (SELECT DATE_FORMAT(mi.fecha, '%d/%m/%Y %H:%i') FROM movimientos_inventario mi WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2 ORDER BY mi.fecha ASC LIMIT 1),
+                    (SELECT DATE_FORMAT(ep.fecha_entrega, '%d/%m/%Y %H:%i') FROM entregas_personal ep WHERE ep.insumo_id = d.insumo_id AND ep.referencia_ot_id = d.solicitud_id ORDER BY ep.fecha_entrega ASC LIMIT 1)
+                ) as fecha_retiro,
                 COALESCE((
                     SELECT SUM(ep.cantidad_entregada - ep.cantidad_utilizada)
                     FROM entregas_personal ep
