@@ -1,5 +1,18 @@
 import axios from 'axios';
-const baseURL = '/api';
+
+// import.meta.env.BASE_URL es la 'base' definida en vite.config.js ('/insuorders/').
+// En desarrollo es '/', en produccion es '/insuorders/'.
+// Asi la API queda en /insuorders/api sin hardcodear nada.
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, ''); // quita el slash final
+const baseURL = `${BASE}/api`;
+
+// Helper para construir URLs de archivos subidos (imagenes, videos, evidencias).
+// Usar en lugar de `/api${url}` -> apiUrl(url)
+export const apiUrl = (path) => {
+    if (!path) return '';
+    const clean = path.startsWith('/') ? path : `/${path}`;
+    return `${baseURL}${clean}`;
+};
 
 export const parseBlobError = async (error) => {
     const data = error?.response?.data
@@ -35,7 +48,7 @@ api.interceptors.response.use(
             if (!isLoginRequest && !isAuthMeRequest) {
                 console.warn("Sesión expirada. Redirigiendo al login...");
                 localStorage.removeItem("insuorders_user");
-                window.location.href = "/login";
+                window.location.href = `${BASE}/login`;
             }
         }
         return Promise.reject(error);

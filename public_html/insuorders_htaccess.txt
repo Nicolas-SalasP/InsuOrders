@@ -1,0 +1,26 @@
+# ============================================================
+# .htaccess de la SPA  ->  /home/prodinwe/public_html/insuorders/.htaccess
+# ============================================================
+# Sirve la app React desde el subdirectorio /insuorders.
+# - Las peticiones a /insuorders/api/* van al handler PHP.
+# - Todo lo demas (rutas internas del router) cae en index.html.
+# ============================================================
+
+<IfModule mod_rewrite.c>
+    Options -MultiViews
+    RewriteEngine On
+    RewriteBase /insuorders/
+
+    # Pasar el header Authorization (para JWT)
+    RewriteCond %{HTTP:Authorization} ^(.*)
+    RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+
+    # La API tiene su propio .htaccess en /insuorders/api/, no la tocamos aqui.
+    # Si el archivo o carpeta existe fisicamente, servirlo tal cual.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Cualquier otra ruta -> index.html (React Router se encarga)
+    RewriteRule ^ index.html [L]
+</IfModule>
