@@ -215,7 +215,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                     codigo_sku: d.codigo_sku,
                     stock_actual: parseFloat(d.stock_actual || 0),
                     unidad_medida: d.unidad_medida,
-                    cantidad: parseFloat(d.cantidad || 0),
+                    cantidad: parseFloat(d.estado_linea === 'ENTREGADO' ? (d.cantidad_entregada || d.cantidad || 0) : (d.cantidad || 0)),
                     oc_id: d.oc_id,
                     oc_proveedor: d.oc_proveedor,
                     estado_linea: d.estado_linea || 'PENDIENTE',
