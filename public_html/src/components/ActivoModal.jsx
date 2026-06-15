@@ -256,7 +256,7 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         if (!file || !activo || isReadOnly) return;
         const data = new FormData();
         data.append('activo_id', activo.id);
-        data.append('documento', file);
+        data.append('archivo', file);
         data.append('nombre_archivo', file.name);
 
         try {
