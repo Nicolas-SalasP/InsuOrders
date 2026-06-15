@@ -58,9 +58,13 @@ class MantencionRepository
             $sql .= " AND e.nombre = :est";
             $params[':est'] = $filters['estado'];
         }
-        if (!empty($filters['fecha'])) {
-            $sql .= " AND DATE(s.fecha_solicitud) = :fec";
-            $params[':fec'] = $filters['fecha'];
+        if (!empty($filters['fecha_desde'])) {
+            $sql .= " AND DATE(s.fecha_solicitud) >= :fec_desde";
+            $params[':fec_desde'] = $filters['fecha_desde'];
+        }
+        if (!empty($filters['fecha_hasta'])) {
+            $sql .= " AND DATE(s.fecha_solicitud) <= :fec_hasta";
+            $params[':fec_hasta'] = $filters['fecha_hasta'];
         }
         if (!empty($filters['insumo_id'])) {
             $sql .= " AND s.id IN (SELECT solicitud_id FROM detalle_solicitud WHERE insumo_id = :insumo)";

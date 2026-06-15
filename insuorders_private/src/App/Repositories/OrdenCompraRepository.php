@@ -415,7 +415,17 @@ class OrdenCompraRepository
                        FROM detalle_solicitud ds
                        JOIN solicitudes_ot sot ON ds.solicitud_id = sot.id
                       WHERE ds.orden_compra_id = oc.id AND ds.insumo_id = doc.insumo_id) AS ot_titulos,
-                    'No Registrado' as recepcionado_por
+                    COALESCE(
+                        (SELECT CONCAT(u.nombre, ' ', u.apellido)
+                         FROM movimientos_inventario mi
+                         JOIN usuarios u ON u.id = mi.usuario_id
+                         WHERE mi.insumo_id = doc.insumo_id
+                           AND mi.referencia_id = oc.id
+                           AND mi.tipo_movimiento_id = 1
+                         ORDER BY mi.id DESC
+                         LIMIT 1),
+                        'No Registrado'
+                    ) as recepcionado_por
                 FROM ordenes_compra oc
                 JOIN proveedores p ON oc.proveedor_id = p.id
                 JOIN detalle_orden_compra doc ON oc.id = doc.orden_compra_id

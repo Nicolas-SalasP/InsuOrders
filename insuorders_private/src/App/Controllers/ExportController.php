@@ -358,7 +358,10 @@ class ExportController
     {
         $sheet = $this->getSheet($s, $idx);
         $sheet->setTitle('Solicitudes OT');
-        $data = (new MantencionRepository())->getAll();
+        $filters = [];
+        if (!empty($_GET['fecha_desde'])) $filters['fecha_desde'] = $_GET['fecha_desde'];
+        if (!empty($_GET['fecha_hasta'])) $filters['fecha_hasta'] = $_GET['fecha_hasta'];
+        $data = (new MantencionRepository())->getAll($filters);
 
         $this->fillSheet(
             $sheet,
@@ -384,7 +387,10 @@ class ExportController
     {
         $sheet = $this->getSheet($s, $idx);
         $sheet->setTitle('Compras');
-        $data = (new OrdenCompraRepository())->getAll();
+        $filtros = [];
+        if (!empty($_GET['fecha_desde'])) $filtros['fecha_inicio'] = $_GET['fecha_desde'];
+        if (!empty($_GET['fecha_hasta'])) $filtros['fecha_fin'] = $_GET['fecha_hasta'];
+        $data = (new OrdenCompraRepository())->getAll($filtros);
 
         $this->fillSheet(
             $sheet,
