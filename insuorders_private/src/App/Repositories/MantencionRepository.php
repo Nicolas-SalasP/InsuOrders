@@ -38,8 +38,8 @@ class MantencionRepository
                 FROM solicitudes_ot s 
                 LEFT JOIN activos a ON s.activo_id = a.id 
                 LEFT JOIN activos sa ON s.sub_activo_id = sa.id
-                JOIN usuarios u ON s.usuario_solicitante_id = u.id 
-                JOIN estados_solicitud e ON s.estado_id = e.id 
+                LEFT JOIN usuarios u ON s.usuario_solicitante_id = u.id
+                LEFT JOIN estados_solicitud e ON s.estado_id = e.id
                 LEFT JOIN usuarios t ON s.asignado_a = t.id 
                 LEFT JOIN tipos_permiso_trabajo tpt ON s.tipo_permiso_id = tpt.id
                 WHERE 1=1";
@@ -398,7 +398,7 @@ class MantencionRepository
                 COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0) AS costo_unitario_snapshot,
                 (d.cantidad_entregada * COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0)) AS costo_total_linea,
                 oc.id as oc_id, prov.nombre as oc_proveedor,
-                (SELECT GROUP_CONCAT(DISTINCT COALESCE(emp.nombre_completo, CONCAT(u.nombre, ' ', COALESCE(u.apellido,''))) SEPARATOR ', ') FROM movimientos_inventario mi LEFT JOIN empleados emp ON mi.empleado_id = emp.id LEFT JOIN usuarios u ON mi.usuario_id = u.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por,
+                (SELECT GROUP_CONCAT(DISTINCT COALESCE(emp.nombre_completo, NULLIF(TRIM(CONCAT(COALESCE(u.nombre,''), ' ', COALESCE(u.apellido,''))), '')) SEPARATOR ', ') FROM movimientos_inventario mi LEFT JOIN empleados emp ON mi.empleado_id = emp.id LEFT JOIN usuarios u ON mi.usuario_id = u.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por,
                 (SELECT DATE_FORMAT(mi.fecha, '%d/%m/%Y %H:%i') FROM movimientos_inventario mi WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2 ORDER BY mi.fecha ASC LIMIT 1) as fecha_retiro,
                 COALESCE((
                     SELECT SUM(ep.cantidad_entregada - ep.cantidad_utilizada)
@@ -638,11 +638,11 @@ class MantencionRepository
             $pendientes = $stmtPend->fetchColumn();
 
             if ($pendientes == 0) {
-                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5, fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
                 $this->sincronizarEstadoActivoPorOT($otId);
                 return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
             } else {
-                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'En Proceso') WHERE id = :id")->execute([':id' => $otId]);
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 4 WHERE id = :id")->execute([':id' => $otId]);
                 $this->sincronizarEstadoActivoPorOT($otId);
                 return ['status' => 'partial', 'message' => 'Tarea registrada. OT sigue abierta.'];
             }

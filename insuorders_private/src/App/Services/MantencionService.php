@@ -165,8 +165,12 @@ class MantencionService
         }
     }
 
-    public function finalizarTarea($otId, $usuarioId, $notas = '')
+    public function finalizarTarea($otId, $usuarioId, $notas = '', $force = false)
     {
+        if ($force) {
+            $this->repo->finalizar($otId);
+            return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
+        }
         return $this->repo->finalizarTareaTecnico($otId, $usuarioId, $notas);
     }
 

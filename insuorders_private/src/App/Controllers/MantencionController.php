@@ -182,7 +182,8 @@ class MantencionController
             }
 
             $usuarioId = AuthMiddleware::verify();
-            $resultado = $this->service->finalizarTarea($otId, $usuarioId, $notas);
+            $force = !empty($data['force']);
+            $resultado = $this->service->finalizarTarea($otId, $usuarioId, $notas, $force);
 
             echo json_encode([
                 "success" => true,

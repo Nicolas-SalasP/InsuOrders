@@ -171,8 +171,8 @@ const Mantencion = () => {
         setConfirmFinish({ show: false, id: null });
         setLoading(true);
         try {
-            await api.post('/index.php/mantencion/finalizar', { id: confirmFinish.id });
-            setMsg({ show: true, title: "Finalizada", text: "OT Completada.", type: "success" });
+            const res = await api.post('/index.php/mantencion/finalizar', { id: confirmFinish.id, force: true });
+            setMsg({ show: true, title: "Finalizada", text: res.data?.message || "OT Completada.", type: "success" });
             cargarSolicitudes();
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.message || "Error al finalizar.", type: "error" });

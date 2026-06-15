@@ -187,7 +187,7 @@ class DashboardRepository
             $paramsTimeline[':emp'] = (int) $empleadoId;
         }
 
-        $sqlTimeline .= " ORDER BY m.fecha DESC LIMIT 20";
+        $sqlTimeline .= " ORDER BY m.fecha DESC LIMIT 50";
 
         return [
             'top_receptores' => $this->safeQuery($sqlTopReceptores, $rango),
