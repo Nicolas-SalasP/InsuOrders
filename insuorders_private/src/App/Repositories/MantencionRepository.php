@@ -393,16 +393,29 @@ class MantencionRepository
 
     public function getDetallesOT($id, $userId = 0)
     {
-        $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.cantidad_entregada, d.estado_linea, 
+        $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.estado_linea,
+                COALESCE((
+                    SELECT SUM(mi.cantidad)
+                    FROM movimientos_inventario mi
+                    WHERE mi.tipo_movimiento_id = 2
+                    AND mi.insumo_id = d.insumo_id
+                    AND (mi.referencia_id = d.id OR mi.referencia_id = d.solicitud_id)
+                ), d.cantidad_entregada, 0) as cantidad_entregada,
                 i.nombre, i.codigo_sku, i.stock_actual, i.unidad_medida, i.precio_costo,
                 COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0) AS costo_unitario_snapshot,
-                (d.cantidad_entregada * COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0)) AS costo_total_linea,
+                (COALESCE((
+                    SELECT SUM(mi2.cantidad)
+                    FROM movimientos_inventario mi2
+                    WHERE mi2.tipo_movimiento_id = 2
+                    AND mi2.insumo_id = d.insumo_id
+                    AND (mi2.referencia_id = d.id OR mi2.referencia_id = d.solicitud_id)
+                ), d.cantidad_entregada, 0) * COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0)) AS costo_total_linea,
                 oc.id as oc_id, prov.nombre as oc_proveedor,
                 COALESCE(
                     (SELECT NULLIF(GROUP_CONCAT(DISTINCT NULLIF(COALESCE(NULLIF(emp.nombre_completo,''), NULLIF(TRIM(CONCAT(COALESCE(u.nombre,''), ' ', COALESCE(u.apellido,''))), '')), '') SEPARATOR ', '), '')
                      FROM movimientos_inventario mi LEFT JOIN empleados emp ON mi.empleado_id = emp.id LEFT JOIN usuarios u ON mi.usuario_id = u.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2),
-                    (SELECT NULLIF(COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u_op.nombre,''), ' ', COALESCE(u_op.apellido,''))), ''), ep.receptor_externo), '')
-                     FROM entregas_personal ep LEFT JOIN usuarios u_op ON ep.usuario_operario_id = u_op.id WHERE ep.insumo_id = d.insumo_id AND ep.referencia_ot_id = d.solicitud_id ORDER BY ep.fecha_entrega DESC LIMIT 1)
+                    (SELECT NULLIF(GROUP_CONCAT(DISTINCT NULLIF(COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u_op.nombre,''), ' ', COALESCE(u_op.apellido,''))), ''), ep.receptor_externo), '') SEPARATOR ', '), '')
+                     FROM entregas_personal ep LEFT JOIN usuarios u_op ON ep.usuario_operario_id = u_op.id WHERE ep.insumo_id = d.insumo_id AND ep.referencia_ot_id = d.solicitud_id)
                 ) as retirado_por,
                 COALESCE(
                     (SELECT DATE_FORMAT(mi.fecha, '%d/%m/%Y %H:%i') FROM movimientos_inventario mi WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2 ORDER BY mi.fecha ASC LIMIT 1),
