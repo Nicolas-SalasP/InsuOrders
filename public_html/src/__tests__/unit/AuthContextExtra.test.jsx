@@ -60,7 +60,8 @@ describe('AuthContext — logout', () => {
         })
 
         await waitFor(() => {
-            expect(window.location.href).toBe('/login')
+            const expectedLogin = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/login`
+            expect(window.location.href).toBe(expectedLogin)
         })
     })
 
@@ -86,7 +87,8 @@ describe('AuthContext — logout', () => {
         })
 
         await waitFor(() => {
-            expect(window.location.href).toBe('/login')
+            const expectedLogin = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/login`
+            expect(window.location.href).toBe(expectedLogin)
             expect(localStorage.getItem('insuorders_user')).toBeNull()
         })
     })
