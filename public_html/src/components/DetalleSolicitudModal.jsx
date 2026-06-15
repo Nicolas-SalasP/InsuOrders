@@ -11,6 +11,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
     const [notaCierre, setNotaCierre] = useState('');
     const [loadingFirma, setLoadingFirma] = useState(false);
     const [enlargedImage, setEnlargedImage] = useState(null);
+    const [enlargedZoom, setEnlargedZoom] = useState(1);
     const currentUserId = parseInt(localStorage.getItem('user_id') || 0);
     const [videoModalUrl, setVideoModalUrl] = useState(null);
 
@@ -21,6 +22,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
             setDetalle(null);
             setNotaCierre('');
             setEnlargedImage(null);
+            setEnlargedZoom(1);
             setVideoModalUrl(null);
         }
     }, [show, solicitudId]);
@@ -122,7 +124,7 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                             alt={`Evidencia ${idx + 1}`}
                             className="rounded border shadow-sm cursor-pointer image-hover"
                             style={{ height: '100px', width: '100px', objectFit: 'cover' }}
-                            onClick={() => setEnlargedImage(`/api/${url}`)}
+                            onClick={() => { setEnlargedImage(`/api/${url}`); setEnlargedZoom(1); }}
                         />
                     );
                 })}
@@ -141,13 +143,46 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
             {enlargedImage && (
                 <div
                     className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1060 }}
+                    style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1060, overflow: 'auto' }}
                     onClick={() => setEnlargedImage(null)}
                 >
+                    <div
+                        className="position-fixed d-flex align-items-center gap-2"
+                        style={{ bottom: '25px', left: '50%', transform: 'translateX(-50%)', zIndex: 1067 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center"
+                            style={{ width: '42px', height: '42px' }}
+                            onClick={() => setEnlargedZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+                            title="Alejar"
+                        >
+                            <i className="bi bi-zoom-out text-dark fs-5"></i>
+                        </button>
+                        <span className="btn btn-dark btn-sm d-flex align-items-center px-3" style={{ borderRadius: '20px', fontSize: '0.85rem' }}>
+                            {Math.round(enlargedZoom * 100)}%
+                        </span>
+                        <button
+                            className="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center"
+                            style={{ width: '42px', height: '42px' }}
+                            onClick={() => setEnlargedZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))}
+                            title="Acercar"
+                        >
+                            <i className="bi bi-zoom-in text-dark fs-5"></i>
+                        </button>
+                        <button
+                            className="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center"
+                            style={{ width: '42px', height: '42px' }}
+                            onClick={() => setEnlargedZoom(1)}
+                            title="Restablecer"
+                        >
+                            <i className="bi bi-arrow-counterclockwise text-dark fs-5"></i>
+                        </button>
+                    </div>
                     <div className="position-relative text-center p-3" style={{ maxWidth: '100%', maxHeight: '100%' }}>
                         <button
-                            className="btn btn-light position-absolute top-0 end-0 m-4 rounded-circle shadow-sm d-flex justify-content-center align-items-center"
-                            style={{ zIndex: 1066, width: '45px', height: '45px', transform: 'translate(25%, -25%)' }}
+                            className="btn btn-light position-fixed shadow-sm d-flex justify-content-center align-items-center"
+                            style={{ zIndex: 1067, width: '45px', height: '45px', top: '25px', right: '25px', borderRadius: '50%' }}
                             onClick={() => setEnlargedImage(null)}
                         >
                             <i className="bi bi-x-lg text-dark fw-bold fs-5"></i>
@@ -155,8 +190,16 @@ const DetalleSolicitudModal = ({ show, onClose, solicitudId, onSave }) => {
                         <img
                             src={enlargedImage}
                             alt="Ampliación"
-                            className="img-fluid rounded shadow-lg"
-                            style={{ maxHeight: '90vh', maxWidth: '100%', objectFit: 'contain' }}
+                            className="rounded shadow-lg"
+                            style={{
+                                transform: `scale(${enlargedZoom})`,
+                                transformOrigin: 'center center',
+                                transition: 'transform 0.15s ease',
+                                maxHeight: enlargedZoom <= 1 ? '85vh' : 'none',
+                                maxWidth: enlargedZoom <= 1 ? '95vw' : 'none',
+                                objectFit: 'contain',
+                                cursor: enlargedZoom > 1 ? 'move' : 'default'
+                            }}
                             onClick={(e) => e.stopPropagation()}
                         />
                     </div>

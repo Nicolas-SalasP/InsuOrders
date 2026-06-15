@@ -88,6 +88,40 @@ class ClienteRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getTodasLasSolicitudes()
+    {
+        $sql = "SELECT 
+                    s.id, 
+                    s.fecha_solicitud, 
+                    s.titulo, 
+                    s.descripcion_trabajo as descripcion, 
+                    s.prioridad, 
+                    s.imagen_url,
+                    s.activo_id,
+                    s.ubicacion,
+                    s.usuario_solicitante_id,
+                    CONCAT(u.nombre, ' ', u.apellido) as solicitante,
+                    e.nombre as estado,
+                    e.id as estado_id,
+                    a.nombre as activo_nombre,
+                    a.codigo_interno as activo_codigo,
+                    s.fecha_cierre,
+                    s.comentarios_finales,
+                    s.evidencia_cierre,
+                    (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') 
+                    FROM ot_asignaciones oa 
+                    JOIN usuarios usr ON oa.usuario_id = usr.id 
+                    WHERE oa.solicitud_id = s.id) as tecnico_asignado
+                FROM solicitudes_ot s
+                JOIN estados_solicitud e ON s.estado_id = e.id
+                LEFT JOIN activos a ON s.activo_id = a.id
+                LEFT JOIN usuarios u ON s.usuario_solicitante_id = u.id
+                ORDER BY s.fecha_solicitud DESC";
+
+        $stmt = $this->db->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function getActivosDisponibles()
     {
         $sql = "SELECT id, nombre, codigo_interno FROM activos ORDER BY nombre ASC";

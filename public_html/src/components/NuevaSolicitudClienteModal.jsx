@@ -387,7 +387,6 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                                 className="form-control" 
                                                 accept="image/*,video/*" 
                                                 multiple 
-                                                capture="environment"
                                                 onChange={handleFileChange} 
                                             />
                                             {form.imagenes && form.imagenes.length > 0 && (
