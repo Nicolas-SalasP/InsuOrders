@@ -17,14 +17,24 @@ class ClienteService
     public function listarMisSolicitudes($usuarioId)
     {
         $solicitudes = $this->repo->getMisSolicitudes($usuarioId);
-        
+        return $this->enriquecerSolicitudes($solicitudes);
+    }
+
+    public function listarTodasLasSolicitudes()
+    {
+        $solicitudes = $this->repo->getTodasLasSolicitudes();
+        return $this->enriquecerSolicitudes($solicitudes);
+    }
+
+    private function enriquecerSolicitudes($solicitudes)
+    {
         foreach ($solicitudes as &$solicitud) {
             $solicitud['tipo'] = $solicitud['activo_id'] ? 'OT (Orden de Trabajo)' : 'OS (Orden de Servicio)';
             $solicitud['activo_nombre'] = $solicitud['activo_nombre'] ?? 'N/A (General)';
             $solicitud['tecnico_asignado'] = $solicitud['tecnico_asignado'] ?? 'Sin Asignar';
             $solicitud['titulo'] = $solicitud['titulo'] ?? 'Solicitud #' . $solicitud['id'];
         }
-        
+
         return $solicitudes;
     }
 

@@ -18,8 +18,16 @@ class ClienteController
     {
         try {
             $userId = AuthMiddleware::verify(); // Verifica Token y obtiene ID
-            $data = $this->service->listarMisSolicitudes($userId);
-            echo json_encode(["success" => true, "data" => $data]);
+
+            // Permite ver todas las solicitudes si el usuario tiene el permiso
+            // 'solicitudes_ver_todas' o es Admin. De lo contrario, solo las propias.
+            $verTodas = AuthMiddleware::checkPermissionSilently('solicitudes_ver_todas');
+
+            $data = $verTodas
+                ? $this->service->listarTodasLasSolicitudes()
+                : $this->service->listarMisSolicitudes($userId);
+
+            echo json_encode(["success" => true, "data" => $data, "ver_todas" => $verTodas]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);

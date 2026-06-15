@@ -154,6 +154,7 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
 
     const cargarKitActivo = async (idBuscar) => {
         if (!idBuscar || readOnly || isCompra) return; 
+        setItems([]);
         try {
             const res = await api.get(`/index.php/mantencion/kit?id=${idBuscar}`);
             if (res.data.success && res.data.data.length > 0) {
@@ -387,7 +388,6 @@ const ModalAgendar = ({ show, onClose, onSave, initialDate, eventData, mode, rea
                                         value={formData.sub_activo_id}
                                         onChange={e => {
                                             setFormData({ ...formData, sub_activo_id: e.target.value });
-                                            if (e.target.value) cargarKitActivo(e.target.value);
                                         }}
                                         disabled={readOnly}
                                     >
