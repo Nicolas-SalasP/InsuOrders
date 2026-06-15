@@ -49,7 +49,8 @@ const Compras = () => {
     const [filtroEstado, setFiltroEstado] = useState([]);
     const [showEstadoDropdown, setShowEstadoDropdown] = useState(false);
     const estadoRef = useRef(null);
-    const [filtroFecha, setFiltroFecha] = useState('');
+    const [filtroFechaDesde, setFiltroFechaDesde] = useState('');
+    const [filtroFechaHasta, setFiltroFechaHasta] = useState('');
     const [filtroInsumo, setFiltroInsumo] = useState('');
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
     const [listaInsumos, setListaInsumos] = useState([]);
@@ -319,7 +320,10 @@ const Compras = () => {
 
     const handleExportar = async () => {
         try {
-            const res = await api.get('/index.php/exportar?modulo=compras', { responseType: 'blob' });
+            const params = new URLSearchParams({ modulo: 'compras' });
+            if (filtroFechaDesde) params.append('fecha_desde', filtroFechaDesde);
+            if (filtroFechaHasta) params.append('fecha_hasta', filtroFechaHasta);
+            const res = await api.get(`/index.php/exportar?${params.toString()}`, { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([res.data]));
             const link = document.createElement('a'); link.href = url; link.setAttribute('download', `Reporte_Compras_${new Date().getTime()}.xlsx`);
             document.body.appendChild(link); link.click();
@@ -335,7 +339,7 @@ const Compras = () => {
     };
 
     const limpiarFiltros = () => {
-        setFiltroOC(''); setFiltroProveedor(''); setFiltroDestino(''); setFiltroEstado([]); setFiltroFecha(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes();
+        setFiltroOC(''); setFiltroProveedor(''); setFiltroDestino(''); setFiltroEstado([]); setFiltroFechaDesde(''); setFiltroFechaHasta(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes();
     };
 
     const seleccionarInsumo = (item) => { setFiltroInsumo(item.id); setBusquedaInsumo(item.nombre); setMostrarSugerencias(false); };
@@ -346,7 +350,7 @@ const Compras = () => {
         const matchEst = filtroEstado.length === 0 || filtroEstado.includes(oc.estado);
         const matchDest = filtroDestino === '' || (oc.destino && oc.destino.toLowerCase().includes(filtroDestino.toLowerCase()));
         const fechaOC = oc.fecha_creacion.split(' ')[0];
-        const matchFecha = filtroFecha ? fechaOC === filtroFecha : true;
+        const matchFecha = (!filtroFechaDesde || fechaOC >= filtroFechaDesde) && (!filtroFechaHasta || fechaOC <= filtroFechaHasta);
         return matchOC && matchProv && matchDest && matchEst && matchFecha;
     });
 
@@ -494,8 +498,8 @@ const Compras = () => {
                             </div>
                         </div>
                         <div className="col-6 col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Proveedor..." value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)} /></div></div>
-                        <div className="col-6 col-md-2"><div className="input-group"><span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-geo-alt"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Destino..." value={filtroDestino} onChange={(e) => setFiltroDestino(e.target.value)} /></div></div>
-                        <div className="col-6 col-md-3 position-relative" ref={wrapperRef}>
+                        <div className="col-6 col-md-1"><div className="input-group"><span className="input-group-text bg-white border-end-0 text-muted px-2"><i className="bi bi-geo-alt"></i></span><input type="text" className="form-control border-start-0 ps-0" placeholder="Destino..." value={filtroDestino} onChange={(e) => setFiltroDestino(e.target.value)} /></div></div>
+                        <div className="col-6 col-md-2 position-relative" ref={wrapperRef}>
                             <div className="input-group">
                                 <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-muted'}`}><i className="bi bi-box-seam"></i></span>
                                 <input type="text" className="form-control border-start-0 ps-0" placeholder="Insumo..." value={busquedaInsumo} onChange={(e) => { setBusquedaInsumo(e.target.value); setMostrarSugerencias(true); if (e.target.value === '') setFiltroInsumo(''); }} onFocus={() => setMostrarSugerencias(true)} />
@@ -518,8 +522,14 @@ const Compras = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="col-6 col-md-1"><input type="date" className="form-control" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} /></div>
-                        <div className="col-md-1 text-end">{(filtroOC || filtroProveedor || filtroDestino || filtroEstado.length > 0 || filtroFecha || filtroInsumo) && <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros} title="Limpiar filtros"><i className="bi bi-x-lg"></i></button>}</div>
+                        <div className="col-12 col-md-3">
+                            <div className="d-flex align-items-center gap-1">
+                                <input type="date" className="form-control form-control-sm" title="Desde" value={filtroFechaDesde} onChange={(e) => setFiltroFechaDesde(e.target.value)} />
+                                <span className="text-muted small flex-shrink-0">–</span>
+                                <input type="date" className="form-control form-control-sm" title="Hasta" value={filtroFechaHasta} onChange={(e) => setFiltroFechaHasta(e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="col-md-1 text-end">{(filtroOC || filtroProveedor || filtroDestino || filtroEstado.length > 0 || filtroFechaDesde || filtroFechaHasta || filtroInsumo) && <button className="btn btn-outline-secondary btn-sm w-100" onClick={limpiarFiltros} title="Limpiar filtros"><i className="bi bi-x-lg"></i></button>}</div>
                     </div>
                 </div>
 

@@ -40,7 +40,8 @@ const Mantencion = () => {
     const [filtroEstado, setFiltroEstado] = useState([]);
     const [showEstadoDropdown, setShowEstadoDropdown] = useState(false);
     const estadoRef = useRef(null);
-    const [filtroFecha, setFiltroFecha] = useState('');
+    const [filtroFechaDesde, setFiltroFechaDesde] = useState('');
+    const [filtroFechaHasta, setFiltroFechaHasta] = useState('');
 
     const [filtroInsumo, setFiltroInsumo] = useState('');
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
@@ -126,7 +127,8 @@ const Mantencion = () => {
             if (filtroInsumo) params.append('insumo_id', filtroInsumo);
             if (filtroOT) params.append('ot', filtroOT);
             if (filtroMaquina) params.append('maquina', filtroMaquina);
-            if (filtroFecha) params.append('fecha', filtroFecha);
+            if (filtroFechaDesde) params.append('fecha_desde', filtroFechaDesde);
+            if (filtroFechaHasta) params.append('fecha_hasta', filtroFechaHasta);
 
             const res = await api.get(`/index.php/mantencion?${params.toString()}`);
             if (res.data.success) {
@@ -256,7 +258,10 @@ const Mantencion = () => {
 
     const handleExportar = () => {
         setLoading(true);
-        api.get('/index.php/exportar?modulo=mantencion', { responseType: 'blob' })
+        const params = new URLSearchParams({ modulo: 'mantencion' });
+        if (filtroFechaDesde) params.append('fecha_desde', filtroFechaDesde);
+        if (filtroFechaHasta) params.append('fecha_hasta', filtroFechaHasta);
+        api.get(`/index.php/exportar?${params.toString()}`, { responseType: 'blob' })
             .then((res) => {
                 const url = window.URL.createObjectURL(new Blob([res.data]));
                 const link = document.createElement('a');
@@ -286,7 +291,8 @@ const Mantencion = () => {
         setFiltroMaquina('');
         setFiltroUbicacion('');
         setFiltroEstado([]);
-        setFiltroFecha('');
+        setFiltroFechaDesde('');
+        setFiltroFechaHasta('');
         setFiltroInsumo('');
         setBusquedaInsumo('');
         setMostrarSugerencias(false);
@@ -377,7 +383,7 @@ const Mantencion = () => {
 
         const matchEstado = filtroEstado.length === 0 || filtroEstado.includes(estadoVirtual);
         const fechaOT = s.fecha_solicitud ? s.fecha_solicitud.split(' ')[0] : '';
-        const matchFecha = !filtroFecha || fechaOT === filtroFecha;
+        const matchFecha = (!filtroFechaDesde || fechaOT >= filtroFechaDesde) && (!filtroFechaHasta || fechaOT <= filtroFechaHasta);
         const matchSinTecnico = !filtroSinTecnico || !s.asignados_nombres;
 
         return matchOT && matchMaquina && matchUbicacion && matchEstado && matchFecha && matchSinTecnico;
@@ -544,15 +550,37 @@ const Mantencion = () => {
                             )}
                         </div>
                         <div className="col-6 col-md-2 text-end">
-                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado.length > 0 || filtroFecha || filtroInsumo || filtroSinTecnico || tipoOrden !== 'default') && (
+                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado.length > 0 || filtroFechaDesde || filtroFechaHasta || filtroInsumo || filtroSinTecnico || tipoOrden !== 'default') && (
                                 <button className="btn btn-outline-secondary w-100" onClick={limpiarFiltros}>
                                     <i className="bi bi-x-lg me-1"></i> Limpiar
                                 </button>
                             )}
                         </div>
                     </div>
-                    <div className="row mt-2">
-                        <div className="col-12 d-flex flex-wrap gap-2">
+                    <div className="row mt-2 g-2 align-items-center">
+                        <div className="col-auto d-flex align-items-center gap-1">
+                            <small className="text-muted fw-semibold text-nowrap">Período:</small>
+                            <input
+                                type="date"
+                                className="form-control form-control-sm"
+                                style={{ width: 140 }}
+                                title="Fecha desde"
+                                value={filtroFechaDesde}
+                                onChange={e => { setFiltroFechaDesde(e.target.value); }}
+                                onBlur={cargarSolicitudes}
+                            />
+                            <span className="text-muted">–</span>
+                            <input
+                                type="date"
+                                className="form-control form-control-sm"
+                                style={{ width: 140 }}
+                                title="Fecha hasta"
+                                value={filtroFechaHasta}
+                                onChange={e => { setFiltroFechaHasta(e.target.value); }}
+                                onBlur={cargarSolicitudes}
+                            />
+                        </div>
+                        <div className="col d-flex flex-wrap gap-2">
                             <button
                                 className={`btn btn-sm shadow-sm ${filtroSinTecnico ? 'btn-danger text-white border-danger' : 'btn-outline-secondary bg-white'}`}
                                 onClick={() => setFiltroSinTecnico(!filtroSinTecnico)}
