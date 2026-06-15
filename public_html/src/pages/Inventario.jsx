@@ -394,6 +394,7 @@ const Inventario = () => {
                                             <td className="d-none d-md-table-cell ps-4 fw-bold text-secondary font-monospace">{item.codigo_sku}</td>
                                             <td>
                                                 <div className="fw-medium text-dark">{item.nombre}</div>
+                                                <div className="d-md-none font-monospace text-secondary small">{item.codigo_sku}</div>
                                                 {parseFloat(item.stock_minimo) > 0 && parseFloat(item.stock_actual) <= parseFloat(item.stock_minimo) && (
                                                     <span className="badge bg-warning text-dark mt-1">
                                                         <i className="bi bi-exclamation-triangle me-1"></i>Bajo Stock
