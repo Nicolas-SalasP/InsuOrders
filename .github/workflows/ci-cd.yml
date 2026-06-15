@@ -85,20 +85,62 @@ jobs:
     name: Deploy to production
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-build]
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Solo despliega en push directo a main (no en PRs, dev ni tags)
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v5
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull origin main
-            cd insuorders_private && composer install --no-dev --optimize-autoloader
-            cd ../public_html && npm install && npm run build
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: public_html/package-lock.json
+
+      # Recompila el bundle de produccion (respeta base:'/insuorders/')
+      - name: Build production bundle
+        working-directory: public_html
+        run: |
+          npm ci
+          npm run build
+
+      # 1. Frontend compilado (dist/) -> /public_html/insuorders/
+      - name: Deploy Frontend (dist)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./public_html/dist/
+          server-dir: /public_html/insuorders/
+          exclude: |
+            **/api/**
+            **/uploads/**
+            **/.htaccess
+
+      # 2. API PHP -> /public_html/insuorders/api/
+      - name: Deploy API PHP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./public_html/api/
+          server-dir: /public_html/insuorders/api/
+
+      # 3. Clases PHP del backend -> /insuorders_private/ (fuera de public_html)
+      - name: Deploy Backend (insuorders_private)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./insuorders_private/
+          server-dir: /insuorders_private/
+          exclude: |
+            **/.git*
+            **/vendor/**
+            **/.env
+            **/tests/**
+            **/phpunit.xml

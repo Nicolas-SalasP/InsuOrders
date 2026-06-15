@@ -3,7 +3,7 @@
 $allowed_origins = [
     'http://localhost:5173',
     'http://localhost:5174',
-    //'https://tu-dominio-produccion.com' // IP Insuban
+    'http://138.117.150.6',
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';

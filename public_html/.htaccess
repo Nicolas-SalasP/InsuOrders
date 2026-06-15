@@ -1,0 +1,17 @@
+# ============================================================
+# .htaccess RAIZ  ->  /home/prodinwe/public_html/.htaccess
+# ============================================================
+# Permite que las rutas hardcodeadas tipo /api/uploads/imagen.jpg
+# (sin el prefijo /insuorders) sigan funcionando, redirigiendolas
+# a /insuorders/api/. Asi no hay que editar las 21 referencias a
+# imagenes/videos en el codigo React.
+# ============================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Si alguien pide /api/... (raiz), reenviar a /insuorders/api/...
+    # Solo si NO empieza ya por /insuorders
+    RewriteCond %{REQUEST_URI} ^/api/ [NC]
+    RewriteRule ^api/(.*)$ /insuorders/api/$1 [L]
+</IfModule>
