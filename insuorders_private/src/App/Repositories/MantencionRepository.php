@@ -38,8 +38,8 @@ class MantencionRepository
                 FROM solicitudes_ot s 
                 LEFT JOIN activos a ON s.activo_id = a.id 
                 LEFT JOIN activos sa ON s.sub_activo_id = sa.id
-                JOIN usuarios u ON s.usuario_solicitante_id = u.id 
-                JOIN estados_solicitud e ON s.estado_id = e.id 
+                LEFT JOIN usuarios u ON s.usuario_solicitante_id = u.id
+                LEFT JOIN estados_solicitud e ON s.estado_id = e.id
                 LEFT JOIN usuarios t ON s.asignado_a = t.id 
                 LEFT JOIN tipos_permiso_trabajo tpt ON s.tipo_permiso_id = tpt.id
                 WHERE 1=1";
@@ -329,6 +329,15 @@ class MantencionRepository
 
     public function addInsumoToKit($activoId, $insumoId, $cant)
     {
+        $cant = (float) $cant;
+        if ($cant <= 0)
+            throw new Exception("La cantidad del kit debe ser mayor a cero.");
+
+        $stmtInsumo = $this->db->prepare("SELECT id FROM insumos WHERE id = :i");
+        $stmtInsumo->execute([':i' => $insumoId]);
+        if (!$stmtInsumo->fetch())
+            throw new Exception("Insumo ID $insumoId no existe.");
+
         $check = $this->db->prepare("SELECT id FROM activos_insumos WHERE activo_id=:a AND insumo_id=:i");
         $check->execute([':a' => $activoId, ':i' => $insumoId]);
         $sql = $check->fetch() ? "UPDATE activos_insumos SET cantidad_default = :c WHERE activo_id=:a AND insumo_id=:i"
@@ -343,6 +352,9 @@ class MantencionRepository
     }
     public function updateKitQuantity($activoId, $insumoId, $cantidad)
     {
+        $cantidad = (float) $cantidad;
+        if ($cantidad <= 0)
+            throw new Exception("La cantidad del kit debe ser mayor a cero.");
         $this->db->prepare("UPDATE activos_insumos SET cantidad_default = :c WHERE activo_id = :a AND insumo_id = :i")->execute([':c' => $cantidad, ':a' => $activoId, ':i' => $insumoId]);
         $this->recalcularMinimoInsumo($insumoId);
     }
@@ -381,12 +393,34 @@ class MantencionRepository
 
     public function getDetallesOT($id, $userId = 0)
     {
-        $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.cantidad_entregada, d.estado_linea, 
+        $sql = "SELECT d.id as detalle_id, d.insumo_id as id, d.cantidad, d.estado_linea,
+                COALESCE((
+                    SELECT SUM(mi.cantidad)
+                    FROM movimientos_inventario mi
+                    WHERE mi.tipo_movimiento_id = 2
+                    AND mi.insumo_id = d.insumo_id
+                    AND (mi.referencia_id = d.id OR mi.referencia_id = d.solicitud_id)
+                ), d.cantidad_entregada, 0) as cantidad_entregada,
                 i.nombre, i.codigo_sku, i.stock_actual, i.unidad_medida, i.precio_costo,
                 COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0) AS costo_unitario_snapshot,
-                (d.cantidad_entregada * COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0)) AS costo_total_linea,
+                (COALESCE((
+                    SELECT SUM(mi2.cantidad)
+                    FROM movimientos_inventario mi2
+                    WHERE mi2.tipo_movimiento_id = 2
+                    AND mi2.insumo_id = d.insumo_id
+                    AND (mi2.referencia_id = d.id OR mi2.referencia_id = d.solicitud_id)
+                ), d.cantidad_entregada, 0) * COALESCE(NULLIF(d.costo_unitario_snapshot, 0), i.precio_costo, 0)) AS costo_total_linea,
                 oc.id as oc_id, prov.nombre as oc_proveedor,
-                (SELECT GROUP_CONCAT(DISTINCT emp.nombre_completo SEPARATOR ', ') FROM movimientos_inventario mi JOIN empleados emp ON mi.empleado_id = emp.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2) as retirado_por,
+                COALESCE(
+                    (SELECT NULLIF(GROUP_CONCAT(DISTINCT NULLIF(COALESCE(NULLIF(emp.nombre_completo,''), NULLIF(TRIM(CONCAT(COALESCE(u.nombre,''), ' ', COALESCE(u.apellido,''))), '')), '') SEPARATOR ', '), '')
+                     FROM movimientos_inventario mi LEFT JOIN empleados emp ON mi.empleado_id = emp.id LEFT JOIN usuarios u ON mi.usuario_id = u.id WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2),
+                    (SELECT NULLIF(GROUP_CONCAT(DISTINCT NULLIF(COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u_op.nombre,''), ' ', COALESCE(u_op.apellido,''))), ''), ep.receptor_externo), '') SEPARATOR ', '), '')
+                     FROM entregas_personal ep LEFT JOIN usuarios u_op ON ep.usuario_operario_id = u_op.id WHERE ep.insumo_id = d.insumo_id AND ep.referencia_ot_id = d.solicitud_id)
+                ) as retirado_por,
+                COALESCE(
+                    (SELECT DATE_FORMAT(mi.fecha, '%d/%m/%Y %H:%i') FROM movimientos_inventario mi WHERE mi.referencia_id = d.id AND mi.tipo_movimiento_id = 2 ORDER BY mi.fecha ASC LIMIT 1),
+                    (SELECT DATE_FORMAT(ep.fecha_entrega, '%d/%m/%Y %H:%i') FROM entregas_personal ep WHERE ep.insumo_id = d.insumo_id AND ep.referencia_ot_id = d.solicitud_id ORDER BY ep.fecha_entrega ASC LIMIT 1)
+                ) as fecha_retiro,
                 COALESCE((
                     SELECT SUM(ep.cantidad_entregada - ep.cantidad_utilizada)
                     FROM entregas_personal ep
@@ -603,6 +637,13 @@ class MantencionRepository
         }
     }
 
+    public function isUserAssignedToOT(int $otId, int $userId): bool
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = :id AND usuario_id = :uid");
+        $stmt->execute([':id' => $otId, ':uid' => $userId]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
     public function finalizarTareaTecnico($otId, $usuarioId, $notas = '')
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = :id AND usuario_id = :uid");
@@ -618,19 +659,16 @@ class MantencionRepository
             $pendientes = $stmtPend->fetchColumn();
 
             if ($pendientes == 0) {
-                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5, fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
                 $this->sincronizarEstadoActivoPorOT($otId);
                 return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
             } else {
-                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'En Proceso') WHERE id = :id")->execute([':id' => $otId]);
+                $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 4 WHERE id = :id")->execute([':id' => $otId]);
                 $this->sincronizarEstadoActivoPorOT($otId);
                 return ['status' => 'partial', 'message' => 'Tarea registrada. OT sigue abierta.'];
             }
         } else {
-            $this->db->prepare("UPDATE ot_asignaciones SET completado = 1, fecha_completado = NOW() WHERE solicitud_id = :id")->execute([':id' => $otId]);
-            $this->db->prepare("UPDATE solicitudes_ot SET estado_id = (SELECT id FROM estados_solicitud WHERE nombre = 'Completada'), fecha_cierre = NOW() WHERE id = :id")->execute([':id' => $otId]);
-            $this->sincronizarEstadoActivoPorOT($otId);
-            return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
+            throw new \Exception("No tienes una asignación activa en esta OT.");
         }
     }
 
@@ -641,11 +679,6 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 5 WHERE id = :id")->execute([':id' => $id]);
-            // Nota de semantica: 'RESERVADO' es un estado de linea que el sistema NUNCA asigna hoy
-            // (solo se lee). Como el stock solo se descuenta al ENTREGAR, las porciones no entregadas
-            // jamas salieron de inventario; por eso al forzar el cierre no hay stock que reintegrar y
-            // este UPDATE es inerte. Se conserva como gancho por si se implementa reserva de stock.
-            $this->db->prepare("UPDATE insumos i JOIN detalle_solicitud ds ON i.id = ds.insumo_id SET i.stock_actual = i.stock_actual + (ds.cantidad - ds.cantidad_entregada) WHERE ds.solicitud_id = :id AND ds.estado_linea = 'RESERVADO'")->execute([':id' => $id]);
             $this->db->prepare("UPDATE detalle_solicitud SET estado_linea = 'CANCELADO' WHERE solicitud_id = :id AND estado_linea NOT IN ('ENTREGADO', 'FINALIZADO')")->execute([':id' => $id]);
             $this->sincronizarEstadoActivoPorOT($id);
             if (!$inTransaction)
@@ -711,7 +744,7 @@ class MantencionRepository
                 throw new Exception("Línea no encontrada");
 
             $pendiente = floatval($linea['cantidad']) - floatval($linea['cantidad_entregada']);
-            if ($cantidadEntregar > ($pendiente + 0.001))
+            if ($cantidadEntregar > ($pendiente + 1e-9))
                 throw new Exception("Exceso de entrega.");
 
             $stmtStock = $this->db->prepare("SELECT ubicacion_id, cantidad FROM insumo_stock_ubicacion WHERE insumo_id = :id AND cantidad > 0 ORDER BY cantidad DESC FOR UPDATE");
@@ -737,6 +770,7 @@ class MantencionRepository
             $nuevaEntregada = floatval($linea['cantidad_entregada']) + $cantidadEntregar;
             $nuevoEstado = ($nuevaEntregada >= floatval($linea['cantidad'])) ? 'ENTREGADO' : 'PARCIAL';
             $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
+            $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")->execute([$linea['insumo_id'], $linea['insumo_id']]);
             $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 2 WHERE id = :id AND estado_id = 1")->execute([':id' => $linea['solicitud_id']]);
             $this->sincronizarEstadoActivoPorOT($linea['solicitud_id']);
 
@@ -752,30 +786,42 @@ class MantencionRepository
 
     public function devolverMaterial($detalleId, $cantidadDevolver, $bodegueroId, $ubicacionDestinoId = 1)
     {
-        $stmt = $this->db->prepare("SELECT * FROM detalle_solicitud WHERE id = :id");
-        $stmt->execute([':id' => $detalleId]);
-        $linea = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$linea)
-            throw new Exception("Línea no encontrada");
+        $inTransaction = $this->db->inTransaction();
+        try {
+            if (!$inTransaction)
+                $this->db->beginTransaction();
 
-        if ($cantidadDevolver > $linea['cantidad_entregada'])
-            throw new Exception("No puedes devolver más de lo entregado.");
+            $stmt = $this->db->prepare("SELECT * FROM detalle_solicitud WHERE id = :id FOR UPDATE");
+            $stmt->execute([':id' => $detalleId]);
+            $linea = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$linea)
+                throw new Exception("Línea no encontrada");
 
-        $nuevaEntregada = floatval($linea['cantidad_entregada']) - floatval($cantidadDevolver);
-        $nuevoEstado = ($nuevaEntregada <= 0) ? 'PENDIENTE' : (($nuevaEntregada < floatval($linea['cantidad'])) ? 'PENDIENTE' : 'ENTREGADO');
+            if ($cantidadDevolver > $linea['cantidad_entregada'])
+                throw new Exception("No puedes devolver más de lo entregado.");
 
-        $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
-        $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 1 WHERE id = :id AND estado_id = 2")->execute([':id' => $linea['solicitud_id']]);
+            $nuevaEntregada = floatval($linea['cantidad_entregada']) - floatval($cantidadDevolver);
+            // PARCIAL cuando hay entrega parcial; PENDIENTE solo cuando nada fue entregado
+            $nuevoEstado = ($nuevaEntregada <= 0) ? 'PENDIENTE' : (($nuevaEntregada < floatval($linea['cantidad'])) ? 'PARCIAL' : 'ENTREGADO');
 
-        $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant) ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd")->execute([':iid' => $linea['insumo_id'], ':uid' => $ubicacionDestinoId, ':cant' => $cantidadDevolver, ':cant_upd' => $cantidadDevolver]);
-        $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, ubicacion_id, fecha) VALUES (:iid, 1, :cant, :uid, 'Devolución de OT', :ref, :ubi, NOW())")->execute([':iid' => $linea['insumo_id'], ':cant' => $cantidadDevolver, ':uid' => $bodegueroId, ':ref' => $detalleId, ':ubi' => $ubicacionDestinoId]);
+            $this->db->prepare("UPDATE detalle_solicitud SET cantidad_entregada = :cant, estado_linea = :st WHERE id = :id")->execute([':cant' => $nuevaEntregada, ':st' => $nuevoEstado, ':id' => $detalleId]);
+            $this->db->prepare("UPDATE solicitudes_ot SET estado_id = 1 WHERE id = :id AND estado_id = 2")->execute([':id' => $linea['solicitud_id']]);
 
-        // Mantener stock_actual sincronizado con la suma por ubicacion (la devolucion reintegra stock)
-        $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")->execute([$linea['insumo_id'], $linea['insumo_id']]);
+            $this->db->prepare("INSERT INTO insumo_stock_ubicacion (insumo_id, ubicacion_id, cantidad) VALUES (:iid, :uid, :cant) ON DUPLICATE KEY UPDATE cantidad = cantidad + :cant_upd")->execute([':iid' => $linea['insumo_id'], ':uid' => $ubicacionDestinoId, ':cant' => $cantidadDevolver, ':cant_upd' => $cantidadDevolver]);
+            $this->db->prepare("INSERT INTO movimientos_inventario (insumo_id, tipo_movimiento_id, cantidad, usuario_id, observacion, referencia_id, ubicacion_id, fecha) VALUES (:iid, 1, :cant, :uid, 'Devolución de OT', :ref, :ubi, NOW())")->execute([':iid' => $linea['insumo_id'], ':cant' => $cantidadDevolver, ':uid' => $bodegueroId, ':ref' => $detalleId, ':ubi' => $ubicacionDestinoId]);
+            $this->db->prepare("UPDATE insumos SET stock_actual = (SELECT IFNULL(SUM(cantidad),0) FROM insumo_stock_ubicacion WHERE insumo_id = ?) WHERE id = ?")->execute([$linea['insumo_id'], $linea['insumo_id']]);
 
-        $this->sincronizarEstadoActivoPorOT($linea['solicitud_id']);
+            $this->sincronizarEstadoActivoPorOT($linea['solicitud_id']);
 
-        return $linea['insumo_id'];
+            if (!$inTransaction)
+                $this->db->commit();
+
+            return $linea['insumo_id'];
+        } catch (Exception $e) {
+            if (!$inTransaction)
+                $this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function savePlantillaActivo($id, $jsonStr)
@@ -865,6 +911,26 @@ class MantencionRepository
      * Las OTs Pendientes (incluidas las preventivas futuras del cronograma) NO cuentan.
      * Va envuelta en try/catch para no interrumpir nunca la operacion principal de la OT.
      */
+    public function getEmailsPrevencion()
+    {
+        $raw = $_ENV['PREVENCION_EMAILS'] ?? getenv('PREVENCION_EMAILS') ?? '';
+        if (empty(trim($raw))) return [];
+        return array_values(array_filter(array_map('trim', explode(',', $raw))));
+    }
+
+    public function getTipoPermisoNombre($id)
+    {
+        if (!$id) return null;
+        try {
+            $stmt = $this->db->prepare("SELECT nombre FROM tipos_permiso_trabajo WHERE id = :id LIMIT 1");
+            $stmt->execute([':id' => (int)$id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ? $row['nombre'] : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     public function sincronizarEstadoActivoPorOT($otId)
     {
         try {

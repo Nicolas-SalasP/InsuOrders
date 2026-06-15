@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Repositories\DashboardRepository;
 use App\Middleware\AuthMiddleware;
@@ -69,7 +70,7 @@ class DashboardController
 
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -85,7 +86,7 @@ class DashboardController
             echo json_encode(["success" => true, "data" => $logs]);
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 }

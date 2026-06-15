@@ -187,7 +187,7 @@ class DashboardRepository
             $paramsTimeline[':emp'] = (int) $empleadoId;
         }
 
-        $sqlTimeline .= " ORDER BY m.fecha DESC LIMIT 20";
+        $sqlTimeline .= " ORDER BY m.fecha DESC LIMIT 50";
 
         return [
             'top_receptores' => $this->safeQuery($sqlTopReceptores, $rango),
@@ -228,7 +228,20 @@ class DashboardRepository
                            AND ABS(TIMESTAMPDIFF(SECOND, ep.fecha_entrega, m.fecha)) <= 10
                          LIMIT 1)
                     ) as ot_referencia,
-                    COALESCE(ot_ds.titulo, ot_dir.titulo) as ot_titulo,
+                    COALESCE(
+                        ot_ds.titulo,
+                        ot_dir.titulo,
+                        (SELECT sot.titulo
+                         FROM solicitudes_ot sot
+                         WHERE sot.id = (
+                             SELECT ep.referencia_ot_id
+                             FROM entregas_personal ep
+                             WHERE ep.insumo_id = m.insumo_id
+                               AND ep.referencia_ot_id IS NOT NULL
+                               AND ABS(TIMESTAMPDIFF(SECOND, ep.fecha_entrega, m.fecha)) <= 10
+                             LIMIT 1)
+                         LIMIT 1)
+                    ) as ot_titulo,
                     m.tipo_movimiento_id
                 FROM movimientos_inventario m
                 JOIN insumos i ON m.insumo_id = i.id

@@ -139,7 +139,7 @@ const Inventario = () => {
         if (filtroUbicacion) {
             const ubiObj = listas.ubicaciones.find(u => u.id.toString() === filtroUbicacion);
             if (ubiObj) {
-                const nombreUbi = ubiObj.nombre.toLowerCase();
+                const nombreUbi = `${ubiObj.sector_nombre || 'General'} - ${ubiObj.nombre}`.toLowerCase();
                 const stringUbicaciones = (i.ubicaciones_multiples || i.ubicacion_defecto || '').toLowerCase();
                 matchUbi = stringUbicaciones.includes(nombreUbi);
             }
@@ -244,7 +244,7 @@ const Inventario = () => {
             <ModalSalida show={salidaModal.show} insumo={salidaModal.insumo} onClose={() => setSalidaModal({ show: false, insumo: null })} onSave={handleSaveSilent} />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-0 flex-shrink-0">
 
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
@@ -290,7 +290,7 @@ const Inventario = () => {
                 </div>
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2">
-                        <div className="col-md-3">
+                        <div className="col-12 col-md-3">
                             <div className="input-group">
                                 <span className="input-group-text bg-white border-end-0">🔎</span>
                                 <input
@@ -302,13 +302,13 @@ const Inventario = () => {
                                 />
                             </div>
                         </div>
-                        <div className="col-md-3">
+                        <div className="col-12 col-md-3">
                             <select className="form-select" value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
                                 <option value="">Todas las Categorías</option>
                                 {listas.categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                             </select>
                         </div>
-                        <div className="col-md-3">
+                        <div className="col-12 col-md-3">
                             <select className="form-select" value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)}>
                                 <option value="">Todas las Ubicaciones</option>
                                 {listas.ubicaciones.map(u => (
@@ -318,7 +318,7 @@ const Inventario = () => {
                                 ))}
                             </select>
                         </div>
-                        <div className="col-md-3 d-flex gap-1">
+                        <div className="col-12 col-md-3 d-flex gap-1">
                             <button
                                 className={`btn w-50 ${orden.includes('sku') ? 'btn-primary' : 'btn-outline-secondary'}`}
                                 onClick={toggleSku}
@@ -349,14 +349,15 @@ const Inventario = () => {
                 <div className="card-body d-flex flex-column p-0" style={{ overflow: 'hidden' }}>
                     <div className="flex-grow-1 overflow-auto">
                         {loading ? <div className="text-center p-5">Cargando...</div> : (
-                            <table className="table table-hover align-middle mb-0" style={{ minWidth: '1000px' }}>
+                            <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0">
                                 <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
                                     <tr>
-                                        <th>Imagen</th>
-                                        <th className="ps-4">SKU</th>
+                                        <th className="d-none d-md-table-cell">Imagen</th>
+                                        <th className="d-none d-md-table-cell ps-4">SKU</th>
                                         <th>Descripción</th>
-                                        <th>Categoría</th>
-                                        <th>Ubicaciones Físicas</th>
+                                        <th className="d-none d-md-table-cell">Categoría</th>
+                                        <th className="d-none d-lg-table-cell">Ubicaciones Físicas</th>
                                         <th className="text-center">Stock Total</th>
                                         <th className="text-end pe-4">Acciones</th>
                                     </tr>
@@ -364,7 +365,7 @@ const Inventario = () => {
                                 <tbody>
                                     {insumosFiltrados.map(item => (
                                         <tr key={item.id}>
-                                            <td style={{ width: '80px', textAlign: 'center' }}>
+                                            <td className="d-none d-md-table-cell" style={{ width: '80px', textAlign: 'center' }}>
                                                 {item.imagen_url ? (
                                                     <img
                                                         src={`${BASE_URL}${item.imagen_url}`}
@@ -390,7 +391,7 @@ const Inventario = () => {
                                                     <span className="text-muted small">Sin img</span>
                                                 )}
                                             </td>
-                                            <td className="ps-4 fw-bold text-secondary font-monospace">{item.codigo_sku}</td>
+                                            <td className="d-none d-md-table-cell ps-4 fw-bold text-secondary font-monospace">{item.codigo_sku}</td>
                                             <td>
                                                 <div className="fw-medium text-dark">{item.nombre}</div>
                                                 {parseFloat(item.stock_minimo) > 0 && parseFloat(item.stock_actual) <= parseFloat(item.stock_minimo) && (
@@ -399,8 +400,8 @@ const Inventario = () => {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td><span className="badge bg-light text-secondary border">{item.categoria_nombre}</span></td>
-                                            <td>{renderUbicaciones(item)}</td>
+                                            <td className="d-none d-md-table-cell"><span className="badge bg-light text-secondary border">{item.categoria_nombre}</span></td>
+                                            <td className="d-none d-lg-table-cell">{renderUbicaciones(item)}</td>
                                             <td className="text-center">
                                                 <span className={`fw-bold fs-5 ${parseFloat(item.stock_actual) <= 0 ? 'text-danger' : 'text-success'}`}>
                                                     {parseFloat(item.stock_actual)}
@@ -436,6 +437,7 @@ const Inventario = () => {
                                     )}
                                 </tbody>
                             </table>
+                            </div>
                         )}
                     </div>
                 </div>

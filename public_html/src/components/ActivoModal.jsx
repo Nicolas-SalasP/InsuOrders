@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useContext } from 'react';
+import * as XLSX from 'xlsx';
 import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
 import ConfirmModal from './ConfirmModal';
@@ -234,6 +235,21 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
         api.delete(`/index.php/mantencion/kit?activo_id=${activo.id}&insumo_id=${insumoId}`)
             .then(() => cargarKit(activo.id))
             .catch(console.error);
+    };
+
+    const exportarKitExcel = () => {
+        const rows = kitItems.map(k => ({
+            'Referencia': k.activo_id === activo.id ? 'Directo' : `De: ${k.origen_codigo || k.origen_nombre || ''}`,
+            'SKU': k.insumo_sku || '',
+            'Insumo': k.insumo_nombre || k.nombre || '',
+            'Cantidad Sugerida': parseFloat(k.cantidad_sugerida || k.cantidad) || 0,
+            'Unidad': k.unidad_medida || '',
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 12 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Kit');
+        XLSX.writeFile(wb, `kit_${activo.codigo_interno || activo.id}_${(activo.nombre || 'activo').replace(/\s+/g, '_')}.xlsx`);
     };
 
     const subirDoc = async () => {
@@ -525,7 +541,14 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
 
                                 {activo && (
                                     <div className={tab === 'kit' ? 'd-block' : 'd-none'}>
-                                        <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-tools text-primary me-2"></i>Kit de Repuestos Sugeridos</h5>
+                                        <div className="d-flex justify-content-between align-items-center mb-3">
+                                            <h5 className="fw-bold mb-0 text-dark"><i className="bi bi-tools text-primary me-2"></i>Kit de Repuestos Sugeridos</h5>
+                                            {kitItems.length > 0 && (
+                                                <button className="btn btn-outline-success btn-sm fw-bold" onClick={exportarKitExcel}>
+                                                    <i className="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+                                                </button>
+                                            )}
+                                        </div>
 
                                         {!isReadOnly && (
                                             <>

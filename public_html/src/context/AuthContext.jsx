@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useCallback } from "react";
 import api from "../api/axiosConfig";
 
 const AuthContext = createContext({});
@@ -6,6 +6,29 @@ const AuthContext = createContext({});
 export const AuthProvider = ({ children }) => {
     const [auth, setAuth] = useState({});
     const [loading, setLoading] = useState(true);
+
+    const revalidarSesion = useCallback(async () => {
+        try {
+            const res = await api.get('/index.php/auth/me');
+            if (res.data?.success && res.data.user) {
+                const userData = {
+                    id: res.data.user.id,
+                    nombre: res.data.user.nombre,
+                    rol: res.data.user.rol,
+                    permisos: res.data.user.permisos || []
+                };
+                setAuth(userData);
+                localStorage.setItem("insuorders_user", JSON.stringify(userData));
+            }
+        } catch (err) {
+            // Solo limpiar si el servidor confirma 401 (sesión revocada).
+            // Errores de red o servidor caído mantienen la sesión local.
+            if (err?.response?.status === 401) {
+                setAuth({});
+                localStorage.removeItem("insuorders_user");
+            }
+        }
+    }, []);
 
     useEffect(() => {
         const storedUser = localStorage.getItem("insuorders_user");
@@ -16,8 +39,15 @@ export const AuthProvider = ({ children }) => {
                 localStorage.removeItem("insuorders_user");
             }
         }
-        setLoading(false);
-    }, []);
+        // Revalidar permisos frescos del backend al iniciar
+        revalidarSesion().finally(() => setLoading(false));
+    }, [revalidarSesion]);
+
+    useEffect(() => {
+        const onFocus = () => { if (auth.id) revalidarSesion(); };
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
+    }, [auth.id, revalidarSesion]);
 
     const login = async (username, password) => {
         try {

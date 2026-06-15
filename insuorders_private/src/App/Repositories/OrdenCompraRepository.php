@@ -63,8 +63,8 @@ class OrdenCompraRepository
 
             $stmtDet = $this->db->prepare(
                 "INSERT INTO detalle_orden_compra
-                    (orden_compra_id, insumo_id, cantidad_solicitada, precio_unitario, total_linea)
-                 VALUES (:oc, :ins, :cant, :precio, :total)"
+                    (orden_compra_id, insumo_id, cantidad_solicitada, precio_unitario, total_linea, nota_linea)
+                 VALUES (:oc, :ins, :cant, :precio, :total, :nota)"
             );
 
             foreach ($items as $item) {
@@ -79,6 +79,7 @@ class OrdenCompraRepository
                     ':cant' => $cantidad,
                     ':precio' => $precio,
                     ':total' => round($cantidad * $precio, 2),
+                    ':nota' => $item['nota_linea'] ?? null,
                 ]);
             }
 
@@ -237,9 +238,15 @@ class OrdenCompraRepository
             return;
 
         if (is_array($idsDetalleSolicitud))
-            $idsStr = implode(',', array_map('intval', $idsDetalleSolicitud));
+            $ids = array_map('intval', $idsDetalleSolicitud);
         else
-            $idsStr = $idsDetalleSolicitud;
+            $ids = array_map('intval', explode(',', (string)$idsDetalleSolicitud));
+
+        $ids = array_filter($ids, fn($v) => $v > 0);
+        if (empty($ids))
+            return;
+
+        $idsStr = implode(',', $ids);
 
         if (empty($idsStr))
             return;
@@ -310,7 +317,8 @@ class OrdenCompraRepository
         try {
             $this->db->beginTransaction();
 
-            $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id");
+            // FOR UPDATE: bloquea el registro de la OC para evitar recepciones simultáneas que dupliquen stock
+            $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id FOR UPDATE");
             $stmt->execute([':id' => $ordenId]);
             $estadoActual = $stmt->fetchColumn();
 
@@ -325,9 +333,12 @@ class OrdenCompraRepository
                 if ($cantidad <= 0)
                     continue;
 
-                $stmtDet = $this->db->prepare("SELECT insumo_id, cantidad_solicitada, cantidad_recibida FROM detalle_orden_compra WHERE id = :id FOR UPDATE");
-                $stmtDet->execute([':id' => $detalleId]);
+                $stmtDet = $this->db->prepare("SELECT insumo_id, cantidad_solicitada, cantidad_recibida FROM detalle_orden_compra WHERE id = :id AND orden_compra_id = :oc FOR UPDATE");
+                $stmtDet->execute([':id' => $detalleId, ':oc' => $ordenId]);
                 $linea = $stmtDet->fetch(PDO::FETCH_ASSOC);
+
+                if (!$linea)
+                    throw new Exception("Línea de detalle inválida o no pertenece a esta orden.");
 
                 if ($cantidad + $linea['cantidad_recibida'] > $linea['cantidad_solicitada'])
                     throw new Exception("Exceso de recepción en insumo ID: " . $linea['insumo_id']);
@@ -429,6 +440,38 @@ class OrdenCompraRepository
         return $stmt->execute($idsArray);
     }
 
+    public function cerrarOCsSinDemandaPendiente(array $idsDetalleSolicitud): void
+    {
+        if (empty($idsDetalleSolicitud))
+            return;
+
+        $placeholders = implode(',', array_fill(0, count($idsDetalleSolicitud), '?'));
+
+        // OCs vinculadas a los ítems que se acaban de omitir
+        $stmtOCs = $this->db->prepare(
+            "SELECT DISTINCT orden_compra_id FROM detalle_solicitud
+             WHERE id IN ($placeholders) AND orden_compra_id IS NOT NULL"
+        );
+        $stmtOCs->execute($idsDetalleSolicitud);
+        $ocIds = $stmtOCs->fetchAll(PDO::FETCH_COLUMN);
+
+        foreach ($ocIds as $ocId) {
+            // ¿Quedan líneas de OT activas vinculadas a esta OC?
+            $stmtPend = $this->db->prepare(
+                "SELECT COUNT(*) FROM detalle_solicitud
+                 WHERE orden_compra_id = ?
+                   AND estado_linea NOT IN ('OMITIDO','ENTREGADO','CANCELADO','FINALIZADO','EN_BODEGA')"
+            );
+            $stmtPend->execute([$ocId]);
+            if ((int) $stmtPend->fetchColumn() === 0) {
+                // Sin demanda activa: cerrar la OC si está en estado Emitida(2) o Parcial(3)
+                $this->db->prepare(
+                    "UPDATE ordenes_compra SET estado_id = 6 WHERE id = ? AND estado_id IN (2, 3)"
+                )->execute([$ocId]);
+            }
+        }
+    }
+
     public function obtenerDatosParaNotificar($idsArray)
     {
         if (empty($idsArray))
@@ -459,36 +502,41 @@ class OrdenCompraRepository
 
     public function reabrirOC($id)
     {
-        $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-        $estado = (int) $stmt->fetchColumn();
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare("SELECT estado_id FROM ordenes_compra WHERE id = :id FOR UPDATE");
+            $stmt->execute([':id' => $id]);
+            $estado = (int) $stmt->fetchColumn();
 
-        if ($estado !== 6) {
-            throw new Exception("Solo se pueden reabrir OCs en estado Cerrada Incompleta.");
-        }
-
-        $stmtDet = $this->db->prepare(
-            "SELECT cantidad_solicitada, cantidad_recibida
-             FROM detalle_orden_compra WHERE orden_compra_id = :id"
-        );
-        $stmtDet->execute([':id' => $id]);
-        $detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
-
-        $nuevoEstado = 3;
-        $algunaRecibida = false;
-        foreach ($detalles as $d) {
-            if ((float) $d['cantidad_recibida'] > 0) {
-                $algunaRecibida = true;
-                break;
+            if ($estado !== 6) {
+                $this->db->rollBack();
+                throw new Exception("Solo se pueden reabrir OCs en estado Cerrada Incompleta.");
             }
-        }
-        if (!$algunaRecibida) {
-            $nuevoEstado = 2;
-        }
 
-        $this->db->prepare("UPDATE ordenes_compra SET estado_id = :st WHERE id = :id")
-            ->execute([':st' => $nuevoEstado, ':id' => $id]);
+            $stmtDet = $this->db->prepare(
+                "SELECT cantidad_solicitada, cantidad_recibida
+                 FROM detalle_orden_compra WHERE orden_compra_id = :id"
+            );
+            $stmtDet->execute([':id' => $id]);
+            $detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
 
-        return $nuevoEstado;
+            $algunaRecibida = false;
+            foreach ($detalles as $d) {
+                if ((float) $d['cantidad_recibida'] > 0) {
+                    $algunaRecibida = true;
+                    break;
+                }
+            }
+            $nuevoEstado = $algunaRecibida ? 3 : 2;
+
+            $this->db->prepare("UPDATE ordenes_compra SET estado_id = :st WHERE id = :id")
+                ->execute([':st' => $nuevoEstado, ':id' => $id]);
+
+            $this->db->commit();
+            return $nuevoEstado;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
     }
 }

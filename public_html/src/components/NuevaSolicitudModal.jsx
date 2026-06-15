@@ -112,7 +112,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             setLoading(true);
             const [resActivos, resInsumos, resCC, resPersonal, resPermisos] = await Promise.all([
                 api.get('/index.php/mantencion/activos'),
-                api.get('/index.php/inventario'),
+                api.get('/index.php/mantencion/insumos'),
                 api.get('/index.php/mantencion/centros-costo'),
                 api.get('/index.php/personal'),
                 api.get('/index.php/mantencion/tipos-permiso')
@@ -215,7 +215,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                     codigo_sku: d.codigo_sku,
                     stock_actual: parseFloat(d.stock_actual || 0),
                     unidad_medida: d.unidad_medida,
-                    cantidad: parseFloat(d.cantidad || 0),
+                    cantidad: parseFloat(d.estado_linea === 'ENTREGADO' ? (d.cantidad_entregada || d.cantidad || 0) : (d.cantidad || 0)),
                     oc_id: d.oc_id,
                     oc_proveedor: d.oc_proveedor,
                     estado_linea: d.estado_linea || 'PENDIENTE',
@@ -482,7 +482,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             />
 
             <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto', zIndex: 1050 }}>
-                <div className="modal-dialog modal-xl">
+                <div className="modal-dialog modal-xl modal-dialog-scrollable">
                     <div className="modal-content shadow-lg border-0">
 
                         <div className="modal-header bg-warning text-dark border-bottom border-warning">

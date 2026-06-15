@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\InsumoService;
 use App\Repositories\OperarioRepository;
@@ -38,7 +39,11 @@ class InsumoController
 
             $allowedfileExtensions = array('jpg', 'gif', 'png', 'jpeg', 'webp');
 
-            if (in_array($fileExtension, $allowedfileExtensions)) {
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $fileMime = $finfo->file($fileTmpPath);
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+            if (in_array($fileExtension, $allowedfileExtensions) && in_array($fileMime, $allowedMimes)) {
                 $uploadFileDir = __DIR__ . '/../../../../public_html/uploads/insumos/';
 
                 if (!is_dir($uploadFileDir)) {
@@ -90,7 +95,7 @@ class InsumoController
             echo json_encode(["success" => true, "message" => "Insumo creado correctamente", "id" => $id]);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -135,7 +140,7 @@ class InsumoController
             }
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Error interno: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error interno: " . ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -191,7 +196,7 @@ class InsumoController
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Error al procesar: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error al procesar: " . ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -206,7 +211,7 @@ class InsumoController
             }
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -219,7 +224,7 @@ class InsumoController
             echo json_encode(['success' => true, 'sku' => $sku]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -231,7 +236,7 @@ class InsumoController
             echo json_encode(["success" => true, "data" => $data]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -255,7 +260,7 @@ class InsumoController
             ]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -279,7 +284,7 @@ class InsumoController
             echo $content;
 
         } catch (Exception $e) {
-            die("Error generando PDF: " . $e->getMessage());
+            die("Error generando PDF: " . ErrorHelper::safeMessage($e));
         }
     }
 }

@@ -55,6 +55,7 @@ class BodegaServiceTest extends TestCase
 
     public function test_entregarMaterial_directo_a_empleado_llama_asignarInsumo(): void
     {
+        $this->operarioMock->method('existeEmpleadoActivo')->willReturn(true);
         $this->operarioMock->expects($this->once())
             ->method('asignarInsumo')
             ->with($this->callback(fn($d) =>

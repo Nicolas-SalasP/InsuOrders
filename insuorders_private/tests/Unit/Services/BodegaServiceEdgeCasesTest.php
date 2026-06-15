@@ -35,6 +35,7 @@ class BodegaServiceEdgeCasesTest extends TestCase
 
     public function test_entregarMaterial_cantidad_flotante_es_valida(): void
     {
+        $this->operarioMock->method('existeEmpleadoActivo')->willReturn(true);
         $this->operarioMock->expects($this->once())
             ->method('asignarInsumo')
             ->with($this->callback(fn($d) => $d['cantidad'] === 2.5));
@@ -48,6 +49,7 @@ class BodegaServiceEdgeCasesTest extends TestCase
 
     public function test_entregarMaterial_cantidad_entregar_tiene_prioridad(): void
     {
+        $this->operarioMock->method('existeEmpleadoActivo')->willReturn(true);
         $this->operarioMock->expects($this->once())
             ->method('asignarInsumo')
             ->with($this->callback(fn($d) => $d['cantidad'] === 7.0));

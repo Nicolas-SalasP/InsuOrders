@@ -202,4 +202,51 @@ class CronogramaRepository
             $this->addInsumos($eventoId, $itemsCronograma);
         }
     }
+
+    public function getResumen(string $mes): array
+    {
+        // OTs con cronograma agendado en el mes (JOIN a cronograma_mantencion)
+        $stmtPend = $this->db->prepare("
+            SELECT DISTINCT s.id, s.titulo, s.prioridad, s.fecha_solicitud, s.fecha_requerida,
+                   e.nombre AS estado, e.id AS estado_id,
+                   cm.fecha_programada,
+                   COALESCE(a.nombre, CONCAT('SERV / ', COALESCE(s.area_negocio,'General'))) AS activo,
+                   COALESCE(a.codigo_interno,'N/A') AS activo_codigo,
+                   (SELECT GROUP_CONCAT(CONCAT(u2.nombre,' ',u2.apellido) SEPARATOR ', ')
+                    FROM ot_asignaciones oa JOIN usuarios u2 ON oa.usuario_id = u2.id
+                    WHERE oa.solicitud_id = s.id) AS asignados
+            FROM solicitudes_ot s
+            JOIN estados_solicitud e ON s.estado_id = e.id
+            JOIN cronograma_mantencion cm ON cm.solicitud_ot_id = s.id
+            LEFT JOIN activos a ON s.activo_id = a.id
+            WHERE s.estado_id NOT IN (5,6)
+              AND DATE_FORMAT(cm.fecha_programada,'%Y-%m') = :mes
+            ORDER BY
+                CASE UPPER(TRIM(s.prioridad))
+                    WHEN 'CRITICO'  THEN 1 WHEN 'CRÍTICO' THEN 1
+                    WHEN 'URGENTE' THEN 2
+                    WHEN 'ALTA'    THEN 3
+                    WHEN 'MEDIA'   THEN 4
+                    WHEN 'BAJA'    THEN 5
+                    ELSE 6
+                END ASC, s.id DESC
+            LIMIT 10
+        ");
+        $stmtPend->execute([':mes' => $mes]);
+        $pendientes = $stmtPend->fetchAll(PDO::FETCH_ASSOC);
+
+        // Stats del mes (todas las OTs con cronograma en ese mes, cualquier estado)
+        $stmt = $this->db->prepare("
+            SELECT e.nombre AS estado, e.id AS estado_id, COUNT(DISTINCT s.id) AS total
+            FROM solicitudes_ot s
+            JOIN estados_solicitud e ON s.estado_id = e.id
+            JOIN cronograma_mantencion cm ON cm.solicitud_ot_id = s.id
+            WHERE DATE_FORMAT(cm.fecha_programada,'%Y-%m') = :mes
+            GROUP BY e.id, e.nombre
+        ");
+        $stmt->execute([':mes' => $mes]);
+        $stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return ['pendientes' => $pendientes, 'stats' => $stats];
+    }
 }

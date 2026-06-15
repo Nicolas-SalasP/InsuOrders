@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -120,7 +121,7 @@ class ExportController
                 header('Content-Type: application/json');
                 http_response_code(500);
             }
-            echo json_encode(["success" => false, "message" => "Error generando Excel: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error generando Excel: " . ErrorHelper::safeMessage($e)]);
             exit;
         }
     }
@@ -209,18 +210,26 @@ class ExportController
 
         $this->fillSheet(
             $sheet,
-            ['ID', 'Código Interno', 'Nombre Activo', 'Tipo', 'Ubicación', 'Descripción', 'Centro de Costo'],
+            ['ID', 'Código Interno', 'Código Máquina', 'Nombre Activo', 'Tipo', 'Marca', 'Modelo', 'Año', 'N° Serie', 'Estado', 'Ubicación', 'Descripción', 'Centro de Costo', 'Frec. Mantención', 'Activo Padre'],
             $data,
             fn($d) => [
                 $d['id'],
                 $d['codigo_interno'],
+                $d['codigo_maquina'] ?? '',
                 $d['nombre'],
-                $d['tipo'],
-                $d['ubicacion'],
+                $d['tipo'] ?? '',
+                $d['marca'] ?? '',
+                $d['modelo'] ?? '',
+                $d['anio'] ?? '',
+                $d['numero_serie'] ?? '',
+                $d['estado_activo'] ?? '',
+                $d['ubicacion'] ?? '',
                 $d['descripcion'] ?? '',
                 (!empty($d['centro_costo_nombre']))
-                ? ($d['centro_costo_codigo'] . ' - ' . $d['centro_costo_nombre'])
-                : 'Sin asignar'
+                    ? ($d['centro_costo_codigo'] . ' - ' . $d['centro_costo_nombre'])
+                    : 'Sin asignar',
+                !empty($d['frecuencia_mantencion']) ? ($d['frecuencia_mantencion'] . ' ' . ($d['unidad_frecuencia'] ?? '')) : '',
+                $d['padre_nombre'] ?? ''
             ]
         );
     }

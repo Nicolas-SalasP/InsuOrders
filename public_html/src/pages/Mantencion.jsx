@@ -49,7 +49,7 @@ const Mantencion = () => {
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
     const [filtroSinTecnico, setFiltroSinTecnico] = useState(false);
-    
+
     // SISTEMA DE 4 FASES PARA EL ORDEN
     const [tipoOrden, setTipoOrden] = useState('default');
 
@@ -114,7 +114,7 @@ const Mantencion = () => {
 
     const cargarListaInsumos = async () => {
         try {
-            const res = await api.get('/index.php/compras/filtros');
+            const res = await api.get('/index.php/mantencion/insumos');
             if (res.data.success) setListaInsumos(res.data.data);
         } catch (e) { console.error(e); }
     };
@@ -171,8 +171,8 @@ const Mantencion = () => {
         setConfirmFinish({ show: false, id: null });
         setLoading(true);
         try {
-            await api.post('/index.php/mantencion/finalizar', { id: confirmFinish.id });
-            setMsg({ show: true, title: "Finalizada", text: "OT Completada.", type: "success" });
+            const res = await api.post('/index.php/mantencion/finalizar', { id: confirmFinish.id, force: true });
+            setMsg({ show: true, title: "Finalizada", text: res.data?.message || "OT Completada.", type: "success" });
             cargarSolicitudes();
         } catch (error) {
             setMsg({ show: true, title: "Error", text: error.response?.data?.message || "Error al finalizar.", type: "error" });
@@ -317,7 +317,7 @@ const Mantencion = () => {
                 return { class: 'btn-dark text-white', icon: 'bi-sort-down-alt', text: 'Prioridad (Mayor a Menor)' };
         }
     };
-    
+
     const ordenBtn = getOrdenConfig();
 
     const isCritico = (prio) => {
@@ -386,7 +386,7 @@ const Mantencion = () => {
         if (tipoOrden === 'desc') return parseInt(b.id) - parseInt(a.id);
         // Orden N° OT (Antiguas primero)
         if (tipoOrden === 'asc') return parseInt(a.id) - parseInt(b.id);
-        
+
         // Orden por Prioridad
         const prioA = getPrioridadValor(a.prioridad);
         const prioB = getPrioridadValor(b.prioridad);
@@ -443,7 +443,7 @@ const Mantencion = () => {
             />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-0 flex-shrink-0">
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
                             <i className="bi bi-wrench-adjustable fs-3"></i>
@@ -466,18 +466,18 @@ const Mantencion = () => {
 
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2 align-items-center">
-                        <div className="col-md-2">
+                        <div className="col-6 col-md-2">
                             <input type="text" className="form-control" placeholder="# OT" value={filtroOT} onChange={e => setFiltroOT(e.target.value)} />
                         </div>
-                        <div className="col-md-2">
+                        <div className="col-6 col-md-2">
                             <input type="text" className="form-control" placeholder="Máquina/Activo..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
                         </div>
 
-                        <div className="col-md-2">
+                        <div className="col-6 col-md-2">
                             <input type="text" className="form-control" placeholder="Ubicación (ej: HOR)..." value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)} />
                         </div>
 
-                        <div className="col-md-2 position-relative" ref={wrapperRef}>
+                        <div className="col-6 col-md-2 position-relative" ref={wrapperRef}>
                             <div className="input-group">
                                 <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-primary'}`}>
                                     <i className="bi bi-box-seam"></i>
@@ -511,7 +511,7 @@ const Mantencion = () => {
                                 </ul>
                             )}
                         </div>
-                        <div className="col-md-2 position-relative" ref={estadoRef}>
+                        <div className="col-6 col-md-2 position-relative" ref={estadoRef}>
                             <button
                                 className="form-select text-start bg-white shadow-sm"
                                 onClick={() => setShowEstadoDropdown(!showEstadoDropdown)}
@@ -543,7 +543,7 @@ const Mantencion = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="col-md-2 text-end">
+                        <div className="col-6 col-md-2 text-end">
                             {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado.length > 0 || filtroFecha || filtroInsumo || filtroSinTecnico || tipoOrden !== 'default') && (
                                 <button className="btn btn-outline-secondary w-100" onClick={limpiarFiltros}>
                                     <i className="bi bi-x-lg me-1"></i> Limpiar
@@ -579,168 +579,170 @@ const Mantencion = () => {
                             <span className="text-muted">Cargando solicitudes...</span>
                         </div>
                     ) : (
-                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '1100px' }}>
-                            <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
-                                <tr>
-                                    <th className="ps-4">OT #</th>
-                                    <th>Máquina / Activo</th>
-                                    <th>Descripción</th>
-                                    <th>Solicitante</th>
-                                    <th className="py-3 px-3">Fecha Prog / Creación</th>
-                                    <th className="py-3 px-3">Fecha Cierre</th>
-                                    <th>Prioridad</th>
-                                    <th>Estado</th>
-                                    <th className="text-end">Costo Total</th>
-                                    <th className="text-end pe-4" style={{ minWidth: '150px' }}>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => {
-                                    const critico = isCritico(s.prioridad);
-                                    const reqStr = s.fecha_requerida ? s.fecha_requerida.substring(0, 10) : null;
-                                    const isFutura = reqStr && reqStr > todayStr;
-                                    let estadoTexto = s.estado;
-                                    let badgeClass = 'bg-warning text-dark';
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0">
+                                <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
+                                    <tr>
+                                        <th className="ps-4">OT #</th>
+                                        <th>Máquina / Activo</th>
+                                        <th className="d-none d-md-table-cell">Descripción</th>
+                                        <th className="d-none d-md-table-cell">Solicitante</th>
+                                        <th className="d-none d-lg-table-cell py-3 px-3">Fecha Prog / Creación</th>
+                                        <th className="d-none d-lg-table-cell py-3 px-3">Fecha Cierre</th>
+                                        <th className="d-none d-md-table-cell">Prioridad</th>
+                                        <th>Estado</th>
+                                        <th className="d-none d-lg-table-cell text-end">Costo Total</th>
+                                        <th className="text-end pe-4">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => {
+                                        const critico = isCritico(s.prioridad);
+                                        const reqStr = s.fecha_requerida ? s.fecha_requerida.substring(0, 10) : null;
+                                        const isFutura = reqStr && reqStr > todayStr;
+                                        let estadoTexto = s.estado;
+                                        let badgeClass = 'bg-warning text-dark';
 
 
-                                    if (isFutura && (parseInt(s.estado_id) === 1 || parseInt(s.estado_id) === 4)) {
-                                        estadoTexto = 'PROGRAMADA';
-                                        badgeClass = 'bg-primary text-white shadow-sm';
-                                    } else {
-                                        if (s.estado === 'En Proceso' || s.estado === 'Aprobada') {
-                                            estadoTexto = 'En Proceso';
-                                            badgeClass = 'bg-info text-dark';
+                                        if (isFutura && (parseInt(s.estado_id) === 1 || parseInt(s.estado_id) === 4)) {
+                                            estadoTexto = 'PROGRAMADA';
+                                            badgeClass = 'bg-primary text-white shadow-sm';
+                                        } else {
+                                            if (s.estado === 'En Proceso' || s.estado === 'Aprobada') {
+                                                estadoTexto = 'En Proceso';
+                                                badgeClass = 'bg-info text-dark';
+                                            }
+                                            else if (s.estado === 'Completada') badgeClass = 'bg-success text-white';
+                                            else if (s.estado === 'Anulada' || s.estado === 'Cancelada') badgeClass = 'bg-danger text-white';
                                         }
-                                        else if (s.estado === 'Completada') badgeClass = 'bg-success text-white';
-                                        else if (s.estado === 'Anulada' || s.estado === 'Cancelada') badgeClass = 'bg-danger text-white';
-                                    }
 
-                                    const rowStyle = critico ? {
-                                        '--bs-table-bg': '#ffe6e6',
-                                        '--bs-table-accent-bg': '#ffe6e6',
-                                        backgroundColor: '#ffe6e6',
-                                        borderLeft: '5px solid #dc3545'
-                                    } : {};
+                                        const rowStyle = critico ? {
+                                            '--bs-table-bg': '#ffe6e6',
+                                            '--bs-table-accent-bg': '#ffe6e6',
+                                            backgroundColor: '#ffe6e6',
+                                            borderLeft: '5px solid #dc3545'
+                                        } : {};
 
-                                    return (
-                                        <tr
-                                            key={s.id}
-                                            style={rowStyle}
-                                            className={`${s.estado === 'Anulada' ? 'bg-light text-muted' : ''} ${critico ? 'text-danger fw-bold' : ''}`}
-                                        >
-                                            <td className="ps-4 fw-bold">#{s.id}</td>
-                                            <td>
-                                                <div className="fw-bold text-dark">{s.activo || 'General'}</div>
-                                                {s.activo_codigo && <small className="text-muted d-block">{s.activo_codigo}</small>}
-                                                {s.sub_activo_nombre && (
-                                                    <small className="text-primary fw-bold d-block"><i className="bi bi-arrow-return-right me-1"></i>{s.sub_activo_nombre}</small>
-                                                )}
-                                                {s.ubicacion && <span className="badge bg-light text-secondary border mt-1"><i className="bi bi-geo-alt me-1"></i>{s.ubicacion}</span>}
-                                            </td>
-                                            <td>
-                                                <div className="fw-bold text-dark">{s.titulo || ''}</div>
-                                                <small className="text-muted text-truncate d-block" style={{ maxWidth: '200px' }}>{s.descripcion_trabajo || '-'}</small>
-                                            </td>
+                                        return (
+                                            <tr
+                                                key={s.id}
+                                                style={rowStyle}
+                                                className={`${s.estado === 'Anulada' ? 'bg-light text-muted' : ''} ${critico ? 'text-danger fw-bold' : ''}`}
+                                            >
+                                                <td className="ps-4 fw-bold">#{s.id}</td>
+                                                <td>
+                                                    <div className="fw-bold text-dark">{s.activo || 'General'}</div>
+                                                    {s.activo_codigo && <small className="text-muted d-block">{s.activo_codigo}</small>}
+                                                    {s.sub_activo_nombre && (
+                                                        <small className="text-primary fw-bold d-block"><i className="bi bi-arrow-return-right me-1"></i>{s.sub_activo_nombre}</small>
+                                                    )}
+                                                    {s.ubicacion && <span className="badge bg-light text-secondary border mt-1"><i className="bi bi-geo-alt me-1"></i>{s.ubicacion}</span>}
+                                                </td>
+                                                <td className="d-none d-md-table-cell">
+                                                    <div className="fw-bold text-dark">{s.titulo || ''}</div>
+                                                    <small className="text-muted text-truncate d-block" style={{ maxWidth: '200px' }}>{s.descripcion_trabajo || '-'}</small>
+                                                </td>
 
-                                            <td>
-                                                <div className="text-dark">{s.solicitante_nombre} {s.solicitante_apellido}</div>
-                                                <div className="mt-1" style={{ maxWidth: '200px' }}>
-                                                    {s.asignados_nombres ? (
-                                                        <div className="d-flex flex-wrap gap-1">
-                                                            {s.asignados_nombres.split(',').map((nombre, i) => (
-                                                                <span key={i} className="badge bg-light text-primary border border-primary border-opacity-25" style={{fontSize: '0.7rem'}}>
-                                                                    <i className="bi bi-person-fill me-1"></i>{nombre.trim()}
-                                                                </span>
-                                                            ))}
-                                                        </div>
+                                                <td className="d-none d-md-table-cell">
+                                                    <div className="text-dark">{s.solicitante_nombre} {s.solicitante_apellido}</div>
+                                                    <div className="mt-1" style={{ maxWidth: '200px' }}>
+                                                        {s.asignados_nombres ? (
+                                                            <div className="d-flex flex-wrap gap-1">
+                                                                {s.asignados_nombres.split(',').map((nombre, i) => (
+                                                                    <span key={i} className="badge bg-light text-primary border border-primary border-opacity-25" style={{fontSize: '0.7rem'}}>
+                                                                        <i className="bi bi-person-fill me-1"></i>{nombre.trim()}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-danger small fw-bold"><i className="bi bi-exclamation-circle me-1"></i>Sin técnicos</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                <td className="d-none d-lg-table-cell small px-3">
+                                                    {isFutura ? (
+                                                        <span className="badge bg-primary text-white shadow-sm fw-bold px-2 py-1">
+                                                            <i className="bi bi-calendar-event me-1"></i>
+                                                            {new Date(s.fecha_requerida + 'T00:00:00').toLocaleDateString()}
+                                                        </span>
                                                     ) : (
-                                                        <span className="text-danger small fw-bold"><i className="bi bi-exclamation-circle me-1"></i>Sin técnicos</span>
+                                                        <span className="text-muted fw-medium">
+                                                            <i className="bi bi-clock-history me-1"></i>
+                                                            {new Date(s.fecha_solicitud).toLocaleDateString()}
+                                                        </span>
                                                     )}
-                                                </div>
-                                            </td>
+                                                </td>
 
-                                            <td className="small px-3">
-                                                {isFutura ? (
-                                                    <span className="badge bg-primary text-white shadow-sm fw-bold px-2 py-1">
-                                                        <i className="bi bi-calendar-event me-1"></i>
-                                                        {new Date(s.fecha_requerida + 'T00:00:00').toLocaleDateString()}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted fw-medium">
-                                                        <i className="bi bi-clock-history me-1"></i>
-                                                        {new Date(s.fecha_solicitud).toLocaleDateString()}
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            <td className="small px-3">
-                                                {s.fecha_cierre ? (
-                                                    <span className="text-success fw-bold">
-                                                        <i className="bi bi-check-circle me-1"></i>
-                                                        {new Date(s.fecha_cierre).toLocaleDateString()}
-                                                        <small className="d-block text-muted fw-normal">
-                                                            {new Date(s.fecha_cierre).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </small>
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted small"><i className="bi bi-dash"></i></span>
-                                                )}
-                                            </td>
-
-                                            <td>{getPriorityBadge(s.prioridad)}</td>
-                                            <td><span className={`badge ${badgeClass}`}>{estadoTexto}</span></td>
-
-                                            <td className="text-end">
-                                                {s.estado === 'Completada' ? (
-                                                    <span className="fw-bold text-success">
-                                                        {formatCurrency(s.costo_total_ot)}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted small"><i className="bi bi-dash"></i></span>
-                                                )}
-                                            </td>
-
-                                            <td className="text-end pe-4">
-                                                <div className="d-flex justify-content-end align-items-center gap-2">
-
-                                                    {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
-                                                        <>
-                                                            {can('mant_finalizar') && (
-                                                                <button
-                                                                    className="btn btn-sm btn-success fw-bold px-2 py-1"
-                                                                    onClick={() => solicitarFinalizar(s.id)}
-                                                                    title="Finalizar Trabajo"
-                                                                >
-                                                                    <i className="bi bi-check2-circle"></i>
-                                                                </button>
-                                                            )}
-                                                        </>
+                                                <td className="d-none d-lg-table-cell small px-3">
+                                                    {s.fecha_cierre ? (
+                                                        <span className="text-success fw-bold">
+                                                            <i className="bi bi-check-circle me-1"></i>
+                                                            {new Date(s.fecha_cierre).toLocaleDateString()}
+                                                            <small className="d-block text-muted fw-normal">
+                                                                {new Date(s.fecha_cierre).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </small>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted small"><i className="bi bi-dash"></i></span>
                                                     )}
-                                                    {s.estado === 'Completada' && can('mant_editar') && (
+                                                </td>
+
+                                                <td className="d-none d-md-table-cell">{getPriorityBadge(s.prioridad)}</td>
+                                                <td><span className={`badge ${badgeClass}`}>{estadoTexto}</span></td>
+
+                                                <td className="d-none d-lg-table-cell text-end">
+                                                    {s.estado === 'Completada' ? (
+                                                        <span className="fw-bold text-success">
+                                                            {formatCurrency(s.costo_total_ot)}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted small"><i className="bi bi-dash"></i></span>
+                                                    )}
+                                                </td>
+
+                                                <td className="text-end pe-4">
+                                                    <div className="d-flex justify-content-end align-items-center gap-2">
+
+                                                        {s.estado !== 'Completada' && s.estado !== 'Anulada' && (
+                                                            <>
+                                                                {can('mant_finalizar') && (
+                                                                    <button
+                                                                        className="btn btn-sm btn-success fw-bold px-2 py-1"
+                                                                        onClick={() => solicitarFinalizar(s.id)}
+                                                                        title="Finalizar Trabajo"
+                                                                    >
+                                                                        <i className="bi bi-check2-circle"></i>
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                        {s.estado === 'Completada' && can('mant_editar') && (
+                                                            <button
+                                                                className="btn btn-sm btn-outline-warning fw-bold px-2 py-1"
+                                                                onClick={() => solicitarReabrir(s.id)}
+                                                                title="Reabrir OT"
+                                                            >
+                                                                <i className="bi bi-arrow-counterclockwise"></i>
+                                                            </button>
+                                                        )}
                                                         <button
-                                                            className="btn btn-sm btn-outline-warning fw-bold px-2 py-1"
-                                                            onClick={() => solicitarReabrir(s.id)}
-                                                            title="Reabrir OT"
+                                                            className={`btn btn-sm btn-light border menu-trigger-btn ${openMenuId === s.id ? 'active' : ''}`}
+                                                            type="button"
+                                                            onClick={(e) => toggleMenu(s.id, e)}
                                                         >
-                                                            <i className="bi bi-arrow-counterclockwise"></i>
+                                                            <i className="bi bi-three-dots-vertical"></i>
                                                         </button>
-                                                    )}
-                                                    <button
-                                                        className={`btn btn-sm btn-light border menu-trigger-btn ${openMenuId === s.id ? 'active' : ''}`}
-                                                        type="button"
-                                                        onClick={(e) => toggleMenu(s.id, e)}
-                                                    >
-                                                        <i className="bi bi-three-dots-vertical"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                }) : (
-                                    <tr><td colSpan="10" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }) : (
+                                        <tr><td colSpan="10" className="text-center py-5 text-muted">No se encontraron solicitudes con los filtros actuales.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
             </div>

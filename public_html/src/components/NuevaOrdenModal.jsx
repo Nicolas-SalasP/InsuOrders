@@ -245,7 +245,7 @@ const NuevaOrdenModal = ({ show, onClose, onSave, itemsIniciales = [], modoEdici
 
     return (
         <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto', zIndex: 1060 }}>
-            <div className="modal-dialog modal-xl">
+            <div className="modal-dialog modal-xl modal-dialog-scrollable">
                 <div className="modal-content shadow-lg border-0">
                     <div className="modal-header bg-primary text-white">
                         <h5 className="modal-title fw-bold"><i className="bi bi-file-earmark-plus me-2"></i>Generar Orden de Compra</h5>

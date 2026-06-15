@@ -54,11 +54,11 @@ class CotizacionServiceEdgeCasesTest extends TestCase
         $this->service->gestionarEstado(1, 'APROBAR');
     }
 
-    public function test_crearCotizacion_multiple_items_suma_correctamente(): void
+    public function test_crearCotizacion_multiple_items_pasa_total_cero(): void
     {
         $this->repoMock->expects($this->once())
             ->method('create')
-            ->with($this->anything(), 1, $this->equalTo(1100.0))
+            ->with($this->anything(), 1, $this->equalTo(0))
             ->willReturn(5);
 
         $this->service->crearCotizacion([

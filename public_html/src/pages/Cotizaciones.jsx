@@ -123,7 +123,7 @@ const Cotizaciones = () => {
     const cerrarPreview = () => setPreviewModal({ show: false, data: null, loading: false });
 
     return (
-        <div className="container-fluid p-4 bg-light min-vh-100">
+        <div className="container-fluid p-3 p-md-4 bg-light min-vh-100">
             <NuevaCotizacionModal show={showModal} onClose={() => setShowModal(false)} onSave={cargarDatos} />
             <ConfirmModal
                 show={confirmacion.show}
@@ -147,7 +147,7 @@ const Cotizaciones = () => {
                                 </h5>
                                 <button type="button" className="btn-close btn-close-white" onClick={cerrarPreview}></button>
                             </div>
-                            <div className="modal-body p-4">
+                            <div className="modal-body p-3 p-md-4">
                                 {previewModal.loading ? (
                                     <div className="text-center py-5"><div className="spinner-border text-primary"></div></div>
                                 ) : previewModal.data ? (() => {
@@ -157,15 +157,15 @@ const Cotizaciones = () => {
                                     return (
                                         <>
                                             <div className="row g-3 mb-4">
-                                                <div className="col-md-3">
+                                                <div className="col-6 col-md-3">
                                                     <small className="text-muted text-uppercase fw-bold d-block">Fecha</small>
                                                     <span className="fw-bold">{new Date(cot.fecha_creacion).toLocaleDateString()}</span>
                                                 </div>
-                                                <div className="col-md-4">
+                                                <div className="col-6 col-md-4">
                                                     <small className="text-muted text-uppercase fw-bold d-block">Solicitante</small>
                                                     <span className="fw-bold">{cot.creador_nombre} {cot.creador_apellido}</span>
                                                 </div>
-                                                <div className="col-md-2">
+                                                <div className="col-6 col-md-2">
                                                     <small className="text-muted text-uppercase fw-bold d-block">Estado</small>
                                                     <span className={`badge px-3 py-2 rounded-pill ${badgeClass}`}>{cot.estado_nombre}</span>
                                                 </div>
@@ -180,19 +180,19 @@ const Cotizaciones = () => {
                                                 <table className="table table-hover align-middle border rounded">
                                                     <thead className="table-light">
                                                         <tr className="text-uppercase small text-muted">
-                                                            <th className="ps-3">#</th>
+                                                            <th className="ps-3 d-none d-md-table-cell">#</th>
                                                             <th>Insumo / Ítem</th>
-                                                            <th>SKU</th>
+                                                            <th className="d-none d-md-table-cell">SKU</th>
                                                             <th className="text-center pe-3">Cantidad</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         {cot.items && cot.items.length > 0 ? cot.items.map((item, idx) => (
                                                             <tr key={item.id}>
-                                                                <td className="ps-3 text-muted small">{idx + 1}</td>
-                                                                <td className="fw-bold text-dark">{item.nombre_item}</td>
-                                                                <td><span className="badge bg-light text-muted border font-monospace">{item.codigo_sku || '—'}</span></td>
-                                                                <td className="text-center fw-bold pe-3">{parseFloat(item.cantidad)} {item.unidad_medida || 'UN'}</td>
+                                                                <td className="ps-3 text-muted small d-none d-md-table-cell">{idx + 1}</td>
+                                                                <td className="fw-bold text-dark" style={{ fontSize: '0.85rem' }}>{item.nombre_item}</td>
+                                                                <td className="d-none d-md-table-cell"><span className="badge bg-light text-muted border font-monospace">{item.codigo_sku || '—'}</span></td>
+                                                                <td className="text-center fw-bold pe-3" style={{ fontSize: '0.85rem' }}>{parseFloat(item.cantidad)} {item.unidad_medida || 'UN'}</td>
                                                             </tr>
                                                         )) : (
                                                             <tr><td colSpan="4" className="text-center text-muted py-4">Sin ítems.</td></tr>
@@ -217,7 +217,7 @@ const Cotizaciones = () => {
                 </div>
             )}
 
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
                 <div>
                     <h3 className="fw-bold text-dark mb-0"><i className="bi bi-calculator me-2"></i>Gestión de Cotizaciones</h3>
                     <p className="text-muted small mb-0">Administra y aprueba las cotizaciones de compra</p>
@@ -230,7 +230,7 @@ const Cotizaciones = () => {
             </div>
 
             <div className="card border-0 shadow-sm mb-4">
-                <div className="card-body bg-white rounded">
+                <div className="card-body bg-white rounded p-3 p-md-4">
                     <h6 className="text-muted small fw-bold text-uppercase mb-3">Filtros de Búsqueda</h6>
                     <div className="row g-2 align-items-end">
                         <div className="col-6 col-md-2">
@@ -261,15 +261,15 @@ const Cotizaciones = () => {
                         </div>
                         <div className="col-6 col-md-2 position-relative">
                             <label className="form-label small fw-bold text-muted mb-1">Insumo</label>
-                            <input 
-                                type="text" 
-                                className="form-control form-control-sm" 
-                                placeholder="Buscar Insumo..." 
-                                value={busquedaInsumo} 
-                                onChange={(e) => { 
-                                    setBusquedaInsumo(e.target.value); 
+                            <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                placeholder="Buscar Insumo..."
+                                value={busquedaInsumo}
+                                onChange={(e) => {
+                                    setBusquedaInsumo(e.target.value);
                                     setMostrarSugerencias(true);
-                                }} 
+                                }}
                             />
                             {mostrarSugerencias && busquedaInsumo && (
                                 <ul className="list-group position-absolute w-100 shadow-sm mt-1" style={{ zIndex: 1050, maxHeight: '200px', overflowY: 'auto' }}>
@@ -295,9 +295,9 @@ const Cotizaciones = () => {
                             <thead className="table-light">
                                 <tr className="text-uppercase small text-muted">
                                     <th className="ps-4">Folio</th>
-                                    <th>Fecha</th>
+                                    <th className="d-none d-md-table-cell">Fecha</th>
                                     <th>Solicitante</th>
-                                    <th className="text-center">Ítems</th>
+                                    <th className="text-center d-none d-md-table-cell">Ítems</th>
                                     <th className="text-center">Estado</th>
                                     <th className="text-end pe-4">Acciones</th>
                                 </tr>
@@ -307,17 +307,17 @@ const Cotizaciones = () => {
                                     data.length === 0 ? <tr><td colSpan="6" className="text-center py-5">Sin registros.</td></tr> :
                                         data.map(cot => (
                                             <tr key={cot.id}>
-                                                <td className="ps-4 fw-bold text-dark">#{cot.id}</td>
-                                                <td>{new Date(cot.fecha_creacion).toLocaleDateString()}</td>
+                                                <td className="ps-4 fw-bold text-dark" style={{ fontSize: '0.85rem' }}>#{cot.id}</td>
+                                                <td className="d-none d-md-table-cell" style={{ fontSize: '0.85rem' }}>{new Date(cot.fecha_creacion).toLocaleDateString()}</td>
                                                 <td><div className="fw-bold text-dark small">{cot.creador_nombre} {cot.creador_apellido}</div></td>
-                                                <td className="text-center"><span className="badge bg-light text-dark border">{cot.items_count}</span></td>
+                                                <td className="text-center d-none d-md-table-cell"><span className="badge bg-light text-dark border">{cot.items_count}</span></td>
                                                 <td className="text-center">
-                                                    <span className={`badge px-3 py-2 rounded-pill ${cot.estado_nombre === 'Aprobada' ? 'bg-success' :
+                                                    <span className={`badge px-2 px-md-3 py-2 rounded-pill ${cot.estado_nombre === 'Aprobada' ? 'bg-success' :
                                                         cot.estado_nombre === 'Rechazada' ? 'bg-danger' : 'bg-warning text-dark'
-                                                    }`}>{cot.estado_nombre}</span>
+                                                    }`} style={{ fontSize: '0.75rem' }}>{cot.estado_nombre}</span>
                                                 </td>
                                                 <td className="text-end pe-4">
-                                                    <div className="btn-group">
+                                                    <div className="btn-group flex-wrap">
                                                         <button className="btn btn-sm btn-outline-primary" title="Vista Previa" onClick={() => verDetalle(cot.id)}>
                                                             <i className="bi bi-eye"></i>
                                                         </button>

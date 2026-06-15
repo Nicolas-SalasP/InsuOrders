@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\OperarioService;
 use App\Middleware\AuthMiddleware;
@@ -23,7 +24,7 @@ class OperarioController
             echo json_encode(['success' => true, 'data' => $data]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -38,7 +39,7 @@ class OperarioController
             echo json_encode(['success' => true, 'message' => 'Entrega registrada exitosamente.']);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -61,7 +62,7 @@ class OperarioController
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+            echo json_encode(["success" => false, "error" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -75,7 +76,7 @@ class OperarioController
             echo json_encode(['success' => true, 'message' => 'Consumo registrado.']);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
     
@@ -87,7 +88,7 @@ class OperarioController
             echo json_encode(['success' => true, 'data' => $data]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -101,7 +102,7 @@ class OperarioController
             echo json_encode(["success" => true, "message" => "Insumo devuelto a bodega correctamente."]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Error: " . $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => "Error: " . ErrorHelper::safeMessage($e)]);
         }
     }
 }

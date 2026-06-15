@@ -199,7 +199,7 @@ const Activos = () => {
             />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 flex-shrink-0">
                     <div className="d-flex align-items-center mb-2 mb-md-0">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
                             <i className="bi bi-truck fs-3"></i>
@@ -209,7 +209,7 @@ const Activos = () => {
 
                     <div className="d-flex gap-2 justify-content-center justify-content-md-end flex-wrap align-items-center w-100 w-md-auto">
 
-                        <div className="btn-group shadow-sm" role="group" aria-label="Filtro por estado">
+                        <div className="btn-group shadow-sm flex-wrap" role="group" aria-label="Filtro por estado">
                             <button
                                 type="button"
                                 className={`btn btn-sm fw-bold ${filtroEstado === 'TODOS' ? 'btn-primary text-white' : 'btn-outline-secondary'}`}
@@ -256,7 +256,7 @@ const Activos = () => {
                             </button>
                         </div>
 
-                        <div className="input-group" style={{ maxWidth: '250px' }}>
+                        <div className="input-group" style={{ maxWidth: '250px', width: '100%' }}>
                             <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
                             <input
                                 type="text"
@@ -301,109 +301,111 @@ const Activos = () => {
                     {loading && activos.length === 0 ? (
                         <div className="text-center p-5"><div className="spinner-border text-primary"></div></div>
                     ) : (
-                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '1200px' }}>
-                            <thead className="bg-light sticky-top">
-                                <tr>
-                                    <th className="ps-4">Equipo / Activo</th>
-                                    <th>Cod. Interno</th>
-                                    <th>Cod. Máquina</th>
-                                    <th>Marca</th>
-                                    <th>Modelo</th>
-                                    <th>Año</th>
-                                    <th>Ubicación</th>
-                                    <th>Centro Costo</th>
-                                    <th className="text-center">Estado</th>
-                                    <th className="text-end pe-4">Gestión</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {activosFiltrados.map(a => {
-                                    const rowClass = esFueraServicio(a) ? 'table-danger bg-opacity-25' : esEnMantencion(a) ? 'table-warning bg-opacity-25' : '';
-                                    return (
-                                        <tr key={a.id} className={rowClass}>
-                                            <td className="ps-4">
-                                                <div className="d-flex align-items-center">
-                                                    <div className="avatar me-3 bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
-                                                        {a.imagen_url ?
-                                                            <img src={`/api${a.imagen_url}`} className="rounded" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Activo" />
-                                                            : <i className="bi bi-box-seam text-secondary fs-4"></i>
-                                                        }
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0">
+                                <thead className="bg-light sticky-top">
+                                    <tr>
+                                        <th className="ps-4">Equipo / Activo</th>
+                                        <th className="d-none d-md-table-cell">Cod. Interno</th>
+                                        <th className="d-none d-lg-table-cell">Cod. Máquina</th>
+                                        <th className="d-none d-lg-table-cell">Marca</th>
+                                        <th className="d-none d-lg-table-cell">Modelo</th>
+                                        <th className="d-none d-xl-table-cell">Año</th>
+                                        <th className="d-none d-md-table-cell">Ubicación</th>
+                                        <th className="d-none d-xl-table-cell">Centro Costo</th>
+                                        <th className="text-center">Estado</th>
+                                        <th className="text-end pe-4">Gestión</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {activosFiltrados.map(a => {
+                                        const rowClass = esFueraServicio(a) ? 'table-danger bg-opacity-25' : esEnMantencion(a) ? 'table-warning bg-opacity-25' : '';
+                                        return (
+                                            <tr key={a.id} className={rowClass}>
+                                                <td className="ps-4">
+                                                    <div className="d-flex align-items-center">
+                                                        <div className="avatar me-3 bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
+                                                            {a.imagen_url ?
+                                                                <img src={`/api${a.imagen_url}`} className="rounded" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Activo" />
+                                                                : <i className="bi bi-box-seam text-secondary fs-4"></i>
+                                                            }
+                                                        </div>
+                                                        <div>
+                                                            <div className="fw-bold text-dark">{a.nombre}</div>
+                                                            <div className="small text-muted">{a.tipo || 'General'}</div>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <div className="fw-bold text-dark">{a.nombre}</div>
-                                                        <div className="small text-muted">{a.tipo || 'General'}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="font-monospace text-primary fw-bold">{a.codigo_interno}</td>
-                                            <td className="font-monospace">{a.codigo_maquina || '-'}</td>
-                                            <td>{a.marca || '-'}</td>
-                                            <td className="text-muted">{a.modelo || '-'}</td>
-                                            <td>{a.anio || '-'}</td>
-                                            <td>{a.ubicacion}</td>
-                                            <td>
-                                                {a.centro_costo_nombre ? (
-                                                    <span className="badge bg-light text-secondary border fw-normal text-dark">
-                                                        {a.centro_costo_codigo ? `${a.centro_costo_codigo} - ` : ''}{a.centro_costo_nombre}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted small fst-italic">Sin asignar</span>
-                                                )}
-                                            </td>
-                                            <td className="text-center">
-                                                {esOperativo(a) ? (
-                                                    <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold px-2 py-1">
-                                                        <i className="bi bi-check-circle-fill me-1"></i>Operativo
-                                                    </span>
-                                                ) : esEnMantencion(a) ? (
-                                                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-bold px-2 py-1">
-                                                        <i className="bi bi-tools me-1"></i>En Mantención
-                                                    </span>
-                                                ) : (
-                                                    <span className="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold px-2 py-1">
-                                                        <i className="bi bi-x-octagon-fill me-1"></i>{(a.estado_activo || '').toUpperCase() === 'BAJA' ? 'Baja' : 'Fuera de Servicio'}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="text-end pe-4">
-                                                {(hasPermission('activos_detalle') || hasPermission('activos_editar')) && (
-                                                    <button
-                                                        className="btn btn-sm btn-outline-primary me-2"
-                                                        onClick={() => handleOpenModal(a)}
-                                                        title={hasPermission('activos_editar') ? "Editar Activo" : "Ver Detalle y Kit"}
-                                                    >
-                                                        <i className={hasPermission('activos_editar') ? "bi bi-pencil" : "bi bi-eye"}></i>
-                                                    </button>
-                                                )}
-
-                                                {hasPermission('activos_editar') && (
-                                                    <>
+                                                </td>
+                                                <td className="font-monospace text-primary fw-bold d-none d-md-table-cell">{a.codigo_interno}</td>
+                                                <td className="font-monospace d-none d-lg-table-cell">{a.codigo_maquina || '-'}</td>
+                                                <td className="d-none d-lg-table-cell">{a.marca || '-'}</td>
+                                                <td className="text-muted d-none d-lg-table-cell">{a.modelo || '-'}</td>
+                                                <td className="d-none d-xl-table-cell">{a.anio || '-'}</td>
+                                                <td className="d-none d-md-table-cell">{a.ubicacion}</td>
+                                                <td className="d-none d-xl-table-cell">
+                                                    {a.centro_costo_nombre ? (
+                                                        <span className="badge bg-light text-secondary border fw-normal text-dark">
+                                                            {a.centro_costo_codigo ? `${a.centro_costo_codigo} - ` : ''}{a.centro_costo_nombre}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted small fst-italic">Sin asignar</span>
+                                                    )}
+                                                </td>
+                                                <td className="text-center">
+                                                    {esOperativo(a) ? (
+                                                        <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold px-2 py-1">
+                                                            <i className="bi bi-check-circle-fill me-1"></i>Operativo
+                                                        </span>
+                                                    ) : esEnMantencion(a) ? (
+                                                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-bold px-2 py-1">
+                                                            <i className="bi bi-tools me-1"></i>En Mantención
+                                                        </span>
+                                                    ) : (
+                                                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold px-2 py-1">
+                                                            <i className="bi bi-x-octagon-fill me-1"></i>{(a.estado_activo || '').toUpperCase() === 'BAJA' ? 'Baja' : 'Fuera de Servicio'}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="text-end pe-4">
+                                                    {(hasPermission('activos_detalle') || hasPermission('activos_editar')) && (
                                                         <button
-                                                            className={`btn btn-sm me-2 ${a.plantilla_json ? 'btn-success text-white' : 'btn-outline-secondary'}`}
-                                                            onClick={() => handlePlantilla(a)}
-                                                            title="Diseñar Pauta de Mantención (Checklist)"
+                                                            className="btn btn-sm btn-outline-primary me-2"
+                                                            onClick={() => handleOpenModal(a)}
+                                                            title={hasPermission('activos_editar') ? "Editar Activo" : "Ver Detalle y Kit"}
                                                         >
-                                                            <i className="bi bi-clipboard-check"></i>
+                                                            <i className={hasPermission('activos_editar') ? "bi bi-pencil" : "bi bi-eye"}></i>
                                                         </button>
+                                                    )}
 
-                                                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleEliminar(a.id)} title="Eliminar Activo">
-                                                            <i className="bi bi-trash"></i>
-                                                        </button>
-                                                    </>
-                                                )}
+                                                    {hasPermission('activos_editar') && (
+                                                        <>
+                                                            <button
+                                                                className={`btn btn-sm me-2 ${a.plantilla_json ? 'btn-success text-white' : 'btn-outline-secondary'}`}
+                                                                onClick={() => handlePlantilla(a)}
+                                                                title="Diseñar Pauta de Mantención (Checklist)"
+                                                            >
+                                                                <i className="bi bi-clipboard-check"></i>
+                                                            </button>
+
+                                                            <button className="btn btn-sm btn-outline-danger" onClick={() => handleEliminar(a.id)} title="Eliminar Activo">
+                                                                <i className="bi bi-trash"></i>
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {activosFiltrados.length === 0 && (
+                                        <tr>
+                                            <td colSpan="10" className="text-center p-5 text-muted">
+                                                {searchTerm || filtroEstado !== 'TODOS' ? 'No se encontraron resultados para los filtros aplicados.' : 'No hay activos registrados.'}
                                             </td>
                                         </tr>
-                                    );
-                                })}
-                                {activosFiltrados.length === 0 && (
-                                    <tr>
-                                        <td colSpan="10" className="text-center p-5 text-muted">
-                                            {searchTerm || filtroEstado !== 'TODOS' ? 'No se encontraron resultados para los filtros aplicados.' : 'No hay activos registrados.'}
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
             </div>

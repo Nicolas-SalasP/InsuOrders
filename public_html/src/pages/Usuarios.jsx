@@ -79,27 +79,27 @@ const Usuarios = () => {
 
     return (
         <div className="container-fluid h-100 p-0 d-flex flex-column">
-            
+
             {/* 1. Modal de Edición Básica (Nombre, Email, Rol) */}
-            <UsuarioModal 
-                show={showModal} 
-                onClose={() => setShowModal(false)} 
-                onSave={cargarUsuarios} 
-                usuarioEditar={usuarioEditar} 
+            <UsuarioModal
+                show={showModal}
+                onClose={() => setShowModal(false)}
+                onSave={cargarUsuarios}
+                usuarioEditar={usuarioEditar}
             />
 
             {/* 2. Modal de Permisos Detallados (Switches) */}
-            <PermisosModal 
-                show={showPermisos} 
-                onClose={() => setShowPermisos(false)} 
-                usuarioId={selectedUserId} 
+            <PermisosModal
+                show={showPermisos}
+                onClose={() => setShowPermisos(false)}
+                usuarioId={selectedUserId}
             />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
-                
+
                 {/* --- ENCABEZADO --- */}
-                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 flex-shrink-0">
-                    
+                <div className="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 flex-shrink-0">
+
                     {/* Título */}
                     <div className="d-flex align-items-center">
                         <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-none d-sm-block">
@@ -107,20 +107,20 @@ const Usuarios = () => {
                         </div>
                         <h4 className="mb-0 fw-bold text-dark">Gestión de Usuarios</h4>
                     </div>
-                    
+
                     {/* Botones de Acción Global */}
                     <div className="d-flex gap-2 justify-content-center flex-wrap">
-                        
-                        <button 
+
+                        <button
                             className="btn btn-outline-success shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
-                            onClick={handleExportar} 
+                            onClick={handleExportar}
                             title="Exportar a Excel"
                         >
                             <i className="bi bi-file-earmark-excel fs-5 mb-1 mb-md-0 me-md-2"></i>
                             <span className="small fw-bold">Exportar</span>
                         </button>
-                        
-                        <button 
+
+                        <button
                             className="btn btn-primary shadow-sm d-flex flex-column flex-md-row align-items-center justify-content-center py-2 px-3"
                             onClick={handleNew}
                         >
@@ -132,65 +132,67 @@ const Usuarios = () => {
 
                 {/* --- TABLA DE DATOS --- */}
                 <div className="card-body p-0 flex-grow-1 overflow-auto">
-                    <table className="table table-hover align-middle mb-0" style={{ minWidth: '800px' }}>
-                        <thead className="bg-light sticky-top">
-                            <tr>
-                                <th className="ps-4">Usuario</th>
-                                <th>Nombre Completo</th>
-                                <th>Email</th>
-                                <th>Rol Principal</th>
-                                <th>Estado</th>
-                                <th className="text-end pe-4">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {usuarios.map(u => (
-                                <tr key={u.id} className={u.activo == 0 ? 'bg-light text-muted' : ''}>
-                                    <td className="ps-4 fw-bold text-primary">{u.username}</td>
-                                    <td>{u.nombre} {u.apellido}</td>
-                                    <td>{u.email}</td>
-                                    <td><span className="badge bg-secondary fw-normal border">{u.rol}</span></td>
-                                    <td>
-                                        {u.activo == 1 
-                                            ? <span className="badge bg-success">Activo</span> 
-                                            : <span className="badge bg-danger">Bloqueado</span>}
-                                    </td>
-                                    <td className="text-end pe-4">
-                                        
-                                        {/* BOTÓN NUEVO: GESTIONAR PERMISOS (ESCUDO) */}
-                                        <button 
-                                            className="btn btn-sm btn-outline-warning me-2" 
-                                            onClick={() => handlePermisos(u.id)} 
-                                            title="Gestionar Permisos Detallados"
-                                        >
-                                            <i className="bi bi-shield-lock"></i>
-                                        </button>
-
-                                        {/* Botón Editar Datos Básicos */}
-                                        <button 
-                                            className="btn btn-sm btn-outline-primary me-2" 
-                                            onClick={() => handleEdit(u)} 
-                                            title="Editar Datos"
-                                        >
-                                            <i className="bi bi-pencil"></i>
-                                        </button>
-                                        
-                                        {/* Botón Activar/Bloquear */}
-                                        <button
-                                            className={`btn btn-sm ${u.activo == 1 ? 'btn-outline-danger' : 'btn-outline-success'}`}
-                                            onClick={() => handleToggle(u.id, u.activo)}
-                                            disabled={togglingId === u.id}
-                                            title={u.activo == 1 ? "Bloquear Acceso" : "Desbloquear"}
-                                        >
-                                            {togglingId === u.id
-                                                ? <span className="spinner-border spinner-border-sm"></span>
-                                                : <i className={`bi ${u.activo == 1 ? 'bi-lock' : 'bi-unlock'}`}></i>}
-                                        </button>
-                                    </td>
+                    <div className="table-responsive">
+                        <table className="table table-hover align-middle mb-0">
+                            <thead className="bg-light sticky-top">
+                                <tr>
+                                    <th className="ps-4">Usuario</th>
+                                    <th className="d-none d-md-table-cell">Nombre Completo</th>
+                                    <th className="d-none d-md-table-cell">Email</th>
+                                    <th className="d-none d-sm-table-cell">Rol Principal</th>
+                                    <th>Estado</th>
+                                    <th className="text-end pe-4">Acciones</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {usuarios.map(u => (
+                                    <tr key={u.id} className={u.activo == 0 ? 'bg-light text-muted' : ''}>
+                                        <td className="ps-4 fw-bold text-primary">{u.username}</td>
+                                        <td className="d-none d-md-table-cell">{u.nombre} {u.apellido}</td>
+                                        <td className="d-none d-md-table-cell">{u.email}</td>
+                                        <td className="d-none d-sm-table-cell"><span className="badge bg-secondary fw-normal border">{u.rol}</span></td>
+                                        <td>
+                                            {u.activo == 1
+                                                ? <span className="badge bg-success">Activo</span>
+                                                : <span className="badge bg-danger">Bloqueado</span>}
+                                        </td>
+                                        <td className="text-end pe-4">
+
+                                            {/* BOTÓN NUEVO: GESTIONAR PERMISOS (ESCUDO) */}
+                                            <button
+                                                className="btn btn-sm btn-outline-warning me-2"
+                                                onClick={() => handlePermisos(u.id)}
+                                                title="Gestionar Permisos Detallados"
+                                            >
+                                                <i className="bi bi-shield-lock"></i>
+                                            </button>
+
+                                            {/* Botón Editar Datos Básicos */}
+                                            <button
+                                                className="btn btn-sm btn-outline-primary me-2"
+                                                onClick={() => handleEdit(u)}
+                                                title="Editar Datos"
+                                            >
+                                                <i className="bi bi-pencil"></i>
+                                            </button>
+
+                                            {/* Botón Activar/Bloquear */}
+                                            <button
+                                                className={`btn btn-sm ${u.activo == 1 ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                                                onClick={() => handleToggle(u.id, u.activo)}
+                                                disabled={togglingId === u.id}
+                                                title={u.activo == 1 ? "Bloquear Acceso" : "Desbloquear"}
+                                            >
+                                                {togglingId === u.id
+                                                    ? <span className="spinner-border spinner-border-sm"></span>
+                                                    : <i className={`bi ${u.activo == 1 ? 'bi-lock' : 'bi-unlock'}`}></i>}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

@@ -338,7 +338,7 @@ class InsumoRepository
         $sql = "SELECT s.id, s.titulo, a.nombre as maquina, a.codigo_interno 
                 FROM solicitudes_ot s 
                 LEFT JOIN activos a ON s.activo_id = a.id 
-                WHERE s.estado_id IN (1, 2)
+                WHERE s.estado_id IN (1, 2, 4)
                 ORDER BY s.id DESC";
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }

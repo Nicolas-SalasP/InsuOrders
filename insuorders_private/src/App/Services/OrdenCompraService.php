@@ -198,11 +198,19 @@ class OrdenCompraService
             throw new Exception("No se puede cancelar la orden porque ya tiene recepciones o está finalizada.");
         }
 
-        $resultado = $this->repo->cancelar($id);
-        if (isset($orden['detalles']) && is_array($orden['detalles'])) {
-            foreach ($orden['detalles'] as $detalle) {
-                $this->insumoRepo->eliminarSiEsHuerfano($detalle['insumo_id'], $id);
+        try {
+            $this->db->beginTransaction();
+            $resultado = $this->repo->cancelar($id);
+            if (isset($orden['detalles']) && is_array($orden['detalles'])) {
+                foreach ($orden['detalles'] as $detalle) {
+                    $this->insumoRepo->eliminarSiEsHuerfano($detalle['insumo_id'], $id);
+                }
             }
+            $this->db->commit();
+        } catch (Exception $e) {
+            if ($this->db->inTransaction())
+                $this->db->rollBack();
+            throw $e;
         }
         return $resultado;
     }
@@ -236,13 +244,17 @@ class OrdenCompraService
         return $relativePath;
     }
 
-    public function omitirPendientes($idsString)
+    public function omitirPendientes($idsInput)
     {
-        if (empty($idsString))
+        if (empty($idsInput))
             throw new Exception("No se seleccionaron ítems.");
 
-        $ids = explode(',', $idsString);
-        $ids = array_filter($ids, 'is_numeric');
+        if (is_array($idsInput))
+            $ids = array_map('intval', $idsInput);
+        else
+            $ids = array_map('intval', explode(',', (string) $idsInput));
+
+        $ids = array_filter($ids, fn($v) => $v > 0);
 
         if (empty($ids))
             return false;
@@ -263,6 +275,11 @@ class OrdenCompraService
                     'high'
                 );
             }
+        }
+
+        // Cerrar automáticamente OCs que ya no tienen demanda pendiente de OT
+        if ($resultado) {
+            $this->repo->cerrarOCsSinDemandaPendiente($ids);
         }
 
         return $resultado;

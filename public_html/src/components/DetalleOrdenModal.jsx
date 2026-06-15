@@ -100,8 +100,9 @@ const DetalleOrdenModal = ({ show, onHide, ordenId, onDownloadPdf, onExportExcel
                                     )}
 
                                     <div>
-                                        <p className="mb-0 text-muted small text-uppercase fw-bold">Monto Total</p>
-                                        <h3 className="fw-bold text-primary mb-0">${parseInt(orden.cabecera.monto_total).toLocaleString()}</h3>
+                                        <p className="mb-0 text-muted small text-uppercase fw-bold">Monto Neto</p>
+                                        <h3 className="fw-bold text-primary mb-0">${parseInt(orden.cabecera.monto_neto || 0).toLocaleString('es-CL')}</h3>
+                                        <p className="mb-0 mt-1 text-muted small">Total c/imp.: <span className="fw-bold text-dark">${parseInt(orden.cabecera.monto_total || 0).toLocaleString('es-CL')}</span></p>
                                     </div>
                                 </div>
                             </div>

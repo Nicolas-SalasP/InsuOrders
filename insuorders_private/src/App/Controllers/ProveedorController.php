@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\ProveedorService;
 use App\Middleware\AuthMiddleware;
@@ -38,7 +39,7 @@ class ProveedorController
             echo json_encode(["success" => true, "message" => "Proveedor creado correctamente", "id" => $id]);
         } catch (\Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -57,7 +58,7 @@ class ProveedorController
             echo json_encode(["success" => true, "message" => "Proveedor actualizado correctamente"]);
         } catch (\Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -77,7 +78,7 @@ class ProveedorController
             }
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 }

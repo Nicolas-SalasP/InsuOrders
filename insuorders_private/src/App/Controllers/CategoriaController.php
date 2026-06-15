@@ -1,5 +1,6 @@
 <?php
 namespace App\Controllers;
+use App\Utils\ErrorHelper;
 
 use App\Services\CategoriaService;
 use App\Middleware\AuthMiddleware;
@@ -22,7 +23,7 @@ class CategoriaController
             echo json_encode(["success" => true, "data" => $data]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -37,7 +38,7 @@ class CategoriaController
             echo json_encode(["success" => true, "message" => "Categoría creada", "id" => $id]);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -53,7 +54,7 @@ class CategoriaController
             echo json_encode(["success" => true, "message" => "Categoría actualizada"]);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 
@@ -67,7 +68,7 @@ class CategoriaController
             echo json_encode(["success" => true, "message" => "Categoría eliminada"]);
         } catch (Exception $e) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => $e->getMessage()]);
+            echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);
         }
     }
 }
