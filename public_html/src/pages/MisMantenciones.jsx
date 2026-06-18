@@ -20,7 +20,9 @@ const MisMantenciones = () => {
     const [loadingDetalle, setLoadingDetalle] = useState(false);
     const [guardando, setGuardando] = useState(false);
 
-    const [filtroEstado, setFiltroEstado] = useState('pendientes');
+    const [filtroEstado, setFiltroEstado] = useState(() =>
+        (authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin') ? 'todas' : 'pendientes'
+    );
     const [busqueda, setBusqueda] = useState('');
     const [filtroFecha, setFiltroFecha] = useState('');
     const [filtroTecnico, setFiltroTecnico] = useState(null);
@@ -29,6 +31,8 @@ const MisMantenciones = () => {
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: '' });
     const [confirm, setConfirm] = useState({ show: false, title: '', message: '', action: null });
     const [confirmDeleteEvi, setConfirmDeleteEvi] = useState({ show: false, otId: null, url: null });
+    const [permisoRetirado, setPermisoRetirado] = useState(null);
+    const [showPermisoModal, setShowPermisoModal] = useState(false);
 
     const esJefe = authData?.rol === 'Jefe Mantención' || authData?.rol === 'Admin';
     const sigCanvas = useRef(null);
@@ -72,6 +76,11 @@ const MisMantenciones = () => {
             });
         };
     }, []);
+
+    useEffect(() => {
+        setPermisoRetirado(null);
+        setShowPermisoModal(false);
+    }, [selectedOt?.id]);
 
     const cargarMisOts = async () => {
         setLoading(true);
@@ -392,7 +401,24 @@ const MisMantenciones = () => {
         );
     };
 
+    const confirmarPermiso = (retirado) => {
+        setPermisoRetirado(retirado);
+        setShowPermisoModal(false);
+        iniciarGuardadoConPermiso(retirado);
+    };
+
     const iniciarGuardado = (isFinalizar = false) => {
+        if (!selectedOt) return;
+
+        if (isFinalizar && Number(selectedOt.requiere_permiso) === 1 && permisoRetirado === null) {
+            setShowPermisoModal(true);
+            return;
+        }
+
+        iniciarGuardadoConPermiso(permisoRetirado, isFinalizar);
+    };
+
+    const iniciarGuardadoConPermiso = (permiso, isFinalizar = true) => {
         if (!selectedOt) return;
 
         if (isFinalizar) {
@@ -405,15 +431,15 @@ const MisMantenciones = () => {
                     show: true,
                     title: "⚠️ Stock Insuficiente",
                     message: `No tienes suficiente stock en "Mis Insumos" para cubrir esta solicitud.\n\nSe detectaron ${cantidadInsumosFaltantes} tipo(s) de repuesto(s) con stock pendiente.\n\n¿Estás seguro de finalizar? El sistema registrará el consumo de todas formas.`,
-                    action: () => procesarGuardado(true)
+                    action: () => procesarGuardado(true, permiso)
                 });
                 return;
             }
         }
-        procesarGuardado(isFinalizar);
+        procesarGuardado(isFinalizar, permiso);
     };
 
-    const procesarGuardado = async (isFinalizar) => {
+    const procesarGuardado = async (isFinalizar, permiso = null) => {
         setConfirm({ ...confirm, show: false });
         setGuardando(true);
 
@@ -441,6 +467,9 @@ const MisMantenciones = () => {
             if (datosEnvio.comentarios) formData.append('comentarios', datosEnvio.comentarios);
 
             formData.append('finalizar', isFinalizar ? 'true' : 'false');
+            if (isFinalizar && permiso !== null) {
+                formData.append('permiso_retirado', permiso ? 'true' : 'false');
+            }
 
             if (datosEnvio.archivos && datosEnvio.archivos.length > 0) {
                 datosEnvio.archivos.forEach((file, index) => {
@@ -460,6 +489,7 @@ const MisMantenciones = () => {
                 cargarMisOts();
 
                 if (isFinalizar) {
+                    setPermisoRetirado(null);
                     setSelectedOt(null);
                 } else {
                     handleSelectOt(selectedOt, true);
@@ -555,6 +585,36 @@ const MisMantenciones = () => {
                 type="danger"
             />
 
+            {showPermisoModal && (
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1070 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content shadow rounded-4 border-0">
+                            <div className="modal-header bg-warning border-0 rounded-top-4">
+                                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                                    <i className="bi bi-shield-check fs-4"></i>
+                                    Confirmación de Permiso
+                                </h5>
+                            </div>
+                            <div className="modal-body text-center py-4 px-4">
+                                <i className="bi bi-clipboard2-check text-warning" style={{ fontSize: '3rem' }}></i>
+                                <p className="mt-3 fw-bold fs-6">
+                                    ¿Retiraste el permiso de <span className="text-danger">{selectedOt?.tipo_permiso_nombre || 'Trabajo Seguro'}</span>?
+                                </p>
+                                <p className="text-muted small mb-0">Esta respuesta quedará registrada para auditoría.</p>
+                            </div>
+                            <div className="modal-footer border-0 d-flex justify-content-center gap-3 pb-4">
+                                <button className="btn btn-success px-4 fw-bold" onClick={() => confirmarPermiso(true)}>
+                                    <i className="bi bi-check-circle me-2"></i>Sí, lo retiré
+                                </button>
+                                <button className="btn btn-outline-danger px-4 fw-bold" onClick={() => confirmarPermiso(false)}>
+                                    <i className="bi bi-x-circle me-2"></i>No lo retiré
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="row g-0 flex-grow-1" style={{ minHeight: 0 }}>
                 <div className={`col-12 col-md-4 col-lg-3 border-end bg-white d-flex flex-column shadow-sm z-1 ${selectedOt ? 'd-none d-md-flex' : 'd-flex'}`}>
 
@@ -616,6 +676,13 @@ const MisMantenciones = () => {
                         </div>
 
                         <div className="row g-1 mt-2">
+                            {esJefe && (
+                                <div className="col-12">
+                                    <button className={`btn btn-sm w-100 ${filtroEstado === 'todas' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setFiltroEstado('todas')}>
+                                        <i className="bi bi-list-ul me-1"></i>Todas las OTs
+                                    </button>
+                                </div>
+                            )}
                             <div className="col-6">
                                 <button className={`btn btn-sm w-100 ${filtroEstado === 'pendientes' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltroEstado('pendientes')}>
                                     <i className="bi bi-clock me-1"></i>Hoy/Atrás

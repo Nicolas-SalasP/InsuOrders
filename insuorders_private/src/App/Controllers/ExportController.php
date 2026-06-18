@@ -365,7 +365,7 @@ class ExportController
 
         $this->fillSheet(
             $sheet,
-            ['Nro OT', 'Fecha Solicitud', 'Solicitante', 'Máquina / Activo', 'Cód. Activo', 'Descripción Trabajo', 'Estado', 'Fecha Término', 'Costo Materiales', 'Costo Mano Obra', 'COSTO TOTAL OT'],
+            ['Nro OT', 'Fecha Solicitud', 'Solicitante', 'Máquina / Activo', 'Cód. Activo', 'Descripción Trabajo', 'Estado', 'Fecha Término', 'Costo Materiales', 'Costo Mano Obra', 'COSTO TOTAL OT', 'Requiere Permiso', 'Tipo Permiso', 'Permiso Retirado (por técnico)'],
             $data,
             fn($d) => [
                 $d['id'],
@@ -378,7 +378,10 @@ class ExportController
                 $d['fecha_termino'] ?? '-',
                 $d['costo_total_insumos'] ?? 0,
                 $d['costo_mano_obra'] ?? 0,
-                $d['costo_total_ot'] ?? 0
+                $d['costo_total_ot'] ?? 0,
+                !empty($d['requiere_permiso']) ? 'SÍ' : 'NO',
+                $d['tipo_permiso_nombre'] ?? '',
+                $d['permiso_retirado_detalle'] ?? 'N/A'
             ]
         );
     }
