@@ -40,6 +40,11 @@ class MantencionService
         return $this->repo->getTiposPermiso();
     }
 
+    public function listarTiposTrabajo()
+    {
+        return $this->repo->getTiposTrabajo();
+    }
+
     public function asignarOT($otId, array $asignados, $ubicacion = null)
     {
         $this->repo->syncAsignaciones($otId, $asignados);
@@ -79,6 +84,8 @@ class MantencionService
             $this->notificarPrevencion($otId, $data, true);
         }
 
+        $this->notificarCambioOT($otId, 'creacion');
+
         return $otId;
     }
 
@@ -106,6 +113,59 @@ class MantencionService
         }
 
         return $resultado;
+    }
+
+    public function notificarCambioOT(int $otId, string $evento)
+    {
+        try {
+            $solicitante = $this->repo->getSolicitanteEmail($otId);
+            if (empty($solicitante['email'])) return;
+
+            $header = $this->repo->getOTHeader($otId);
+            if (!$header) return;
+
+            $appName  = $_ENV['APP_NAME'] ?? 'InsuOrders';
+            $mailFrom = $_ENV['MAIL_FROM'] ?? 'no-reply@insuban.cl';
+            $ccRaw    = $_ENV['OT_NOTIF_CC'] ?? 'mantenimiento@insuban.cl,ncerdan@insuban.cl,furdaneta@insuban.cl,jmanquel@insuban.cl,ctapia@insuban.cl';
+            $ccEmails = array_filter(array_map('trim', explode(',', $ccRaw)));
+
+            $titulo   = $header['titulo'] ?? ('OT #' . $otId);
+            $activo   = $header['activo'] ?? 'General';
+            $ubicacion = $header['ubicacion'] ?? '';
+            $prioridad = $header['prioridad'] ?? 'MEDIA';
+            $estado   = $header['estado'] ?? '-';
+            $nombreSolicitante = trim(($solicitante['nombre'] ?? '') . ' ' . ($solicitante['apellido'] ?? '')) ?: 'Solicitante';
+
+            $eventos = [
+                'creacion'     => ['asunto' => "[$appName] OT #$otId Creada - $titulo",           'accion' => 'creada'],
+                'avance'       => ['asunto' => "[$appName] OT #$otId - Avance Registrado",        'accion' => 'avanzada con nuevo progreso'],
+                'finalizacion' => ['asunto' => "[$appName] OT #$otId COMPLETADA - $titulo",       'accion' => 'cerrada y completada'],
+            ];
+            $info   = $eventos[$evento] ?? ['asunto' => "[$appName] OT #$otId - Actualización", 'accion' => 'actualizada'];
+            $subject = $info['asunto'];
+            $accion  = $info['accion'];
+
+            $message  = "Estimado/a $nombreSolicitante,\n\n";
+            $message .= "Le informamos que la OT #$otId ha sido $accion.\n\n";
+            $message .= "FOLIO OT:  #$otId\n";
+            $message .= "TÍTULO:    $titulo\n";
+            $message .= "ACTIVO:    $activo\n";
+            if ($ubicacion) $message .= "UBICACIÓN: $ubicacion\n";
+            $message .= "PRIORIDAD: $prioridad\n";
+            $message .= "ESTADO:    $estado\n";
+            $message .= "\nSistema $appName.";
+
+            $ccStr   = implode(', ', $ccEmails);
+            $headers  = "From: $mailFrom\r\n";
+            $headers .= "Reply-To: $mailFrom\r\n";
+            if ($ccStr) $headers .= "Cc: $ccStr\r\n";
+            $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+
+            $subjectSafe = str_replace(["\r", "\n"], ' ', $subject);
+            @mail($solicitante['email'], $subjectSafe, $message, $headers);
+        } catch (\Throwable $e) {
+            error_log("notificarCambioOT [$evento] OT#$otId: " . $e->getMessage());
+        }
     }
 
     private function notificarPrevencion($otId, $data, $esCreacion = true)
@@ -169,6 +229,7 @@ class MantencionService
     {
         if ($force) {
             $this->repo->finalizar($otId);
+            $this->notificarCambioOT($otId, 'finalizacion');
             return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
         }
         return $this->repo->finalizarTareaTecnico($otId, $usuarioId, $notas);
@@ -178,7 +239,7 @@ class MantencionService
     {
         $entregas = $this->repo->getEntregasOT($id);
         if (!empty($entregas)) {
-            throw new Exception("No se puede anular una OT que ya tiene materiales entregados. Debe finalizarlas o devolver los materiales.");
+            throw new \Exception('No se puede anular: la OT tiene materiales entregados.');
         }
         $this->repo->delete($id);
     }

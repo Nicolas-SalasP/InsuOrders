@@ -17,28 +17,30 @@ class MisMantencionesRepository
 
     public function getOtsAsignadas($userId)
     {
-        $sql = "SELECT DISTINCT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, 
+        $sql = "SELECT DISTINCT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud,
                 ot.fecha_solicitud, ot.fecha_requerida, ot.prioridad, ot.requiere_permiso, ot.requiere_firma,
                 ot.estado_id, e.nombre as estado,
                 ot.imagen_url, ot.ubicacion, ot.comentarios_finales, ot.evidencia_cierre,
-                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
-                COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
+                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo,
+                COALESCE(a.codigo_interno, 'SERV') as codigo_interno,
                 ot.sub_activo_id, sa.nombre as sub_activo_nombre,
                 a.plantilla_json,
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
                 oa.completado as mi_completado,
-                (SELECT GROUP_CONCAT(DISTINCT CONCAT(u2.nombre, ' ', u2.apellido) SEPARATOR ', ') 
-                FROM ot_asignaciones oa2 
-                JOIN usuarios u2 ON oa2.usuario_id = u2.id 
+                tt.nombre as tipo_trabajo_nombre,
+                (SELECT GROUP_CONCAT(DISTINCT CONCAT(u2.nombre, ' ', u2.apellido) SEPARATOR ', ')
+                FROM ot_asignaciones oa2
+                JOIN usuarios u2 ON oa2.usuario_id = u2.id
                 WHERE oa2.solicitud_id = ot.id) as equipo_nombres
             FROM solicitudes_ot ot
             JOIN ot_asignaciones oa ON ot.id = oa.solicitud_id
-            LEFT JOIN activos a ON ot.activo_id = a.id 
+            LEFT JOIN activos a ON ot.activo_id = a.id
             LEFT JOIN activos sa ON ot.sub_activo_id = sa.id
             JOIN estados_solicitud e ON ot.estado_id = e.id
             JOIN usuarios u ON ot.usuario_solicitante_id = u.id
-            WHERE oa.usuario_id = :uid 
-            AND ot.estado_id != 6 
+            LEFT JOIN tipos_trabajo tt ON ot.tipo_trabajo_id = tt.id
+            WHERE oa.usuario_id = :uid
+            AND ot.estado_id != 6
             ORDER BY ot.id DESC";
 
         $stmt = $this->db->prepare($sql);
@@ -48,26 +50,28 @@ class MisMantencionesRepository
 
     public function getAllOtsWithAsignados()
     {
-        $sql = "SELECT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud, 
+        $sql = "SELECT ot.id, ot.titulo, ot.descripcion_trabajo as descripcion_solicitud,
                 ot.fecha_solicitud, ot.fecha_requerida, ot.prioridad, ot.requiere_permiso, ot.requiere_firma,
                 ot.estado_id, e.nombre as estado,
                 ot.imagen_url, ot.ubicacion, ot.comentarios_finales, ot.evidencia_cierre,
-                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo, 
-                COALESCE(a.codigo_interno, 'SERV') as codigo_interno, 
+                COALESCE(a.nombre, CONCAT('SERVICIO / ', COALESCE(ot.area_negocio, 'General'))) as activo,
+                COALESCE(a.codigo_interno, 'SERV') as codigo_interno,
                 ot.sub_activo_id, sa.nombre as sub_activo_nombre,
                 a.plantilla_json,
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido,
                 IFNULL(GROUP_CONCAT(DISTINCT tec.id ORDER BY tec.id ASC), '') as asignados_ids,
                 IFNULL(GROUP_CONCAT(DISTINCT CONCAT(tec.nombre, ' ', tec.apellido) ORDER BY tec.id ASC SEPARATOR ', '), '') as asignados_nombres,
-                0 as mi_completado
+                0 as mi_completado,
+                tt.nombre as tipo_trabajo_nombre
             FROM solicitudes_ot ot
             LEFT JOIN ot_asignaciones oa ON ot.id = oa.solicitud_id
             LEFT JOIN usuarios tec ON oa.usuario_id = tec.id AND tec.activo = 1
-            LEFT JOIN activos a ON ot.activo_id = a.id 
+            LEFT JOIN activos a ON ot.activo_id = a.id
             LEFT JOIN activos sa ON ot.sub_activo_id = sa.id
             JOIN estados_solicitud e ON ot.estado_id = e.id
             JOIN usuarios u ON ot.usuario_solicitante_id = u.id
-            WHERE ot.estado_id != 6 
+            LEFT JOIN tipos_trabajo tt ON ot.tipo_trabajo_id = tt.id
+            WHERE ot.estado_id != 6
             GROUP BY ot.id
             ORDER BY ot.fecha_solicitud DESC";
 
@@ -122,10 +126,11 @@ class MisMantencionesRepository
         }
     }
 
-    public function guardarCierre($otId, $firmaBase64, $comentarios, $evidenciaStr = null)
+    public function guardarCierre($otId, $firmaBase64, $comentarios, $evidenciaStr = null): bool
     {
         $userId = AuthMiddleware::verify();
         $inTransaction = $this->db->inTransaction();
+        $seCerro = false;
         try {
             if (!$inTransaction)
                 $this->db->beginTransaction();
@@ -143,6 +148,7 @@ class MisMantencionesRepository
             $pendientes = $stmt->fetchColumn();
 
             if ($pendientes == 0) {
+                $seCerro = true;
                 $stmtTotal = $this->db->prepare("SELECT COUNT(*) FROM ot_asignaciones WHERE solicitud_id = ?");
                 $stmtTotal->execute([$otId]);
                 $totalAsignados = $stmtTotal->fetchColumn();
@@ -180,13 +186,22 @@ class MisMantencionesRepository
 
             if (!$inTransaction)
                 $this->db->commit();
-            return true;
+            return $seCerro;
 
         } catch (Exception $e) {
             if (!$inTransaction)
                 $this->db->rollBack();
             throw $e;
         }
+    }
+
+    public function guardarPermisoRetirado($otId, $userId, $retirado): void
+    {
+        $this->db->prepare(
+            "INSERT INTO ot_permiso_retirado (ot_id, usuario_id, retirado, fecha)
+             VALUES (:ot, :uid, :ret, NOW())
+             ON DUPLICATE KEY UPDATE retirado = VALUES(retirado), fecha = NOW()"
+        )->execute([':ot' => $otId, ':uid' => $userId, ':ret' => (int)$retirado]);
     }
 
     public function guardarUrlPdf($otId, $url)

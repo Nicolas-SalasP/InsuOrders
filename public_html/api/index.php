@@ -349,6 +349,11 @@ try {
             (new MantencionController())->tiposPermiso();
             break;
 
+        case 'mantencion/tipos-trabajo':
+            AuthMiddleware::verify();
+            (new MantencionController())->tiposTrabajo();
+            break;
+
         // --- INVENTARIO ---
         case 'insumos':
         case 'inventario':
@@ -854,6 +859,17 @@ try {
                 $c->saveTipoPermiso();
             elseif ($method === 'DELETE')
                 $c->deleteTipoPermiso();
+            break;
+
+        case 'mantenedores/tipos-trabajo':
+            AuthMiddleware::hasPermission('ver_config');
+            $c = new MantenedoresController();
+            if ($method === 'GET')
+                $c->getTiposTrabajos();
+            elseif ($method === 'POST' || $method === 'PUT')
+                $c->saveTipoTrabajo();
+            elseif ($method === 'DELETE')
+                $c->deleteTipoTrabajo();
             break;
 
         // --- PERSONAL ---

@@ -3,6 +3,7 @@ namespace App\Controllers;
 use App\Utils\ErrorHelper;
 
 use App\Services\MisMantencionesService;
+use App\Services\MantencionService;
 use App\Services\PDFService;
 use App\Middleware\AuthMiddleware;
 use App\Utils\FileUpload;
@@ -46,6 +47,7 @@ class MisMantencionesController
             }
 
             $otId = $input['ot_id'] ?? null;
+            $permisoRetirado = isset($input['permiso_retirado']) ? (int)filter_var($input['permiso_retirado'], FILTER_VALIDATE_BOOLEAN) : null;
             $urlEliminar = $input['eliminar_evidencia_url'] ?? null;
 
             if ($urlEliminar) {
@@ -86,9 +88,13 @@ class MisMantencionesController
 
             $evidenciasStr = !empty($evidenciaUrls) ? json_encode($evidenciaUrls) : null;
 
+            $seCerro = false;
             if ($finalizar) {
                 $this->service->ejecutarDescuentos($otId, $userId);
-                $this->service->guardarCierre($otId, $firma, $comentarios, $evidenciasStr);
+                $seCerro = $this->service->guardarCierre($otId, $firma, $comentarios, $evidenciasStr);
+                if ($permisoRetirado !== null) {
+                    $this->service->repository->guardarPermisoRetirado($otId, $userId, $permisoRetirado);
+                }
                 if ($firma) {
                     // El PDF es un artefacto derivado: si su generacion falla, NO debe abortar el
                     // cierre de la OT (que ya quedo consistente en BD). Se registra y puede regenerarse.
@@ -112,6 +118,17 @@ class MisMantencionesController
             }
 
             $this->service->repository->commit();
+
+            // Post-commit: email only (fire-and-forget, no rollback needed)
+            $notifService = new MantencionService();
+            if ($finalizar) {
+                if ($seCerro) {
+                    $notifService->notificarCambioOT($otId, 'finalizacion');
+                }
+            } else {
+                $notifService->notificarCambioOT($otId, 'avance');
+            }
+
             echo json_encode(["success" => true, "message" => $finalizar ? "Servicio Finalizado" : "Avance guardado correctamente."]);
 
         } catch (Exception $e) {
