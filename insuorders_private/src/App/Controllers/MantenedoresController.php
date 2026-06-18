@@ -142,4 +142,21 @@ class MantenedoresController
     {
         $this->handleDelete(fn($id) => $this->service->eliminarTipoPermiso($id), "Permiso de trabajo desactivado");
     }
+
+    // --- TIPOS DE TRABAJO ---
+    public function getTiposTrabajos()
+    {
+        $soloActivos = isset($_GET['type']) && $_GET['type'] === 'activos';
+        echo json_encode(["success" => true, "data" => $this->service->obtenerTiposTrabajos($soloActivos)]);
+    }
+
+    public function saveTipoTrabajo()
+    {
+        $this->handleSave(fn($data) => $this->service->guardarTipoTrabajo($data), "Tipo de trabajo guardado");
+    }
+
+    public function deleteTipoTrabajo()
+    {
+        $this->handleDelete(fn($id) => $this->service->eliminarTipoTrabajo($id), "Tipo de trabajo desactivado");
+    }
 }

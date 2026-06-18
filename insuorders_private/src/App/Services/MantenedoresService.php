@@ -133,4 +133,23 @@ class MantenedoresService
     {
         $this->repo->deleteTipoPermiso($id);
     }
+
+    // --- TIPOS DE TRABAJO ---
+    public function obtenerTiposTrabajos($soloActivos = false)
+    {
+        return $this->repo->getTiposTrabajos($soloActivos);
+    }
+
+    public function guardarTipoTrabajo($data)
+    {
+        if (empty($data['nombre'])) {
+            throw new Exception("El nombre del tipo de trabajo es obligatorio.");
+        }
+        $this->repo->saveTipoTrabajo($data);
+    }
+
+    public function eliminarTipoTrabajo($id)
+    {
+        $this->repo->deleteTipoTrabajo($id);
+    }
 }

@@ -12,6 +12,7 @@ import UbicacionModal from '../components/UbicacionModal';
 import UbicacionEnvioModal from '../components/UbicacionEnvioModal';
 import CategoriaModal from '../components/CategoriaModal';
 import TipoPermisoModal from '../components/TipoPermisoModal';
+import TipoTrabajoModal from '../components/TipoTrabajoModal';
 
 const AdminMantenedores = () => {
     const { can } = usePermission();
@@ -28,6 +29,7 @@ const AdminMantenedores = () => {
     const [categorias, setCategorias] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
     const [tiposPermiso, setTiposPermiso] = useState([]);
+    const [tiposTrabajos, setTiposTrabajos] = useState([]);
 
     // Control de Modales
     const [modales, setModales] = useState({
@@ -38,7 +40,8 @@ const AdminMantenedores = () => {
         ubicacion: { show: false, data: null },
         ubicacionEnvio: { show: false, data: null },
         categoria: { show: false, data: null },
-        tipoPermiso: { show: false, data: null }
+        tipoPermiso: { show: false, data: null },
+        tipoTrabajo: { show: false, data: null }
     });
 
     const [msg, setMsg] = useState({ show: false, title: '', text: '', type: 'info' });
@@ -99,6 +102,10 @@ const AdminMantenedores = () => {
                 const res = await api.get('/index.php/mantenedores/tipos-permiso');
                 if (res.data.success) setTiposPermiso(res.data.data);
             }
+            else if (activeTab === 'trabajos') {
+                const res = await api.get('/index.php/mantenedores/tipos-trabajo');
+                if (res.data.success) setTiposTrabajos(res.data.data);
+            }
         } catch (error) {
             console.error("Error cargando datos", error);
         } finally {
@@ -148,6 +155,7 @@ const AdminMantenedores = () => {
             <UbicacionEnvioModal show={modales.ubicacionEnvio.show} onClose={() => cerrarModal('ubicacionEnvio')} onSave={cargarDatos} data={modales.ubicacionEnvio.data} />
             <CategoriaModal show={modales.categoria.show} onClose={() => cerrarModal('categoria')} onSave={cargarDatos} data={modales.categoria.data} />
             <TipoPermisoModal show={modales.tipoPermiso.show} onClose={() => cerrarModal('tipoPermiso')} onSave={cargarDatos} data={modales.tipoPermiso.data} />
+            <TipoTrabajoModal show={modales.tipoTrabajo.show} onClose={() => cerrarModal('tipoTrabajo')} onSave={cargarDatos} data={modales.tipoTrabajo.data} />
 
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
                 <div>
@@ -166,7 +174,8 @@ const AdminMantenedores = () => {
                             {id: 'sectores', label: 'Sectores', show: true},
                             {id: 'ubicaciones', label: 'Estanterías', show: true},
                             {id: 'lugares_envio', label: 'Destinos Envío', show: true},
-                            {id: 'permisos', label: 'Permisos Trabajo', show: true}, // NUEVA PESTAÑA
+                            {id: 'permisos', label: 'Permisos Trabajo', show: true},
+                            {id: 'trabajos', label: 'Tipos de Trabajo', show: true},
                             {id: 'categorias', label: 'Categorías Insumos', show: can('ver_categorias')}
                         ].filter(t => t.show).map(tab => (
                             <li className="nav-item" key={tab.id}>
@@ -436,6 +445,49 @@ const AdminMantenedores = () => {
                                                 ))}
                                                 {tiposPermiso.length === 0 && (
                                                     <tr><td colSpan="4" className="text-center py-4 text-muted">No hay permisos de trabajo registrados</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- TIPOS DE TRABAJO --- */}
+                            {activeTab === 'trabajos' && (
+                                <div className="animate__animated animate__fadeIn">
+                                    <TableHeader title="Tipos de Trabajo" btnAction={() => abrirModal('tipoTrabajo')} btnLabel="Nuevo Tipo" />
+                                    <div className="table-responsive rounded border">
+                                        <table className="table table-hover align-middle mb-0">
+                                            <thead className="bg-light text-secondary small text-uppercase">
+                                                <tr>
+                                                    <th className="ps-4">Nombre</th>
+                                                    <th className="d-none d-md-table-cell">Descripción</th>
+                                                    <th className="text-center">Estado</th>
+                                                    <th className="text-end pe-4">Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {tiposTrabajos.map(t => (
+                                                    <tr key={t.id} className={t.activo == 0 ? 'bg-light text-muted' : ''}>
+                                                        <td className="ps-4 fw-bold text-primary">
+                                                            <i className="bi bi-tools me-2"></i>{t.nombre}
+                                                        </td>
+                                                        <td className="small d-none d-md-table-cell">{t.descripcion || '-'}</td>
+                                                        <td className="text-center">
+                                                            {t.activo == 1
+                                                                ? <span className="badge bg-success bg-opacity-10 text-success rounded-pill">Activo</span>
+                                                                : <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">Inactivo</span>}
+                                                        </td>
+                                                        <td className="text-end pe-4">
+                                                            <button className="btn btn-sm btn-light text-primary border me-1" onClick={() => abrirModal('tipoTrabajo', t)} title="Editar"><i className="bi bi-pencil-square"></i></button>
+                                                            {t.activo == 1 && (
+                                                                <button className="btn btn-sm btn-light text-danger border" onClick={() => handleDelete('tipos-trabajo', t.id, t)} title="Desactivar"><i className="bi bi-trash"></i></button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {tiposTrabajos.length === 0 && (
+                                                    <tr><td colSpan="4" className="text-center py-4 text-muted">No hay tipos de trabajo registrados</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
