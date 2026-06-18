@@ -30,10 +30,10 @@ class UsuariosRepository
 
     public function create($data)
     {
-        $check = $this->db->prepare("SELECT id FROM usuarios WHERE username = :u OR email = :e");
-        $check->execute([':u' => $data['username'], ':e' => $data['email']]);
+        $check = $this->db->prepare("SELECT id FROM usuarios WHERE username = :u");
+        $check->execute([':u' => $data['username']]);
         if ($check->fetch())
-            throw new \Exception("El usuario o email ya existe.");
+            throw new \Exception("El nombre de usuario ya existe.");
 
         $sql = "INSERT INTO usuarios (nombre, apellido, username, password_hash, email, telefono, rol_id, activo) 
                 VALUES (:nom, :ape, :user, :pass, :email, :tel, :rol, 1)";
