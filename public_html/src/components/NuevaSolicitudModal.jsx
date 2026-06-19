@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
 import ConfirmModal from './ConfirmModal';
+import MediaPickerInput from './MediaPickerInput';
 
 const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     // --- ESTADOS DE DATOS MAESTROS ---
@@ -753,7 +754,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                         <i className="bi bi-camera me-1"></i> Evidencia Adjunta (Opcional)
                                                     </label>
                                                     {editable && (
-                                                        <input type="file" className="form-control form-control-sm shadow-sm" multiple accept="image/*,video/*" onChange={handleEvidencias} />
+                                                        <MediaPickerInput multiple onChange={handleEvidencias} className="mt-1" />
                                                     )}
                                                     {evidencias.length > 0 && (
                                                         <div className="d-flex flex-wrap gap-2 mt-2">

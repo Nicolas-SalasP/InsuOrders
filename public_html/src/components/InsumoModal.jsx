@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
 import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
+import MediaPickerInput from './MediaPickerInput';
 
 const BASE_URL_IMAGENES = '/api';
 
@@ -383,7 +384,7 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                     
                                     <Col xs={12}>
                                         <Form.Label className="small fw-bold">Imagen</Form.Label>
-                                        <Form.Control id="inputImagenInsumo" type="file" accept="image/*" onChange={handleImageChange} />
+                                        <MediaPickerInput accept="image/*" onChange={handleImageChange} className="mt-1" />
                                         {imagenPreview && (
                                             <div className="mt-2 text-center border rounded p-1 bg-light">
                                                 <img src={imagenPreview} style={{ maxHeight: '100px', objectFit: 'contain' }} alt="Preview" />

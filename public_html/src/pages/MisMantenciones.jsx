@@ -6,6 +6,7 @@ import ChecklistRenderer from '../components/ChecklistRenderer';
 import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
 import VideoModal from '../components/VideoModal';
+import MediaPickerInput from '../components/MediaPickerInput';
 import { usePermission } from '../hooks/usePermission';
 
 const MisMantenciones = () => {
@@ -1088,12 +1089,10 @@ const MisMantenciones = () => {
 
                                                         {!isReadOnly && (
                                                             <>
-                                                                <input
-                                                                    type="file"
-                                                                    className="form-control mb-2"
-                                                                    accept="image/*,video/*"
+                                                                <MediaPickerInput
                                                                     multiple
                                                                     onChange={handleFileChange}
+                                                                    className="mb-2"
                                                                 />
 
                                                                 {datosEnvio.archivos && datosEnvio.archivos.length > 0 && (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/axiosConfig';
+import MediaPickerInput from './MediaPickerInput';
 
 const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
     const [activos, setActivos] = useState([]);
@@ -382,13 +383,7 @@ const NuevaSolicitudClienteModal = ({ show, onClose, onSave }) => {
                                     <div className="row g-2">
                                         <div className="col-md-8">
                                             <label className="form-label fw-bold">Evidencia (Fotos o Videos)</label>
-                                            <input 
-                                                type="file" 
-                                                className="form-control" 
-                                                accept="image/*,video/*" 
-                                                multiple 
-                                                onChange={handleFileChange} 
-                                            />
+                                            <MediaPickerInput multiple onChange={handleFileChange} className="mt-1" />
                                             {form.imagenes && form.imagenes.length > 0 && (
                                                 <div className="d-flex flex-wrap gap-2 mt-3 p-3 bg-light border rounded shadow-sm">
                                                     <label className="form-label d-block w-100 fw-bold small text-muted mb-2">Archivos listos para subir:</label>
