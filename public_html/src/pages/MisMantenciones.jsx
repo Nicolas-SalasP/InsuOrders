@@ -825,10 +825,26 @@ const MisMantenciones = () => {
                                         {loadingDetalle ? (
                                             <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
                                         ) : isReadOnly ? (
-                                            <div className="alert alert-success m-0 py-1 py-sm-2 px-2 px-sm-3 fw-bold shadow-sm d-flex align-items-center" style={{ fontSize: '0.75rem' }}>
-                                                <i className="bi bi-check-circle-fill me-1 me-sm-2 fs-5"></i>
-                                                <span className="d-none d-sm-inline">¡Ya entregaste tu parte!</span>
-                                                <span className="d-sm-none">Entregado</span>
+                                            <div className="d-flex gap-2 align-items-center">
+                                                {selectedOt?.pdf_url && (
+                                                    <a
+                                                        href={`/api${selectedOt.pdf_url}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="btn btn-danger fw-bold px-2 px-sm-3 shadow-sm d-flex align-items-center"
+                                                        style={{ fontSize: '0.8rem' }}
+                                                        title="Descargar reporte de cierre"
+                                                    >
+                                                        <i className="bi bi-file-earmark-pdf-fill me-1 me-sm-2"></i>
+                                                        <span className="d-none d-sm-inline">Reporte PDF</span>
+                                                        <span className="d-sm-none">PDF</span>
+                                                    </a>
+                                                )}
+                                                <div className="alert alert-success m-0 py-1 py-sm-2 px-2 px-sm-3 fw-bold shadow-sm d-flex align-items-center" style={{ fontSize: '0.75rem' }}>
+                                                    <i className="bi bi-check-circle-fill me-1 me-sm-2 fs-5"></i>
+                                                    <span className="d-none d-sm-inline">¡Ya entregaste tu parte!</span>
+                                                    <span className="d-sm-none">Entregado</span>
+                                                </div>
                                             </div>
                                         ) : (
                                             <>
@@ -935,9 +951,21 @@ const MisMantenciones = () => {
                                                     </button>
                                                 </div>
                                                 {isReadOnly ? (
-                                                    <small className="text-success mt-3 d-block fw-bold">
-                                                        <i className="bi bi-check-circle-fill me-1"></i> Tarea bloqueada: ya entregaste tu reporte final.
-                                                    </small>
+                                                    <div className="mt-3">
+                                                        <small className="text-success d-block fw-bold">
+                                                            <i className="bi bi-check-circle-fill me-1"></i> Tarea bloqueada: ya entregaste tu reporte final.
+                                                        </small>
+                                                        {selectedOt?.pdf_url && (
+                                                            <a
+                                                                href={`/api${selectedOt.pdf_url}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="btn btn-sm btn-outline-danger mt-2"
+                                                            >
+                                                                <i className="bi bi-file-earmark-pdf me-1"></i>Ver reporte de cierre
+                                                            </a>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <small className="text-muted mt-3 d-block">
                                                         <i className="bi bi-info-circle me-1"></i> Puedes cambiar el estado aquí si debes pausar. <b>Al presionar "Guardar Avance" la orden pasará a En Proceso automáticamente.</b>

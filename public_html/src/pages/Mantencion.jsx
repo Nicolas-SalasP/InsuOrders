@@ -783,6 +783,17 @@ const Mantencion = () => {
                                                                 <i className="bi bi-arrow-counterclockwise"></i>
                                                             </button>
                                                         )}
+                                                        {s.estado === 'Completada' && s.pdf_url && (
+                                                            <a
+                                                                href={`/api${s.pdf_url}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="btn btn-sm btn-outline-danger fw-bold px-2 py-1"
+                                                                title="Descargar reporte de cierre PDF"
+                                                            >
+                                                                <i className="bi bi-file-earmark-pdf"></i>
+                                                            </a>
+                                                        )}
                                                         <button
                                                             className={`btn btn-sm btn-light border menu-trigger-btn ${openMenuId === s.id ? 'active' : ''}`}
                                                             type="button"

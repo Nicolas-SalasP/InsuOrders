@@ -95,9 +95,8 @@ class MisMantencionesController
                 if ($permisoRetirado !== null) {
                     $this->service->repository->guardarPermisoRetirado($otId, $userId, $permisoRetirado);
                 }
-                if ($firma) {
-                    // El PDF es un artefacto derivado: si su generacion falla, NO debe abortar el
-                    // cierre de la OT (que ya quedo consistente en BD). Se registra y puede regenerarse.
+                if ($seCerro) {
+                    // PDF es artefacto derivado: fallo no aborta cierre (ya consistente en BD).
                     try {
                         $datosReporte = $this->service->getDatosReporte($otId);
                         $pdfService = new PDFService();
