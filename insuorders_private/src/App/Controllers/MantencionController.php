@@ -67,6 +67,11 @@ class MantencionController
         echo json_encode(["success" => true, "data" => $this->service->listarTiposPermiso()]);
     }
 
+    public function tiposTrabajo()
+    {
+        echo json_encode(["success" => true, "data" => $this->service->listarTiposTrabajo()]);
+    }
+
     public function store($usuarioId)
     {
         $data = json_decode(file_get_contents("php://input"), true);

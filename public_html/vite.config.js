@@ -1,11 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// La app se sirve desde http://138.117.150.6/insuorders/
-// 'base' hace que los assets compilados (JS/CSS) apunten a /insuorders/assets/...
-// en vez de /assets/... (que iria a la raiz del servidor).
 export default defineConfig({
-    base: '/insuorders/',
     plugins: [react()],
     server: {
         proxy: {

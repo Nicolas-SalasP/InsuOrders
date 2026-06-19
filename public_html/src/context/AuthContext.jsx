@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }) => {
         } catch (e) {
             console.error("Error al hacer logout", e);
         }
-        window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/login`;
+        window.location.href = "/login";
     };
 
     return (

@@ -339,7 +339,12 @@ const Compras = () => {
     };
 
     const limpiarFiltros = () => {
-        setFiltroOC(''); setFiltroProveedor(''); setFiltroDestino(''); setFiltroEstado([]); setFiltroFechaDesde(''); setFiltroFechaHasta(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false); cargarOrdenes();
+        setFiltroOC(''); setFiltroProveedor(''); setFiltroDestino(''); setFiltroEstado([]); setFiltroFechaDesde(''); setFiltroFechaHasta(''); setFiltroInsumo(''); setBusquedaInsumo(''); setMostrarSugerencias(false);
+        setLoading(true);
+        api.get('/index.php/compras')
+            .then(res => { if (res.data.success) setOrdenes(res.data.data); })
+            .catch(() => {})
+            .finally(() => setLoading(false));
     };
 
     const seleccionarInsumo = (item) => { setFiltroInsumo(item.id); setBusquedaInsumo(item.nombre); setMostrarSugerencias(false); };

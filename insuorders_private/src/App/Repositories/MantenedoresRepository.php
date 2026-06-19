@@ -245,4 +245,39 @@ class MantenedoresRepository
     {
         $this->db->prepare("UPDATE tipos_permiso_trabajo SET activo = 0 WHERE id = ?")->execute([$id]);
     }
+
+    // =========================================================================
+    // TIPOS DE TRABAJO
+    // =========================================================================
+    public function getTiposTrabajos($soloActivos = false)
+    {
+        $sql = "SELECT * FROM tipos_trabajo";
+        if ($soloActivos) {
+            $sql .= " WHERE activo = 1";
+        }
+        $sql .= " ORDER BY nombre ASC";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function saveTipoTrabajo($data)
+    {
+        if (!empty($data['id'])) {
+            $this->db->prepare("UPDATE tipos_trabajo SET nombre=:n, descripcion=:d, activo=:a WHERE id=:id")->execute([
+                ':n'  => $data['nombre'],
+                ':d'  => $data['descripcion'] ?? null,
+                ':a'  => $data['activo'] ?? 1,
+                ':id' => $data['id']
+            ]);
+        } else {
+            $this->db->prepare("INSERT INTO tipos_trabajo (nombre, descripcion, activo) VALUES (:n, :d, 1)")->execute([
+                ':n' => $data['nombre'],
+                ':d' => $data['descripcion'] ?? null
+            ]);
+        }
+    }
+
+    public function deleteTipoTrabajo($id)
+    {
+        $this->db->prepare("UPDATE tipos_trabajo SET activo = 0 WHERE id = ?")->execute([$id]);
+    }
 }

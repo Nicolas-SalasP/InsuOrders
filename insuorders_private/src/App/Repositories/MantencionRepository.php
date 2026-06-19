@@ -28,8 +28,10 @@ class MantencionRepository
                 u.nombre as solicitante_nombre, u.apellido as solicitante_apellido, e.nombre as estado, e.id as estado_id,
                 t.nombre as tecnico_nombre, t.apellido as tecnico_apellido,
                 tpt.nombre as tipo_permiso_nombre,
+                tt.nombre as tipo_trabajo_nombre,
                 (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') FROM ot_asignaciones oa JOIN usuarios usr ON oa.usuario_id = usr.id WHERE oa.solicitud_id = s.id) as asignados_nombres,
                 (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids,
+                (SELECT GROUP_CONCAT(CONCAT(u2.nombre, ' ', u2.apellido, ': ', IF(opr.retirado, 'SÍ', 'NO'), ' (', DATE_FORMAT(opr.fecha, '%d/%m/%Y %H:%i'), ')') ORDER BY opr.fecha SEPARATOR ' | ') FROM ot_permiso_retirado opr JOIN usuarios u2 ON opr.usuario_id = u2.id WHERE opr.ot_id = s.id) as permiso_retirado_detalle,
                 COALESCE((SELECT SUM(ds.cantidad_entregada * i.precio_costo)
                           FROM detalle_solicitud ds
                           JOIN insumos i ON ds.insumo_id = i.id
@@ -42,6 +44,7 @@ class MantencionRepository
                 LEFT JOIN estados_solicitud e ON s.estado_id = e.id
                 LEFT JOIN usuarios t ON s.asignado_a = t.id 
                 LEFT JOIN tipos_permiso_trabajo tpt ON s.tipo_permiso_id = tpt.id
+                LEFT JOIN tipos_trabajo tt ON s.tipo_trabajo_id = tt.id
                 WHERE 1=1";
 
         $params = [];
@@ -378,17 +381,18 @@ class MantencionRepository
                 COALESCE(a.codigo_interno, 'SERV') as activo_codigo, e.nombre as estado,
                 sa.nombre as sub_activo_nombre,
                 tpt.nombre as tipo_permiso_nombre,
-                COALESCE((SELECT SUM(ds.cantidad_entregada * COALESCE(NULLIF(ds.costo_unitario_snapshot, 0), ins.precio_costo, 0))
+                tt.nombre as tipo_trabajo_nombre,
+                COALESCE((SELECT SUM(ds.cantidad * COALESCE(NULLIF(ds.costo_unitario_snapshot, 0), ins.precio_costo, 0))
                           FROM detalle_solicitud ds
                           JOIN insumos ins ON ds.insumo_id = ins.id
-                          WHERE ds.solicitud_id = s.id
-                          AND ds.cantidad_entregada > 0), 0) as costo_total_ot
-                FROM solicitudes_ot s 
-                JOIN usuarios u ON s.usuario_solicitante_id = u.id 
-                LEFT JOIN activos a ON s.activo_id = a.id 
+                          WHERE ds.solicitud_id = s.id), 0) as costo_total_ot
+                FROM solicitudes_ot s
+                JOIN usuarios u ON s.usuario_solicitante_id = u.id
+                LEFT JOIN activos a ON s.activo_id = a.id
                 LEFT JOIN activos sa ON s.sub_activo_id = sa.id
-                JOIN estados_solicitud e ON s.estado_id = e.id 
+                JOIN estados_solicitud e ON s.estado_id = e.id
                 LEFT JOIN tipos_permiso_trabajo tpt ON s.tipo_permiso_id = tpt.id
+                LEFT JOIN tipos_trabajo tt ON s.tipo_trabajo_id = tt.id
                 WHERE s.id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
@@ -481,8 +485,8 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
 
-            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, sub_activo_id, titulo, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, fecha_requerida, requiere_permiso, tipo_permiso_id, descripcion_permiso, prioridad, ubicacion) 
-                VALUES (:uid, :aid, :subaid, :tit, :desc, :orig, :area, :cc, :ext, 1, NOW(), :freq, :req_perm, :tipo_perm, :desc_perm, :prio, :ubi)";
+            $sql = "INSERT INTO solicitudes_ot (usuario_solicitante_id, activo_id, sub_activo_id, titulo, descripcion_trabajo, origen_tipo, area_negocio, centro_costo_ot, solicitante_externo, estado_id, fecha_solicitud, fecha_requerida, requiere_permiso, tipo_permiso_id, descripcion_permiso, prioridad, ubicacion, tipo_trabajo_id)
+                VALUES (:uid, :aid, :subaid, :tit, :desc, :orig, :area, :cc, :ext, 1, NOW(), :freq, :req_perm, :tipo_perm, :desc_perm, :prio, :ubi, :tipo_trabajo)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':uid' => $data['usuario_id'],
@@ -499,7 +503,8 @@ class MantencionRepository
                 ':tipo_perm' => !empty($data['tipo_permiso_id']) ? $data['tipo_permiso_id'] : null,
                 ':desc_perm' => $data['descripcion_permiso'] ?? null,
                 ':prio' => $data['prioridad'] ?? 'Media',
-                ':ubi' => $data['ubicacion'] ?? null
+                ':ubi' => $data['ubicacion'] ?? null,
+                ':tipo_trabajo' => !empty($data['tipo_trabajo_id']) ? $data['tipo_trabajo_id'] : null
             ]);
             $otId = $this->db->lastInsertId();
 
@@ -558,10 +563,10 @@ class MantencionRepository
             if (!$inTransaction)
                 $this->db->beginTransaction();
 
-            $sql = "UPDATE solicitudes_ot SET 
+            $sql = "UPDATE solicitudes_ot SET
                     activo_id=:aid, sub_activo_id=:subaid, titulo=:tit, descripcion_trabajo=:desc, solicitante_externo=:se, centro_costo_ot=:cc, origen_tipo=:ot,
                     requiere_permiso=:req_perm, tipo_permiso_id=:tipo_perm, descripcion_permiso=:desc_perm,
-                    prioridad=:prio, ubicacion=:ubi, fecha_requerida=:freq
+                    prioridad=:prio, ubicacion=:ubi, fecha_requerida=:freq, tipo_trabajo_id=:tipo_trabajo
                     WHERE id=:id";
 
             $this->db->prepare($sql)->execute([
@@ -578,6 +583,7 @@ class MantencionRepository
                 ':prio' => $data['prioridad'] ?? 'Media',
                 ':ubi' => $data['ubicacion'] ?? null,
                 ':freq' => !empty($data['fecha_requerida']) ? $data['fecha_requerida'] : null,
+                ':tipo_trabajo' => !empty($data['tipo_trabajo_id']) ? $data['tipo_trabajo_id'] : null,
                 ':id' => $id
             ]);
 
@@ -861,6 +867,23 @@ class MantencionRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function getTiposTrabajo(): array
+    {
+        return $this->db->query("SELECT id, nombre FROM tipos_trabajo WHERE activo = 1 ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getSolicitanteEmail($otId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT u.email, u.nombre, u.apellido
+             FROM usuarios u
+             JOIN solicitudes_ot s ON s.usuario_solicitante_id = u.id
+             WHERE s.id = ?"
+        );
+        $stmt->execute([$otId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getTiposPermiso()

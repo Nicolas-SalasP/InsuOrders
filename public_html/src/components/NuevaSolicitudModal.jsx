@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
 import ConfirmModal from './ConfirmModal';
+import MediaPickerInput from './MediaPickerInput';
 
 const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     // --- ESTADOS DE DATOS MAESTROS ---
@@ -16,6 +17,10 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
     const [requierePermiso, setRequierePermiso] = useState(false);
     const [tipoPermisoId, setTipoPermisoId] = useState('');
     const [descripcionPermiso, setDescripcionPermiso] = useState('');
+
+    // --- TIPO DE TRABAJO ---
+    const [tiposTrabajos, setTiposTrabajos] = useState([]);
+    const [tipoTrabajoId, setTipoTrabajoId] = useState('');
 
     // --- ESTADOS DEL FORMULARIO ---
     const [modo, setModo] = useState('maquina');
@@ -110,18 +115,20 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         try {
             setItems([]);
             setLoading(true);
-            const [resActivos, resInsumos, resCC, resPersonal, resPermisos] = await Promise.all([
+            const [resActivos, resInsumos, resCC, resPersonal, resPermisos, resTrabajo] = await Promise.all([
                 api.get('/index.php/mantencion/activos'),
                 api.get('/index.php/mantencion/insumos'),
                 api.get('/index.php/mantencion/centros-costo'),
                 api.get('/index.php/personal'),
-                api.get('/index.php/mantencion/tipos-permiso')
+                api.get('/index.php/mantencion/tipos-permiso'),
+                api.get('/index.php/mantencion/tipos-trabajo')
             ]);
 
             setActivos(resActivos.data.data || []);
             setInsumos(resInsumos.data.data || []);
             setCentrosCosto(resCC.data.success ? resCC.data.data : []);
             setTiposPermiso(resPermisos.data.success ? resPermisos.data.data : []);
+            setTiposTrabajos(resTrabajo.data.success ? resTrabajo.data.data : []);
 
             const listaEmpleados = resPersonal.data.success ? resPersonal.data.data : [];
             setPersonal(listaEmpleados);
@@ -168,6 +175,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
         setRequierePermiso(false);
         setTipoPermisoId('');
         setDescripcionPermiso('');
+        setTipoTrabajoId('');
     };
 
     const cargarDatosEdicion = async () => {
@@ -196,6 +204,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
             setRequierePermiso(otEditar.requiere_permiso == 1);
             setTipoPermisoId(otEditar.tipo_permiso_id || '');
             setDescripcionPermiso(otEditar.descripcion_permiso || '');
+            setTipoTrabajoId(otEditar.tipo_trabajo_id || '');
 
             if (otEditar.asignados_ids) {
                 const ids = String(otEditar.asignados_ids).split(',').map(Number);
@@ -427,6 +436,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 requiere_permiso: requierePermiso ? 1 : 0,
                 tipo_permiso_id: requierePermiso ? tipoPermisoId : null,
                 descripcion_permiso: requierePermiso ? descripcionPermiso : '',
+                tipo_trabajo_id: tipoTrabajoId || null,
                 kit_id: null
             };
 
@@ -744,7 +754,7 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                         <i className="bi bi-camera me-1"></i> Evidencia Adjunta (Opcional)
                                                     </label>
                                                     {editable && (
-                                                        <input type="file" className="form-control form-control-sm shadow-sm" multiple accept="image/*,video/*" onChange={handleEvidencias} />
+                                                        <MediaPickerInput multiple onChange={handleEvidencias} className="mt-1" />
                                                     )}
                                                     {evidencias.length > 0 && (
                                                         <div className="d-flex flex-wrap gap-2 mt-2">
@@ -760,6 +770,28 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* TIPO DE TRABAJO */}
+                            <div className="col-12 mt-3">
+                                <div className="card border-0 shadow-sm">
+                                    <div className="card-body bg-light">
+                                        <label className="form-label fw-bold text-secondary text-uppercase mb-2" style={{ fontSize: '0.8rem' }}>
+                                            <i className="bi bi-tools me-2 text-primary"></i>Categoría / Tipo de Trabajo
+                                        </label>
+                                        <select
+                                            className="form-select shadow-sm"
+                                            value={tipoTrabajoId}
+                                            onChange={(e) => setTipoTrabajoId(e.target.value)}
+                                            disabled={!editable}
+                                        >
+                                            <option value="">Sin categoría</option>
+                                            {tiposTrabajos.map(tt => (
+                                                <option key={tt.id} value={tt.id}>{tt.nombre}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
                             </div>

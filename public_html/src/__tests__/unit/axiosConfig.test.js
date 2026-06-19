@@ -57,8 +57,7 @@ describe('axiosConfig — interceptor 401', () => {
                 config: { url: '/index.php/dashboard' },
             }).catch(() => {})
             expect(localStorage.getItem('insuorders_user')).toBeNull()
-            const expectedLogin = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/login`
-            expect(window.location.href).toBe(expectedLogin)
+            expect(window.location.href).toBe('/login')
         } else {
             expect(true).toBe(true)
         }

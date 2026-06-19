@@ -50,6 +50,8 @@ const Mantencion = () => {
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
     const [filtroSinTecnico, setFiltroSinTecnico] = useState(false);
+    const [filtroTipoTrabajo, setFiltroTipoTrabajo] = useState('');
+    const [tiposTrabajos, setTiposTrabajos] = useState([]);
 
     // SISTEMA DE 4 FASES PARA EL ORDEN
     const [tipoOrden, setTipoOrden] = useState('default');
@@ -88,6 +90,12 @@ const Mantencion = () => {
     useEffect(() => {
         cargarSolicitudes();
     }, [filtroInsumo]);
+
+    useEffect(() => {
+        api.get('/index.php/mantencion/tipos-trabajo')
+            .then(r => { if (r.data.success) setTiposTrabajos(r.data.data); })
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -161,7 +169,7 @@ const Mantencion = () => {
             cargarSolicitudes();
             setMsg({ show: true, title: "Anulada", text: "OT Anulada correctamente.", type: "success" });
         } catch (error) {
-            setMsg({ show: true, title: "Error", text: "No se pudo anular.", type: "error" });
+            setMsg({ show: true, title: "Error", text: error.response?.data?.message || "No se pudo anular.", type: "error" });
         }
     };
 
@@ -297,8 +305,13 @@ const Mantencion = () => {
         setBusquedaInsumo('');
         setMostrarSugerencias(false);
         setFiltroSinTecnico(false);
+        setFiltroTipoTrabajo('');
         setTipoOrden('default');
-        cargarSolicitudes();
+        setLoading(true);
+        api.get('/index.php/mantencion')
+            .then(res => { if (res.data.success) setSolicitudes(res.data.data); })
+            .catch(() => {})
+            .finally(() => setLoading(false));
     };
 
     // LÓGICA DE TRANSICIÓN DE 4 FASES
@@ -385,8 +398,9 @@ const Mantencion = () => {
         const fechaOT = s.fecha_solicitud ? s.fecha_solicitud.split(' ')[0] : '';
         const matchFecha = (!filtroFechaDesde || fechaOT >= filtroFechaDesde) && (!filtroFechaHasta || fechaOT <= filtroFechaHasta);
         const matchSinTecnico = !filtroSinTecnico || !s.asignados_nombres;
+        const matchTipoTrabajo = !filtroTipoTrabajo || (s.tipo_trabajo_nombre || '') === filtroTipoTrabajo;
 
-        return matchOT && matchMaquina && matchUbicacion && matchEstado && matchFecha && matchSinTecnico;
+        return matchOT && matchMaquina && matchUbicacion && matchEstado && matchFecha && matchSinTecnico && matchTipoTrabajo;
     }).sort((a, b) => {
         // Orden N° OT (Nuevas primero)
         if (tipoOrden === 'desc') return parseInt(b.id) - parseInt(a.id);
@@ -483,6 +497,15 @@ const Mantencion = () => {
                             <input type="text" className="form-control" placeholder="Ubicación (ej: HOR)..." value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)} />
                         </div>
 
+                        <div className="col-6 col-md-2">
+                            <select className="form-select" value={filtroTipoTrabajo} onChange={e => setFiltroTipoTrabajo(e.target.value)}>
+                                <option value="">Tipo trabajo: Todos</option>
+                                {tiposTrabajos.map(tt => (
+                                    <option key={tt.id} value={tt.nombre}>{tt.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+
                         <div className="col-6 col-md-2 position-relative" ref={wrapperRef}>
                             <div className="input-group">
                                 <span className={`input-group-text border-end-0 ${filtroInsumo ? 'bg-primary text-white' : 'bg-white text-primary'}`}>
@@ -550,7 +573,7 @@ const Mantencion = () => {
                             )}
                         </div>
                         <div className="col-6 col-md-2 text-end">
-                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado.length > 0 || filtroFechaDesde || filtroFechaHasta || filtroInsumo || filtroSinTecnico || tipoOrden !== 'default') && (
+                            {(filtroOT || filtroMaquina || filtroUbicacion || filtroEstado.length > 0 || filtroFechaDesde || filtroFechaHasta || filtroInsumo || filtroSinTecnico || filtroTipoTrabajo || tipoOrden !== 'default') && (
                                 <button className="btn btn-outline-secondary w-100" onClick={limpiarFiltros}>
                                     <i className="bi bi-x-lg me-1"></i> Limpiar
                                 </button>
@@ -618,6 +641,7 @@ const Mantencion = () => {
                                         <th className="d-none d-lg-table-cell py-3 px-3">Fecha Prog / Creación</th>
                                         <th className="d-none d-lg-table-cell py-3 px-3">Fecha Cierre</th>
                                         <th className="d-none d-md-table-cell">Prioridad</th>
+                                        <th className="d-none d-lg-table-cell">Tipo Trabajo</th>
                                         <th>Estado</th>
                                         <th className="d-none d-lg-table-cell text-end">Costo Total</th>
                                         <th className="text-end pe-4">Acciones</th>
@@ -717,6 +741,11 @@ const Mantencion = () => {
                                                 </td>
 
                                                 <td className="d-none d-md-table-cell">{getPriorityBadge(s.prioridad)}</td>
+                                                <td className="d-none d-lg-table-cell">
+                                                    {s.tipo_trabajo_nombre
+                                                        ? <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">{s.tipo_trabajo_nombre}</span>
+                                                        : <span className="text-muted small"><i className="bi bi-dash"></i></span>}
+                                                </td>
                                                 <td><span className={`badge ${badgeClass}`}>{estadoTexto}</span></td>
 
                                                 <td className="d-none d-lg-table-cell text-end">
@@ -753,6 +782,17 @@ const Mantencion = () => {
                                                             >
                                                                 <i className="bi bi-arrow-counterclockwise"></i>
                                                             </button>
+                                                        )}
+                                                        {s.estado === 'Completada' && s.pdf_url && (
+                                                            <a
+                                                                href={`/api${s.pdf_url}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="btn btn-sm btn-outline-danger fw-bold px-2 py-1"
+                                                                title="Descargar reporte de cierre PDF"
+                                                            >
+                                                                <i className="bi bi-file-earmark-pdf"></i>
+                                                            </a>
                                                         )}
                                                         <button
                                                             className={`btn btn-sm btn-light border menu-trigger-btn ${openMenuId === s.id ? 'active' : ''}`}

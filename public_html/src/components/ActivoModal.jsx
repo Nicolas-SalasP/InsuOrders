@@ -4,6 +4,7 @@ import api from '../api/axiosConfig';
 import MessageModal from './MessageModal';
 import ConfirmModal from './ConfirmModal';
 import AuthContext from '../context/AuthContext';
+import MediaPickerInput from './MediaPickerInput';
 
 const BASE_URL = '/api';
 
@@ -454,13 +455,13 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                         <div className="text-center"><i className="bi bi-camera fs-1 d-block mb-1"></i>Sin portada</div>
                                                     </div>
                                                 )}
-                                                {!isReadOnly && <input type="file" className="form-control form-control-sm" accept="image/*" onChange={(e) => {
+                                                {!isReadOnly && <MediaPickerInput accept="image/*" onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if (file) {
                                                         setMainImage(file);
                                                         setMainImagePreview(URL.createObjectURL(file));
                                                     }
-                                                }} />}
+                                                }} className="mt-1" />}
                                             </div>
 
                                             {activo && (
@@ -483,14 +484,13 @@ const ActivoModal = ({ show, onClose, activo, onSave }) => {
                                                     {!isReadOnly && (
                                                         <>
                                                             <label className="form-label fw-bold text-primary small"><i className="bi bi-plus-circle me-1"></i>Añadir nuevas fotos</label>
-                                                            <input type="file" className="form-control form-control-sm" accept="image/*" multiple onChange={(e) => {
+                                                            <MediaPickerInput accept="image/*" multiple onChange={(e) => {
                                                                 const files = Array.from(e.target.files).map(file => {
                                                                     file.preview = URL.createObjectURL(file);
                                                                     return file;
                                                                 });
                                                                 setGalleryItems(prev => [...prev, ...files]);
-                                                                e.target.value = null;
-                                                            }} />
+                                                            }} className="mt-1" />
 
                                                             {galleryItems.length > 0 && (
                                                                 <div className="mt-3 p-3 bg-success bg-opacity-10 border border-success border-opacity-25 rounded shadow-sm">

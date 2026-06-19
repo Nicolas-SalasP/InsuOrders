@@ -4,6 +4,8 @@ namespace App\Services;
 use App\Repositories\MantencionRepository;
 use App\Repositories\CronogramaRepository;
 use Exception;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
 
 class MantencionService
 {
@@ -38,6 +40,11 @@ class MantencionService
     public function listarTiposPermiso()
     {
         return $this->repo->getTiposPermiso();
+    }
+
+    public function listarTiposTrabajo()
+    {
+        return $this->repo->getTiposTrabajo();
     }
 
     public function asignarOT($otId, array $asignados, $ubicacion = null)
@@ -79,6 +86,8 @@ class MantencionService
             $this->notificarPrevencion($otId, $data, true);
         }
 
+        $this->notificarCambioOT($otId, 'creacion');
+
         return $otId;
     }
 
@@ -108,6 +117,95 @@ class MantencionService
         return $resultado;
     }
 
+    private function sendMail(string $to, string $subject, string $body, array $cc = [], bool $highPriority = false): void
+    {
+        $host = $_ENV['MAIL_SMTP_HOST'] ?? '';
+        $user = $_ENV['MAIL_SMTP_USER'] ?? '';
+        $pass = $_ENV['MAIL_SMTP_PASS'] ?? '';
+        $port = (int)($_ENV['MAIL_SMTP_PORT'] ?? 465);
+        $secure = strtolower($_ENV['MAIL_SMTP_SECURE'] ?? 'ssl');
+        $from = $_ENV['MAIL_FROM'] ?? 'no-reply@insuban.cl';
+        $appName = $_ENV['APP_NAME'] ?? 'InsuOrders';
+
+        if (!$host || !$user || !$pass) {
+            error_log("[Mail] SMTP no configurado. Correo no enviado a $to.");
+            return;
+        }
+
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host       = $host;
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $user;
+        $mail->Password   = $pass;
+        $mail->SMTPSecure = $secure === 'tls' ? PHPMailer::ENCRYPTION_STARTTLS : PHPMailer::ENCRYPTION_SMTPS;
+        $mail->Port       = $port;
+        $mail->CharSet    = 'UTF-8';
+
+        $mail->setFrom($from, $appName);
+        $mail->addAddress($to);
+        foreach ($cc as $ccAddr) {
+            $mail->addCC($ccAddr);
+        }
+
+        if ($highPriority) {
+            $mail->Priority = 1;
+            $mail->addCustomHeader('X-MSMail-Priority', 'High');
+            $mail->addCustomHeader('Importance', 'High');
+        }
+
+        $mail->Subject = $subject;
+        $mail->Body    = $body;
+        $mail->isHTML(false);
+        $mail->send();
+    }
+
+    public function notificarCambioOT(int $otId, string $evento)
+    {
+        try {
+            $solicitante = $this->repo->getSolicitanteEmail($otId);
+            if (empty($solicitante['email'])) return;
+
+            $header = $this->repo->getOTHeader($otId);
+            if (!$header) return;
+
+            $appName  = $_ENV['APP_NAME'] ?? 'InsuOrders';
+            $ccRaw    = $_ENV['OT_NOTIF_CC'] ?? 'mantenimiento@insuban.cl,ncerdan@insuban.cl,furdaneta@insuban.cl,jmanquel@insuban.cl,ctapia@insuban.cl';
+            $ccEmails = array_filter(array_map('trim', explode(',', $ccRaw)));
+
+            $titulo   = $header['titulo'] ?? ('OT #' . $otId);
+            $activo   = $header['activo'] ?? 'General';
+            $ubicacion = $header['ubicacion'] ?? '';
+            $prioridad = $header['prioridad'] ?? 'MEDIA';
+            $estado   = $header['estado'] ?? '-';
+            $nombreSolicitante = trim(($solicitante['nombre'] ?? '') . ' ' . ($solicitante['apellido'] ?? '')) ?: 'Solicitante';
+
+            $eventos = [
+                'creacion'     => ['asunto' => "[$appName] OT #$otId Creada - $titulo",           'accion' => 'creada'],
+                'avance'       => ['asunto' => "[$appName] OT #$otId - Avance Registrado",        'accion' => 'avanzada con nuevo progreso'],
+                'finalizacion' => ['asunto' => "[$appName] OT #$otId COMPLETADA - $titulo",       'accion' => 'cerrada y completada'],
+            ];
+            $info   = $eventos[$evento] ?? ['asunto' => "[$appName] OT #$otId - Actualización", 'accion' => 'actualizada'];
+            $subject = $info['asunto'];
+            $accion  = $info['accion'];
+
+            $message  = "Estimado/a $nombreSolicitante,\n\n";
+            $message .= "Le informamos que la OT #$otId ha sido $accion.\n\n";
+            $message .= "FOLIO OT:  #$otId\n";
+            $message .= "TÍTULO:    $titulo\n";
+            $message .= "ACTIVO:    $activo\n";
+            if ($ubicacion) $message .= "UBICACIÓN: $ubicacion\n";
+            $message .= "PRIORIDAD: $prioridad\n";
+            $message .= "ESTADO:    $estado\n";
+            $message .= "\nSistema $appName.";
+
+            $subjectSafe = str_replace(["\r", "\n"], ' ', $subject);
+            $this->sendMail($solicitante['email'], $subjectSafe, $message, $ccEmails);
+        } catch (\Throwable $e) {
+            error_log("notificarCambioOT [$evento] OT#$otId: " . $e->getMessage());
+        }
+    }
+
     private function notificarPrevencion($otId, $data, $esCreacion = true)
     {
         try {
@@ -128,7 +226,6 @@ class MantencionService
 
             $accion = $esCreacion ? 'NUEVA' : 'ACTUALIZADA';
             $appName = $_ENV['APP_NAME'] ?? 'InsuOrders';
-            $mailFrom = $_ENV['MAIL_FROM'] ?? 'no-reply@insuorders.com';
 
             $subject = "[$appName] Permiso de Trabajo Requerido - OT #$otId ($tipoNombre)";
 
@@ -149,16 +246,9 @@ class MantencionService
             $message .= "Por favor coordinar la elaboración y respaldo del permiso correspondiente.\n";
             $message .= "Sistema $appName.";
 
-            $headers  = "From: $mailFrom\r\n";
-            $headers .= "Reply-To: $mailFrom\r\n";
-            $headers .= "X-Priority: 1 (Highest)\r\n";
-            $headers .= "X-MSMail-Priority: High\r\n";
-            $headers .= "Importance: High\r\n";
-            $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-
             $subjectSafe = str_replace(["\r", "\n"], ' ', $subject);
             foreach ($destinatarios as $to) {
-                @mail($to, $subjectSafe, $message, $headers);
+                $this->sendMail($to, $subjectSafe, $message, [], true);
             }
         } catch (\Throwable $e) {
             error_log("notificarPrevencion error: " . $e->getMessage());
@@ -169,6 +259,7 @@ class MantencionService
     {
         if ($force) {
             $this->repo->finalizar($otId);
+            $this->notificarCambioOT($otId, 'finalizacion');
             return ['status' => 'closed', 'message' => 'OT Cerrada Completamente.'];
         }
         return $this->repo->finalizarTareaTecnico($otId, $usuarioId, $notas);
@@ -178,7 +269,7 @@ class MantencionService
     {
         $entregas = $this->repo->getEntregasOT($id);
         if (!empty($entregas)) {
-            throw new Exception("No se puede anular una OT que ya tiene materiales entregados. Debe finalizarlas o devolver los materiales.");
+            throw new \Exception('No se puede anular: la OT tiene materiales entregados.');
         }
         $this->repo->delete($id);
     }
