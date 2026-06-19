@@ -7,6 +7,7 @@ import ModalSalida from '../components/ModalSalida';
 import MessageModal from '../components/MessageModal';
 import ConfirmModal from '../components/ConfirmModal';
 import ModalCargaMasiva from '../components/ModalCargaMasiva';
+import EtiquetaModal from '../components/EtiquetaModal';
 
 const BASE_URL = '/api';
 
@@ -25,6 +26,7 @@ const Inventario = () => {
     const [entradaModal, setEntradaModal] = useState({ show: false, insumo: null });
     const [salidaModal, setSalidaModal] = useState({ show: false, insumo: null });
     const [showImport, setShowImport] = useState(false);
+    const [etiquetaModal, setEtiquetaModal] = useState({ show: false, insumo: null });
 
     const [zoomImage, setZoomImage] = useState(null); 
     const [zoomLevel, setZoomLevel] = useState(1);
@@ -241,6 +243,8 @@ const Inventario = () => {
             />
 
             <ModalEntrada show={entradaModal.show} insumo={entradaModal.insumo} onClose={() => setEntradaModal({ show: false, insumo: null })} onSave={handleSaveSilent} />
+
+            <EtiquetaModal show={etiquetaModal.show} insumo={etiquetaModal.insumo} onClose={() => setEtiquetaModal({ show: false, insumo: null })} />
             <ModalSalida show={salidaModal.show} insumo={salidaModal.insumo} onClose={() => setSalidaModal({ show: false, insumo: null })} onSave={handleSaveSilent} />
 
             <div className="card shadow-sm border-0 flex-grow-1 d-flex flex-column" style={{ overflow: 'hidden' }}>
@@ -418,6 +422,10 @@ const Inventario = () => {
                                                 )}
 
                                                 <span className="mx-1 text-muted">|</span>
+
+                                                <button className="btn btn-sm btn-link text-secondary" onClick={() => setEtiquetaModal({ show: true, insumo: item })} title="Imprimir etiqueta">
+                                                    <i className="bi bi-upc-scan"></i>
+                                                </button>
 
                                                 {can('inv_editar') && (
                                                     <button className="btn btn-sm btn-link text-secondary" onClick={() => handleEdit(item)} title="Editar">
