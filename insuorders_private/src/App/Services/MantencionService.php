@@ -4,6 +4,8 @@ namespace App\Services;
 use App\Repositories\MantencionRepository;
 use App\Repositories\CronogramaRepository;
 use Exception;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
 
 class MantencionService
 {
@@ -115,6 +117,49 @@ class MantencionService
         return $resultado;
     }
 
+    private function sendMail(string $to, string $subject, string $body, array $cc = [], bool $highPriority = false): void
+    {
+        $host = $_ENV['MAIL_SMTP_HOST'] ?? '';
+        $user = $_ENV['MAIL_SMTP_USER'] ?? '';
+        $pass = $_ENV['MAIL_SMTP_PASS'] ?? '';
+        $port = (int)($_ENV['MAIL_SMTP_PORT'] ?? 465);
+        $secure = strtolower($_ENV['MAIL_SMTP_SECURE'] ?? 'ssl');
+        $from = $_ENV['MAIL_FROM'] ?? 'no-reply@insuban.cl';
+        $appName = $_ENV['APP_NAME'] ?? 'InsuOrders';
+
+        if (!$host || !$user || !$pass) {
+            error_log("[Mail] SMTP no configurado. Correo no enviado a $to.");
+            return;
+        }
+
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host       = $host;
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $user;
+        $mail->Password   = $pass;
+        $mail->SMTPSecure = $secure === 'tls' ? PHPMailer::ENCRYPTION_STARTTLS : PHPMailer::ENCRYPTION_SMTPS;
+        $mail->Port       = $port;
+        $mail->CharSet    = 'UTF-8';
+
+        $mail->setFrom($from, $appName);
+        $mail->addAddress($to);
+        foreach ($cc as $ccAddr) {
+            $mail->addCC($ccAddr);
+        }
+
+        if ($highPriority) {
+            $mail->Priority = 1;
+            $mail->addCustomHeader('X-MSMail-Priority', 'High');
+            $mail->addCustomHeader('Importance', 'High');
+        }
+
+        $mail->Subject = $subject;
+        $mail->Body    = $body;
+        $mail->isHTML(false);
+        $mail->send();
+    }
+
     public function notificarCambioOT(int $otId, string $evento)
     {
         try {
@@ -125,7 +170,6 @@ class MantencionService
             if (!$header) return;
 
             $appName  = $_ENV['APP_NAME'] ?? 'InsuOrders';
-            $mailFrom = $_ENV['MAIL_FROM'] ?? 'no-reply@insuban.cl';
             $ccRaw    = $_ENV['OT_NOTIF_CC'] ?? 'mantenimiento@insuban.cl,ncerdan@insuban.cl,furdaneta@insuban.cl,jmanquel@insuban.cl,ctapia@insuban.cl';
             $ccEmails = array_filter(array_map('trim', explode(',', $ccRaw)));
 
@@ -155,14 +199,8 @@ class MantencionService
             $message .= "ESTADO:    $estado\n";
             $message .= "\nSistema $appName.";
 
-            $ccStr   = implode(', ', $ccEmails);
-            $headers  = "From: $mailFrom\r\n";
-            $headers .= "Reply-To: $mailFrom\r\n";
-            if ($ccStr) $headers .= "Cc: $ccStr\r\n";
-            $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-
             $subjectSafe = str_replace(["\r", "\n"], ' ', $subject);
-            @mail($solicitante['email'], $subjectSafe, $message, $headers);
+            $this->sendMail($solicitante['email'], $subjectSafe, $message, $ccEmails);
         } catch (\Throwable $e) {
             error_log("notificarCambioOT [$evento] OT#$otId: " . $e->getMessage());
         }
@@ -188,7 +226,6 @@ class MantencionService
 
             $accion = $esCreacion ? 'NUEVA' : 'ACTUALIZADA';
             $appName = $_ENV['APP_NAME'] ?? 'InsuOrders';
-            $mailFrom = $_ENV['MAIL_FROM'] ?? 'no-reply@insuorders.com';
 
             $subject = "[$appName] Permiso de Trabajo Requerido - OT #$otId ($tipoNombre)";
 
@@ -209,16 +246,9 @@ class MantencionService
             $message .= "Por favor coordinar la elaboración y respaldo del permiso correspondiente.\n";
             $message .= "Sistema $appName.";
 
-            $headers  = "From: $mailFrom\r\n";
-            $headers .= "Reply-To: $mailFrom\r\n";
-            $headers .= "X-Priority: 1 (Highest)\r\n";
-            $headers .= "X-MSMail-Priority: High\r\n";
-            $headers .= "Importance: High\r\n";
-            $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-
             $subjectSafe = str_replace(["\r", "\n"], ' ', $subject);
             foreach ($destinatarios as $to) {
-                @mail($to, $subjectSafe, $message, $headers);
+                $this->sendMail($to, $subjectSafe, $message, [], true);
             }
         } catch (\Throwable $e) {
             error_log("notificarPrevencion error: " . $e->getMessage());
