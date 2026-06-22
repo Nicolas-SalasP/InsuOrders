@@ -10,10 +10,10 @@ export default function EtiquetaModal({ show, insumo, onClose }) {
             try {
                 JsBarcode(svgRef.current, insumo.codigo_sku, {
                     format: 'CODE128',
-                    width: 2,
-                    height: 48,
+                    width: 1.5,
+                    height: 32,
                     displayValue: false,
-                    margin: 4,
+                    margin: 2,
                 });
             } catch (e) {
                 console.error('Barcode error:', e);
@@ -23,11 +23,13 @@ export default function EtiquetaModal({ show, insumo, onClose }) {
 
     const imprimir = () => {
         const svgHtml = svgRef.current?.outerHTML ?? '';
+        const ultimos4 = insumo.codigo_sku.slice(-4);
         const etiqueta = `
             <div class="etiqueta">
                 <div class="nombre">${insumo.nombre}</div>
+                <div class="sku-ultimos">···${ultimos4}</div>
+                <div class="sku-completo">${insumo.codigo_sku}</div>
                 ${svgHtml}
-                <div class="sku">${insumo.codigo_sku}</div>
             </div>`;
 
         const win = window.open('', '_blank', 'width=900,height=600');
@@ -70,16 +72,24 @@ export default function EtiquetaModal({ show, insumo, onClose }) {
     -webkit-box-orient: vertical;
     margin-bottom: 1.5mm;
   }
+  .sku-ultimos {
+    font-size: 16pt;
+    font-family: monospace;
+    font-weight: bold;
+    letter-spacing: 3px;
+    margin-top: 0.5mm;
+    margin-bottom: 0.2mm;
+  }
+  .sku-completo {
+    font-size: 5.5pt;
+    font-family: monospace;
+    color: #555;
+    letter-spacing: 0.3px;
+    margin-bottom: 0.5mm;
+  }
   .etiqueta svg {
     max-width: 56mm;
     height: auto;
-  }
-  .sku {
-    font-size: 6pt;
-    font-family: monospace;
-    margin-top: 1mm;
-    letter-spacing: 0.5px;
-    color: #333;
   }
 </style>
 </head>
@@ -112,10 +122,13 @@ export default function EtiquetaModal({ show, insumo, onClose }) {
                             <div className="fw-bold text-dark" style={{ fontSize: '0.75rem', maxWidth: 220, lineHeight: 1.3, textAlign: 'center' }}>
                                 {insumo.nombre}
                             </div>
-                            <svg ref={svgRef} className="my-1" />
-                            <div className="font-monospace text-secondary" style={{ fontSize: '0.7rem' }}>
+                            <div className="font-monospace fw-bold text-dark" style={{ fontSize: '1.6rem', letterSpacing: '3px', marginTop: '4px' }}>
+                                ···{insumo.codigo_sku.slice(-4)}
+                            </div>
+                            <div className="font-monospace text-secondary" style={{ fontSize: '0.6rem', marginBottom: '4px' }}>
                                 {insumo.codigo_sku}
                             </div>
+                            <svg ref={svgRef} />
                         </div>
 
                         <div className="mt-3 d-flex align-items-center justify-content-center gap-2">

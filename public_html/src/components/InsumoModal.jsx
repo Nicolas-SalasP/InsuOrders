@@ -282,8 +282,8 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
 
                                     {/* Categoría y Unidad */}
                                     <Col md={6}>
-                                        <Form.Label className="small fw-bold">Categoría <span className="text-danger">*</span></Form.Label>
-                                        <Form.Select name="categoria_id" value={formData.categoria_id} onChange={handleChange} required>
+                                        <Form.Label className="small fw-bold">Categoría {totalStockCalculado > 0 && <span className="text-danger">*</span>}</Form.Label>
+                                        <Form.Select name="categoria_id" value={formData.categoria_id} onChange={handleChange} required={totalStockCalculado > 0}>
                                             <option value="">Seleccione...</option>
                                             {listas.categorias?.map(c => (
                                                 <option key={c.id} value={c.id}>{c.nombre}</option>
@@ -314,10 +314,10 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
                                                 <Row key={index} className="mb-2 align-items-end g-2">
                                                     <Col md={8}>
                                                         <Form.Label className="small text-muted mb-0">Ubicación</Form.Label>
-                                                        <Form.Select 
+                                                        <Form.Select
                                                             value={item.ubicacion_id}
                                                             onChange={(e) => handleLocationChange(index, 'ubicacion_id', e.target.value)}
-                                                            required
+                                                            required={parseFloat(item.cantidad) > 0}
                                                             size="sm"
                                                         >
                                                             <option value="">Seleccione ubicación...</option>

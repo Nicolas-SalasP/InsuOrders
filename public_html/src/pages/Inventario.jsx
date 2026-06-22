@@ -20,6 +20,8 @@ const Inventario = () => {
     const [filtroCategoria, setFiltroCategoria] = useState('');
     const [filtroUbicacion, setFiltroUbicacion] = useState('');
     const [orden, setOrden] = useState('');
+    const [paginaActual, setPaginaActual] = useState(1);
+    const ITEMS_POR_PAGINA = 100;
     
     const [showInsumoModal, setShowInsumoModal] = useState(false);
     const [insumoEditar, setInsumoEditar] = useState(null);
@@ -124,11 +126,13 @@ const Inventario = () => {
     const toggleSku = () => {
         if (orden === 'sku_asc') setOrden('sku_desc');
         else setOrden('sku_asc');
+        setPaginaActual(1);
     };
 
     const toggleStock = () => {
         if (orden === 'stock_asc') setOrden('stock_desc');
         else setOrden('stock_asc');
+        setPaginaActual(1);
     };
 
     const insumosFiltrados = insumos.filter(i => {
@@ -302,18 +306,18 @@ const Inventario = () => {
                                     className="form-control border-start-0 ps-0"
                                     placeholder="Buscar SKU o nombre..."
                                     value={busqueda}
-                                    onChange={e => setBusqueda(e.target.value)}
+                                    onChange={e => { setBusqueda(e.target.value); setPaginaActual(1); }}
                                 />
                             </div>
                         </div>
                         <div className="col-12 col-md-3">
-                            <select className="form-select" value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
+                            <select className="form-select" value={filtroCategoria} onChange={e => { setFiltroCategoria(e.target.value); setPaginaActual(1); }}>
                                 <option value="">Todas las Categorías</option>
                                 {listas.categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                             </select>
                         </div>
                         <div className="col-12 col-md-3">
-                            <select className="form-select" value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)}>
+                            <select className="form-select" value={filtroUbicacion} onChange={e => { setFiltroUbicacion(e.target.value); setPaginaActual(1); }}>
                                 <option value="">Todas las Ubicaciones</option>
                                 {listas.ubicaciones.map(u => (
                                     <option key={u.id} value={u.id}>
@@ -346,7 +350,7 @@ const Inventario = () => {
                         </div>
                     </div>
                     <div className="mt-2 text-end small text-muted">
-                        Mostrando {insumosFiltrados.length} de {insumos.length} registros
+                        Mostrando {Math.min(paginaActual * ITEMS_POR_PAGINA, insumosFiltrados.length)} de {insumosFiltrados.length} filtrados ({insumos.length} total)
                     </div>
                 </div>
 
@@ -367,7 +371,7 @@ const Inventario = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {insumosFiltrados.map(item => (
+                                    {insumosFiltrados.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA).map(item => (
                                         <tr key={item.id}>
                                             <td className="d-none d-md-table-cell" style={{ width: '80px', textAlign: 'center' }}>
                                                 {item.imagen_url ? (
@@ -449,6 +453,27 @@ const Inventario = () => {
                             </div>
                         )}
                     </div>
+                    {Math.ceil(insumosFiltrados.length / ITEMS_POR_PAGINA) > 1 && (
+                        <div className="d-flex justify-content-center align-items-center gap-2 py-3 border-top bg-white flex-shrink-0">
+                            <button
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                                disabled={paginaActual === 1}
+                            >
+                                <i className="bi bi-chevron-left"></i>
+                            </button>
+                            <span className="small text-muted">
+                                Página {paginaActual} de {Math.ceil(insumosFiltrados.length / ITEMS_POR_PAGINA)}
+                            </span>
+                            <button
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => setPaginaActual(p => Math.min(Math.ceil(insumosFiltrados.length / ITEMS_POR_PAGINA), p + 1))}
+                                disabled={paginaActual === Math.ceil(insumosFiltrados.length / ITEMS_POR_PAGINA)}
+                            >
+                                <i className="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

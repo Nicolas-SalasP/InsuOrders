@@ -29,8 +29,8 @@ class MantencionRepository
                 t.nombre as tecnico_nombre, t.apellido as tecnico_apellido,
                 tpt.nombre as tipo_permiso_nombre,
                 tt.nombre as tipo_trabajo_nombre,
-                (SELECT GROUP_CONCAT(CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') FROM ot_asignaciones oa JOIN usuarios usr ON oa.usuario_id = usr.id WHERE oa.solicitud_id = s.id) as asignados_nombres,
-                (SELECT GROUP_CONCAT(oa.usuario_id) FROM ot_asignaciones oa WHERE oa.solicitud_id = s.id) as asignados_ids,
+                GROUP_CONCAT(DISTINCT CONCAT(usr.nombre, ' ', usr.apellido) SEPARATOR ', ') as asignados_nombres,
+                GROUP_CONCAT(DISTINCT oa.usuario_id) as asignados_ids,
                 (SELECT GROUP_CONCAT(CONCAT(u2.nombre, ' ', u2.apellido, ': ', IF(opr.retirado, 'SÍ', 'NO'), ' (', DATE_FORMAT(opr.fecha, '%d/%m/%Y %H:%i'), ')') ORDER BY opr.fecha SEPARATOR ' | ') FROM ot_permiso_retirado opr JOIN usuarios u2 ON opr.usuario_id = u2.id WHERE opr.ot_id = s.id) as permiso_retirado_detalle,
                 COALESCE((SELECT SUM(ds.cantidad_entregada * i.precio_costo)
                           FROM detalle_solicitud ds
@@ -45,6 +45,8 @@ class MantencionRepository
                 LEFT JOIN usuarios t ON s.asignado_a = t.id 
                 LEFT JOIN tipos_permiso_trabajo tpt ON s.tipo_permiso_id = tpt.id
                 LEFT JOIN tipos_trabajo tt ON s.tipo_trabajo_id = tt.id
+                LEFT JOIN ot_asignaciones oa ON oa.solicitud_id = s.id
+                LEFT JOIN usuarios usr ON oa.usuario_id = usr.id
                 WHERE 1=1";
 
         $params = [];

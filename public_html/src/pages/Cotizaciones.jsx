@@ -33,6 +33,8 @@ const Cotizaciones = () => {
         usuario: ''
     });
     const [previewModal, setPreviewModal] = useState({ show: false, data: null, loading: false });
+    const [paginaActual, setPaginaActual] = useState(1);
+    const ITEMS_POR_PAGINA = 50;
 
     const can = (permiso) => {
         if (auth.rol === 'Admin' || auth.rol === 1) return true;
@@ -45,6 +47,8 @@ const Cotizaciones = () => {
         api.get('/index.php/cotizaciones/estados-lista').then(res => { if (res.data.success) setEstados(res.data.data); });
         api.get('/index.php/insumos/lista').then(res => { if (res.data.success) setListaInsumos(res.data.data); });
     }, []);
+
+    useEffect(() => { setPaginaActual(1); }, [data]);
 
     const cargarDatos = async () => {
         setLoading(true);
@@ -305,7 +309,7 @@ const Cotizaciones = () => {
                             <tbody>
                                 {loading ? <tr><td colSpan="6" className="text-center py-5">Cargando...</td></tr> :
                                     data.length === 0 ? <tr><td colSpan="6" className="text-center py-5">Sin registros.</td></tr> :
-                                        data.map(cot => (
+                                        data.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA).map(cot => (
                                             <tr key={cot.id}>
                                                 <td className="ps-4 fw-bold text-dark" style={{ fontSize: '0.85rem' }}>#{cot.id}</td>
                                                 <td className="d-none d-md-table-cell" style={{ fontSize: '0.85rem' }}>{new Date(cot.fecha_creacion).toLocaleDateString()}</td>
@@ -346,6 +350,17 @@ const Cotizaciones = () => {
                         </table>
                     </div>
                 </div>
+                {Math.ceil(data.length / ITEMS_POR_PAGINA) > 1 && (
+                    <div className="d-flex justify-content-center align-items-center gap-2 py-3 border-top bg-white flex-shrink-0">
+                        <button className="btn btn-sm btn-outline-secondary" onClick={() => setPaginaActual(p => Math.max(1, p - 1))} disabled={paginaActual === 1}>
+                            <i className="bi bi-chevron-left"></i>
+                        </button>
+                        <span className="small text-muted">Página {paginaActual} de {Math.ceil(data.length / ITEMS_POR_PAGINA)} <span className="ms-2 text-secondary">({data.length} cotizaciones)</span></span>
+                        <button className="btn btn-sm btn-outline-secondary" onClick={() => setPaginaActual(p => Math.min(Math.ceil(data.length / ITEMS_POR_PAGINA), p + 1))} disabled={paginaActual === Math.ceil(data.length / ITEMS_POR_PAGINA)}>
+                            <i className="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

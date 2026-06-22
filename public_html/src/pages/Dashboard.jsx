@@ -52,8 +52,11 @@ const Dashboard = () => {
 
     useEffect(() => {
         cargarDatos();
-        cargarDatosPersonal();
     }, [fechas, empleadoFilter]);
+
+    useEffect(() => {
+        cargarDatosPersonal();
+    }, []);
 
     const cargarDatos = async () => {
         setLoading(true);

@@ -58,6 +58,9 @@ const Compras = () => {
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
     const wrapperRef = useRef(null);
 
+    const [paginaActual, setPaginaActual] = useState(1);
+    const OC_POR_PAGINA = 50;
+
     // Datos
     const [itemsPrecargados, setItemsPrecargados] = useState([]);
     const [pendientes, setPendientes] = useState([]);
@@ -349,6 +352,8 @@ const Compras = () => {
 
     const seleccionarInsumo = (item) => { setFiltroInsumo(item.id); setBusquedaInsumo(item.nombre); setMostrarSugerencias(false); };
 
+    useEffect(() => { setPaginaActual(1); }, [filtroOC, filtroProveedor, filtroDestino, filtroEstado, filtroFechaDesde, filtroFechaHasta, filtroInsumo, ordenes]);
+
     const ordenesFiltradas = ordenes.filter(oc => {
         const matchOC = !filtroOC.trim() || String(oc.id).includes(filtroOC.trim());
         const matchProv = oc.proveedor.toLowerCase().includes(filtroProveedor.toLowerCase());
@@ -637,7 +642,7 @@ const Compras = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {ordenesFiltradas.length > 0 ? ordenesFiltradas.map(oc => (
+                                    {ordenesFiltradas.length > 0 ? ordenesFiltradas.slice((paginaActual - 1) * OC_POR_PAGINA, paginaActual * OC_POR_PAGINA).map(oc => (
                                         <tr key={oc.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                                             <td className="ps-4">
                                                 <span className="fw-bold text-primary" style={{ fontSize: '0.95rem' }}>#{oc.id}</span>
@@ -664,8 +669,19 @@ const Compras = () => {
                         </div>
                     )}
                 </div>
+                {Math.ceil(ordenesFiltradas.length / OC_POR_PAGINA) > 1 && (
+                    <div className="d-flex justify-content-center align-items-center gap-2 py-3 border-top bg-white flex-shrink-0">
+                        <button className="btn btn-sm btn-outline-secondary" onClick={() => setPaginaActual(p => Math.max(1, p - 1))} disabled={paginaActual === 1}>
+                            <i className="bi bi-chevron-left"></i>
+                        </button>
+                        <span className="small text-muted">Página {paginaActual} de {Math.ceil(ordenesFiltradas.length / OC_POR_PAGINA)} <span className="ms-2 text-secondary">({ordenesFiltradas.length} órdenes)</span></span>
+                        <button className="btn btn-sm btn-outline-secondary" onClick={() => setPaginaActual(p => Math.min(Math.ceil(ordenesFiltradas.length / OC_POR_PAGINA), p + 1))} disabled={paginaActual === Math.ceil(ordenesFiltradas.length / OC_POR_PAGINA)}>
+                            <i className="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                )}
             </div>
-            <ConfirmModal 
+            <ConfirmModal
                 show={confirmCierreModal.show} 
                 onClose={() => setConfirmCierreModal({ show: false, id: null })} 
                 onConfirm={ejecutarCierreParcial} 
