@@ -55,9 +55,15 @@ const Mantencion = () => {
 
     // SISTEMA DE 4 FASES PARA EL ORDEN
     const [tipoOrden, setTipoOrden] = useState('default');
+    const [paginaActual, setPaginaActual] = useState(1);
+    const OTS_POR_PAGINA = 50;
 
     const wrapperRef = useRef(null);
     const todayStr = new Date().toISOString().split('T')[0];
+
+    useEffect(() => {
+        setPaginaActual(1);
+    }, [filtroOT, filtroMaquina, filtroUbicacion, filtroEstado, filtroFechaDesde, filtroFechaHasta, filtroSinTecnico, filtroTipoTrabajo, tipoOrden, solicitudes]);
 
     useEffect(() => {
         cargarListaInsumos();
@@ -648,7 +654,7 @@ const Mantencion = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map(s => {
+                                    {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.slice((paginaActual - 1) * OTS_POR_PAGINA, paginaActual * OTS_POR_PAGINA).map(s => {
                                         const critico = isCritico(s.prioridad);
                                         const reqStr = s.fecha_requerida ? s.fecha_requerida.substring(0, 10) : null;
                                         const isFutura = reqStr && reqStr > todayStr;
@@ -813,6 +819,28 @@ const Mantencion = () => {
                         </div>
                     )}
                 </div>
+                {Math.ceil(solicitudesFiltradas.length / OTS_POR_PAGINA) > 1 && (
+                    <div className="d-flex justify-content-center align-items-center gap-2 py-3 border-top bg-white flex-shrink-0">
+                        <button
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                            disabled={paginaActual === 1}
+                        >
+                            <i className="bi bi-chevron-left"></i>
+                        </button>
+                        <span className="small text-muted">
+                            Página {paginaActual} de {Math.ceil(solicitudesFiltradas.length / OTS_POR_PAGINA)}
+                            <span className="ms-2 text-secondary">({solicitudesFiltradas.length} OTs)</span>
+                        </span>
+                        <button
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={() => setPaginaActual(p => Math.min(Math.ceil(solicitudesFiltradas.length / OTS_POR_PAGINA), p + 1))}
+                            disabled={paginaActual === Math.ceil(solicitudesFiltradas.length / OTS_POR_PAGINA)}
+                        >
+                            <i className="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* MENÚ FLOTANTE */}
