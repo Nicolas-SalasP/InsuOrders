@@ -104,7 +104,9 @@ try {
         }
 
         if ($fullPathOnDisk) {
-            $mime = mime_content_type($fullPathOnDisk);
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime  = finfo_file($finfo, $fullPathOnDisk);
+            finfo_close($finfo);
             $fileSize = filesize($fullPathOnDisk);
 
             header("Content-Type: $mime");

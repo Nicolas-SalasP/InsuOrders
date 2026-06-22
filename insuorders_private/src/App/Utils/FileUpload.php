@@ -20,7 +20,7 @@ class FileUpload
                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                        'application/vnd.ms-excel',
                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                       'text/plain', 'text/csv', 'application/octet-stream'],
+                       'text/plain', 'text/csv'],
         ],
     ];
 
