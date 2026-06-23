@@ -6,6 +6,7 @@ use FPDF;
 class PDFService extends FPDF
 {
     private $orden = [];
+    private $tipoDocumento = 'OC'; // OC | OT | ENTREGA | COTIZACION
     private $colores = [
         'primary' => [51, 102, 153],
         'secondary' => [100, 100, 100],
@@ -29,7 +30,7 @@ class PDFService extends FPDF
 
     private function txt($str)
     {
-        return iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $str ?? '');
+        return mb_convert_encoding((string)($str ?? ''), 'ISO-8859-1', 'UTF-8');
     }
 
     private function fmt($valor)
@@ -44,7 +45,7 @@ class PDFService extends FPDF
     // --- CABECERA DE PÁGINA ---
     function Header()
     {
-        if (empty($this->orden))
+        if (empty($this->orden) || $this->tipoDocumento !== 'OC')
             return;
 
         // 1. Franja Decorativa Superior
@@ -417,6 +418,7 @@ class PDFService extends FPDF
     // ---  MÉTODO PARA GENERAR EL PDF DE LA OT ---
     public function generarPdfOT($ot, $detalles)
     {
+        $this->tipoDocumento = 'OT';
         $this->AliasNbPages();
         $this->AddPage();
 
@@ -546,6 +548,7 @@ class PDFService extends FPDF
 
     public function generarCotizacion($cotizacion)
     {
+        $this->tipoDocumento = 'COTIZACION';
         // 1. SUPRIMIR ERRORES DEPRECATED EN TIEMPO DE EJECUCIÓN
         error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
 
@@ -711,155 +714,201 @@ class PDFService extends FPDF
     // -----------------------------------------------------------
     public function generarReporteFinalOT($ot, $checklist, $insumos, $firmaBase64, $comentarios)
     {
-        $this->orden = $ot; 
+        $this->tipoDocumento = 'OT';
+        $this->orden = $ot;
         $this->AliasNbPages();
         $this->AddPage();
 
-        $this->SetY(35); 
-        $this->SetFont('Arial', 'B', 14);
-        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
-        $this->Cell(0, 10, mb_convert_case('PROTOCOLO DE MANTENCIÓN FINALIZADA', MB_CASE_UPPER, "UTF-8"), 0, 1, 'C');
-        $this->Ln(5);
+        $p  = $this->colores['primary'];
+        $lw = 190; // ancho util
 
-        $this->SetFillColor(240, 240, 240);
-        $this->SetFont('Arial', 'B', 10);
-        $this->Cell(0, 7, '1. IDENTIFICACION DEL TRABAJO', 1, 1, 'L', true);
+        // --- CABECERA DOCUMENTO ---
+        $this->SetFillColor($p[0], $p[1], $p[2]);
+        $this->Rect(0, 0, 210, 5, 'F');
 
+        $logoPath = __DIR__ . '/../../../../public_html/assets/img/LogoInsuban_SinFondo.png';
+        if (file_exists($logoPath)) {
+            $this->Image($logoPath, 10, 8, 45);
+        }
+
+        $this->SetXY(60, 10);
+        $this->SetFont('Arial', 'B', 15);
+        $this->SetTextColor($p[0], $p[1], $p[2]);
+        $this->Cell(130, 8, $this->txt('REPORTE DE MANTENCIÓN FINALIZADA'), 0, 1, 'R');
+
+        $this->SetXY(60, 19);
         $this->SetFont('Arial', '', 9);
-        $this->SetTextColor(0);
+        $this->SetTextColor(80);
+        $this->Cell(130, 5, $this->txt('Procesadora Insuban Spa. — www.insuban.cl'), 0, 1, 'R');
 
-        $this->Cell(30, 6, 'Folio OT:', 0, 0, 'L');
-        $this->Cell(65, 6, '# ' . $ot['id'], 0, 0, 'L');
-        $this->Cell(30, 6, 'Fecha Solicitud:', 0, 0, 'L');
-        $this->Cell(65, 6, date('d/m/Y', strtotime($ot['fecha_solicitud'])), 0, 1, 'L');
+        $this->SetFillColor($p[0], $p[1], $p[2]);
+        $this->Rect(0, 27, 210, 0.5, 'F');
+        $this->SetY(32);
 
-        $this->Cell(30, 6, 'Activo/Equipo:', 0, 0, 'L');
-        $this->Cell(65, 6, $this->txt($ot['activo']), 0, 0, 'L');
-        $this->Cell(30, 6, mb_convert_encoding('Código:', 'ISO-8859-1'), 0, 0, 'L');
-        $this->Cell(65, 6, $this->txt($ot['activo_codigo']), 0, 1, 'L');
+        // --- SECCIÓN 1: IDENTIFICACIÓN ---
+        $this->_otSeccion($this->txt('1. IDENTIFICACIÓN DEL TRABAJO'));
 
-        $this->Cell(30, 6, mb_convert_encoding('Técnico:', 'ISO-8859-1'), 0, 0, 'L');
-        $this->Cell(160, 6, $this->txt($ot['asignado_nombre'] ?? 'Técnico Asignado'), 0, 1, 'L');
+        $fechaSol    = !empty($ot['fecha_solicitud']) ? date('d/m/Y', strtotime($ot['fecha_solicitud'])) : '—';
+        $fechaCierre = !empty($ot['fecha_cierre'])    ? date('d/m/Y H:i', strtotime($ot['fecha_cierre'])) : date('d/m/Y H:i');
+        $tecnico     = $this->txt($ot['asignado_nombre'] ?? 'Sin asignar');
+        $activo      = $this->txt($ot['activo'] ?? '—');
+        $codigo      = $this->txt($ot['activo_codigo'] ?? '—');
+        $estado      = $this->txt($ot['estado'] ?? '—');
 
-        $fechaCierreReporte = !empty($ot['fecha_cierre']) ? date('d/m/Y H:i', strtotime($ot['fecha_cierre'])) : date('d/m/Y H:i');
-        $this->Cell(30, 6, mb_convert_encoding('Fecha Culminación:', 'ISO-8859-1'), 0, 0, 'L');
-        $this->SetFont('Arial', 'B', 9);
-        $this->SetTextColor(0, 100, 0);
-        $this->Cell(160, 6, $fechaCierreReporte, 0, 1, 'L');
-        $this->SetFont('Arial', '', 9);
-        $this->SetTextColor(0);
-
-        $this->Ln(5);
-
-        $this->SetFont('Arial', 'B', 10);
-        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
-        $this->Cell(0, 7, '2. PAUTA DE MANTENCION (CHECKLIST)', 1, 1, 'L', true);
+        $this->_otFila($this->txt('Folio OT:'), '# ' . $ot['id'], $this->txt('Fecha solicitud:'), $fechaSol);
+        $this->_otFila($this->txt('Activo / Equipo:'), $activo, $this->txt('Código:'), $codigo);
+        $this->_otFila($this->txt('Técnico responsable:'), $tecnico, $this->txt('Estado:'), $estado);
 
         $this->SetFont('Arial', 'B', 8);
+        $this->SetTextColor(60);
+        $this->Cell(35, 6, $this->txt('Fecha culminación:'), 0, 0);
+        $this->SetFont('Arial', 'B', 9);
+        $this->SetTextColor(0, 120, 0);
+        $this->Cell(155, 6, $fechaCierre, 0, 1);
         $this->SetTextColor(0);
-        $this->SetFillColor(230);
+        $this->Ln(3);
 
-        $this->Cell(90, 6, mb_convert_encoding('Punto de Revisión / Tarea', 'ISO-8859-1'), 1, 0, 'L', true);
-        $this->Cell(30, 6, 'Estado', 1, 0, 'C', true);
-        $this->Cell(70, 6, mb_convert_encoding('Observación', 'ISO-8859-1'), 1, 1, 'L', true);
+        // --- SECCIÓN 2: CHECKLIST ---
+        $this->_otSeccion($this->txt('2. PAUTA DE MANTENCIÓN (CHECKLIST)'));
+
+        $wKey = 105; $wVal = 30; $wObs = 55;
+        $this->SetFont('Arial', 'B', 8);
+        $this->SetFillColor(220, 228, 240);
+        $this->SetTextColor(0);
+        $this->Cell($wKey, 6, $this->txt('Punto de Revisión / Tarea'), 1, 0, 'L', true);
+        $this->Cell($wVal, 6, 'Estado', 1, 0, 'C', true);
+        $this->Cell($wObs, 6, $this->txt('Observación'), 1, 1, 'L', true);
 
         $this->SetFont('Arial', '', 8);
-
+        $fill = false;
         if (!empty($checklist)) {
             foreach ($checklist as $key => $item) {
-                $valor = strtoupper($item['valor']);
-                if ($valor == 'SI' || $valor == 'BUENO')
-                    $this->SetTextColor(0, 128, 0); 
-                elseif ($valor == 'NO' || $valor == 'MALO')
-                    $this->SetTextColor(192, 0, 0); 
+                if ($this->GetY() > 260) {
+                    $this->AddPage();
+                    $this->SetFont('Arial', 'B', 8);
+                    $this->SetFillColor(220, 228, 240);
+                    $this->Cell($wKey, 6, $this->txt('Punto de Revisión / Tarea'), 1, 0, 'L', true);
+                    $this->Cell($wVal, 6, 'Estado', 1, 0, 'C', true);
+                    $this->Cell($wObs, 6, $this->txt('Observación'), 1, 1, 'L', true);
+                    $this->SetFont('Arial', '', 8);
+                    $fill = false;
+                }
+
+                $valor = strtoupper(trim($item['valor'] ?? ''));
+                $obs   = $this->txt(mb_substr($item['observacion'] ?? '', 0, 45));
+                $keyTxt = $this->txt(mb_substr($key, 0, 60));
+
+                if ($valor === 'SI' || $valor === 'BUENO')
+                    $colorVal = [0, 140, 0];
+                elseif ($valor === 'NO' || $valor === 'MALO')
+                    $colorVal = [200, 0, 0];
                 else
-                    $this->SetTextColor(0);
+                    $colorVal = [80, 80, 80];
 
-                $obs = $this->txt($item['observacion'] ?? '');
-                $keyText = $this->txt($key); 
-
-                $this->Cell(90, 6, $keyText, 1, 0, 'L');
-                $this->Cell(30, 6, $this->txt($valor), 1, 0, 'C');
-                $this->SetTextColor(0); 
-                $this->Cell(70, 6, $obs, 1, 1, 'L');
+                $this->SetFillColor(247, 249, 252);
+                $this->SetTextColor(0);
+                $this->Cell($wKey, 6, $keyTxt, 1, 0, 'L', $fill);
+                $this->SetTextColor($colorVal[0], $colorVal[1], $colorVal[2]);
+                $this->SetFont('Arial', 'B', 8);
+                $this->Cell($wVal, 6, $this->txt($valor), 1, 0, 'C', $fill);
+                $this->SetFont('Arial', '', 8);
+                $this->SetTextColor(0);
+                $this->Cell($wObs, 6, $obs, 1, 1, 'L', $fill);
+                $fill = !$fill;
             }
         } else {
-            $this->Cell(190, 6, 'No se aplicó checklist digital.', 1, 1, 'C');
+            $this->SetTextColor(100);
+            $this->Cell($lw, 6, $this->txt('No se aplicó checklist digital.'), 1, 1, 'C');
+            $this->SetTextColor(0);
         }
-        $this->Ln(5);
+        $this->Ln(4);
 
-        if ($this->GetY() > 220)
-            $this->AddPage();
+        // --- SECCIÓN 3: INSUMOS ---
+        if ($this->GetY() > 220) $this->AddPage();
 
-        $this->SetFont('Arial', 'B', 10);
-        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
-        $this->Cell(0, 7, '3. REPUESTOS E INSUMOS UTILIZADOS', 1, 1, 'L', true);
+        $this->_otSeccion($this->txt('3. REPUESTOS E INSUMOS UTILIZADOS'));
 
+        $wSku = 28; $wNom = 78; $wCant = 22; $wEst = 28; $wPU = 17; $wTot = 17;
         $this->SetFont('Arial', 'B', 8);
-        $this->SetTextColor(0);
-        $this->SetFillColor(230);
-
-        $this->Cell(25, 6, 'SKU', 1, 0, 'C', true);
-        $this->Cell(75, 6, mb_convert_encoding('Descripción', 'ISO-8859-1'), 1, 0, 'L', true);
-        $this->Cell(25, 6, 'Cant.', 1, 0, 'C', true);
-        $this->Cell(25, 6, 'Estado', 1, 0, 'C', true);
-        $this->Cell(20, 6, 'P. Unit', 1, 0, 'C', true);
-        $this->Cell(20, 6, 'Total', 1, 1, 'C', true);
+        $this->SetFillColor(220, 228, 240);
+        $this->Cell($wSku, 6, 'SKU',                           1, 0, 'C', true);
+        $this->Cell($wNom, 6, $this->txt('Descripción'),       1, 0, 'L', true);
+        $this->Cell($wCant,6, 'Cant.',                         1, 0, 'C', true);
+        $this->Cell($wEst, 6, 'Estado',                        1, 0, 'C', true);
+        $this->Cell($wPU,  6, 'P.Unit',                        1, 0, 'R', true);
+        $this->Cell($wTot, 6, 'Total',                         1, 1, 'R', true);
 
         $this->SetFont('Arial', '', 8);
+        $fill = false;
         if (!empty($insumos)) {
             foreach ($insumos as $ins) {
-                $this->Cell(25, 6, $this->txt($ins['codigo_sku']), 1, 0, 'C');
-                $this->Cell(75, 6, $this->txt(substr($ins['nombre'], 0, 40)), 1, 0, 'L');
-                $this->Cell(25, 6, $ins['cantidad_entregada'] . ' ' . $this->txt($ins['unidad_medida']), 1, 0, 'C');
-                $this->Cell(25, 6, $this->txt($ins['estado_linea']), 1, 0, 'C');
-                $this->Cell(20, 6, $this->fmt($ins['costo_unitario_snapshot'] ?? 0), 1, 0, 'R');
-                $this->Cell(20, 6, $this->fmt($ins['costo_total_linea'] ?? 0), 1, 1, 'R');
+                $this->SetFillColor(247, 249, 252);
+                $this->Cell($wSku, 6, $this->txt($ins['codigo_sku'] ?? ''),                              1, 0, 'C', $fill);
+                $this->Cell($wNom, 6, $this->txt(mb_substr($ins['nombre'] ?? '', 0, 42)),                1, 0, 'L', $fill);
+                $this->Cell($wCant,6, ($ins['cantidad_entregada'] ?? '') . ' ' . $this->txt($ins['unidad_medida'] ?? ''), 1, 0, 'C', $fill);
+                $this->Cell($wEst, 6, $this->txt($ins['estado_linea'] ?? ''),                            1, 0, 'C', $fill);
+                $this->Cell($wPU,  6, $this->fmt($ins['costo_unitario_snapshot'] ?? 0),                  1, 0, 'R', $fill);
+                $this->Cell($wTot, 6, $this->fmt($ins['costo_total_linea'] ?? 0),                        1, 1, 'R', $fill);
+                $fill = !$fill;
             }
-            // TOTAL ROW
             $this->SetFont('Arial', 'B', 9);
-            $this->Cell(150, 6, 'COSTO TOTAL INSUMOS:', 0, 0, 'R');
-            $this->Cell(40, 6, $this->fmt($ot['costo_total_ot'] ?? 0), 1, 1, 'R', true);
+            $this->SetFillColor(235, 240, 248);
+            $wLeft = $wSku + $wNom + $wCant + $wEst + $wPU;
+            $this->Cell($wLeft, 7, $this->txt('COSTO TOTAL INSUMOS:'), 0, 0, 'R');
+            $this->Cell($wTot,  7, $this->fmt($ot['costo_total_ot'] ?? 0), 1, 1, 'R', true);
         } else {
-            $this->Cell(190, 6, 'No se utilizaron repuestos adicionales.', 1, 1, 'C');
+            $this->SetTextColor(100);
+            $this->Cell($lw, 6, $this->txt('No se utilizaron repuestos adicionales.'), 1, 1, 'C');
+            $this->SetTextColor(0);
         }
-        $this->Ln(5);
+        $this->Ln(4);
 
-        if ($this->GetY() > 200)
-            $this->AddPage();
+        // --- SECCIÓN 4: OBSERVACIONES ---
+        if ($this->GetY() > 220) $this->AddPage();
 
-        $this->SetFont('Arial', 'B', 10);
-        $this->SetTextColor($this->colores['primary'][0], $this->colores['primary'][1], $this->colores['primary'][2]);
-        $this->Cell(0, 7, '4. OBSERVACIONES FINALES', 1, 1, 'L', true);
-
+        $this->_otSeccion($this->txt('4. OBSERVACIONES FINALES'));
         $this->SetFont('Arial', '', 9);
         $this->SetTextColor(0);
-        $this->MultiCell(0, 6, $this->txt($comentarios ?: 'Sin comentarios adicionales.'), 1, 'L');
+        $this->MultiCell($lw, 6, $this->txt($comentarios ?: 'Sin comentarios adicionales.'), 1, 'L');
 
-        $this->Ln(15);
+        // --- FIRMAS ---
+        $this->SetY(-58);
+        $this->SetFillColor($p[0], $p[1], $p[2]);
+        $this->Rect(0, $this->GetY() - 1, 210, 0.4, 'F');
 
-        $this->SetY(-60);
-
-        $xTecnico = 20;
-        $yFirma = $this->GetY();
+        $yFirma = $this->GetY() + 5;
+        $xTec   = 15;
+        $xSup   = 120;
+        $wFirma = 75;
 
         if ($firmaBase64) {
             $imgFile = $this->saveBase64Image($firmaBase64);
             if ($imgFile) {
-                $this->Image($imgFile, $xTecnico + 10, $yFirma - 25, 40, 0);
+                $this->Image($imgFile, $xTec + 5, $yFirma - 22, 45, 0);
                 unlink($imgFile);
             }
         }
 
-        $this->Line($xTecnico, $yFirma, $xTecnico + 60, $yFirma);
-        $this->Line(130, $yFirma, 190, $yFirma);
+        $yLinea = $yFirma + 10;
+        $this->Line($xTec, $yLinea, $xTec + $wFirma, $yLinea);
+        $this->Line($xSup, $yLinea, $xSup + $wFirma, $yLinea);
 
-        $this->SetFont('Arial', 'B', 8);
-        $this->SetXY($xTecnico, $yFirma + 2);
-        $this->Cell(60, 4, mb_convert_encoding('FIRMA TÉCNICO RESPONSABLE', 'ISO-8859-1'), 0, 0, 'C');
+        $this->SetFont('Arial', 'B', 7);
+        $this->SetTextColor(60);
+        $this->SetXY($xTec, $yLinea + 2);
+        $this->Cell($wFirma, 4, $this->txt('FIRMA TÉCNICO RESPONSABLE'), 0, 0, 'C');
+        $this->SetXY($xSup, $yLinea + 2);
+        $this->Cell($wFirma, 4, $this->txt('V°B° SUPERVISOR / JEFE PLANTA'), 0, 0, 'C');
 
-        $this->SetXY(130, $yFirma + 2);
-        $this->Cell(60, 4, mb_convert_encoding('V°B° SUPERVISOR / JEFE PLANTA', 'ISO-8859-1'), 0, 0, 'C');
+        $this->SetFont('Arial', '', 7);
+        $this->SetXY($xTec, $yLinea + 7);
+        $this->Cell($wFirma, 4, $this->txt($ot['asignado_nombre'] ?? ''), 0, 0, 'C');
+
+        // Número de página
+        $this->SetXY(0, $yLinea + 12);
+        $this->SetFont('Arial', 'I', 7);
+        $this->SetTextColor(150);
+        $this->Cell(0, 4, $this->txt('Página ') . $this->PageNo() . ' / {nb}  —  ' . $this->txt('Procesadora Insuban Spa.'), 0, 0, 'C');
 
         $fileName = 'OT_FINAL_' . $ot['id'] . '_' . time() . '.pdf';
         $path = __DIR__ . '/../../../../public_html/uploads/pdfs/';
@@ -870,6 +919,33 @@ class PDFService extends FPDF
         $this->Output('F', $path . $fileName);
 
         return '/uploads/pdfs/' . $fileName;
+    }
+
+    private function _otSeccion($titulo)
+    {
+        $p = $this->colores['primary'];
+        $this->SetFont('Arial', 'B', 9);
+        $this->SetFillColor($p[0], $p[1], $p[2]);
+        $this->SetTextColor(255);
+        $this->Cell(190, 7, '  ' . $titulo, 0, 1, 'L', true);
+        $this->SetTextColor(0);
+        $this->Ln(1);
+    }
+
+    private function _otFila($label1, $val1, $label2, $val2)
+    {
+        $this->SetFont('Arial', 'B', 8);
+        $this->SetTextColor(60);
+        $this->Cell(35, 6, $label1, 0, 0);
+        $this->SetFont('Arial', '', 8);
+        $this->SetTextColor(0);
+        $this->Cell(58, 6, $val1, 0, 0);
+        $this->SetFont('Arial', 'B', 8);
+        $this->SetTextColor(60);
+        $this->Cell(35, 6, $label2, 0, 0);
+        $this->SetFont('Arial', '', 8);
+        $this->SetTextColor(0);
+        $this->Cell(62, 6, $val2, 0, 1);
     }
 
     // Auxiliar para convertir base64 a archivo temporal
@@ -890,6 +966,7 @@ class PDFService extends FPDF
     // -----------------------------------------------------------
     public function generarComprobanteEntrega($datos)
     {
+        $this->tipoDocumento = 'ENTREGA';
         if (ob_get_length())
             ob_end_clean();
 
