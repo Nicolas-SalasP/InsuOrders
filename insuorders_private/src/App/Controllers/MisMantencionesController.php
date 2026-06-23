@@ -119,13 +119,9 @@ class MisMantencionesController
             $this->service->repository->commit();
 
             // Post-commit: email only (fire-and-forget, no rollback needed)
-            $notifService = new MantencionService();
             if ($finalizar) {
-                if ($seCerro) {
-                    $notifService->notificarCambioOT($otId, 'finalizacion');
-                }
-            } else {
-                $notifService->notificarCambioOT($otId, 'avance');
+                $notifService = new MantencionService();
+                $notifService->notificarCambioOT($otId, $seCerro ? 'finalizacion' : 'avance');
             }
 
             echo json_encode(["success" => true, "message" => $finalizar ? "Servicio Finalizado" : "Avance guardado correctamente."]);
