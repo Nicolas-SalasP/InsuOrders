@@ -444,8 +444,12 @@ const NuevaSolicitudModal = ({ show, onClose, onSave, otEditar }) => {
                 await api.put(`/index.php/mantencion?id=${otEditar.id}`, payload);
                 setMsgModal({ show: true, title: "Actualizado", message: "OT actualizada correctamente.", type: "success" });
             } else {
-                await api.post('/index.php/mantencion', payload);
-                setMsgModal({ show: true, title: "Creado", message: "OT generada exitosamente.", type: "success" });
+                const res = await api.post('/index.php/mantencion', payload);
+                const mensajeBase = "OT generada exitosamente.";
+                const mensajePermiso = res.data?.requiere_permiso
+                    ? "\n\nSe ha enviado una notificación al equipo de Prevención de Riesgos informando el permiso de trabajo requerido."
+                    : "";
+                setMsgModal({ show: true, title: "Creado", message: mensajeBase + mensajePermiso, type: "success" });
             }
 
             setTimeout(() => {

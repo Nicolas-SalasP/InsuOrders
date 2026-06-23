@@ -27,16 +27,19 @@ class MisMantencionesService
             $ots = $this->repository->getOtsAsignadas($userId);
         }
         
+        $ids = array_column($ots, 'id');
+        $todasRespuestas = !empty($ids) ? $this->repository->getRespuestasPorOts($ids) : [];
+
+        $mapaGlobal = [];
+        foreach ($todasRespuestas as $r) {
+            $mapaGlobal[$r['solicitud_ot_id']][$r['item_key']] = [
+                'valor' => $r['valor'],
+                'observacion' => $r['observacion']
+            ];
+        }
+
         foreach ($ots as &$ot) {
-            $respuestas = $this->repository->getRespuestasPorOt($ot['id']);
-            $mapa = [];
-            foreach ($respuestas as $r) {
-                $mapa[$r['item_key']] = [
-                    'valor' => $r['valor'],
-                    'observacion' => $r['observacion']
-                ];
-            }
-            $ot['respuestas_guardadas'] = $mapa;
+            $ot['respuestas_guardadas'] = $mapaGlobal[$ot['id']] ?? [];
         }
 
         return $ots;
