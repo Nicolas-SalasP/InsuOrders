@@ -74,7 +74,8 @@ class MantencionService
 
     public function crearOT($data, $usuarioId)
     {
-        if (empty($data['items']) && empty($data['activo_id'])) {
+        $esServicio = ($data['origen_tipo'] ?? '') === 'Servicio';
+        if (!$esServicio && empty($data['items']) && empty($data['activo_id'])) {
             throw new Exception("Debe seleccionar un activo o agregar insumos manuales.");
         }
         if (!empty($data['requiere_permiso']) && empty($data['tipo_permiso_id'])) {
