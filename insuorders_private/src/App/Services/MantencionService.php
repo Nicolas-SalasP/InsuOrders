@@ -117,14 +117,14 @@ class MantencionService
         return $resultado;
     }
 
-    private function sendMail(string $to, string $subject, string $body, array $cc = [], bool $highPriority = false): void
+    private function sendMail(string $to, string $subject, string $htmlBody, array $cc = [], bool $highPriority = false, string $plainBody = ''): void
     {
-        $host = $_ENV['MAIL_SMTP_HOST'] ?? '';
-        $user = $_ENV['MAIL_SMTP_USER'] ?? '';
-        $pass = $_ENV['MAIL_SMTP_PASS'] ?? '';
-        $port = (int)($_ENV['MAIL_SMTP_PORT'] ?? 465);
+        $host   = $_ENV['MAIL_SMTP_HOST'] ?? '';
+        $user   = $_ENV['MAIL_SMTP_USER'] ?? '';
+        $pass   = $_ENV['MAIL_SMTP_PASS'] ?? '';
+        $port   = (int)($_ENV['MAIL_SMTP_PORT'] ?? 465);
         $secure = strtolower($_ENV['MAIL_SMTP_SECURE'] ?? 'ssl');
-        $from = $_ENV['MAIL_FROM'] ?? 'no-reply@insuban.cl';
+        $from   = $_ENV['MAIL_FROM'] ?? $user;
         $appName = $_ENV['APP_NAME'] ?? 'InsuOrders';
 
         if (!$host || !$user || !$pass) {
@@ -155,9 +155,77 @@ class MantencionService
         }
 
         $mail->Subject = $subject;
-        $mail->Body    = $body;
-        $mail->isHTML(false);
-        $mail->send();
+        $mail->isHTML(true);
+        $mail->Body    = $htmlBody;
+        $mail->AltBody = $plainBody ?: strip_tags(str_replace(['<br>', '<br/>', '<br />', '</tr>', '</p>'], "\n", $htmlBody));
+
+        try {
+            $mail->send();
+        } catch (\Exception $e) {
+            error_log("[Mail] Fallo envío a $to — {$e->getMessage()} (host=$host port=$port secure=$secure)");
+            throw $e;
+        }
+    }
+
+    private function emailWrap(string $headerColor, string $headerIcon, string $headerTitle, string $contentHtml, string $appName): string
+    {
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:32px 0;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.10);">
+      <!-- HEADER -->
+      <tr><td style="background:{$headerColor};padding:28px 32px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="color:#ffffff;font-size:22px;font-weight:bold;letter-spacing:0.5px;">{$headerIcon} {$headerTitle}</td>
+            <td align="right" style="color:rgba(255,255,255,0.75);font-size:13px;font-weight:bold;letter-spacing:1px;white-space:nowrap;">{$appName}</td>
+          </tr>
+        </table>
+      </td></tr>
+      <!-- BODY -->
+      <tr><td style="padding:32px;">
+        {$contentHtml}
+      </td></tr>
+      <!-- FOOTER -->
+      <tr><td style="background:#f8f9fa;padding:16px 32px;border-top:1px solid #e9ecef;text-align:center;color:#9ca3af;font-size:12px;">
+        Este correo fue generado automáticamente por <strong>{$appName}</strong>. No responder a este mensaje.
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
+HTML;
+    }
+
+    private function prioridadBadge(string $prioridad): string
+    {
+        $map = [
+            'CRITICA'  => ['#dc2626', '#fee2e2', '⚠ CRÍTICO'],
+            'CRÍTICA'  => ['#dc2626', '#fee2e2', '⚠ CRÍTICO'],
+            'URGENTE'  => ['#dc2626', '#fee2e2', '⚠ URGENTE'],
+            'ALTA'     => ['#d97706', '#fef3c7', '↑ ALTA'],
+            'MEDIA'    => ['#2563eb', '#dbeafe', '● MEDIA'],
+            'BAJA'     => ['#6b7280', '#f3f4f6', '↓ BAJA'],
+        ];
+        $p = strtoupper(trim($prioridad));
+        [$color, $bg, $label] = $map[$p] ?? ['#6b7280', '#f3f4f6', $prioridad];
+        return "<span style=\"display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;color:{$color};background:{$bg};\">{$label}</span>";
+    }
+
+    private function dataRow(string $label, string $value): string
+    {
+        $esc = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        return <<<HTML
+<tr>
+  <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:13px;font-weight:bold;text-transform:uppercase;width:38%;vertical-align:top;">{$label}</td>
+  <td style="padding:10px 0 10px 16px;border-bottom:1px solid #f3f4f6;color:#111827;font-size:14px;vertical-align:top;">{$esc}</td>
+</tr>
+HTML;
     }
 
     public function notificarCambioOT(int $otId, string $evento)
@@ -170,8 +238,8 @@ class MantencionService
             if (!$header) return;
 
             $appName  = $_ENV['APP_NAME'] ?? 'InsuOrders';
-            $ccRaw    = $_ENV['OT_NOTIF_CC'] ?? 'mantenimiento@insuban.cl,ncerdan@insuban.cl,furdaneta@insuban.cl,jmanquel@insuban.cl,ctapia@insuban.cl';
-            $ccEmails = array_filter(array_map('trim', explode(',', $ccRaw)));
+            $ccRaw    = $_ENV['OT_NOTIF_CC'] ?? '';
+            $ccEmails = $ccRaw ? array_filter(array_map('trim', explode(',', $ccRaw))) : [];
 
             $titulo   = $header['titulo'] ?? ('OT #' . $otId);
             $activo   = $header['activo'] ?? 'General';
@@ -181,26 +249,53 @@ class MantencionService
             $nombreSolicitante = trim(($solicitante['nombre'] ?? '') . ' ' . ($solicitante['apellido'] ?? '')) ?: 'Solicitante';
 
             $eventos = [
-                'creacion'     => ['asunto' => "[$appName] OT #$otId Creada - $titulo",           'accion' => 'creada'],
-                'avance'       => ['asunto' => "[$appName] OT #$otId - Avance Registrado",        'accion' => 'avanzada con nuevo progreso'],
-                'finalizacion' => ['asunto' => "[$appName] OT #$otId COMPLETADA - $titulo",       'accion' => 'cerrada y completada'],
+                'creacion'     => ['asunto' => "[$appName] OT #$otId Creada — $titulo",              'accion' => 'creada'],
+                'avance'       => ['asunto' => "[$appName] OT #$otId — Técnico cerró su parte",      'accion' => 'parcialmente completada (un técnico cerró su parte, quedan asignaciones pendientes)'],
+                'finalizacion' => ['asunto' => "[$appName] OT #$otId COMPLETADA — $titulo",          'accion' => 'cerrada y completada por todos los técnicos'],
+                'anulacion'    => ['asunto' => "[$appName] OT #$otId ANULADA — $titulo",             'accion' => 'anulada'],
             ];
             $info   = $eventos[$evento] ?? ['asunto' => "[$appName] OT #$otId - Actualización", 'accion' => 'actualizada'];
             $subject = $info['asunto'];
             $accion  = $info['accion'];
 
-            $message  = "Estimado/a $nombreSolicitante,\n\n";
-            $message .= "Le informamos que la OT #$otId ha sido $accion.\n\n";
-            $message .= "FOLIO OT:  #$otId\n";
-            $message .= "TÍTULO:    $titulo\n";
-            $message .= "ACTIVO:    $activo\n";
-            if ($ubicacion) $message .= "UBICACIÓN: $ubicacion\n";
-            $message .= "PRIORIDAD: $prioridad\n";
-            $message .= "ESTADO:    $estado\n";
-            $message .= "\nSistema $appName.";
+            $badgePrioridad = $this->prioridadBadge($prioridad);
+            $rows  = $this->dataRow('Folio OT', '#' . $otId);
+            $rows .= $this->dataRow('Título', $titulo);
+            $rows .= $this->dataRow('Activo', $activo);
+            if ($ubicacion) $rows .= $this->dataRow('Ubicación', $ubicacion);
+            $rows .= "<tr><td style=\"padding:10px 0;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:13px;font-weight:bold;text-transform:uppercase;width:38%;vertical-align:top;\">Prioridad</td><td style=\"padding:10px 0 10px 16px;border-bottom:1px solid #f3f4f6;vertical-align:top;\">$badgePrioridad</td></tr>";
+            $rows .= $this->dataRow('Estado', $estado);
+
+            $accionesMap = [
+                'creacion'     => ['color' => '#1d4ed8', 'bg' => '#dbeafe', 'icon' => '🔧', 'label' => 'OT Creada'],
+                'avance'       => ['color' => '#d97706', 'bg' => '#fef3c7', 'icon' => '🔨', 'label' => 'Técnico Cerró su Parte'],
+                'finalizacion' => ['color' => '#16a34a', 'bg' => '#dcfce7', 'icon' => '✅', 'label' => 'OT Completada'],
+                'anulacion'    => ['color' => '#6b7280', 'bg' => '#f3f4f6', 'icon' => '🚫', 'label' => 'OT Anulada'],
+            ];
+            $ev = $accionesMap[$evento] ?? ['color' => '#6b7280', 'bg' => '#f3f4f6', 'icon' => '🔔', 'label' => 'Actualización'];
+            $nombreEsc = htmlspecialchars($nombreSolicitante, ENT_QUOTES, 'UTF-8');
+            $accionEsc = htmlspecialchars($accion, ENT_QUOTES, 'UTF-8');
+
+            $content = <<<HTML
+<p style="margin:0 0 20px;color:#374151;font-size:15px;">Estimado/a <strong>{$nombreEsc}</strong>,</p>
+<div style="background:{$ev['bg']};border-left:4px solid {$ev['color']};padding:14px 18px;border-radius:0 6px 6px 0;margin-bottom:24px;">
+  <span style="color:{$ev['color']};font-size:15px;font-weight:bold;">{$ev['icon']} La OT #{$otId} ha sido {$accionEsc}.</span>
+</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+  {$rows}
+</table>
+HTML;
+            $headerColors = [
+                'creacion'     => '#1d4ed8',
+                'avance'       => '#d97706',
+                'finalizacion' => '#16a34a',
+                'anulacion'    => '#6b7280',
+            ];
+            $hColor = $headerColors[$evento] ?? '#1d4ed8';
+            $html = $this->emailWrap($hColor, $ev['icon'], $ev['label'] . ' — OT #' . $otId, $content, $appName);
 
             $subjectSafe = str_replace(["\r", "\n"], ' ', $subject);
-            $this->sendMail($solicitante['email'], $subjectSafe, $message, $ccEmails);
+            $this->sendMail($solicitante['email'], $subjectSafe, $html, $ccEmails);
         } catch (\Throwable $e) {
             error_log("notificarCambioOT [$evento] OT#$otId: " . $e->getMessage());
         }
@@ -229,26 +324,55 @@ class MantencionService
 
             $subject = "[$appName] Permiso de Trabajo Requerido - OT #$otId ($tipoNombre)";
 
-            $message  = "ATENCIÓN PREVENCIÓN DE RIESGOS\n\n";
-            $message .= "Se ha registrado una OT que requiere PERMISO DE TRABAJO SEGURO.\n";
-            $message .= "Acción: $accion\n\n";
-            $message .= "FOLIO OT: #$otId\n";
-            $message .= "TÍTULO: $titulo\n";
-            $message .= "TIPO DE PERMISO: $tipoNombre\n";
-            $message .= "PRIORIDAD: $prioridad\n";
-            $message .= "MÁQUINA / ACTIVO: $maquina\n";
-            $message .= "UBICACIÓN: $ubicacion\n";
-            $message .= "SOLICITANTE: $solicitanteNombre\n\n";
-            $message .= "DESCRIPCIÓN DEL TRABAJO:\n" . ($descripcionTrabajo ?: 'Sin descripción') . "\n\n";
+            $badgePrioridad = $this->prioridadBadge($prioridad);
+            $accionEsc      = htmlspecialchars($accion, ENT_QUOTES, 'UTF-8');
+            $tipoEsc        = htmlspecialchars($tipoNombre, ENT_QUOTES, 'UTF-8');
+            $descripTrabajoEsc  = nl2br(htmlspecialchars($descripcionTrabajo ?: 'Sin descripción', ENT_QUOTES, 'UTF-8'));
+            $descripPermisoEsc  = nl2br(htmlspecialchars($descripcionPermiso, ENT_QUOTES, 'UTF-8'));
+
+            $rows  = $this->dataRow('Folio OT', '#' . $otId);
+            $rows .= $this->dataRow('Título', $titulo);
+            $rows .= $this->dataRow('Tipo de Permiso', $tipoNombre);
+            $rows .= "<tr><td style=\"padding:10px 0;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:13px;font-weight:bold;text-transform:uppercase;width:38%;vertical-align:top;\">Prioridad</td><td style=\"padding:10px 0 10px 16px;border-bottom:1px solid #f3f4f6;vertical-align:top;\">$badgePrioridad</td></tr>";
+            $rows .= $this->dataRow('Máquina / Activo', $maquina);
+            $rows .= $this->dataRow('Ubicación', $ubicacion);
+            $rows .= $this->dataRow('Solicitante', $solicitanteNombre);
+
+            $descripcionBlock = <<<HTML
+<div style="margin-top:20px;">
+  <p style="margin:0 0 6px;color:#6b7280;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">Descripción del Trabajo</p>
+  <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:14px;color:#374151;font-size:14px;line-height:1.6;">{$descripTrabajoEsc}</div>
+</div>
+HTML;
+            $permisoBlock = '';
             if (!empty($descripcionPermiso)) {
-                $message .= "DETALLE DEL PERMISO:\n" . $descripcionPermiso . "\n\n";
+                $permisoBlock = <<<HTML
+<div style="margin-top:16px;">
+  <p style="margin:0 0 6px;color:#6b7280;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">Detalle del Permiso</p>
+  <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:14px;color:#374151;font-size:14px;line-height:1.6;">{$descripPermisoEsc}</div>
+</div>
+HTML;
             }
-            $message .= "Por favor coordinar la elaboración y respaldo del permiso correspondiente.\n";
-            $message .= "Sistema $appName.";
+
+            $content = <<<HTML
+<div style="background:#fef2f2;border-left:4px solid #dc2626;padding:14px 18px;border-radius:0 6px 6px 0;margin-bottom:24px;">
+  <p style="margin:0;color:#dc2626;font-size:15px;font-weight:bold;">⚠ Acción requerida — Permiso de Trabajo Seguro ({$accionEsc})</p>
+  <p style="margin:6px 0 0;color:#7f1d1d;font-size:13px;">Se ha registrado una OT que requiere coordinación con Prevención de Riesgos.</p>
+</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+  {$rows}
+</table>
+{$descripcionBlock}
+{$permisoBlock}
+<div style="margin-top:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:14px 18px;text-align:center;">
+  <p style="margin:0;color:#991b1b;font-size:13px;font-weight:bold;">Por favor coordinar la elaboración y respaldo del permiso correspondiente antes de iniciar los trabajos.</p>
+</div>
+HTML;
 
             $subjectSafe = str_replace(["\r", "\n"], ' ', $subject);
+            $html = $this->emailWrap('#dc2626', '⚠', "Permiso de Trabajo — OT #$otId", $content, $appName);
             foreach ($destinatarios as $to) {
-                $this->sendMail($to, $subjectSafe, $message, [], true);
+                $this->sendMail($to, $subjectSafe, $html, [], true);
             }
         } catch (\Throwable $e) {
             error_log("notificarPrevencion error: " . $e->getMessage());
@@ -272,6 +396,7 @@ class MantencionService
             throw new \Exception('No se puede anular: la OT tiene materiales entregados.');
         }
         $this->repo->delete($id);
+        $this->notificarCambioOT($id, 'anulacion');
     }
 
     public function reabrirOT($id)
