@@ -82,11 +82,23 @@ class MisMantencionesRepository
 
     public function getRespuestasPorOt($otId)
     {
-        $sql = "SELECT seccion_key, item_key, valor, observacion 
-            FROM ot_checklist_respuestas 
+        $sql = "SELECT seccion_key, item_key, valor, observacion
+            FROM ot_checklist_respuestas
             WHERE solicitud_ot_id = :otId";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':otId' => $otId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getRespuestasPorOts(array $ids): array
+    {
+        if (empty($ids)) return [];
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT solicitud_ot_id, item_key, valor, observacion
+                FROM ot_checklist_respuestas
+                WHERE solicitud_ot_id IN ($placeholders)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(array_values($ids));
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

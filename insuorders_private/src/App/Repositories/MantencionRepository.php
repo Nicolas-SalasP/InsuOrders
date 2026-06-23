@@ -89,6 +89,7 @@ class MantencionRepository
                     END ASC, 
                     s.id DESC";
 
+        $this->db->exec("SET SESSION group_concat_max_len = 100000");
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
