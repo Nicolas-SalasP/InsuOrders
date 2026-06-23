@@ -107,7 +107,11 @@ class MantencionController
 
             $id = $this->service->crearOT($payload, $usuarioId);
 
-            echo json_encode(["success" => true, "message" => "Solicitud #$id creada correctamente"]);
+            echo json_encode([
+                "success" => true,
+                "message" => "Solicitud #$id creada correctamente",
+                "requiere_permiso" => !empty($payload['requiere_permiso'])
+            ]);
         } catch (Exception $e) {
             http_response_code(400); 
             echo json_encode(["success" => false, "message" => ErrorHelper::safeMessage($e)]);

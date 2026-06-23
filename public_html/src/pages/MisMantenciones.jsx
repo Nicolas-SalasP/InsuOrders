@@ -758,6 +758,9 @@ const MisMantenciones = () => {
 
                                                 <div className="fw-bold text-dark text-truncate small mb-1">
                                                     <i className="bi bi-gear-fill me-1 text-muted"></i>{ot.activo}
+                                                    {ot.codigo_interno && ot.codigo_interno !== 'SERV' && (
+                                                        <span className="text-muted fw-normal ms-1 font-monospace" style={{ fontSize: '0.75rem' }}>· {ot.codigo_interno}</span>
+                                                    )}
                                                 </div>
                                                 {ot.sub_activo_nombre && (
                                                     <div className="small text-primary text-truncate mb-1 fw-bold">
@@ -814,7 +817,9 @@ const MisMantenciones = () => {
                                                         <i className="bi bi-diagram-3-fill me-1"></i>↳ {selectedOt.sub_activo_nombre}
                                                     </span>
                                                 )}
-                                                <span className="text-muted d-none d-sm-inline"><i className="bi bi-upc-scan me-1"></i>{selectedOt.codigo_interno}</span>
+                                                {selectedOt.codigo_interno && selectedOt.codigo_interno !== 'SERV' && (
+                                                    <span className="text-muted"><i className="bi bi-upc-scan me-1"></i>{selectedOt.codigo_interno}</span>
+                                                )}
                                             </div>
                                             <div className="text-muted small mt-1 d-none d-sm-block">
                                                 <i className="bi bi-person-fill me-1"></i>Solicita: {selectedOt.solicitante_nombre} {selectedOt.solicitante_apellido}
