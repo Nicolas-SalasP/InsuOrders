@@ -280,12 +280,14 @@ const MisMantenciones = () => {
     }
 
     const comprimirImagen = (file) => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
+            reader.onerror = reject;
             reader.onload = (event) => {
                 const img = new Image();
                 img.src = event.target.result;
+                img.onerror = reject;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
@@ -293,7 +295,9 @@ const MisMantenciones = () => {
                     canvas.height = img.height;
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     canvas.toBlob((blob) => {
-                        resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                        if (!blob) { reject(new Error('canvas.toBlob devolvió null')); return; }
+                        const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                        resolve(new File([blob], newName, { type: 'image/jpeg' }));
                     }, 'image/jpeg', 0.3);
                 };
             };
@@ -302,18 +306,28 @@ const MisMantenciones = () => {
 
     const handleFileChange = async (e) => {
         const files = Array.from(e.target.files);
+        const inputEl = e.target;
         setGuardando(true);
-        const processedFiles = await Promise.all(files.map(async (file) => {
-            let processedFile = file;
-            if (file.type.startsWith('image/')) {
-                processedFile = await comprimirImagen(file);
-            }
-            processedFile.preview = URL.createObjectURL(processedFile);
-            return processedFile;
-        }));
-        setDatosEnvio(prev => ({ ...prev, archivos: [...(prev.archivos || []), ...processedFiles] }));
-        setGuardando(false);
-        e.target.value = null;
+        try {
+            const processedFiles = await Promise.all(files.map(async (file) => {
+                let processedFile = file;
+                if (file.type.startsWith('image/')) {
+                    try {
+                        processedFile = await comprimirImagen(file);
+                    } catch {
+                        processedFile = file;
+                    }
+                }
+                processedFile.preview = URL.createObjectURL(processedFile);
+                return processedFile;
+            }));
+            setDatosEnvio(prev => ({ ...prev, archivos: [...(prev.archivos || []), ...processedFiles] }));
+        } catch (err) {
+            console.error('[Upload] Error procesando archivos:', err);
+        } finally {
+            setGuardando(false);
+            inputEl.value = null;
+        }
     };
 
     const ejecutarEliminarEvidenciaGuardada = async () => {

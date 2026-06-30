@@ -56,8 +56,9 @@ class MantencionRepository
             $params[':ot'] = $filters['ot'];
         }
         if (!empty($filters['maquina'])) {
-            $sql .= " AND (a.nombre LIKE :maq OR a.codigo_interno LIKE :maq)";
-            $params[':maq'] = '%' . $filters['maquina'] . '%';
+            $sql .= " AND (a.nombre LIKE :maq1 OR a.codigo_interno LIKE :maq2)";
+            $params[':maq1'] = '%' . $filters['maquina'] . '%';
+            $params[':maq2'] = '%' . $filters['maquina'] . '%';
         }
         if (!empty($filters['estado'])) {
             $sql .= " AND e.nombre = :est";
@@ -723,7 +724,7 @@ class MantencionRepository
 
     public function getEntregasOT($otId)
     {
-        $sql = "SELECT m.fecha, m.cantidad, i.nombre, i.codigo_sku, e.nombre_completo as receptor FROM movimientos_inventario m JOIN insumos i ON m.insumo_id = i.id LEFT JOIN empleados e ON m.empleado_id = e.id WHERE m.referencia_id IN (SELECT id FROM detalle_solicitud WHERE solicitud_id = :id) AND m.tipo_movimiento_id = 2 ORDER BY m.fecha DESC";
+        $sql = "SELECT ds.id, ds.cantidad_entregada, i.nombre FROM detalle_solicitud ds JOIN insumos i ON ds.insumo_id = i.id WHERE ds.solicitud_id = :id AND ds.cantidad_entregada > 0";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $otId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

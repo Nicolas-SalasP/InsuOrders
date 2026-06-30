@@ -493,10 +493,10 @@ const Mantencion = () => {
                 <div className="p-3 bg-light border-bottom">
                     <div className="row g-2 align-items-center">
                         <div className="col-6 col-md-2">
-                            <input type="text" className="form-control" placeholder="# OT" value={filtroOT} onChange={e => setFiltroOT(e.target.value)} />
+                            <input type="text" className="form-control" placeholder="# OT" value={filtroOT} onChange={e => setFiltroOT(e.target.value)} onBlur={cargarSolicitudes} />
                         </div>
                         <div className="col-6 col-md-2">
-                            <input type="text" className="form-control" placeholder="Máquina/Activo..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} />
+                            <input type="text" className="form-control" placeholder="Máquina/Activo..." value={filtroMaquina} onChange={e => setFiltroMaquina(e.target.value)} onBlur={cargarSolicitudes} />
                         </div>
 
                         <div className="col-6 col-md-2">
