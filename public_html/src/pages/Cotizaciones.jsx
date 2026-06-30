@@ -50,14 +50,15 @@ const Cotizaciones = () => {
 
     useEffect(() => { setPaginaActual(1); }, [data]);
 
-    const cargarDatos = async () => {
+    const cargarDatos = async (filtrosOverride = null) => {
+        const f = filtrosOverride ?? filtros;
         setLoading(true);
         const params = new URLSearchParams();
-        if (filtros.id) params.append('id', filtros.id);
-        if (filtros.estado_id) params.append('estado', filtros.estado_id);
-        if (filtros.start) params.append('start', filtros.start);
-        if (filtros.end) params.append('end', filtros.end);
-        if (filtros.usuario) params.append('usuario', filtros.usuario);
+        if (f.id) params.append('id', f.id);
+        if (f.estado_id) params.append('estado', f.estado_id);
+        if (f.start) params.append('start', f.start);
+        if (f.end) params.append('end', f.end);
+        if (f.usuario) params.append('usuario', f.usuario);
         if (busquedaInsumo) params.append('insumo', busquedaInsumo);
 
         try {
@@ -65,6 +66,14 @@ const Cotizaciones = () => {
             if (res.data.success) setData(res.data.data);
         } catch (error) { console.error("Error cargando cotizaciones", error); }
         finally { setLoading(false); }
+    };
+
+    const limpiarFiltrosCot = () => {
+        const vacios = { id: '', estado_id: '', start: '', end: '', usuario: '' };
+        setFiltros(vacios);
+        setBusquedaInsumo('');
+        setMostrarSugerencias(false);
+        cargarDatos(vacios);
     };
 
     const solicitarCambioEstado = (id, accion) => {
@@ -239,26 +248,26 @@ const Cotizaciones = () => {
                     <div className="row g-2 align-items-end">
                         <div className="col-6 col-md-2">
                             <label className="form-label small fw-bold text-muted mb-1">ID Cotización</label>
-                            <input type="text" className="form-control form-control-sm" placeholder="ID Cotización" value={filtros.id} onChange={e => setFiltros({ ...filtros, id: e.target.value })} />
+                            <input type="text" className="form-control form-control-sm" placeholder="ID Cotización" value={filtros.id} onChange={e => setFiltros({ ...filtros, id: e.target.value })} onBlur={cargarDatos} />
                         </div>
                         <div className="col-6 col-md-2">
                             <label className="form-label small fw-bold text-muted mb-1">Estado</label>
-                            <select className="form-select form-select-sm" value={filtros.estado_id} onChange={e => setFiltros({ ...filtros, estado_id: e.target.value })}>
+                            <select className="form-select form-select-sm" value={filtros.estado_id} onChange={e => { const n = { ...filtros, estado_id: e.target.value }; setFiltros(n); cargarDatos(n); }}>
                                 <option value="">Todos los Estados</option>
                                 {estados.map(est => <option key={est.id} value={est.id}>{est.nombre}</option>)}
                             </select>
                         </div>
                         <div className="col-6 col-md-1">
                             <label className="form-label small fw-bold text-muted mb-1">Desde</label>
-                            <input type="date" className="form-control form-control-sm" value={filtros.start} onChange={e => setFiltros({ ...filtros, start: e.target.value })} />
+                            <input type="date" className="form-control form-control-sm" value={filtros.start} onChange={e => setFiltros({ ...filtros, start: e.target.value })} onBlur={cargarDatos} />
                         </div>
                         <div className="col-6 col-md-1">
                             <label className="form-label small fw-bold text-muted mb-1">Hasta</label>
-                            <input type="date" className="form-control form-control-sm" value={filtros.end} onChange={e => setFiltros({ ...filtros, end: e.target.value })} />
+                            <input type="date" className="form-control form-control-sm" value={filtros.end} onChange={e => setFiltros({ ...filtros, end: e.target.value })} onBlur={cargarDatos} />
                         </div>
                         <div className="col-6 col-md-2">
                             <label className="form-label small fw-bold text-muted mb-1">Solicitante</label>
-                            <select className="form-select form-select-sm" value={filtros.usuario} onChange={e => setFiltros({ ...filtros, usuario: e.target.value })}>
+                            <select className="form-select form-select-sm" value={filtros.usuario} onChange={e => { const n = { ...filtros, usuario: e.target.value }; setFiltros(n); cargarDatos(n); }}>
                                 <option value="">Creado por...</option>
                                 {users.map(u => <option key={u.id} value={u.id}>{u.nombre} {u.apellido}</option>)}
                             </select>
@@ -285,8 +294,11 @@ const Cotizaciones = () => {
                                 </ul>
                             )}
                         </div>
-                        <div className="col-12 col-md-2">
-                            <button className="btn btn-secondary btn-sm w-100 fw-bold" onClick={cargarDatos}><i className="bi bi-search me-2"></i>Buscar</button>
+                        <div className="col-12 col-md-2 d-flex gap-1">
+                            <button className="btn btn-secondary btn-sm flex-grow-1 fw-bold" onClick={() => cargarDatos()}><i className="bi bi-search me-2"></i>Buscar</button>
+                            {(filtros.id || filtros.estado_id || filtros.start || filtros.end || filtros.usuario || busquedaInsumo) && (
+                                <button className="btn btn-outline-secondary btn-sm" title="Limpiar filtros" onClick={limpiarFiltrosCot}><i className="bi bi-x-lg"></i></button>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InsuOrders — Manual del Técnico</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  @page { margin: 0; size: A4; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #e5e7eb; font-size: 13px; line-height: 1.6; }
+
+  :root {
+    --red:   #DC2626;
+    --red2:  #FEE2E2;
+    --ink:   #1C1917;
+    --sand:  #FAF7F2;
+    --stone: #78716C;
+    --line:  #E7E5E4;
+    --green: #16A34A;
+    --amber: #D97706;
+    --blue:  #2563EB;
+    --sidebar: #1a1d20;
+  }
+
+  .page { width:210mm; height:297mm; overflow:hidden; position:relative; background:white; margin:0 auto 8px; page-break-after:always; break-after:page; }
+  .page:last-child { page-break-after:auto; break-after:auto; margin-bottom:0; }
+  .pad   { padding:10mm 18mm; }
+  .pad-s { padding:7mm 18mm; }
+
+  /* PORTADA especial: sidebar del sistema + panel derecho */
+  .cover-split { display:grid; grid-template-columns:42mm 1fr; width:100%; height:100%; }
+  .cover-sidebar {
+    background:var(--sidebar);
+    padding:5mm 3.5mm;
+    display:flex; flex-direction:column;
+  }
+  .cv-brand { display:flex; align-items:center; gap:2mm; padding:2mm 2.5mm 4mm; border-bottom:1px solid rgba(255,255,255,.1); margin-bottom:3mm; }
+  .cv-brand-icon { width:8mm; height:8mm; background:var(--blue); border-radius:2mm; display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:4mm; }
+  .cv-brand-name { color:white; font-weight:700; font-size:3.2mm; }
+  .cv-nav { display:flex; flex-direction:column; gap:.8mm; }
+  .cv-item { display:flex; align-items:center; gap:2mm; padding:2mm 2.5mm; border-radius:2mm; font-size:2.8mm; font-weight:500; color:rgba(255,255,255,.5); }
+  .cv-item.act { background:var(--blue); color:white; font-weight:700; }
+  .cv-item-icon { font-size:3.2mm; }
+  .cv-footer { margin-top:auto; padding:2mm 2.5mm; border-top:1px solid rgba(255,255,255,.1); font-size:2.5mm; color:rgba(255,255,255,.25); }
+
+  .cover-right { background:var(--sand); padding:14mm 12mm; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden; }
+  .cover-right::before { content:''; position:absolute; bottom:-15mm; right:-15mm; width:55mm; height:55mm; border-radius:50%; border:8mm solid var(--red); opacity:.12; }
+  .cover-right::after  { content:''; position:absolute; top:5mm; right:8mm; width:28mm; height:28mm; border-radius:50%; border:5mm solid var(--red); opacity:.07; }
+  .cover-tag2 { display:inline-block; background:rgba(220,38,38,.12); border:1px solid rgba(220,38,38,.25); color:var(--red); font-size:2.6mm; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; padding:1.2mm 3.5mm; border-radius:10mm; margin-bottom:4mm; width:fit-content; }
+  .cover-h1  { font-size:14mm; font-weight:800; color:var(--ink); line-height:.95; letter-spacing:-.5px; }
+  .cover-h1 em { font-style:normal; color:var(--red); }
+  .cover-desc2 { font-size:3.5mm; color:var(--stone); font-weight:400; margin-top:4mm; line-height:1.55; max-width:85mm; position:relative; z-index:1; }
+  .cover-modules { display:flex; flex-direction:column; gap:2mm; position:relative; z-index:1; }
+  .cover-mod { display:flex; align-items:center; gap:2.5mm; background:white; border:1px solid var(--line); border-radius:2mm; padding:2.5mm 3mm; font-size:3mm; font-weight:600; color:var(--ink); }
+  .cm-dot { width:2mm; height:2mm; border-radius:50%; flex-shrink:0; }
+  .cover-foot2 { font-size:2.5mm; color:rgba(28,25,23,.3); position:relative; z-index:1; }
+
+  /* ÍNDICE */
+  .index-bg { background:var(--ink); width:100%; height:100%; padding:12mm 18mm; display:flex; flex-direction:column; }
+  .idx-label { font-size:2.8mm; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--red); margin-bottom:2mm; }
+  .idx-title { font-size:9mm; font-weight:800; color:white; line-height:1.05; margin-bottom:6mm; }
+  .idx-cols  { display:grid; grid-template-columns:1fr 1fr; gap:3mm; flex:1; }
+  .idx-ch    { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:2.5mm; padding:4mm; }
+  .idx-ch-num { font-size:2.5mm; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:1.5mm; }
+  .idx-ch-name { font-size:5mm; font-weight:800; color:white; margin-bottom:3mm; line-height:1.1; }
+  .idx-sec { display:flex; align-items:center; gap:2mm; padding:1.5mm 0; border-bottom:1px solid rgba(255,255,255,.07); }
+  .idx-sec:last-child { border-bottom:none; }
+  .idx-sec-n  { font-size:2.5mm; font-weight:700; color:var(--red); width:5mm; flex-shrink:0; }
+  .idx-sec-nm { font-size:2.9mm; color:rgba(255,255,255,.7); }
+
+  /* CABECERA */
+  .sec-head { padding:7mm 18mm 5mm; position:relative; overflow:hidden; }
+  .sec-head::after { content:attr(data-n); position:absolute; right:12mm; top:50%; transform:translateY(-50%); font-size:26mm; font-weight:800; color:rgba(255,255,255,.05); line-height:1; }
+  .sec-n { font-size:2.6mm; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:1mm; }
+  .sec-h { font-size:7.5mm; font-weight:800; color:white; line-height:1.05; }
+  .sec-d { font-size:3mm; color:rgba(255,255,255,.4); margin-top:1mm; font-weight:300; }
+  .sec-blue { background:#1a1d20; }
+  .sec-blue .sec-n { color:#60a5fa; }
+  .sec-green { background:#14532d; }
+  .sec-green .sec-n { color:#86efac; }
+  .sec-amber { background:#451a03; }
+  .sec-amber .sec-n { color:#fcd34d; }
+
+  /* TIPOGRAFÍA */
+  .h2 { font-size:4.5mm; font-weight:700; color:var(--ink); margin:4mm 0 1mm; }
+  .h2:first-child { margin-top:0; }
+  .rule  { width:7mm; height:.7mm; border-radius:.5mm; margin-bottom:2.5mm; }
+  .rule-b { background:var(--blue); }
+  .rule-g { background:var(--green); }
+  .rule-a { background:var(--amber); }
+  p { color:#57534E; margin-bottom:2mm; font-size:3.3mm; }
+  strong { color:var(--ink); }
+  hr.div { border:none; border-top:1px solid var(--line); margin:3mm 0; }
+  ul.blist { margin:1mm 0 2.5mm 4mm; }
+  ul.blist li { font-size:3.1mm; color:#57534E; margin-bottom:1mm; }
+  ul.blist li::marker { color:var(--red); }
+
+  /* STEPS */
+  .step  { display:flex; gap:3mm; margin-bottom:2mm; align-items:flex-start; }
+  .sn    { width:6.5mm; height:6.5mm; min-width:6.5mm; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:2.8mm; flex-shrink:0; }
+  .sn-b  { background:var(--blue); color:white; }
+  .sn-g  { background:var(--green); color:white; }
+  .sn-r  { background:var(--red); color:white; }
+  .sn-i  { background:#f1f5f9; color:var(--ink); font-size:3.2mm; }
+  .sb    { flex:1; padding-top:.5mm; }
+  .st    { font-weight:700; color:var(--ink); margin-bottom:.5mm; font-size:3.3mm; }
+  .sd    { color:#78716C; font-size:3mm; line-height:1.5; }
+
+  /* CALLOUTS */
+  .call    { border-radius:2mm; padding:2.5mm 3mm; margin:2.5mm 0; display:flex; gap:2mm; font-size:3.1mm; }
+  .call em { font-style:normal; font-weight:700; display:block; margin-bottom:.5mm; }
+  .call.warn   { background:#FFFBEB; border-left:2px solid var(--amber); }
+  .call.warn em{ color:var(--amber); }
+  .call.info   { background:#EFF6FF; border-left:2px solid var(--blue); }
+  .call.info em{ color:var(--blue); }
+  .call.ok     { background:#F0FDF4; border-left:2px solid var(--green); }
+  .call.ok em  { color:var(--green); }
+  .call.danger { background:var(--red2); border-left:2px solid var(--red); }
+  .call.danger em { color:var(--red); }
+
+  /* DANGER BANNER */
+  .dbanner { background:var(--red); border-radius:2.5mm; padding:3mm 3.5mm; margin:2.5mm 0; display:flex; gap:2.5mm; align-items:flex-start; }
+  .dbanner em  { font-style:normal; font-weight:800; color:white; display:block; margin-bottom:.5mm; font-size:3.4mm; }
+  .dbanner p   { color:rgba(255,255,255,.85); margin:0; font-size:3mm; }
+  .dbanner-ico { font-size:5mm; flex-shrink:0; margin-top:.5mm; }
+
+  /* PERMISO CARD */
+  .permiso { background:#FFFBEB; border:2px solid var(--amber); border-radius:2.5mm; padding:3mm 3.5mm; margin:2.5mm 0; display:flex; gap:2.5mm; align-items:flex-start; }
+  .permiso em  { font-style:normal; font-weight:800; color:#92400E; display:block; margin-bottom:.5mm; font-size:3.2mm; }
+  .permiso p   { color:#78350F; margin:0; font-size:3mm; }
+
+  /* FEATURE GRID */
+  .fgrid { display:grid; grid-template-columns:1fr 1fr; gap:2mm; margin:2.5mm 0; }
+  .fcard { border-radius:2mm; padding:3mm; border:1px solid var(--line); position:relative; overflow:hidden; }
+  .fcard-b::before { content:''; position:absolute; top:0; left:0; width:2px; height:100%; background:var(--blue); }
+  .fcard-g::before { content:''; position:absolute; top:0; left:0; width:2px; height:100%; background:var(--green); }
+  .fcard-a::before { content:''; position:absolute; top:0; left:0; width:2px; height:100%; background:var(--amber); }
+  .fcard-r::before { content:''; position:absolute; top:0; left:0; width:2px; height:100%; background:var(--red); }
+  .fcard h4 { font-weight:700; margin-bottom:.8mm; font-size:3.3mm; color:var(--ink); }
+  .fcard p  { font-size:2.9mm; margin:0; color:#666; }
+
+  /* DATA TABLE */
+  .dtbl { width:100%; border-collapse:collapse; margin:2.5mm 0; font-size:3mm; }
+  .dtbl th { background:var(--ink); color:white; padding:2mm 3mm; text-align:left; font-size:2.7mm; font-weight:600; text-transform:uppercase; letter-spacing:.3px; }
+  .dtbl th:first-child { border-radius:2mm 0 0 0; }
+  .dtbl th:last-child  { border-radius:0 2mm 0 0; }
+  .dtbl td { padding:2mm 3mm; border-bottom:1px solid var(--line); vertical-align:top; }
+  .dtbl tr:last-child td { border-bottom:none; }
+
+  /* FILTER PILLS */
+  .filter-bar { display:flex; gap:1.5mm; flex-wrap:wrap; margin:2mm 0; }
+  .fpill { padding:1mm 3mm; border-radius:10mm; font-size:2.7mm; font-weight:700; border:1.5px solid; display:inline-flex; align-items:center; gap:1mm; }
+  .fp-act  { background:var(--blue); color:white; border-color:var(--blue); }
+  .fp-off  { background:white; color:#6c757d; border-color:#dee2e6; }
+
+  /* STATUS BADGE */
+  .sbadge { display:inline-flex; align-items:center; gap:1mm; padding:.8mm 2mm; border-radius:10mm; font-size:2.5mm; font-weight:700; }
+  .sb-pend { background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; }
+  .sb-proc { background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; }
+  .sb-done { background:#F0FDF4; color:#166534; border:1px solid #BBF7D0; }
+  .sb-danger{ background:var(--red2); color:var(--red); border:1px solid #FECACA; }
+
+  /* MOCK SCREENS */
+  .mock { border:1px solid #d1d5db; border-radius:2.5mm; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.09); margin:2.5mm 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; line-height:1.4; background:white; font-size:3mm; }
+  .mbar { background:#f1f5f9; padding:2mm 3mm; display:flex; align-items:center; gap:1.5mm; border-bottom:1px solid #e2e8f0; }
+  .dot  { width:2.5mm; height:2.5mm; border-radius:50%; flex-shrink:0; }
+  .dr { background:#fc5c57; } .dy { background:#fdbc2c; } .dg { background:#27c93f; }
+  .murl { background:white; border:1px solid #e2e8f0; border-radius:1.5mm; padding:.8mm 3mm; font-size:2.7mm; color:#94a3b8; margin:0 auto; min-width:50mm; text-align:center; }
+  .mbtn { display:inline-flex; align-items:center; gap:1mm; padding:1.5mm 3mm; border-radius:1.5mm; font-weight:700; font-size:2.7mm; }
+  .mbtn-b { background:#0d6efd; color:white; }
+  .mbtn-g { background:#198754; color:white; }
+  .mbtn-r { background:#dc3545; color:white; }
+  .mbadge { display:inline-block; padding:.6mm 2mm; border-radius:10mm; font-size:2.4mm; font-weight:700; }
+  .bb-b { background:#cfe2ff; color:#084298; }
+  .bb-g { background:#d1e7dd; color:#0a3622; }
+  .bb-w { background:#fff3cd; color:#664d03; }
+  .bb-r { background:#f8d7da; color:#842029; }
+  .bb-s { background:#e9ecef; color:#495057; }
+  .mtab  { display:flex; gap:0; background:#f8f9fa; border-radius:10mm; padding:1mm; margin:2mm 3mm; }
+  .mtabi { flex:1; text-align:center; padding:1.5mm; border-radius:10mm; font-size:2.7mm; font-weight:600; color:#6c757d; }
+  .mtabi.act { background:white; color:#0d6efd; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+
+  /* TRES SECCIONES MIS INSUMOS */
+  .ins3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:2mm; margin:2.5mm 0; }
+  .ins-c { border-radius:2.5mm; padding:3mm; border:1.5px solid; text-align:center; }
+  .ins-pend { background:#FFFBEB; border-color:#FDE68A; }
+  .ins-inv  { background:#EFF6FF; border-color:#BFDBFE; }
+  .ins-used { background:#F0FDF4; border-color:#BBF7D0; }
+  .ins-ico  { font-size:6mm; margin-bottom:1.5mm; }
+  .ins-ttl  { font-size:3mm; font-weight:800; margin-bottom:.5mm; }
+  .ins-pend .ins-ttl { color:#92400E; }
+  .ins-inv  .ins-ttl { color:#1E40AF; }
+  .ins-used .ins-ttl { color:#166534; }
+  .ins-sub  { font-size:2.7mm; color:#57534E; }
+
+  /* MATERIAL CARD (exact replica) */
+  .matcard { background:white; border-radius:2.5mm; border:1px solid #dee2e6; overflow:hidden; margin-bottom:2mm; }
+  .matcard-body { padding:2.5mm 3mm; display:flex; align-items:center; gap:2.5mm; }
+  .mat-ico { width:10mm; height:10mm; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:4.5mm; flex-shrink:0; }
+  .mat-ico-ok   { background:#d1e7dd; }
+  .mat-ico-fail { background:#f8d7da; }
+  .mat-name { font-weight:700; font-size:3mm; color:#212529; }
+  .mat-sku  { font-size:2.5mm; color:#6c757d; margin-top:.3mm; }
+  .mat-row  { display:flex; justify-content:space-between; margin-top:1.5mm; align-items:center; }
+  .mat-footer { text-align:center; font-weight:800; font-size:2.5mm; padding:1mm; letter-spacing:.5px; color:white; }
+  .mat-foot-ok   { background:#198754; }
+  .mat-foot-fail { background:#dc3545; }
+
+  /* FINAL */
+  .final-bg { background:var(--ink); width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:14mm 18mm; }
+  .fi-icon  { width:16mm; height:16mm; background:var(--blue); border-radius:4mm; display:flex; align-items:center; justify-content:center; font-size:7mm; margin:0 auto 5mm; color:white; font-weight:800; }
+  .fi-title { font-size:10mm; color:white; font-weight:800; }
+  .fi-rule  { width:10mm; height:.7mm; background:var(--blue); margin:4mm auto; }
+  .fi-sub   { color:rgba(255,255,255,.35); font-size:3.5mm; font-weight:300; }
+  .fi-foot  { color:rgba(255,255,255,.12); font-size:2.8mm; letter-spacing:1px; margin-top:8mm; }
+  .fi-mods  { display:flex; gap:4mm; margin-top:6mm; justify-content:center; }
+  .fi-mod   { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:2mm; padding:2.5mm 4mm; }
+  .fi-mod-i { font-size:5mm; display:block; margin-bottom:1mm; }
+  .fi-mod-n { color:rgba(255,255,255,.6); font-size:2.8mm; font-weight:600; }
+
+  @media screen { body { padding:10mm; } }
+  @media print  { body { background:white; padding:0; } .page { margin:0; box-shadow:none; } }
+</style>
+</head>
+<body>
+
+<!-- ══ PÁGINA 1: PORTADA ══ -->
+<div class="page">
+  <div class="cover-split">
+    <!-- Sidebar exacto del sistema (vista técnico) -->
+    <div class="cover-sidebar">
+      <div class="cv-brand">
+        <div class="cv-brand-icon">I</div>
+        <span class="cv-brand-name">InsuOrders</span>
+      </div>
+      <div class="cv-nav">
+        <div class="cv-item act"><span class="cv-item-icon">📋</span> Mis Mantenciones</div>
+        <div class="cv-item"><span class="cv-item-icon">🔧</span> Mis Insumos</div>
+        <div class="cv-item"><span class="cv-item-icon">⚙️</span> Activos</div>
+      </div>
+      <div class="cv-footer">Sesión: Juan Pérez<br>Rol: Técnico</div>
+    </div>
+    <!-- Panel derecho portada -->
+    <div class="cover-right">
+      <div style="position:relative;z-index:1;">
+        <div class="cover-tag2">Manual del Técnico</div>
+        <div class="cover-h1">Guía de<br>uso para<br><em>técnicos</em></div>
+        <p class="cover-desc2">Todo lo que necesitas saber para gestionar tus órdenes de trabajo, materiales y activos en InsuOrders.</p>
+      </div>
+      <div class="cover-modules">
+        <div class="cover-mod"><div class="cm-dot" style="background:#2563EB;"></div>📋 Mis Mantenciones<span style="margin-left:auto;font-size:2.5mm;color:#78716C;font-weight:400;">7 secciones</span></div>
+        <div class="cover-mod"><div class="cm-dot" style="background:#16A34A;"></div>🔧 Mis Insumos<span style="margin-left:auto;font-size:2.5mm;color:#78716C;font-weight:400;">4 secciones</span></div>
+        <div class="cover-mod"><div class="cm-dot" style="background:#D97706;"></div>⚙️ Activos (si tienes permiso)<span style="margin-left:auto;font-size:2.5mm;color:#78716C;font-weight:400;">1 sección</span></div>
+      </div>
+      <div class="cover-foot2">InsuOrders v1.17 · Procesadora Insuban Spa · Junio 2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 2: ÍNDICE ══ -->
+<div class="page">
+  <div class="index-bg">
+    <p class="idx-label">Contenido</p>
+    <h2 class="idx-title">¿Qué verás<br>en esta guía?</h2>
+    <div class="idx-cols">
+      <!-- Mis Mantenciones -->
+      <div class="idx-ch">
+        <div class="idx-ch-num" style="color:#60a5fa;">Capítulo 01</div>
+        <div class="idx-ch-name">Mis<br>Mantenciones</div>
+        <div class="idx-sec"><span class="idx-sec-n">01</span><span class="idx-sec-nm">Cómo entrar al sistema</span></div>
+        <div class="idx-sec"><span class="idx-sec-n">02</span><span class="idx-sec-nm">El panel de tus OTs y los filtros</span></div>
+        <div class="idx-sec"><span class="idx-sec-n">03</span><span class="idx-sec-nm">Abrir y revisar una OT</span></div>
+        <div class="idx-sec"><span class="idx-sec-n">04</span><span class="idx-sec-nm">Registrar el avance del trabajo</span></div>
+        <div class="idx-sec"><span class="idx-sec-n">05</span><span class="idx-sec-nm">Pestaña Materiales</span></div>
+        <div class="idx-sec"><span class="idx-sec-n">06</span><span class="idx-sec-nm">Permiso de trabajo seguro</span></div>
+        <div class="idx-sec"><span class="idx-sec-n">07</span><span class="idx-sec-nm">Finalizar una OT</span></div>
+      </div>
+      <!-- Mis Insumos + Activos -->
+      <div>
+        <div class="idx-ch" style="margin-bottom:3mm;">
+          <div class="idx-ch-num" style="color:#86efac;">Capítulo 02</div>
+          <div class="idx-ch-name">Mis Insumos</div>
+          <div class="idx-sec"><span class="idx-sec-n">08</span><span class="idx-sec-nm">Tus materiales (3 secciones)</span></div>
+          <div class="idx-sec"><span class="idx-sec-n">09</span><span class="idx-sec-nm">Aceptar una entrega</span></div>
+          <div class="idx-sec"><span class="idx-sec-n">10</span><span class="idx-sec-nm">Rechazar una entrega</span></div>
+          <div class="idx-sec"><span class="idx-sec-n">11</span><span class="idx-sec-nm">Devolver material sobrante</span></div>
+        </div>
+        <div class="idx-ch">
+          <div class="idx-ch-num" style="color:#fcd34d;">Capítulo 03</div>
+          <div class="idx-ch-name">Activos</div>
+          <div class="idx-sec"><span class="idx-sec-n">12</span><span class="idx-sec-nm">Consultar la ficha de un equipo</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 3: CAP 1 — LOGIN + PANEL OTs ══ -->
+<div class="page">
+  <div class="sec-head sec-blue" data-n="01">
+    <p class="sec-n">Capítulo 01</p>
+    <h2 class="sec-h">Mis Mantenciones</h2>
+    <p class="sec-d">Gestiona tus OTs, registra avances y cierra trabajos.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">01 · Cómo entrar al sistema</div>
+    <div class="rule rule-b"></div>
+    <p>Abre el navegador en tu celular o computador. Escribe la dirección del sistema e ingresa tu <strong>usuario y contraseña</strong>. Al entrar, el sistema te lleva directo a <strong>Mis Mantenciones</strong>.</p>
+
+    <div class="call info"><span>📱</span><div><em>Funciona en el celular</em>Puedes usar InsuOrders desde tu teléfono mientras estás en terreno. La pantalla se adapta automáticamente al tamaño de la pantalla.</div></div>
+
+    <!-- Login mockup -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl</div></div>
+      <div style="background:linear-gradient(135deg,#f5f7fa,#c3cfe2);padding:5mm;display:flex;justify-content:center;">
+        <div style="background:white;border-radius:3mm;padding:5mm 6mm;width:52mm;box-shadow:0 4px 16px rgba(0,0,0,.12);">
+          <div style="text-align:center;margin-bottom:3mm;"><div style="font-size:6mm;margin-bottom:1mm;">🏭</div><div style="font-weight:800;font-size:3.5mm;color:#1C1917;">InsuOrders</div><div style="font-size:2.4mm;color:#78716C;">Procesadora Insuban Spa</div></div>
+          <div style="margin-bottom:2mm;"><div style="font-size:2.4mm;font-weight:500;color:#374151;margin-bottom:.5mm;">Usuario</div><div style="border:1px solid #e2e8f0;border-radius:1.5mm;padding:1.5mm 2.5mm;font-size:3mm;color:#94a3b8;">jperez</div></div>
+          <div style="margin-bottom:3mm;"><div style="font-size:2.4mm;font-weight:500;color:#374151;margin-bottom:.5mm;">Contraseña</div><div style="border:1px solid #e2e8f0;border-radius:1.5mm;padding:1.5mm 2.5mm;font-size:3mm;color:#94a3b8;">••••••••</div></div>
+          <div style="background:#0d6efd;color:white;border-radius:1.5mm;padding:2mm;text-align:center;font-weight:700;font-size:3mm;">Entrar</div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="div">
+    <div class="h2">02 · El panel de tus OTs</div>
+    <div class="rule rule-b"></div>
+    <p>La pantalla tiene <strong>dos zonas</strong>: a la izquierda la lista de tus OTs y a la derecha el detalle de la que selecciones. En el celular aparecen de a una.</p>
+    <p>Sobre la lista hay cuatro botones para filtrar tus tareas:</p>
+    <div class="filter-bar">
+      <span class="fpill fp-act">📅 Hoy / Atrás</span>
+      <span class="fpill fp-off">🗓️ Programadas</span>
+      <span class="fpill fp-off">⚙️ En Proceso</span>
+      <span class="fpill fp-off">🕐 Historial</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 4: CAP 1 — FILTROS + OT DETAIL ══ -->
+<div class="page">
+  <div class="sec-head sec-blue" data-n="01">
+    <p class="sec-n">Capítulo 01 — continuación</p>
+    <h2 class="sec-h">Filtros y detalle de OT</h2>
+    <p class="sec-d">Cómo navegar la lista y qué encuentras al abrir una OT.</p>
+  </div>
+  <div class="pad-s">
+    <table class="dtbl">
+      <thead><tr><th>Filtro</th><th>Qué muestra</th><th>Cuándo usarlo</th></tr></thead>
+      <tbody>
+        <tr><td><span class="sbadge sb-proc">📅 Hoy/Atrás</span></td><td>OTs pendientes de hoy y días anteriores</td><td>Al empezar el día — muestra lo más urgente</td></tr>
+        <tr><td><span class="sbadge" style="background:#e9ecef;color:#495057;">🗓️ Programadas</span></td><td>OTs con fecha futura, aún no urgentes</td><td>Para planificar la semana</td></tr>
+        <tr><td><span class="sbadge sb-pend">⚙️ En Proceso</span></td><td>OTs que ya iniciaste pero no terminaste</td><td>Para continuar un trabajo empezado</td></tr>
+        <tr><td><span class="sbadge sb-done">🕐 Historial</span></td><td>OTs que ya completaste o están cerradas</td><td>Para revisar un trabajo anterior</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Split panel mockup -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / mis-mantenciones</div></div>
+      <div style="display:grid;grid-template-columns:38mm 1fr;height:45mm;">
+        <!-- Lista izquierda -->
+        <div style="border-right:1px solid #e2e8f0;background:#f8f9fa;">
+          <div style="padding:2mm 2.5mm;display:flex;gap:1mm;flex-wrap:wrap;border-bottom:1px solid #e2e8f0;">
+            <div style="padding:.5mm 2mm;background:#0d6efd;color:white;border-radius:10mm;font-size:2.3mm;font-weight:700;">📅 Hoy/Atrás</div>
+          </div>
+          <div style="background:#0d6efd11;border-left:3px solid #0d6efd;padding:2mm 2.5mm;margin:2mm 0 1mm;">
+            <div style="font-weight:700;font-size:2.7mm;">Motor Tubing 02</div>
+            <div style="font-size:2.3mm;color:#6c757d;margin-top:.5mm;"><span style="background:#f8d7da;color:#842029;padding:.2mm 1.5mm;border-radius:10mm;font-weight:700;font-size:2mm;">Crítico</span> · Pendiente</div>
+          </div>
+          <div style="padding:2mm 2.5mm;border-left:3px solid transparent;">
+            <div style="font-weight:600;font-size:2.7mm;color:#374151;">Mantención TSS029</div>
+            <div style="font-size:2.3mm;color:#6c757d;margin-top:.5mm;">Media · En Proceso</div>
+          </div>
+          <div style="padding:2mm 2.5mm;border-left:3px solid transparent;">
+            <div style="font-weight:600;font-size:2.7mm;color:#374151;">Revisión tablero</div>
+            <div style="font-size:2.3mm;color:#6c757d;margin-top:.5mm;">Baja · Pendiente</div>
+          </div>
+        </div>
+        <!-- Detalle derecho -->
+        <div style="padding:2.5mm 3mm;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2mm;">
+            <div><div style="font-weight:800;font-size:3.2mm;">Motor quemado Tubing 02</div><div style="font-size:2.5mm;color:#6c757d;margin-top:.3mm;">📍 Planta 1 · Activo: TSS029</div></div>
+            <div style="display:flex;gap:1mm;"><div class="mbtn mbtn-b" style="font-size:2.3mm;padding:1mm 2mm;">Iniciar</div><div class="mbtn mbtn-g" style="font-size:2.3mm;padding:1mm 2mm;">Finalizar</div></div>
+          </div>
+          <div class="mtab">
+            <div class="mtabi act">ℹ️ Info. Solicitud</div>
+            <div class="mtabi">☑️ Avance / Cierre</div>
+            <div class="mtabi">🔧 Materiales</div>
+          </div>
+          <div style="font-size:2.7mm;color:#57534E;margin-top:2mm;"><strong style="color:#212529;">Descripción:</strong> Motor principal del Tubing 02 no enciende. Se escucha un ruido al intentar partir. Se solicita revisión urgente y cambio de motor si es necesario.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5mm;margin-top:2mm;">
+            <div style="background:#f8f9fa;border-radius:1.5mm;padding:1.5mm;"><div style="font-size:2.3mm;color:#6c757d;">Solicitante</div><div style="font-weight:700;font-size:2.7mm;">M. González</div></div>
+            <div style="background:#f8f9fa;border-radius:1.5mm;padding:1.5mm;"><div style="font-size:2.3mm;color:#6c757d;">Técnico</div><div style="font-weight:700;font-size:2.7mm;">Juan Pérez (tú)</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2">03 · Abrir y revisar una OT</div>
+    <div class="rule rule-b"></div>
+    <p>Toca una tarjeta de la lista para ver el detalle. Dentro hay <strong>tres pestañas</strong>:</p>
+    <div class="fgrid">
+      <div class="fcard fcard-b"><h4>ℹ️ Info. Solicitud</h4><p>Qué máquina tiene el problema, quién lo solicitó, la descripción del trabajo y la ubicación.</p></div>
+      <div class="fcard fcard-g"><h4>☑️ Avance / Cierre</h4><p>El formulario de inspección, campo de comentarios, carga de fotos y firma del técnico.</p></div>
+      <div class="fcard fcard-a" style="grid-column:1/-1;"><h4>🔧 Materiales</h4><p>Lista de repuestos solicitados para esta OT. Indica en verde si los tienes y en rojo si te faltan. Los materiales que tienes en Mis Insumos se muestran automáticamente.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 5: CAP 1 — AVANCE DEL TRABAJO ══ -->
+<div class="page">
+  <div class="sec-head sec-blue" data-n="01">
+    <p class="sec-n">Capítulo 01 — continuación</p>
+    <h2 class="sec-h">04 · Avance del Trabajo</h2>
+    <p class="sec-d">Completa la pestaña "Avance / Cierre" para dejar registro de lo que hiciste.</p>
+  </div>
+  <div class="pad-s">
+    <p>En la pestaña <strong>Avance / Cierre</strong> registras todo el trabajo realizado. Completa cada parte en orden:</p>
+
+    <div class="step"><div class="sn sn-i">📋</div><div class="sb"><div class="st">Responde el checklist de inspección</div><div class="sd">Marca cada ítem del formulario. Algunos permiten agregar una observación extra. Es obligatorio completarlo antes de finalizar la OT.</div></div></div>
+    <div class="step"><div class="sn sn-i">💬</div><div class="sb"><div class="st">Escribe los comentarios de cierre</div><div class="sd">Describe qué hiciste: qué se reparó, qué piezas cambiaste, cómo quedó el equipo. El solicitante verá este texto en su portal de solicitudes.</div></div></div>
+    <div class="step"><div class="sn sn-i">📷</div><div class="sb"><div class="st">Sube fotos o videos como evidencia</div><div class="sd">Fotografía el trabajo terminado. Si subiste una foto incorrecta, usa el ícono de papelera para eliminarla antes de finalizar.</div></div></div>
+    <div class="step"><div class="sn sn-i">✍️</div><div class="sb"><div class="st">Firma (si la OT lo requiere)</div><div class="sd">Algunas OTs de mantención preventiva o por emergencia requieren tu firma digital. Dibújala con el dedo en el recuadro habilitado.</div></div></div>
+
+    <!-- Avance mockup -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div></div>
+      <div class="mtab"><div class="mtabi">ℹ️ Info.</div><div class="mtabi act">☑️ Avance / Cierre</div><div class="mtabi">🔧 Materiales</div></div>
+      <div style="padding:2mm 3mm;">
+        <div style="font-weight:700;font-size:3mm;margin-bottom:2mm;">Checklist de inspección</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:1.5mm 0;border-bottom:1px solid #f1f5f9;font-size:2.8mm;"><span>✅ Revisión visual completa del motor</span><span class="sbadge sb-done" style="font-size:2.3mm;">Sí</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:1.5mm 0;border-bottom:1px solid #f1f5f9;font-size:2.8mm;"><span>✅ Prueba de arranque en vacío</span><span class="sbadge sb-done" style="font-size:2.3mm;">Sí</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:1.5mm 0;font-size:2.8mm;"><span>⬜ Limpieza de área de trabajo</span><span class="sbadge sb-pend" style="font-size:2.3mm;">Pendiente</span></div>
+        <div style="margin-top:2mm;"><div style="font-size:2.7mm;font-weight:600;margin-bottom:1mm;">Comentarios de cierre</div><div style="border:1px solid #e2e8f0;border-radius:1.5mm;padding:2mm;font-size:2.7mm;color:#6c757d;min-height:10mm;">Se reemplazó bobina devanada del motor principal. Arranque normal a 3000 RPM. Se limpió devanado con compresor...</div></div>
+        <div style="margin-top:2mm;display:flex;gap:1.5mm;align-items:center;"><div style="background:#f0fdf4;border:1px solid #86efac;border-radius:1.5mm;padding:1.5mm 2mm;font-size:2.5mm;color:#166534;">📷 foto_antes.jpg</div><div style="background:#f0fdf4;border:1px solid #86efac;border-radius:1.5mm;padding:1.5mm 2mm;font-size:2.5mm;color:#166534;">📷 foto_despues.jpg</div><div style="border:1px dashed #e2e8f0;border-radius:1.5mm;padding:1.5mm 2mm;font-size:2.5mm;color:#6c757d;">+ Agregar foto</div></div>
+      </div>
+    </div>
+
+    <div class="call ok"><span>💾</span><div><em>Guarda avances parciales</em>Si el trabajo toma más de un día, usa el botón <strong>"Guardar Avance"</strong> para no perder lo que completaste. Puedes volver al día siguiente y continuar.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 6: CAP 1 — MATERIALES ══ -->
+<div class="page">
+  <div class="sec-head sec-blue" data-n="01">
+    <p class="sec-n">Capítulo 01 — continuación</p>
+    <h2 class="sec-h">05 · Pestaña Materiales</h2>
+    <p class="sec-d">Qué repuestos necesita la OT y si los tienes disponibles en Mis Insumos.</p>
+  </div>
+  <div class="pad-s">
+    <p>Esta pestaña muestra los repuestos e insumos necesarios para la OT, con un indicador de si ya los tienes físicamente disponibles.</p>
+
+    <!-- Replica exacta de los cards del sistema -->
+    <div style="background:#f8f9fa;border-radius:2.5mm;padding:3mm;margin:2.5mm 0;">
+      <div style="font-weight:700;font-size:3.2mm;margin-bottom:2.5mm;">🔩 Repuestos e Insumos Asignados</div>
+
+      <!-- Card OK -->
+      <div class="matcard">
+        <div class="matcard-body">
+          <div class="mat-ico mat-ico-ok">✅</div>
+          <div style="flex:1;">
+            <div class="mat-name">Broca Para Concreto 3mm</div>
+            <div class="mat-sku">SKU-001</div>
+            <div class="mat-row">
+              <span class="sbadge" style="background:#e9ecef;color:#495057;font-size:2.3mm;">Solicita: 5 Unidad</span>
+              <div style="text-align:right;"><div style="font-size:2.3mm;color:#6c757d;">Tienes:</div><span style="font-size:5mm;font-weight:800;color:#198754;">6</span><span style="font-size:2.5mm;color:#6c757d;"> Unidad</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="mat-footer mat-foot-ok">DISPONIBLE EN MIS INSUMOS</div>
+      </div>
+
+      <!-- Card FAIL -->
+      <div class="matcard">
+        <div class="matcard-body">
+          <div class="mat-ico mat-ico-fail">❌</div>
+          <div style="flex:1;">
+            <div class="mat-name">Magnetotérmico 805-164</div>
+            <div class="mat-sku">SKU-002</div>
+            <div class="mat-row">
+              <span class="sbadge" style="background:#e9ecef;color:#495057;font-size:2.3mm;">Solicita: 1 Unidad</span>
+              <div style="text-align:right;"><div style="font-size:2.3mm;color:#6c757d;">Tienes:</div><span style="font-size:5mm;font-weight:800;color:#dc3545;">0</span><span style="font-size:2.5mm;color:#6c757d;"> Unidad</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="mat-footer mat-foot-fail">STOCK INSUFICIENTE</div>
+      </div>
+    </div>
+
+    <div class="fgrid">
+      <div class="fcard fcard-g"><h4 style="color:#16A34A;">✅ DISPONIBLE EN MIS INSUMOS</h4><p>Fondo verde — Ya tienes ese material en tu inventario personal. Puedes proceder con el trabajo.</p></div>
+      <div class="fcard fcard-r"><h4 style="color:#DC2626;">❌ STOCK INSUFICIENTE</h4><p>Fondo rojo — No tienes ese material. Pídelo a bodega antes de finalizar la OT.</p></div>
+    </div>
+
+    <div class="call warn"><span>⚠️</span><div><em>Si aparece rojo</em>Comunícate con bodega para que te entreguen el material. El indicador muestra tu stock personal en Mis Insumos, no el inventario general de bodega.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 7: CAP 1 — PERMISO + FINALIZAR ══ -->
+<div class="page">
+  <div class="sec-head sec-blue" data-n="01">
+    <p class="sec-n">Capítulo 01 — continuación</p>
+    <h2 class="sec-h">06 · Permiso de Trabajo Seguro</h2>
+    <p class="sec-d">Antes de tocar la máquina, asegúrate de tener el permiso firmado.</p>
+  </div>
+  <div class="pad-s">
+    <div class="dbanner">
+      <span class="dbanner-ico">🛑</span>
+      <div>
+        <em>No inicies el trabajo sin el permiso firmado</em>
+        <p>Si la OT requiere un permiso de seguridad, verás una alerta en rojo al abrir el detalle. Debes gestionar y obtener ese permiso antes de tocar la máquina.</p>
+      </div>
+    </div>
+    <p>El tipo de permiso necesario aparece especificado en el banner de alerta:</p>
+    <div class="permiso">
+      <span style="font-size:6mm;flex-shrink:0;">⚠️</span>
+      <div>
+        <em>Esta OT requiere: TRABAJO EN ALTURA</em>
+        <p>Solicita la autorización a Prevención de Riesgos antes de iniciar. El tipo de permiso puede variar: Altura, Espacios Confinados, Trabajos en Caliente, Riesgo Eléctrico u otro especificado.</p>
+      </div>
+    </div>
+    <div class="call danger"><span>👤</span><div><em>¿A quién pedirlo?</em>El permiso lo autoriza el área de Prevención de Riesgos — Jennifer Manquel. Asegúrate de tenerlo firmado antes de comenzar cualquier labor. El sistema registra el tipo de permiso para auditoría.</div></div>
+
+    <hr class="div">
+    <div class="h2">07 · Finalizar una OT</div>
+    <div class="rule rule-b"></div>
+    <p>Cuando el trabajo está <strong>100% terminado</strong>, presiona el botón verde <strong>"Finalizar"</strong>.</p>
+    <div class="step"><div class="sn sn-b">1</div><div class="sb"><div class="st">Verifica que el checklist esté completo</div><div class="sd">Todos los ítems respondidos. Si alguno falta, complétalo primero.</div></div></div>
+    <div class="step"><div class="sn sn-b">2</div><div class="sb"><div class="st">Confirma que subiste evidencia fotográfica</div><div class="sd">Al menos una foto del trabajo terminado. Es fundamental para el respaldo.</div></div></div>
+    <div class="step"><div class="sn sn-b">3</div><div class="sb"><div class="st">Presiona "Finalizar" y confirma</div><div class="sd">Si hay materiales en rojo el sistema te avisa, pero igual puedes finalizar si el trabajo está hecho.</div></div></div>
+    <div class="step"><div class="sn sn-b">4</div><div class="sb"><div class="st">La OT queda como "Completada"</div><div class="sd">Se registra la hora de cierre y el solicitante ve el informe automáticamente en su portal.</div></div></div>
+
+    <!-- Confirmación finalizado mockup -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div></div>
+      <div style="padding:4mm;text-align:center;">
+        <div style="width:12mm;height:12mm;background:#198754;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:6mm;margin:0 auto 2mm;">✓</div>
+        <div style="font-weight:800;font-size:4mm;color:#0a3622;margin-bottom:.5mm;">OT Finalizada</div>
+        <div style="font-size:2.8mm;color:#6c757d;">Motor quemado Tubing 02 — OT #77<br>Cerrada el 27 Jun 2026 · 16:45</div>
+      </div>
+    </div>
+
+    <div class="call info"><span>🔄</span><div><em>¿Cerraste por error?</em>Avisa a tu jefe de mantención. Puede reabrir la OT directamente desde el sistema sin necesidad de crear una nueva.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 8: CAP 2 — MIS INSUMOS ══ -->
+<div class="page">
+  <div class="sec-head sec-green" data-n="02">
+    <p class="sec-n">Capítulo 02</p>
+    <h2 class="sec-h">Mis Insumos</h2>
+    <p class="sec-d">Gestiona los materiales que bodega te entrega para tus OTs.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">08 · Tus materiales</div>
+    <div class="rule rule-g"></div>
+    <p>En <strong>Mis Insumos</strong> están todos los materiales que bodega te ha asignado, agrupados por OT y organizados en tres secciones:</p>
+
+    <div class="ins3">
+      <div class="ins-c ins-pend"><div class="ins-ico">📬</div><div class="ins-ttl">Pendientes</div><div class="ins-sub">Bodega acaba de entregártelos. Debes Aceptar o Rechazar.</div></div>
+      <div class="ins-c ins-inv"><div class="ins-ico">📦</div><div class="ins-ttl">En tu inventario</div><div class="ins-sub">Materiales ya aceptados que tienes físicamente.</div></div>
+      <div class="ins-c ins-used"><div class="ins-ico">✅</div><div class="ins-ttl">Utilizados</div><div class="ins-sub">Materiales que ya consumiste o devolviste a bodega.</div></div>
+    </div>
+
+    <!-- Mis Insumos mockup -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / mis-insumos</div></div>
+      <div style="padding:2.5mm 3mm;">
+        <div style="font-weight:700;font-size:3.2mm;margin-bottom:2mm;">OT #77 — Motor Tubing 02</div>
+        <div style="background:#fff3cd;border:1px solid #ffecb5;border-radius:2mm;padding:2mm 2.5mm;margin-bottom:2mm;">
+          <div style="font-weight:700;font-size:2.8mm;color:#664d03;margin-bottom:1.5mm;">📬 Pendientes de aceptar</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:2.7mm;margin-bottom:1mm;"><span><strong>Rodamiento 6205</strong> · 2 unid.</span><div style="display:flex;gap:1mm;"><div class="mbtn mbtn-g" style="font-size:2.3mm;padding:.8mm 2mm;">Aceptar</div><div class="mbtn mbtn-r" style="font-size:2.3mm;padding:.8mm 2mm;">Rechazar</div></div></div>
+        </div>
+        <div style="background:#cfe2ff22;border:1px solid #9ec5fe55;border-radius:2mm;padding:2mm 2.5mm;">
+          <div style="font-weight:700;font-size:2.8mm;color:#084298;margin-bottom:1.5mm;">📦 En tu inventario</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:2.7mm;"><span><strong>Aceite hidráulico 1L</strong> · 1 unid.</span><div class="mbtn" style="font-size:2.3mm;padding:.8mm 2mm;background:#ffc107;color:#000;font-weight:700;">Devolver</div></div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="div">
+    <div class="h2">09 · Aceptar una entrega</div>
+    <div class="rule rule-g"></div>
+    <p>Cuando bodega te asigna materiales, aparecen en <strong>Pendientes</strong>. Confirma que los recibiste físicamente.</p>
+    <div class="step"><div class="sn sn-g">1</div><div class="sb"><div class="st">Revisa la sección "Pendientes"</div><div class="sd">Verás el nombre del insumo, la cantidad y a qué OT pertenece.</div></div></div>
+    <div class="step"><div class="sn sn-g">2</div><div class="sb"><div class="st">Confirma que tienes el material en la mano</div><div class="sd">Antes de tocar Aceptar, asegúrate de tener físicamente el ítem. Si no llegó, usa Rechazar.</div></div></div>
+    <div class="step"><div class="sn sn-g">3</div><div class="sb"><div class="st">Presiona "Aceptar"</div><div class="sd">El material pasa a "En tu inventario" y la pestaña Materiales de la OT se actualiza mostrando que ya tienes el stock en verde.</div></div></div>
+    <div class="call ok"><span>⚡</span><div><em>Acepta apenas puedas</em>Al aceptar, el indicador de Materiales en tu OT cambia de rojo a verde. Así el jefe confirma en tiempo real que ya tienes los insumos listos para trabajar.</div></div>
+    <div class="call info"><span>☑️</span><div><em>Aceptar varios a la vez</em>Marca varios ítems con el checkbox y usa <strong>"Aceptar Seleccionados"</strong> para confirmarlos todos de una sola vez.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 9: CAP 2 — RECHAZAR + DEVOLVER ══ -->
+<div class="page">
+  <div class="sec-head sec-green" data-n="02">
+    <p class="sec-n">Capítulo 02 — continuación</p>
+    <h2 class="sec-h">10 · Rechazar · 11 · Devolver</h2>
+    <p class="sec-d">Qué hacer si no puedes aceptar un material o si te sobró algo del trabajo.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">10 · Rechazar una entrega</div>
+    <div class="rule rule-g"></div>
+    <p>Si no puedes aceptar el material, usa <strong>Rechazar</strong> e indica el motivo. El sistema gestiona el retorno según el tipo elegido.</p>
+    <table class="dtbl">
+      <thead><tr><th>Tipo de rechazo</th><th>Cuándo usarlo</th><th>Qué pasa con el stock</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="sbadge sb-pend">❓ No Recibido</span></td>
+          <td>El material nunca llegó físicamente. Error de bodega.</td>
+          <td>Vuelve al stock automáticamente sin pasar por organizar.</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge sb-danger">🚫 Por Daño</span></td>
+          <td>El material llegó roto o en mal estado.</td>
+          <td>Se marca como dañado. No vuelve al stock disponible.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="step"><div class="sn sn-r">1</div><div class="sb"><div class="st">Toca "Rechazar" en el ítem pendiente</div><div class="sd">Se abre un modal para elegir el motivo del rechazo.</div></div></div>
+    <div class="step"><div class="sn sn-r">2</div><div class="sb"><div class="st">Selecciona el tipo correcto</div><div class="sd"><strong>No Recibido</strong> si nunca llegó a tus manos. <strong>Por Daño</strong> si llegó en mal estado.</div></div></div>
+    <div class="step"><div class="sn sn-r">3</div><div class="sb"><div class="st">Agrega una descripción breve</div><div class="sd">Ej: <em>"Caja llegó aplastada, tuerca con rosca dañada"</em>. Ayuda a bodega a gestionar el problema con el proveedor.</div></div></div>
+
+    <hr class="div">
+    <div class="h2">11 · Devolver material sobrante</div>
+    <div class="rule rule-g"></div>
+    <p>Si terminaste el trabajo y te sobró material, devuélvelo desde la sección <strong>En tu Inventario</strong>.</p>
+    <div class="step"><div class="sn sn-g">1</div><div class="sb"><div class="st">Busca el ítem en "En tu Inventario"</div><div class="sd">Los materiales están agrupados por OT. Encuentra el insumo que sobró.</div></div></div>
+    <div class="step"><div class="sn sn-g">2</div><div class="sb"><div class="st">Ingresa la cantidad a devolver</div><div class="sd">Escribe cuántas unidades devuelves en el campo numérico del ítem.</div></div></div>
+    <div class="step"><div class="sn sn-g">3</div><div class="sb"><div class="st">Toca "Retornar Ítem"</div><div class="sd">Bodega verá la devolución pendiente. Lleva el material físicamente a bodega para completar el proceso.</div></div></div>
+    <div class="call warn"><span>⚠️</span><div><em>Devuelve siempre lo que sobra</em>Los materiales que no devuelves quedan bloqueados en tu inventario personal y otros técnicos no pueden usarlos. Si no los necesitas, retórnalos a bodega.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 10: CAP 3 — ACTIVOS ══ -->
+<div class="page">
+  <div class="sec-head sec-amber" data-n="03">
+    <p class="sec-n">Capítulo 03</p>
+    <h2 class="sec-h">Activos</h2>
+    <p class="sec-d">Consultar fichas de equipos y máquinas (solo si tienes permiso de visualización).</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">12 · Consultar la ficha de un activo</div>
+    <div class="rule rule-a"></div>
+    <div class="call warn"><span>🔒</span><div><em>¿Ves "Activos" en el menú lateral?</em>Si aparece, tienes acceso de solo lectura. Si no aparece, no tienes ese permiso — pídelo a tu jefe si lo necesitas para tu trabajo.</div></div>
+    <p>El módulo <strong>Activos</strong> tiene la ficha técnica de todas las máquinas y equipos. Úsalo para consultar información antes de una intervención.</p>
+
+    <!-- Activos mockup -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / activos</div></div>
+      <div style="padding:2.5mm 3mm;">
+        <div style="margin-bottom:2mm;"><div style="border:1px solid #e2e8f0;border-radius:1.5mm;padding:1.5mm 2.5mm;font-size:2.7mm;color:#6c757d;">🔍 Buscar por código o nombre... (ej: TSS029)</div></div>
+        <div style="font-weight:700;font-size:3mm;margin-bottom:2mm;color:#374151;">Resultados</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:2mm;border:1px solid #e2e8f0;border-radius:2mm;margin-bottom:1.5mm;">
+          <div><div style="font-weight:700;font-size:3mm;">TSS029 — Tubing Sealer 02</div><div style="font-size:2.5mm;color:#6c757d;">Haas · ST-02 · Planta 1</div></div>
+          <span class="sbadge sb-done">Operativo</span>
+        </div>
+        <div style="padding:2mm 3mm;border:1px solid #e2e8f0;border-radius:2mm;background:#f8f9fa;">
+          <div class="mtab" style="background:#f1f5f9;margin:0 0 2mm;">
+            <div class="mtabi act">📋 Datos</div>
+            <div class="mtabi">🔩 Kit</div>
+            <div class="mtabi">📸 Galería</div>
+            <div class="mtabi">📁 Docs</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5mm;">
+            <div style="background:white;border-radius:1.5mm;padding:2mm;border:1px solid #e2e8f0;"><div style="font-size:2.3mm;color:#6c757d;">Marca</div><div style="font-weight:700;font-size:2.7mm;">Haas</div></div>
+            <div style="background:white;border-radius:1.5mm;padding:2mm;border:1px solid #e2e8f0;"><div style="font-size:2.3mm;color:#6c757d;">Año</div><div style="font-weight:700;font-size:2.7mm;">2018</div></div>
+            <div style="background:white;border-radius:1.5mm;padding:2mm;border:1px solid #e2e8f0;"><div style="font-size:2.3mm;color:#6c757d;">OTs totales</div><div style="font-weight:700;font-size:2.7mm;">14</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fgrid">
+      <div class="fcard fcard-b"><h4>📋 Datos generales</h4><p>Código, nombre, tipo, marca, modelo, año y estado operativo actual.</p></div>
+      <div class="fcard fcard-a"><h4>🔩 Kit de repuestos</h4><p>Insumos recomendados para mantención con cantidades sugeridas.</p></div>
+      <div class="fcard fcard-g"><h4>📸 Galería de fotos</h4><p>Fotografías del equipo, incluyendo placa de identificación Insuban.</p></div>
+      <div class="fcard fcard-r"><h4>📁 Documentos</h4><p>Manuales técnicos, planos y certificaciones del activo.</p></div>
+    </div>
+
+    <div class="call ok"><span>💡</span><div><em>Tip antes de ir a bodega</em>Abre la ficha del activo y revisa el <strong>kit de repuestos</strong>. Así sabes exactamente qué piezas pedir y en qué cantidades, sin tener que volver por más material después.</div></div>
+    <div class="call info"><span>👁️</span><div><em>Solo puedes ver, no editar</em>Como técnico puedes consultar cualquier ficha pero no modificar datos ni subir fotos. Para actualizar algo, coméntalo con el jefe de mantención.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 11: FINAL ══ -->
+<div class="page">
+  <div class="final-bg">
+    <div class="fi-icon">I</div>
+    <div class="fi-title">¡Listo para<br>trabajar!</div>
+    <div class="fi-rule"></div>
+    <div class="fi-sub">Manual del Técnico · InsuOrders v1.17 · Junio 2026</div>
+    <div class="fi-mods">
+      <div class="fi-mod"><span class="fi-mod-i">📋</span><div class="fi-mod-n">Mis Mantenciones</div></div>
+      <div class="fi-mod"><span class="fi-mod-i">🔧</span><div class="fi-mod-n">Mis Insumos</div></div>
+      <div class="fi-mod"><span class="fi-mod-i">⚙️</span><div class="fi-mod-n">Activos</div></div>
+    </div>
+    <div class="fi-foot">PROCESADORA INSUBAN SPA · USO INTERNO · CONFIDENCIAL</div>
+  </div>
+</div>
+
+</body>
+</html>

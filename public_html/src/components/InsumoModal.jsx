@@ -153,9 +153,36 @@ const InsumoModal = ({ show, onClose, onSave, insumo }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleImageChange = (e) => {
+    const comprimirImagen = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onerror = reject;
+            img.src = ev.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                canvas.toBlob((blob) => {
+                    if (!blob) { reject(new Error('Error al procesar imagen')); return; }
+                    const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                    resolve(new File([blob], newName, { type: 'image/jpeg' }));
+                }, 'image/jpeg', 0.85);
+            };
+        };
+    });
+
+    const handleImageChange = async (e) => {
         const file = e.target.files[0];
-        if (file) {
+        if (!file) return;
+        try {
+            const compressed = file.type.startsWith('image/') ? await comprimirImagen(file) : file;
+            setImagenFile(compressed);
+            setImagenPreview(URL.createObjectURL(compressed));
+        } catch {
             setImagenFile(file);
             setImagenPreview(URL.createObjectURL(file));
         }

@@ -6,6 +6,7 @@ use App\Services\InsumoService;
 use App\Repositories\OperarioRepository;
 use App\Services\PDFService;
 use App\Middleware\AuthMiddleware;
+use App\Utils\FileUpload;
 use Exception;
 
 class InsumoController
@@ -31,34 +32,15 @@ class InsumoController
 
     private function procesarImagen()
     {
-        if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
-            $fileTmpPath = $_FILES['imagen']['tmp_name'];
-            $fileName = $_FILES['imagen']['name'];
-            $fileNameCmps = explode(".", $fileName);
-            $fileExtension = strtolower(end($fileNameCmps));
-
-            $allowedfileExtensions = array('jpg', 'gif', 'png', 'jpeg', 'webp');
-
-            $finfo = new \finfo(FILEINFO_MIME_TYPE);
-            $fileMime = $finfo->file($fileTmpPath);
-            $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
-            if (in_array($fileExtension, $allowedfileExtensions) && in_array($fileMime, $allowedMimes)) {
-                $uploadFileDir = __DIR__ . '/../../../../public_html/uploads/insumos/';
-
-                if (!is_dir($uploadFileDir)) {
-                    mkdir($uploadFileDir, 0777, true);
-                }
-
-                $newFileName = md5(time() . $fileName) . '.' . $fileExtension;
-                $dest_path = $uploadFileDir . $newFileName;
-
-                if (move_uploaded_file($fileTmpPath, $dest_path)) {
-                    return '/uploads/insumos/' . $newFileName;
-                }
-            }
+        if (!isset($_FILES['imagen']) || $_FILES['imagen']['error'] === UPLOAD_ERR_NO_FILE) {
+            return null;
         }
-        return null;
+        if ($_FILES['imagen']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('Error al recibir el archivo de imagen (código: ' . $_FILES['imagen']['error'] . ').');
+        }
+        $uploadDir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . '/uploads/insumos/';
+        $filename = FileUpload::guardar($_FILES['imagen'], $uploadDir, 'imagen', 'insumo');
+        return '/uploads/insumos/' . $filename;
     }
 
     private function limpiarDato($valor, $tipo = 'string')
@@ -125,12 +107,12 @@ class InsumoController
             'unidad_medida' => $_POST['unidad_medida'] ?? 'UN'
         ];
 
-        $nuevaImagen = $this->procesarImagen();
-        if ($nuevaImagen) {
-            $data['imagen_url'] = $nuevaImagen;
-        }
-
         try {
+            $nuevaImagen = $this->procesarImagen();
+            if ($nuevaImagen) {
+                $data['imagen_url'] = $nuevaImagen;
+            }
+
             $resultado = $this->service->actualizarInsumo($id, $data, $usuarioId);
 
             if ($resultado) {

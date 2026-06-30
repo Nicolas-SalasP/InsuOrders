@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InsuOrders — Manual de Usuarios</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  @page { margin: 0; size: A4; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #e5e7eb; font-size: 13px; line-height: 1.6; }
+
+  :root {
+    --red:   #DC2626;
+    --red2:  #FEE2E2;
+    --ink:   #1C1917;
+    --sand:  #FAF7F2;
+    --stone: #78716C;
+    --line:  #E7E5E4;
+    --green: #16A34A;
+    --amber: #D97706;
+    --blue:  #2563EB;
+    --purple:#7C3AED;
+  }
+
+  .page { width:210mm; height:297mm; overflow:hidden; position:relative; background:white; margin:0 auto 8px; page-break-after:always; break-after:page; }
+  .page:last-child { page-break-after:auto; break-after:auto; margin-bottom:0; }
+  .pad   { padding:10mm 18mm; }
+  .pad-s { padding:7mm 18mm; }
+
+  /* PORTADA */
+  .cover-bg { background:var(--ink); width:100%; height:100%; display:flex; flex-direction:column; justify-content:space-between; padding:14mm 18mm; position:relative; overflow:hidden; }
+  .arc1 { position:absolute; bottom:-18mm; right:-18mm; width:80mm; height:80mm; border-radius:50%; border:12mm solid var(--red); opacity:.2; }
+  .arc2 { position:absolute; top:-8mm; left:30mm; width:32mm; height:32mm; border-radius:50%; border:6mm solid var(--red); opacity:.1; }
+  .arc3 { position:absolute; top:40mm; right:10mm; width:50mm; height:50mm; border-radius:50%; border:8mm solid var(--red); opacity:.07; }
+  .logo-row { display:flex; align-items:center; gap:3mm; z-index:1; position:relative; }
+  .logo-box { width:10mm; height:10mm; background:var(--red); border-radius:2.5mm; display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:5mm; }
+  .logo-name { color:white; font-weight:700; font-size:4mm; }
+  .logo-sub  { color:rgba(255,255,255,.35); font-size:3mm; font-weight:300; }
+  .cover-main { z-index:1; position:relative; }
+  .cover-tag { display:inline-block; background:rgba(220,38,38,.18); border:1px solid rgba(220,38,38,.35); color:#FCA5A5; font-size:2.8mm; font-weight:700; letter-spacing:2px; text-transform:uppercase; padding:1.5mm 4mm; border-radius:10mm; margin-bottom:5mm; }
+  .cover-h1  { font-size:20mm; font-weight:800; color:white; line-height:.95; letter-spacing:-1px; }
+  .cover-h1 em { font-style:normal; color:var(--red); }
+  .cover-desc { font-size:3.8mm; color:rgba(255,255,255,.4); font-weight:300; max-width:90mm; margin-top:5mm; line-height:1.5; }
+  .cover-foot { display:flex; justify-content:space-between; align-items:flex-end; z-index:1; position:relative; }
+  .cover-foot-txt { font-size:2.8mm; color:rgba(255,255,255,.25); letter-spacing:.5px; }
+  .cover-pill { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); color:rgba(255,255,255,.4); font-size:2.8mm; padding:1.5mm 4mm; border-radius:10mm; }
+
+  /* ÍNDICE */
+  .index-bg { background:var(--sand); width:100%; height:100%; padding:12mm 18mm; }
+  .idx-label { font-size:2.8mm; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--red); margin-bottom:2mm; }
+  .idx-title { font-size:9mm; font-weight:800; color:var(--ink); line-height:1.05; margin-bottom:6mm; }
+  .idx-grid  { display:grid; grid-template-columns:1fr 1fr; gap:1.5mm 6mm; }
+  .idx-item  { display:flex; align-items:center; padding:2.5mm 0; border-bottom:1px solid var(--line); gap:3mm; }
+  .idx-num   { font-size:5.5mm; font-weight:800; color:var(--red); width:8mm; flex-shrink:0; line-height:1; }
+  .idx-name  { font-size:3.4mm; font-weight:600; flex:1; }
+  .idx-sub   { font-size:2.7mm; color:var(--stone); font-weight:400; }
+
+  /* CABECERA SECCIÓN */
+  .sec-head { background:var(--ink); padding:7mm 18mm 5mm; position:relative; overflow:hidden; }
+  .sec-head::after { content:attr(data-n); position:absolute; right:12mm; top:50%; transform:translateY(-50%); font-size:26mm; font-weight:800; color:rgba(255,255,255,.04); line-height:1; }
+  .sec-n { font-size:2.6mm; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--red); margin-bottom:1mm; }
+  .sec-h { font-size:7.5mm; font-weight:800; color:white; line-height:1.05; }
+  .sec-d { font-size:3mm; color:rgba(255,255,255,.4); margin-top:1mm; font-weight:300; }
+
+  /* TIPOGRAFÍA */
+  .h2 { font-size:4.5mm; font-weight:700; color:var(--ink); margin:4mm 0 1mm; }
+  .h2:first-child { margin-top:0; }
+  .rule { width:7mm; height:.7mm; background:var(--red); border-radius:.5mm; margin-bottom:2.5mm; }
+  p { color:#57534E; margin-bottom:2mm; font-size:3.3mm; }
+  strong { color:var(--ink); }
+  hr.div { border:none; border-top:1px solid var(--line); margin:3mm 0; }
+  ul.blist { margin:1mm 0 2.5mm 4mm; }
+  ul.blist li { font-size:3.1mm; color:#57534E; margin-bottom:1mm; }
+  ul.blist li::marker { color:var(--red); }
+
+  /* STEPS */
+  .step { display:flex; gap:3mm; margin-bottom:2.5mm; align-items:flex-start; }
+  .sn   { width:6.5mm; height:6.5mm; min-width:6.5mm; background:var(--red); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:2.8mm; }
+  .sb   { flex:1; padding-top:.5mm; }
+  .st   { font-weight:700; color:var(--ink); margin-bottom:.5mm; font-size:3.3mm; }
+  .sd   { color:#78716C; font-size:3mm; line-height:1.5; }
+
+  /* CALLOUTS */
+  .call    { border-radius:2mm; padding:2.5mm 3mm; margin:2.5mm 0; display:flex; gap:2mm; font-size:3.1mm; }
+  .call em { font-style:normal; font-weight:700; display:block; margin-bottom:.5mm; }
+  .call.warn   { background:#FFFBEB; border-left:2px solid var(--amber); }
+  .call.warn em{ color:var(--amber); }
+  .call.info   { background:#EFF6FF; border-left:2px solid var(--blue); }
+  .call.info em{ color:var(--blue); }
+  .call.ok     { background:#F0FDF4; border-left:2px solid var(--green); }
+  .call.ok em  { color:var(--green); }
+  .call.danger { background:var(--red2); border-left:2px solid var(--red); }
+  .call.danger em { color:var(--red); }
+
+  /* FEATURE GRID */
+  .fgrid { display:grid; grid-template-columns:1fr 1fr; gap:2mm; margin:2.5mm 0; }
+  .fcard { border-radius:2mm; padding:3mm; border:1px solid var(--line); position:relative; overflow:hidden; }
+  .fcard::before { content:''; position:absolute; top:0; left:0; width:2px; height:100%; background:var(--red); }
+  .fcard h4 { font-weight:700; margin-bottom:.8mm; font-size:3.3mm; color:var(--ink); }
+  .fcard p  { font-size:2.9mm; margin:0; color:#666; }
+
+  /* DATA TABLE */
+  .dtbl { width:100%; border-collapse:collapse; margin:2.5mm 0; font-size:3mm; }
+  .dtbl th { background:var(--ink); color:white; padding:2mm 3mm; text-align:left; font-size:2.7mm; font-weight:600; text-transform:uppercase; letter-spacing:.3px; }
+  .dtbl th:first-child { border-radius:2mm 0 0 0; }
+  .dtbl th:last-child  { border-radius:0 2mm 0 0; }
+  .dtbl td { padding:2mm 3mm; border-bottom:1px solid var(--line); vertical-align:top; }
+  .dtbl tr:last-child td { border-bottom:none; }
+
+  /* ROLE CARDS */
+  .rgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:2mm; margin:2.5mm 0; }
+  .rcard { border-radius:2.5mm; padding:3mm; border:1px solid var(--line); background:var(--sand); }
+  .rbadge { display:inline-block; color:white; font-size:2.5mm; font-weight:700; letter-spacing:.5px; text-transform:uppercase; padding:.5mm 2.5mm; border-radius:10mm; margin-bottom:2mm; }
+  .rname  { font-weight:700; font-size:3.2mm; color:var(--ink); margin-bottom:1.5mm; }
+  .rlist  { list-style:none; }
+  .rlist li { font-size:2.8mm; color:#555; padding:.2mm 0; }
+  .rlist li::before { content:'→ '; color:var(--red); font-weight:700; }
+
+  /* STATUS BADGES */
+  .sbadges { display:flex; gap:1.5mm; flex-wrap:wrap; margin:1.5mm 0; }
+  .sbadge  { padding:.8mm 2.5mm; border-radius:10mm; font-size:2.7mm; font-weight:600; display:inline-flex; align-items:center; gap:1mm; }
+  .sb-pend { background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; }
+  .sb-proc { background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; }
+  .sb-done { background:#F0FDF4; color:#166534; border:1px solid #BBF7D0; }
+  .sb-canc { background:var(--red2); color:var(--red); border:1px solid #FECACA; }
+  .sb-dot  { width:1.5mm; height:1.5mm; border-radius:50%; background:currentColor; }
+
+  /* KPI ROW */
+  .krow  { display:grid; grid-template-columns:repeat(4,1fr); gap:2mm; margin:2.5mm 0; }
+  .kcard { border-radius:2.5mm; padding:3mm; border:1px solid var(--line); }
+  .klbl  { font-size:2.5mm; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--stone); margin-bottom:1mm; }
+  .kval  { font-size:6mm; font-weight:800; color:var(--ink); line-height:1; }
+  .ksub  { font-size:2.5mm; color:var(--stone); margin-top:.5mm; }
+
+  /* MOCK SCREENS */
+  .mock  { border:1px solid #d1d5db; border-radius:2.5mm; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.09); margin:2.5mm 0; font-size:3mm; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; line-height:1.4; background:white; }
+  .mbar  { background:#f1f5f9; padding:2mm 3mm; display:flex; align-items:center; gap:1.5mm; border-bottom:1px solid #e2e8f0; }
+  .dot   { width:2.5mm; height:2.5mm; border-radius:50%; flex-shrink:0; }
+  .dr { background:#fc5c57; } .dy { background:#fdbc2c; } .dg { background:#27c93f; }
+  .murl  { background:white; border:1px solid #e2e8f0; border-radius:1.5mm; padding:.8mm 3mm; font-size:2.7mm; color:#94a3b8; margin:0 auto; min-width:50mm; text-align:center; }
+  .mbody { padding:3mm 4mm; }
+  .mbtn  { display:inline-flex; align-items:center; gap:1mm; padding:1.5mm 3.5mm; border-radius:1.5mm; font-weight:600; font-size:2.8mm; }
+  .mpri  { background:#0d6efd; color:white; }
+  .msuc  { background:#198754; color:white; }
+  .mbadge { display:inline-block; padding:.8mm 2mm; border-radius:10mm; font-size:2.5mm; font-weight:700; }
+  .bwrn  { background:#ffc107; color:#000; }
+  .bpri  { background:#0d6efd; color:white; }
+  .bsuc  { background:#198754; color:white; }
+  .bdng  { background:#dc3545; color:white; }
+  .mtr   { display:flex; border-bottom:1px solid #e2e8f0; padding:1.5mm 3mm; align-items:center; gap:2mm; font-size:2.8mm; }
+  .mth   { background:#f8f9fa; display:flex; border-bottom:1px solid #dee2e6; padding:1.5mm 3mm; align-items:center; gap:2mm; font-size:2.5mm; font-weight:700; color:#6c757d; text-transform:uppercase; letter-spacing:.3px; }
+  .mttag { background:#f8f9fa; border:1px solid #e2e8f0; border-radius:1mm; padding:.3mm 2mm; font-size:2.5mm; }
+  .mtabs { display:flex; gap:0; border-bottom:1px solid #dee2e6; padding:0 3mm; }
+  .mtab  { padding:2mm 3.5mm; font-size:2.7mm; border-bottom:2px solid transparent; cursor:pointer; }
+  .mtab.act { border-bottom-color:#0d6efd; color:#0d6efd; font-weight:600; }
+  .mcard { background:white; border-radius:2mm; border:1px solid #e2e8f0; overflow:hidden; }
+  .mcardh { padding:2.5mm 3mm 1mm; border-bottom:1px solid #e2e8f0; }
+  .mcardb { padding:2mm 3mm; }
+  .mcardf { background:#f8f9fa; padding:1.5mm 3mm; border-top:1px solid #e2e8f0; font-size:2.5mm; color:#6c757d; display:flex; justify-content:space-between; }
+
+  /* FINAL */
+  .final-bg { background:var(--ink); width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:14mm 18mm; }
+  .fi-icon  { width:16mm; height:16mm; background:var(--red); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:7mm; margin:0 auto 5mm; }
+  .fi-title { font-size:10mm; color:white; font-weight:800; }
+  .fi-rule  { width:10mm; height:.7mm; background:var(--red); margin:4mm auto; }
+  .fi-sub   { color:rgba(255,255,255,.35); font-size:3.5mm; font-weight:300; }
+  .fi-grid  { display:grid; grid-template-columns:1fr 1fr 1fr; gap:3mm; margin-top:8mm; width:100%; }
+  .fi-col   { text-align:center; }
+  .fi-col-h { color:rgba(255,255,255,.2); font-size:2.5mm; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:2mm; }
+  .fi-col-v { color:rgba(255,255,255,.5); font-size:3mm; }
+  .fi-foot  { color:rgba(255,255,255,.12); font-size:2.8mm; letter-spacing:1px; margin-top:8mm; }
+
+  @media screen { body { padding:10mm; } }
+  @media print  { body { background:white; padding:0; } .page { margin:0; box-shadow:none; } }
+</style>
+</head>
+<body>
+
+<!-- ══ PÁGINA 1: PORTADA ══ -->
+<div class="page">
+  <div class="cover-bg">
+    <div class="arc1"></div><div class="arc2"></div><div class="arc3"></div>
+    <div class="logo-row">
+      <div class="logo-box">I</div>
+      <div>
+        <div class="logo-name">InsuOrders</div>
+        <div class="logo-sub">Procesadora Insuban Spa</div>
+      </div>
+    </div>
+    <div class="cover-main">
+      <div class="cover-tag">Manual de Usuarios</div>
+      <div class="cover-h1">Guía<br><em>General</em></div>
+      <p class="cover-desc">Manual completo de todos los módulos del sistema: mantención, compras, bodega, inventario, activos, cotizaciones y más.</p>
+    </div>
+    <div class="cover-foot">
+      <span class="cover-foot-txt">PROCESADORA INSUBAN SPA · USO INTERNO</span>
+      <span class="cover-pill">Junio 2026 · v1.17</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 2: ÍNDICE ══ -->
+<div class="page">
+  <div class="index-bg">
+    <p class="idx-label">Tabla de Contenido</p>
+    <h2 class="idx-title">12 módulos<br>explicados</h2>
+    <div class="idx-grid">
+      <div>
+        <div class="idx-item"><span class="idx-num">01</span><div><div class="idx-name">Introducción y Roles</div><div class="idx-sub">Qué es InsuOrders, acceso y perfiles</div></div></div>
+        <div class="idx-item"><span class="idx-num">02</span><div><div class="idx-name">Portal de Solicitudes</div><div class="idx-sub">Crear y seguir órdenes de trabajo</div></div></div>
+        <div class="idx-item"><span class="idx-num">03</span><div><div class="idx-name">Dashboard</div><div class="idx-sub">KPIs, gráficos y selector neto/total</div></div></div>
+        <div class="idx-item"><span class="idx-num">04</span><div><div class="idx-name">Módulo de Mantención</div><div class="idx-sub">OTs, permisos y cierres</div></div></div>
+        <div class="idx-item"><span class="idx-num">05</span><div><div class="idx-name">Módulo de Compras</div><div class="idx-sub">Órdenes, recepciones y exportes</div></div></div>
+        <div class="idx-item"><span class="idx-num">06</span><div><div class="idx-name">Módulo de Bodega</div><div class="idx-sub">Entregas, devoluciones y stock</div></div></div>
+      </div>
+      <div>
+        <div class="idx-item"><span class="idx-num">07</span><div><div class="idx-name">Módulo de Inventario</div><div class="idx-sub">Insumos, stock mínimo y movimientos</div></div></div>
+        <div class="idx-item"><span class="idx-num">08</span><div><div class="idx-name">Mis Mantenciones</div><div class="idx-sub">Vista del técnico, avances y cierre</div></div></div>
+        <div class="idx-item"><span class="idx-num">09</span><div><div class="idx-name">Mis Insumos</div><div class="idx-sub">Materiales asignados y devoluciones</div></div></div>
+        <div class="idx-item"><span class="idx-num">10</span><div><div class="idx-name">Activos</div><div class="idx-sub">Fichas de máquinas y equipos</div></div></div>
+        <div class="idx-item"><span class="idx-num">11</span><div><div class="idx-name">Cotizaciones</div><div class="idx-sub">Crear, aprobar y exportar</div></div></div>
+        <div class="idx-item"><span class="idx-num">12</span><div><div class="idx-name">Cronograma</div><div class="idx-sub">Planificación y mantenimientos</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 3: CAP 1 — INTRODUCCIÓN ══ -->
+<div class="page">
+  <div class="sec-head" data-n="01">
+    <p class="sec-n">Capítulo 01</p>
+    <h2 class="sec-h">Introducción y Roles</h2>
+    <p class="sec-d">Qué es InsuOrders, cómo ingresar al sistema y qué puede hacer cada perfil.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">¿Qué es InsuOrders?</div>
+    <div class="rule"></div>
+    <p>InsuOrders es el sistema de gestión de mantenimiento y compras de Procesadora Insuban Spa. Centraliza en un solo lugar las solicitudes de trabajo, control de inventario, órdenes de compra y seguimiento de activos, eliminando el uso de hojas de cálculo y correos sueltos.</p>
+
+    <!-- Mockup login -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl</div></div>
+      <div style="background:linear-gradient(135deg,#f5f7fa,#c3cfe2);padding:5mm;display:flex;justify-content:center;align-items:center;">
+        <div style="background:white;border-radius:3mm;padding:5mm 6mm;width:55mm;box-shadow:0 4px 16px rgba(0,0,0,.12);">
+          <div style="text-align:center;margin-bottom:3mm;">
+            <div style="font-size:7mm;margin-bottom:1mm;">🏭</div>
+            <div style="font-weight:800;font-size:4mm;color:#1C1917;">InsuOrders</div>
+            <div style="font-size:2.5mm;color:#78716C;">Procesadora Insuban Spa</div>
+          </div>
+          <div style="margin-bottom:2mm;">
+            <div style="font-size:2.5mm;color:#57534E;margin-bottom:.5mm;font-weight:500;">Usuario</div>
+            <div style="border:1px solid #e2e8f0;border-radius:1.5mm;padding:1.5mm 2.5mm;font-size:3mm;color:#94a3b8;">jperez</div>
+          </div>
+          <div style="margin-bottom:3mm;">
+            <div style="font-size:2.5mm;color:#57534E;margin-bottom:.5mm;font-weight:500;">Contraseña</div>
+            <div style="border:1px solid #e2e8f0;border-radius:1.5mm;padding:1.5mm 2.5mm;font-size:3mm;color:#94a3b8;">••••••••</div>
+          </div>
+          <div style="background:#0d6efd;color:white;border-radius:1.5mm;padding:2mm;text-align:center;font-weight:700;font-size:3mm;">Entrar</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2">Cómo ingresar</div>
+    <div class="rule"></div>
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Abrir el navegador y acceder a la URL del sistema</div><div class="sd">Guardar la dirección como favorito en el celular o computador para acceso rápido.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Ingresar usuario y contraseña</div><div class="sd">Los entrega el administrador del sistema. Hacer clic en <strong>Entrar</strong>.</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">El sistema redirige según tu rol</div><div class="sd">Cada perfil ve su pantalla principal automáticamente: Dashboard, Mis Mantenciones, Portal, etc.</div></div></div>
+
+    <div class="call warn"><span>⚠️</span><div><em>Contraseñas</em>Si olvidaste tu contraseña, contacta al administrador del sistema. Las contraseñas se gestionan desde el módulo de Usuarios.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 4: CAP 1 — ROLES ══ -->
+<div class="page">
+  <div class="sec-head" data-n="01">
+    <p class="sec-n">Capítulo 01</p>
+    <h2 class="sec-h">Roles del Sistema</h2>
+    <p class="sec-d">Cada usuario tiene un rol que define qué módulos y acciones puede realizar.</p>
+  </div>
+  <div class="pad-s">
+    <p>Cada persona tiene un perfil asignado por el administrador. Los permisos pueden ajustarse individualmente para cada usuario.</p>
+    <div class="rgrid">
+      <div class="rcard">
+        <span class="rbadge" style="background:#DC2626;">Admin</span>
+        <div class="rname">Administrador</div>
+        <ul class="rlist">
+          <li>Acceso completo a todos los módulos</li>
+          <li>Crear y gestionar usuarios</li>
+          <li>Ver Dashboard y reportes</li>
+          <li>Configurar el sistema</li>
+        </ul>
+      </div>
+      <div class="rcard">
+        <span class="rbadge" style="background:#2563EB;">Bodeguero</span>
+        <div class="rname">Bodeguero</div>
+        <ul class="rlist">
+          <li>Gestionar entregas a técnicos</li>
+          <li>Procesar devoluciones</li>
+          <li>Ver y organizar inventario</li>
+          <li>Módulos Bodega e Inventario</li>
+        </ul>
+      </div>
+      <div class="rcard">
+        <span class="rbadge" style="background:#16A34A;">Técnico</span>
+        <div class="rname">Técnico / Operario</div>
+        <ul class="rlist">
+          <li>Ver sus OTs asignadas</li>
+          <li>Registrar avances y cierre</li>
+          <li>Gestionar materiales recibidos</li>
+          <li>Mis Mantenciones y Mis Insumos</li>
+        </ul>
+      </div>
+      <div class="rcard">
+        <span class="rbadge" style="background:#D97706;">Compras</span>
+        <div class="rname">Encargado de Compras</div>
+        <ul class="rlist">
+          <li>Crear y editar órdenes de compra</li>
+          <li>Recepcionar materiales</li>
+          <li>Gestionar cotizaciones</li>
+          <li>Acceso a proveedores</li>
+        </ul>
+      </div>
+      <div class="rcard">
+        <span class="rbadge" style="background:#374151;">Jefe Mant.</span>
+        <div class="rname">Jefe de Mantención</div>
+        <ul class="rlist">
+          <li>Crear, asignar y cerrar OTs</li>
+          <li>Ver cronograma y activos</li>
+          <li>Asignar técnicos y permisos</li>
+          <li>Ver reportes y Dashboard</li>
+        </ul>
+      </div>
+      <div class="rcard">
+        <span class="rbadge" style="background:#7C3AED;">Cliente</span>
+        <div class="rname">Cliente / Solicitante</div>
+        <ul class="rlist">
+          <li>Portal de Solicitudes</li>
+          <li>Ver estado de sus OTs</li>
+          <li>Subir evidencia fotográfica</li>
+        </ul>
+      </div>
+    </div>
+    <div class="call info" style="margin-top:4mm;"><span>ℹ️</span><div><em>Permisos personalizados</em>Los administradores pueden ajustar permisos individuales desde el módulo de Usuarios: por ejemplo, dar acceso a Compras sin acceso a Configuración.</div></div>
+    <div class="call ok"><span>✅</span><div><em>Inicio de sesión seguro</em>El sistema recuerda el último módulo visitado y redirige automáticamente al siguiente acceso. Las sesiones expiran tras un período de inactividad.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 5: CAP 2 — PORTAL DE SOLICITUDES ══ -->
+<div class="page">
+  <div class="sec-head" data-n="02">
+    <p class="sec-n">Capítulo 02</p>
+    <h2 class="sec-h">Portal de Solicitudes</h2>
+    <p class="sec-d">Cómo crear una solicitud de trabajo, seguir su estado y ver el reporte de cierre.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Vista del portal</div>
+    <div class="rule"></div>
+    <p>Al ingresar, verás todas las solicitudes con su estado actual. Usa los filtros superiores para ver todas o solo las tuyas.</p>
+
+    <div class="sbadges">
+      <span class="sbadge sb-pend"><span class="sb-dot"></span> Pendiente</span>
+      <span class="sbadge sb-proc"><span class="sb-dot"></span> En Proceso</span>
+      <span class="sbadge sb-done"><span class="sb-dot"></span> Terminada</span>
+      <span class="sbadge sb-canc"><span class="sb-dot"></span> Cancelada</span>
+    </div>
+
+    <!-- Mockup portal -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / portal</div></div>
+      <div class="mbody" style="padding:2.5mm 3mm;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2.5mm;">
+          <div style="font-weight:700;font-size:3.5mm;">Portal de Solicitudes</div>
+          <div style="display:flex;gap:1.5mm;">
+            <div style="padding:1mm 3mm;border:1px solid #0d6efd;border-radius:10mm;font-size:2.7mm;color:#0d6efd;font-weight:600;">Ver Todas</div>
+            <div style="padding:1mm 3mm;background:#f8f9fa;border:1px solid #e2e8f0;border-radius:10mm;font-size:2.7mm;color:#6c757d;">Mis Solicitudes</div>
+            <div class="mbtn mpri" style="border-radius:10mm;font-size:2.7mm;">+ Nueva Solicitud</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2mm;">
+          <div class="mcard">
+            <div class="mcardh"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div style="font-weight:700;font-size:3mm;">Motor quemado<br>Tubing 02</div><span class="mbadge bwrn" style="font-size:2.3mm;">Pendiente</span></div></div>
+            <div class="mcardb" style="font-size:2.5mm;color:#6c757d;">Folio #77 · Maquinaria<br>📍 Planta 1 · Urgente</div>
+            <div class="mcardf">hace 2h</div>
+          </div>
+          <div class="mcard">
+            <div class="mcardh"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div style="font-weight:700;font-size:3mm;">Cambio dispensador<br>Área Casino</div><span class="mbadge bpri" style="font-size:2.3mm;">En Proceso</span></div></div>
+            <div class="mcardb" style="font-size:2.5mm;color:#6c757d;">Folio #74 · Infraestructura<br>📍 Hor · Media</div>
+            <div class="mcardf">hace 1 día</div>
+          </div>
+          <div class="mcard">
+            <div class="mcardh"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div style="font-weight:700;font-size:3mm;">Revisión eléctrica<br>Comafri</div><span class="mbadge bsuc" style="font-size:2.3mm;">Terminada</span></div></div>
+            <div class="mcardb" style="font-size:2.5mm;color:#6c757d;">Folio #71 · Infraestructura<br>📍 Comafri · Baja</div>
+            <div class="mcardf">hace 3 días</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2">Crear una nueva solicitud</div>
+    <div class="rule"></div>
+    <p>Hacer clic en <strong>+ Nueva Solicitud</strong> en la esquina superior derecha para abrir el formulario.</p>
+    <div class="fgrid">
+      <div class="fcard"><h4>🔵 Ver Todas</h4><p>Muestra todas las solicitudes de todos los solicitantes del sistema.</p></div>
+      <div class="fcard"><h4>👤 Mis Solicitudes</h4><p>Filtra y muestra solo las solicitudes creadas por tu usuario.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 6: CAP 2 — CREAR SOLICITUD ══ -->
+<div class="page">
+  <div class="sec-head" data-n="02">
+    <p class="sec-n">Capítulo 02 — continuación</p>
+    <h2 class="sec-h">Formulario de Solicitud</h2>
+    <p class="sec-d">Pasos para crear una solicitud correctamente desde el principio.</p>
+  </div>
+  <div class="pad-s">
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Escribir un título breve y descriptivo</div><div class="sd">Ej: <em>"Motor quemado en Tubing 02"</em> o <em>"Cambio dispensador área casino"</em>. Debe ser claro y conciso.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Seleccionar el tipo de requerimiento</div><div class="sd"><strong>Infraestructura:</strong> Pintura, fontanería, electricidad, muebles, aseo profundo. · <strong>Maquinaria:</strong> Reparación o mantención de equipos con código (TSS, AUM, etc.).</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">Seleccionar la máquina (solo tipo Maquinaria)</div><div class="sd">Escribir el código del equipo (ej: TSS029) en el buscador. Si no aparece, seleccionar tipo genérico y anotar el número de placa en los detalles.</div></div></div>
+    <div class="step"><div class="sn">4</div><div class="sb"><div class="st">Seleccionar la ubicación del trabajo</div><div class="sd">Elegir del listado: Planta 1, Planta 2, Patio, Hor, Lavandería, Taller de Mantención, Comafri, Coexca, Camer, etc.</div></div></div>
+    <div class="step"><div class="sn">5</div><div class="sb"><div class="st">Detallar el problema en "Detalles Adicionales"</div><div class="sd">Describir con precisión: qué falla, desde cuándo, si afecta la operación. Mientras más detalle, más rápido actúan los técnicos.</div></div></div>
+    <div class="step"><div class="sn">6</div><div class="sb"><div class="st">Adjuntar evidencia fotográfica</div><div class="sd">Subir fotos o videos del problema. Esto es <strong>muy importante</strong> para que los técnicos identifiquen la falla antes de llegar al lugar.</div></div></div>
+    <div class="step"><div class="sn">7</div><div class="sb"><div class="st">Seleccionar la prioridad</div><div class="sd"><strong>Baja / Media:</strong> Trabajos que pueden esperar. · <strong>Alta / Crítico:</strong> Problemas que detienen operaciones o representan riesgo. Usar con responsabilidad.</div></div></div>
+    <div class="step"><div class="sn">8</div><div class="sb"><div class="st">Hacer clic en "Crear Solicitud"</div><div class="sd">El sistema confirma con el número de folio asignado (ej: <strong>Folio N° 77</strong>). La solicitud queda visible de inmediato en el panel.</div></div></div>
+
+    <div class="call warn"><span>⚠️</span><div><em>Sobre la prioridad Crítico (Urgente)</em>Usarla solo para emergencias reales que paralizan la producción o representan peligro. Su uso excesivo reduce la capacidad de respuesta del equipo de mantención ante emergencias reales.</div></div>
+    <div class="call info"><span>ℹ️</span><div><em>Máquina no encontrada</em>Si el equipo no aparece en el buscador, seleccionar el tipo genérico más cercano y escribir el número de placa o descripción completa en el campo de detalles adicionales.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 7: CAP 2 — REPORTE FINALIZACIÓN ══ -->
+<div class="page">
+  <div class="sec-head" data-n="02">
+    <p class="sec-n">Capítulo 02 — continuación</p>
+    <h2 class="sec-h">Ver el Reporte de Cierre</h2>
+    <p class="sec-d">Cuando el técnico finaliza el trabajo, la solicitud muestra el informe completo.</p>
+  </div>
+  <div class="pad-s">
+    <p>Cuando una OT es completada, la tarjeta de la solicitud muestra una sección verde con:</p>
+    <ul class="blist">
+      <li>Fecha y hora de cierre del trabajo</li>
+      <li>Comentarios del técnico sobre lo realizado</li>
+      <li>Fotografías de evidencia del trabajo terminado</li>
+    </ul>
+
+    <!-- Mockup finished card -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / portal</div></div>
+      <div class="mbody" style="padding:3mm;">
+        <div class="mcard">
+          <div class="mcardh">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5mm;">
+              <div style="font-weight:700;font-size:3.5mm;">Revisión eléctrica Comafri</div>
+              <span class="mbadge bsuc">Terminada</span>
+            </div>
+            <div style="font-size:2.7mm;color:#6c757d;">Folio #71 · Infraestructura · 📍 Comafri · Prioridad Baja</div>
+          </div>
+          <div class="mcardb">
+            <div style="font-size:2.8mm;color:#57534E;margin-bottom:2mm;">Reporte del técnico: Cambio de dispensador de jabón y revisión de puntos eléctricos del área. Se reemplazaron 3 tomas dañadas y se instaló nueva unidad dispensadora marca Tork.</div>
+            <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:2mm;padding:2.5mm 3mm;">
+              <div style="font-weight:700;font-size:3mm;color:#166534;margin-bottom:1.5mm;">✅ Trabajo finalizado</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5mm;">
+                <div style="background:#e8f5e9;border-radius:1.5mm;height:12mm;display:flex;align-items:center;justify-content:center;font-size:2.5mm;color:#388e3c;">📷 Foto 1</div>
+                <div style="background:#e8f5e9;border-radius:1.5mm;height:12mm;display:flex;align-items:center;justify-content:center;font-size:2.5mm;color:#388e3c;">📷 Foto 2</div>
+                <div style="background:#e8f5e9;border-radius:1.5mm;height:12mm;display:flex;align-items:center;justify-content:center;font-size:2.5mm;color:#388e3c;">📷 Foto 3</div>
+              </div>
+            </div>
+          </div>
+          <div class="mcardf"><span>Técnico: Juan Pérez</span><span>23 Jun 2026 · 14:32</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="call ok"><span>✅</span><div><em>Calidad de la evidencia</em>El técnico sube fotos del trabajo terminado. Puedes ver estas imágenes haciendo clic en cada miniatura para ampliarlas. El registro queda permanente en el sistema.</div></div>
+    <div class="call info"><span>ℹ️</span><div><em>¿La OT se cerró antes de tiempo?</em>Si necesitas que el trabajo continúe en una OT que ya aparece como Terminada, contacta al Jefe de Mantención para que la reabra. No crear una solicitud duplicada.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 8: CAP 3 — DASHBOARD ══ -->
+<div class="page">
+  <div class="sec-head" data-n="03">
+    <p class="sec-n">Capítulo 03</p>
+    <h2 class="sec-h">Dashboard</h2>
+    <p class="sec-d">Panel de control con KPIs de compras y mantención, gráficos y selector de montos.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">KPIs principales del período</div>
+    <div class="rule"></div>
+    <div class="krow">
+      <div class="kcard"><div class="klbl">Gasto Total</div><div class="kval">$4.2M</div><div class="ksub">Neto período</div></div>
+      <div class="kcard"><div class="klbl">OTs Totales</div><div class="kval">38</div><div class="ksub">Este mes</div></div>
+      <div class="kcard" style="border-color:#FECACA;background:#FFF5F5;"><div class="klbl" style="color:#DC2626;">Stock Crítico</div><div class="kval" style="color:#DC2626;">7</div><div class="ksub">bajo mínimo</div></div>
+      <div class="kcard"><div class="klbl">Proveedores</div><div class="kval">12</div><div class="ksub">activos</div></div>
+    </div>
+
+    <div class="h2">Selector Neto / Total c/IVA</div>
+    <div class="rule"></div>
+    <p>En la sección de Gestión de Compras hay un selector que cambia <strong>todos los gráficos y valores monetarios</strong> simultáneamente.</p>
+    <div class="fgrid">
+      <div class="fcard"><h4>🏷️ Monto Neto (por defecto)</h4><p>Muestra los montos sin IVA. Es el valor para análisis y auditorías internas.</p></div>
+      <div class="fcard"><h4>🧾 Total c/IVA</h4><p>Montos con IVA incluido (19%). Útil para cuadrar con documentos de pago.</p></div>
+    </div>
+
+    <!-- Dashboard mockup -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / dashboard</div></div>
+      <div class="mbody" style="padding:2.5mm 3mm;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2mm;">
+          <div style="font-weight:700;font-size:3.5mm;">Dashboard</div>
+          <div style="display:flex;gap:1.5mm;align-items:center;">
+            <div style="font-size:2.5mm;color:#6c757d;">Período:</div>
+            <div style="padding:.8mm 2.5mm;border:1px solid #e2e8f0;border-radius:1.5mm;font-size:2.7mm;">01/06/2026 — 27/06/2026</div>
+            <div style="padding:.8mm 2.5mm;border:1px solid #e2e8f0;border-radius:1.5mm;font-size:2.7mm;">Todos los técnicos ▾</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:1.5mm;margin-bottom:2mm;">
+          <div style="padding:.8mm 3mm;background:#0d6efd;color:white;border-radius:10mm;font-size:2.7mm;font-weight:600;">Monto Neto</div>
+          <div style="padding:.8mm 3mm;border:1px solid #e2e8f0;border-radius:10mm;font-size:2.7mm;color:#6c757d;">Total c/IVA</div>
+        </div>
+        <div style="display:grid;grid-template-columns:3fr 2fr;gap:2mm;">
+          <div style="border:1px solid #e2e8f0;border-radius:2mm;padding:2mm;height:18mm;display:flex;align-items:flex-end;gap:1mm;">
+            <div style="flex:1;background:#0d6efd22;height:60%;border-radius:1mm 1mm 0 0;"></div>
+            <div style="flex:1;background:#0d6efd33;height:80%;border-radius:1mm 1mm 0 0;"></div>
+            <div style="flex:1;background:#0d6efd44;height:55%;border-radius:1mm 1mm 0 0;"></div>
+            <div style="flex:1;background:#0d6efd55;height:90%;border-radius:1mm 1mm 0 0;"></div>
+            <div style="flex:1;background:#0d6efd;height:75%;border-radius:1mm 1mm 0 0;"></div>
+            <div style="flex:1;background:#0d6efd22;height:40%;border-radius:1mm 1mm 0 0;"></div>
+          </div>
+          <div style="border:1px solid #e2e8f0;border-radius:2mm;padding:2mm;height:18mm;display:flex;align-items:center;justify-content:center;">
+            <div style="width:14mm;height:14mm;border-radius:50%;background:conic-gradient(#0d6efd 0% 55%,#dc3545 55% 80%,#198754 80% 100%);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="call info"><span>ℹ️</span><div><em>El selector afecta todos los gráficos</em>Al cambiar entre Neto y Total se actualizan: Inversión del Período, Tendencia de Gasto, Top Proveedores, Inversión por Categoría y tabla de Últimas Órdenes.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 9: CAP 4 — MANTENCIÓN ══ -->
+<div class="page">
+  <div class="sec-head" data-n="04">
+    <p class="sec-n">Capítulo 04</p>
+    <h2 class="sec-h">Módulo de Mantención</h2>
+    <p class="sec-d">Creación, asignación y seguimiento de Órdenes de Trabajo. Permisos y cierres.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Vista general</div>
+    <div class="rule"></div>
+    <p>El módulo muestra todas las OTs con estado, técnicos asignados, fechas y costo acumulado de materiales. Tiene filtros por estado, técnico, prioridad y rango de fechas.</p>
+
+    <!-- OT table mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / mantencion</div></div>
+      <div class="mth"><span style="flex:2.5;">Título OT</span><span style="flex:1.2;">Técnico</span><span style="flex:1;">Prioridad</span><span style="flex:1;">Estado</span><span style="flex:.8;">Costo</span></div>
+      <div class="mtr"><span style="flex:2.5;">Motor quemado Tubing 02</span><span style="flex:1.2;color:#6c757d;">J. Pérez</span><span style="flex:1;"><span class="mbadge bdng" style="font-size:2.3mm;">Crítico</span></span><span style="flex:1;"><span class="mbadge bwrn" style="font-size:2.3mm;">Pendiente</span></span><span style="flex:.8;">$0</span></div>
+      <div class="mtr"><span style="flex:2.5;">Mantención preventiva TSS029</span><span style="flex:1.2;color:#6c757d;">M. Rojas</span><span style="flex:1;"><span class="mbadge bwrn" style="font-size:2.3mm;color:#000;">Media</span></span><span style="flex:1;"><span class="mbadge bpri" style="font-size:2.3mm;">En Proceso</span></span><span style="flex:.8;">$82.400</span></div>
+      <div class="mtr"><span style="flex:2.5;">Revisión eléctrica Comafri</span><span style="flex:1.2;color:#6c757d;">C. Fuentes</span><span style="flex:1;"><span style="font-size:2.3mm;color:#6c757d;">Baja</span></span><span style="flex:1;"><span class="mbadge bsuc" style="font-size:2.3mm;">Completada</span></span><span style="flex:.8;">$34.100</span></div>
+    </div>
+
+    <div class="h2">Crear una Orden de Trabajo</div>
+    <div class="rule"></div>
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Clic en "Crear OT"</div><div class="sd">Botón en la esquina superior derecha del módulo.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Completar el formulario</div><div class="sd">Título descriptivo, tipo (Correctivo / Preventivo), activo involucrado, prioridad, ubicación y descripción detallada.</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">Asignar técnicos</div><div class="sd">Seleccionar uno o más técnicos. Todos los asignados verán la OT en su vista de Mis Mantenciones.</div></div></div>
+    <div class="step"><div class="sn">4</div><div class="sb"><div class="st">Permiso de trabajo seguro (opcional)</div><div class="sd">Activar el toggle si el trabajo requiere permiso de seguridad: Altura, Espacios Confinados, Trabajos en Caliente, etc. El técnico verá el requerimiento destacado.</div></div></div>
+    <div class="step"><div class="sn">5</div><div class="sb"><div class="st">Agregar repuestos (opcional)</div><div class="sd">Buscar y agregar los insumos requeridos. Esto genera solicitudes en Bodega para que el bodeguero prepare la entrega al técnico.</div></div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 10: CAP 4 — ACCIONES Y COSTO ══ -->
+<div class="page">
+  <div class="sec-head" data-n="04">
+    <p class="sec-n">Capítulo 04 — continuación</p>
+    <h2 class="sec-h">Acciones y Costo de OT</h2>
+    <p class="sec-d">Qué se puede hacer con cada OT y cómo se calcula su costo de materiales.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Menú de acciones de una OT</div>
+    <div class="rule"></div>
+    <p>Haciendo clic en los tres puntos (<strong>⋮</strong>) al lado de cada OT aparece el menú de acciones disponibles.</p>
+    <table class="dtbl">
+      <thead><tr><th>Acción</th><th>Cuándo usarla</th><th>Permiso requerido</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Ver detalle</strong></td><td>Siempre disponible</td><td>mant_ver</td></tr>
+        <tr><td><strong>Editar</strong></td><td>Antes de iniciar el trabajo</td><td>mant_editar</td></tr>
+        <tr><td><strong>Finalizar</strong></td><td>Cuando el trabajo está 100% terminado</td><td>mant_finalizar</td></tr>
+        <tr><td><strong>Reabrir</strong></td><td>OT en estado Completada con tareas pendientes</td><td>mant_editar</td></tr>
+        <tr><td><strong>Anular</strong></td><td>Cancelar una OT sin materiales entregados</td><td>mant_anular</td></tr>
+      </tbody>
+    </table>
+
+    <div class="call ok"><span>✅</span><div><em>Reabrir una OT completada</em>Si una OT se cerró antes de tiempo, el botón <strong>Reabrir</strong> la vuelve al estado "En Proceso" conservando todo el historial de materiales y avances. Evita duplicar OTs.</div></div>
+
+    <div class="h2">Costo de la OT</div>
+    <div class="rule"></div>
+    <p>La columna <strong>Costo</strong> muestra el valor total en pesos de los materiales efectivamente entregados al técnico, calculado como:</p>
+    <div style="background:var(--sand);border:1px solid var(--line);border-radius:2mm;padding:3mm 4mm;margin:2mm 0;font-size:3.2mm;text-align:center;">
+      <strong>cantidad entregada × precio de costo del insumo</strong>
+    </div>
+    <p>Las OTs sin materiales entregados muestran <strong>$0</strong>. El costo se actualiza en tiempo real a medida que bodega registra las entregas.</p>
+
+    <div class="call info"><span>ℹ️</span><div><em>Filtros del módulo</em>Puedes filtrar las OTs por estado (Pendiente, En Proceso, Completada, Anulada), por técnico asignado, por prioridad y por rango de fechas. Los filtros se pueden combinar.</div></div>
+
+    <div class="call warn"><span>⚠️</span><div><em>OTs sin técnico asignado</em>Las OTs sin técnico asignado son visibles en el módulo de Mantención pero no aparecen en ninguna vista de Mis Mantenciones. Asignar siempre al responsable.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 11: CAP 5 — COMPRAS ══ -->
+<div class="page">
+  <div class="sec-head" data-n="05">
+    <p class="sec-n">Capítulo 05</p>
+    <h2 class="sec-h">Módulo de Compras</h2>
+    <p class="sec-d">Órdenes de compra, edición, recepciones, cierre parcial y exportación a Excel.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Vista del módulo</div>
+    <div class="rule"></div>
+    <p>La tabla muestra todas las órdenes de compra con montos neto y total separados, estado, proveedor, fecha y destino. Se puede buscar por proveedor, N° OC, estado, destino, insumo y rango de fechas.</p>
+
+    <!-- Compras table mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / compras</div></div>
+      <div class="mth"><span style="flex:1.5;">N° OC</span><span style="flex:2;">Proveedor</span><span style="flex:1.5;">Monto Neto</span><span style="flex:1.5;">Total c/IVA</span><span style="flex:1;">Estado</span></div>
+      <div class="mtr"><span style="flex:1.5;">#OC-0045</span><span style="flex:2;">Sodimac Comercial</span><span style="flex:1.5;">$124.000</span><span style="flex:1.5;">$147.560</span><span style="flex:1;"><span class="mbadge bsuc" style="font-size:2.3mm;">Recepcionada</span></span></div>
+      <div class="mtr"><span style="flex:1.5;">#OC-0044</span><span style="flex:2;">Ferretería Martínez</span><span style="flex:1.5;">$88.400</span><span style="flex:1.5;">$105.196</span><span style="flex:1;"><span class="mbadge bpri" style="font-size:2.3mm;">Emitida</span></span></div>
+      <div class="mtr"><span style="flex:1.5;">#OC-0043</span><span style="flex:2;">Proveedor TecnoPlast</span><span style="flex:1.5;">$216.000</span><span style="flex:1.5;">$257.040</span><span style="flex:1;"><span class="mbadge bwrn" style="font-size:2.3mm;color:#000;">Parcial</span></span></div>
+    </div>
+
+    <div class="h2">Crear una Orden de Compra</div>
+    <div class="rule"></div>
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Clic en "+ Nueva Orden"</div><div class="sd">Botón en la esquina superior derecha del módulo.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Buscar el proveedor</div><div class="sd">Escribir el nombre o RUT del proveedor. Aparecerán sugerencias en tiempo real (no es lista desplegable).</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">Configurar parámetros</div><div class="sd">Destino del pedido, moneda (CLP / USD / EUR), tipo de cambio si aplica, N° de cotización de referencia y % IVA (por defecto 19%).</div></div></div>
+    <div class="step"><div class="sn">4</div><div class="sb"><div class="st">Agregar ítems</div><div class="sd">Buscar insumos del inventario. Si el producto no existe, se puede crear directamente completando nombre, cantidad y precio. También se puede agregar <strong>nota de línea</strong> con especificaciones técnicas.</div></div></div>
+    <div class="step"><div class="sn">5</div><div class="sb"><div class="st">Confirmar la orden</div><div class="sd">El sistema calcula automáticamente el monto neto, IVA y total. Hacer clic en <strong>Confirmar Orden</strong>.</div></div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 12: CAP 5 — EDITAR, RECEPCIONAR, EXPORTAR ══ -->
+<div class="page">
+  <div class="sec-head" data-n="05">
+    <p class="sec-n">Capítulo 05 — continuación</p>
+    <h2 class="sec-h">Editar · Recepcionar · Exportar</h2>
+    <p class="sec-d">Flujos adicionales del módulo de compras según el estado de la orden.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Editar una OC (sin anularla)</div>
+    <div class="rule"></div>
+    <p>Si una OC está en estado <strong>Borrador</strong> o <strong>Emitida</strong> y necesita correcciones, se puede editar directamente.</p>
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Clic en el menú ⋮ de la OC → "Editar OC"</div><div class="sd">Solo aparece si la orden no ha sido recepcionada.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">El modal se abre con los datos actuales pre-cargados</div><div class="sd">Proveedor, ítems, moneda, destino, etc. todos editables.</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">Hacer los cambios y clic en "Guardar Cambios"</div><div class="sd">Los montos se recalculan automáticamente.</div></div></div>
+    <div class="call danger"><span>🚫</span><div><em>Restricción importante</em>No se puede editar una OC con recepciones registradas (estado Recepción Parcial o superior). En ese caso, usar el proceso de anulación y reemisión.</div></div>
+
+    <hr class="div">
+    <div class="h2">Recepcionar una OC</div>
+    <div class="rule"></div>
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Clic en el ícono 🚚 o en el menú ⋮ → "Recepcionar"</div><div class="sd">Se abre el formulario de recepción con los ítems de la orden.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Ingresar cantidades recibidas por ítem</div><div class="sd">Puede ser menor a la cantidad solicitada (recepción parcial).</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">El sistema actualiza el inventario automáticamente</div><div class="sd">El stock de cada insumo recibido aumenta de inmediato.</div></div></div>
+    <div class="call info"><span>🔄</span><div><em>Cierre Parcial y Reabrir OC</em>Si no llegaron todos los ítems y ya no llegarán, usar <strong>Cierre Parcial</strong> desde el menú ⋮. Si después llega el resto, usar <strong>Reabrir OC</strong> (disponible en estado "Cerrada Incompleta") para continuar recepcionando sin crear una nueva orden.</div></div>
+
+    <hr class="div">
+    <div class="h2">Exportar a Excel</div>
+    <div class="rule"></div>
+    <p>El botón <strong>Exportar</strong> genera un archivo Excel con 14 columnas: N° OC, Fecha, Proveedor, RUT, Estado, N° Cotización, Destino, Moneda, Tipo de Cambio, <strong>Monto Neto</strong>, IVA%, IVA$, Total y Creador. Los valores se exportan como números enteros sin decimales.</p>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 13: CAP 6 — BODEGA ══ -->
+<div class="page">
+  <div class="sec-head" data-n="06">
+    <p class="sec-n">Capítulo 06</p>
+    <h2 class="sec-h">Módulo de Bodega</h2>
+    <p class="sec-d">Entregas de materiales a técnicos, devoluciones y organización de stock.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Secciones del módulo</div>
+    <div class="rule"></div>
+    <div class="fgrid">
+      <div class="fcard"><h4>📦 Pendientes de Entrega</h4><p>Solicitudes de materiales de OTs activas que esperan ser despachadas al técnico.</p></div>
+      <div class="fcard"><h4>↩️ Devoluciones</h4><p>Materiales que los técnicos están devolviendo con el motivo de retorno indicado.</p></div>
+      <div class="fcard"><h4>🔄 Organizar Stock</h4><p>Mover insumos entre ubicaciones físicas de la bodega.</p></div>
+      <div class="fcard"><h4>📋 Historial</h4><p>Registro completo de todas las entregas y movimientos realizados.</p></div>
+    </div>
+
+    <!-- Bodega mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / bodega</div></div>
+      <div class="mtabs">
+        <div class="mtab act">📦 Pendientes de Entrega <span class="mbadge bdng" style="font-size:2.2mm;margin-left:1mm;">3</span></div>
+        <div class="mtab">↩️ Devoluciones</div>
+        <div class="mtab">🔄 Organizar</div>
+        <div class="mtab">📋 Historial</div>
+      </div>
+      <div class="mth"><span style="flex:2;">OT · Técnico</span><span style="flex:2;">Materiales solicitados</span><span style="flex:1;">Acción</span></div>
+      <div class="mtr"><span style="flex:2;"><strong>OT #77</strong><br><span style="color:#6c757d;font-size:2.5mm;">Juan Pérez</span></span><span style="flex:2;font-size:2.5mm;color:#57534E;">Rodamiento 6205 × 2<br>Aceite hidráulico 1L × 1</span><span style="flex:1;"><div class="mbtn msuc" style="font-size:2.5mm;padding:1mm 2mm;">Entregar</div></span></div>
+      <div class="mtr"><span style="flex:2;"><strong>OT #74</strong><br><span style="color:#6c757d;font-size:2.5mm;">M. Rojas</span></span><span style="flex:2;font-size:2.5mm;color:#57534E;">Cable eléctrico 2.5mm × 5m</span><span style="flex:1;"><div class="mbtn msuc" style="font-size:2.5mm;padding:1mm 2mm;">Entregar</div></span></div>
+    </div>
+
+    <div class="h2">Entregar materiales a un técnico</div>
+    <div class="rule"></div>
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Ir a la pestaña "Pendientes de Entrega"</div><div class="sd">Aparece la lista de OTs con materiales solicitados y aún no despachados.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Seleccionar la OT correspondiente</div><div class="sd">Ver qué técnico la tiene asignada y qué materiales necesita.</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">Registrar la entrega con las cantidades a despachar</div><div class="sd">Puede ser entrega parcial. El sistema descuenta automáticamente del inventario al confirmar.</div></div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 14: CAP 6 — DEVOLUCIONES ══ -->
+<div class="page">
+  <div class="sec-head" data-n="06">
+    <p class="sec-n">Capítulo 06 — continuación</p>
+    <h2 class="sec-h">Tipos de Devolución</h2>
+    <p class="sec-d">Cómo procesar materiales que los técnicos retornan a bodega.</p>
+  </div>
+  <div class="pad-s">
+    <p>Las devoluciones llegan al módulo con el tipo de retorno indicado por el técnico. Cada tipo tiene un efecto diferente sobre el stock.</p>
+    <table class="dtbl">
+      <thead><tr><th>Tipo</th><th>Motivo</th><th>Efecto en stock</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Devolución (Sobrante)</strong></td>
+          <td>El técnico recibió el material pero le sobró</td>
+          <td>Vuelve al stock disponible normalmente</td>
+        </tr>
+        <tr>
+          <td><strong>Rechazo por Daño</strong></td>
+          <td>El producto llegó en mal estado</td>
+          <td>Se marca como dañado. No vuelve al stock disponible</td>
+        </tr>
+        <tr>
+          <td><strong>Rechazo — No Recibido</strong></td>
+          <td>El técnico nunca recibió el insumo (error de despacho)</td>
+          <td>Vuelve al stock directo sin pasar por Organizar</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Devoluciones mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / bodega</div></div>
+      <div class="mtabs">
+        <div class="mtab">📦 Pendientes</div>
+        <div class="mtab act">↩️ Devoluciones <span class="mbadge bwrn" style="font-size:2.2mm;margin-left:1mm;color:#000;">2</span></div>
+        <div class="mtab">🔄 Organizar</div>
+        <div class="mtab">📋 Historial</div>
+      </div>
+      <div class="mth"><span style="flex:2;">Técnico · Insumo</span><span style="flex:2;">Tipo de devolución</span><span style="flex:1;">Cantidad</span><span style="flex:1;">Acción</span></div>
+      <div class="mtr">
+        <span style="flex:2;"><strong>C. Fuentes</strong><br><span style="font-size:2.5mm;color:#6c757d;">Rodamiento 6205</span></span>
+        <span style="flex:2;"><span class="mbadge bsuc" style="font-size:2.3mm;">Sobrante</span></span>
+        <span style="flex:1;">1 unidad</span>
+        <span style="flex:1;"><div class="mbtn msuc" style="font-size:2.5mm;padding:1mm 2mm;">Procesar</div></span>
+      </div>
+      <div class="mtr">
+        <span style="flex:2;"><strong>M. Rojas</strong><br><span style="font-size:2.5mm;color:#6c757d;">Cable 2.5mm</span></span>
+        <span style="flex:2;"><span class="mbadge bdng" style="font-size:2.3mm;">Daño</span></span>
+        <span style="flex:1;">5 metros</span>
+        <span style="flex:1;"><div class="mbtn mpri" style="font-size:2.5mm;padding:1mm 2mm;background:#dc3545;">Procesar</div></span>
+      </div>
+    </div>
+
+    <div class="call info"><span>ℹ️</span><div><em>Rechazos por daño</em>Los insumos marcados como dañados quedan registrados para análisis de calidad de proveedores pero no se suman al stock disponible para futuras entregas.</div></div>
+
+    <div class="call warn"><span>⚠️</span><div><em>Organizar Stock</em>La pestaña "Organizar Stock" permite mover insumos entre ubicaciones físicas de la bodega. Los movimientos quedan registrados en el historial con usuario y fecha/hora.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 15: CAP 7 — INVENTARIO ══ -->
+<div class="page">
+  <div class="sec-head" data-n="07">
+    <p class="sec-n">Capítulo 07</p>
+    <h2 class="sec-h">Módulo de Inventario</h2>
+    <p class="sec-d">Gestión del catálogo de insumos, control de stock mínimo y registro de movimientos.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Lista de insumos</div>
+    <div class="rule"></div>
+    <p>El inventario muestra todos los insumos con código SKU, nombre, stock actual, stock mínimo y precio de costo. Los insumos bajo el stock mínimo aparecen destacados en rojo.</p>
+
+    <!-- Inventario mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / inventario</div></div>
+      <div class="mth"><span style="flex:1;">SKU</span><span style="flex:3;">Nombre</span><span style="flex:1;">Stock</span><span style="flex:1;">Mínimo</span><span style="flex:1.2;">Precio costo</span></div>
+      <div class="mtr"><span style="flex:1;color:#6c757d;">ROD-6205</span><span style="flex:3;">Rodamiento 6205 ZZ</span><span style="flex:1;font-weight:700;">12</span><span style="flex:1;color:#6c757d;">5</span><span style="flex:1.2;">$4.200</span></div>
+      <div class="mtr" style="background:#FFF5F5;"><span style="flex:1;color:#6c757d;">ACE-HID1</span><span style="flex:3;"><span style="color:#DC2626;font-weight:600;">⚠ Aceite hidráulico 1L</span></span><span style="flex:1;font-weight:700;color:#DC2626;">2</span><span style="flex:1;color:#DC2626;">10</span><span style="flex:1.2;">$8.900</span></div>
+      <div class="mtr"><span style="flex:1;color:#6c757d;">CAB-25</span><span style="flex:3;">Cable eléctrico 2.5mm</span><span style="flex:1;font-weight:700;">34</span><span style="flex:1;color:#6c757d;">10</span><span style="flex:1.2;">$1.100</span></div>
+    </div>
+
+    <div class="h2">Crear un insumo</div>
+    <div class="rule"></div>
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Clic en "Nuevo Insumo"</div><div class="sd">Se abre el formulario de creación.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Completar los datos obligatorios</div><div class="sd">SKU (mínimo 3 caracteres), nombre, categoría, unidad de medida y precio de costo. El nombre se normaliza a formato título automáticamente.</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">Definir stock mínimo</div><div class="sd">Activa la alerta de reposición cuando el stock actual cae por debajo de este valor. Aparece destacado en rojo en la lista y en el Dashboard.</div></div></div>
+    <div class="step"><div class="sn">4</div><div class="sb"><div class="st">Adjuntar imagen (opcional)</div><div class="sd">Subir foto del insumo para facilitar la identificación visual en bodega.</div></div></div>
+
+    <div class="h2">Ajuste de stock manual</div>
+    <div class="rule"></div>
+    <p>Desde el menú de acciones de cada insumo se puede ajustar el stock (entrada o salida) indicando el tipo de movimiento y una observación. Todos los movimientos quedan registrados en el historial.</p>
+    <div class="call danger"><span>🚫</span><div><em>Eliminación de insumos</em>Los insumos se eliminan de forma lógica (soft delete): no desaparecen del historial pero dejan de aparecer en los buscadores. No es posible eliminar un insumo con movimientos o con stock disponible.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 16: CAP 8 — MIS MANTENCIONES ══ -->
+<div class="page">
+  <div class="sec-head" data-n="08">
+    <p class="sec-n">Capítulo 08</p>
+    <h2 class="sec-h">Mis Mantenciones</h2>
+    <p class="sec-d">Vista exclusiva del técnico. Avances, checklist, evidencia y cierre de OTs.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Estructura de la pantalla</div>
+    <div class="rule"></div>
+    <p>La pantalla está dividida en dos paneles: a la izquierda la lista de OTs asignadas, y a la derecha el detalle completo. <strong>En celular</strong>, primero aparece la lista y al seleccionar una OT, esta ocupa la pantalla completa.</p>
+
+    <!-- Split panel mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / mis-mantenciones</div></div>
+      <div style="display:grid;grid-template-columns:35mm 1fr;height:30mm;">
+        <div style="border-right:1px solid #e2e8f0;padding:2mm;background:#f8f9fa;">
+          <div style="font-weight:700;font-size:2.7mm;margin-bottom:2mm;color:#374151;">Mis OTs</div>
+          <div style="background:#0d6efd11;border-left:2px solid #0d6efd;padding:1.5mm;border-radius:1mm;margin-bottom:1.5mm;">
+            <div style="font-weight:700;font-size:2.7mm;">Motor Tubing 02</div>
+            <div style="font-size:2.3mm;color:#6c757d;"><span class="mbadge bdng" style="font-size:2mm;">Crítico</span> · Pendiente</div>
+          </div>
+          <div style="padding:1.5mm;border-radius:1mm;margin-bottom:1mm;">
+            <div style="font-weight:600;font-size:2.7mm;">Mantención TSS029</div>
+            <div style="font-size:2.3mm;color:#6c757d;">Media · En Proceso</div>
+          </div>
+        </div>
+        <div style="padding:2.5mm 3mm;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2mm;">
+            <div style="font-weight:700;font-size:3mm;">Motor quemado Tubing 02</div>
+            <span class="mbadge bdng" style="font-size:2.3mm;">Crítico</span>
+          </div>
+          <div style="background:#FFF5F5;border:1px solid #FECACA;border-radius:1.5mm;padding:2mm;margin-bottom:2mm;font-size:2.7mm;color:#DC2626;font-weight:600;">⚠️ Requiere Permiso de Trabajo en Caliente — Gestionar con Prevención de Riesgos antes de iniciar</div>
+          <div class="mtabs" style="margin-bottom:0;padding:0;">
+            <div class="mtab act" style="font-size:2.7mm;">📋 Información</div>
+            <div class="mtab" style="font-size:2.7mm;">✅ Checklist</div>
+            <div class="mtab" style="font-size:2.7mm;">📸 Evidencia</div>
+            <div class="mtab" style="font-size:2.7mm;">📖 Bitácora</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="call danger"><span>🔴</span><div><em>Permiso de Trabajo Seguro</em>No iniciar el trabajo hasta obtener el permiso firmado por el área de Prevención de Riesgos. El sistema registra el tipo de permiso solicitado para auditoría.</div></div>
+
+    <div class="h2">Pestañas del detalle de OT</div>
+    <div class="rule"></div>
+    <table class="dtbl">
+      <thead><tr><th>Pestaña</th><th>Contenido</th></tr></thead>
+      <tbody>
+        <tr><td><strong>📋 Información</strong></td><td>Datos generales: activo, solicitante, ubicación, técnicos colaboradores, descripción y repuestos solicitados.</td></tr>
+        <tr><td><strong>✅ Checklist</strong></td><td>Formulario de inspección de la planilla de mantención. Se responde ítem por ítem antes del cierre.</td></tr>
+        <tr><td><strong>📸 Evidencia</strong></td><td>Cargar fotos y videos del trabajo realizado. Quedan en el registro permanente de la OT.</td></tr>
+        <tr><td><strong>📖 Bitácora</strong></td><td>Historial cronológico de todos los eventos: asignaciones, cambios de estado y observaciones.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 17: CAP 8 — INICIO Y CIERRE ══ -->
+<div class="page">
+  <div class="sec-head" data-n="08">
+    <p class="sec-n">Capítulo 08 — continuación</p>
+    <h2 class="sec-h">Iniciar · Avanzar · Finalizar</h2>
+    <p class="sec-d">Secuencia completa de trabajo del técnico desde el inicio hasta el cierre de la OT.</p>
+  </div>
+  <div class="pad-s">
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Iniciar trabajo</div><div class="sd">Botón <strong>"Iniciar Trabajo"</strong> — registra la hora de inicio en la bitácora y cambia el estado a En Proceso.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Completar el Checklist</div><div class="sd">Responder todos los ítems de la planilla de mantención en la pestaña Checklist. Algunos ítems permiten agregar observaciones adicionales.</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">Subir evidencia fotográfica</div><div class="sd">Adjuntar fotos y/o videos del trabajo terminado desde la pestaña Evidencia. Tomar fotos antes, durante y después cuando sea posible.</div></div></div>
+    <div class="step"><div class="sn">4</div><div class="sb"><div class="st">Guardar avance (sin cerrar)</div><div class="sd">Botón <strong>"Guardar"</strong> para registrar los cambios sin cerrar la OT. Útil para trabajos que se extienden varios días.</div></div></div>
+    <div class="step"><div class="sn">5</div><div class="sb"><div class="st">Finalizar OT</div><div class="sd">Cuando el trabajo está completamente terminado, clic en <strong>"Finalizar OT"</strong>. El sistema pedirá confirmación y registrará la fecha y hora de cierre.</div></div></div>
+
+    <!-- Finish mockup -->
+    <div class="mock" style="margin-top:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div></div>
+      <div class="mbody" style="padding:3mm;text-align:center;">
+        <div style="width:12mm;height:12mm;background:#16A34A;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:6mm;margin:0 auto 2mm;">✓</div>
+        <div style="font-weight:800;font-size:4mm;color:#166534;margin-bottom:1mm;">OT Finalizada</div>
+        <div style="font-size:3mm;color:#6c757d;">Motor quemado Tubing 02 — OT #77</div>
+        <div style="font-size:2.7mm;color:#6c757d;margin-top:1mm;">Cerrada el 27 Jun 2026 · 16:45</div>
+      </div>
+    </div>
+
+    <div class="call ok"><span>✅</span><div><em>¿OT cerrada por error?</em>Si cerraste la OT pero el trabajo no está completo, contacta al Jefe de Mantención para que la reabra. No abrir una OT nueva para el mismo problema.</div></div>
+    <div class="call info"><span>ℹ️</span><div><em>Materiales asignados</em>En la pestaña Información puedes ver qué materiales te asignó bodega. Dirígete a Mis Insumos para confirmar recepción, reportar consumo o devolver sobrantes.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 18: CAP 9 — MIS INSUMOS ══ -->
+<div class="page">
+  <div class="sec-head" data-n="09">
+    <p class="sec-n">Capítulo 09</p>
+    <h2 class="sec-h">Mis Insumos</h2>
+    <p class="sec-d">Materiales que el técnico tiene en su poder, confirmación, consumo y devoluciones.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">¿Qué muestra esta pantalla?</div>
+    <div class="rule"></div>
+    <p>Lista todos los insumos que el bodeguero ha entregado al técnico y que están en estado pendiente de confirmación, en uso o por devolver.</p>
+
+    <!-- Mis insumos mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / mis-insumos</div></div>
+      <div class="mth"><span style="flex:2.5;">Insumo · OT</span><span style="flex:1;">Cant. entregada</span><span style="flex:1;">Estado</span><span style="flex:2;">Acciones</span></div>
+      <div class="mtr">
+        <span style="flex:2.5;"><strong>Rodamiento 6205 ZZ</strong><br><span style="font-size:2.5mm;color:#6c757d;">OT #77 · Motor Tubing 02</span></span>
+        <span style="flex:1;">2 unid.</span>
+        <span style="flex:1;"><span class="mbadge bwrn" style="font-size:2.2mm;color:#000;">Pendiente</span></span>
+        <span style="flex:2;display:flex;gap:1mm;">
+          <div class="mbtn msuc" style="font-size:2.3mm;padding:.8mm 1.5mm;">Aceptar</div>
+          <div class="mbtn mpri" style="font-size:2.3mm;padding:.8mm 1.5mm;background:#6c757d;">Rechazar</div>
+        </span>
+      </div>
+      <div class="mtr">
+        <span style="flex:2.5;"><strong>Aceite hidráulico 1L</strong><br><span style="font-size:2.5mm;color:#6c757d;">OT #77 · Motor Tubing 02</span></span>
+        <span style="flex:1;">1 unid.</span>
+        <span style="flex:1;"><span class="mbadge bpri" style="font-size:2.2mm;">En uso</span></span>
+        <span style="flex:2;display:flex;gap:1mm;">
+          <div class="mbtn msuc" style="font-size:2.3mm;padding:.8mm 1.5mm;">Consumo</div>
+          <div class="mbtn msuc" style="font-size:2.3mm;padding:.8mm 1.5mm;background:#D97706;">Devolver</div>
+        </span>
+      </div>
+    </div>
+
+    <div class="h2">Acciones disponibles por insumo</div>
+    <div class="rule"></div>
+    <table class="dtbl">
+      <thead><tr><th>Acción</th><th>Cuándo usarla</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Aceptar entrega</strong></td><td>Confirmar que el material fue recibido correctamente</td></tr>
+        <tr><td><strong>Reportar consumo</strong></td><td>Registrar cuántas unidades se usaron efectivamente en el trabajo</td></tr>
+        <tr><td><strong>Devolver sobrante</strong></td><td>Retornar al bodeguero lo que no se usó</td></tr>
+        <tr><td><strong>Rechazar por daño</strong></td><td>El material llegó en mal estado. No retorna al stock disponible</td></tr>
+        <tr><td><strong>Rechazar — No recibido</strong></td><td>Nunca se recibió físicamente. Vuelve automáticamente al stock</td></tr>
+      </tbody>
+    </table>
+
+    <div class="call info"><span>ℹ️</span><div><em>Rechazos requieren justificación</em>Para rechazos por daño o por no recibido, el sistema solicita agregar un comentario técnico que queda registrado para seguimiento.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 19: CAP 10 — ACTIVOS ══ -->
+<div class="page">
+  <div class="sec-head" data-n="10">
+    <p class="sec-n">Capítulo 10</p>
+    <h2 class="sec-h">Activos</h2>
+    <p class="sec-d">Fichas de equipos y máquinas, kit de repuestos, galería fotográfica y documentos.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Ficha de un activo</div>
+    <div class="rule"></div>
+    <div class="fgrid">
+      <div class="fcard"><h4>📋 Datos Generales</h4><p>Código interno (ej: TSS029), nombre, tipo, marca, modelo, año, estado operativo y ubicación habitual.</p></div>
+      <div class="fcard"><h4>🔩 Kit de Repuestos</h4><p>Listado de insumos para mantención. Exportable a Excel directamente desde la ficha.</p></div>
+      <div class="fcard"><h4>📸 Galería</h4><p>Fotografías del equipo, incluyendo placa de identificación. Permite subir y eliminar imágenes.</p></div>
+      <div class="fcard"><h4>📁 Documentos</h4><p>Manuales, certificados y documentos técnicos adjuntos al activo.</p></div>
+    </div>
+
+    <!-- Activos mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / activos / TSS029</div></div>
+      <div class="mbody" style="padding:2.5mm 3mm;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2mm;">
+          <div>
+            <div style="font-weight:800;font-size:4mm;">Tubing Sealer 02 — TSS029</div>
+            <div style="font-size:2.7mm;color:#6c757d;">Marca: Haas · Modelo: ST-02 · Año: 2018</div>
+          </div>
+          <span class="mbadge bsuc">Operativo</span>
+        </div>
+        <div class="mtabs" style="margin-bottom:0;padding:0;">
+          <div class="mtab act" style="font-size:2.7mm;">📋 Datos</div>
+          <div class="mtab" style="font-size:2.7mm;">🔩 Kit Repuestos</div>
+          <div class="mtab" style="font-size:2.7mm;">📸 Galería</div>
+          <div class="mtab" style="font-size:2.7mm;">📁 Documentos</div>
+        </div>
+        <div style="padding:2mm 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:2mm;">
+          <div style="background:#f8f9fa;border-radius:1.5mm;padding:2mm;"><div style="font-size:2.3mm;color:#6c757d;">Ubicación</div><div style="font-weight:700;font-size:2.8mm;">Planta 1</div></div>
+          <div style="background:#f8f9fa;border-radius:1.5mm;padding:2mm;"><div style="font-size:2.3mm;color:#6c757d;">Total OTs</div><div style="font-weight:700;font-size:2.8mm;">14</div></div>
+          <div style="background:#f8f9fa;border-radius:1.5mm;padding:2mm;"><div style="font-size:2.3mm;color:#6c757d;">Última mant.</div><div style="font-weight:700;font-size:2.8mm;">15/06/2026</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2">Estado operativo</div>
+    <div class="rule"></div>
+    <div class="sbadges">
+      <span class="sbadge sb-done"><span class="sb-dot"></span> Operativo</span>
+      <span class="sbadge sb-canc"><span class="sb-dot"></span> Fuera de Servicio</span>
+      <span class="sbadge sb-pend"><span class="sb-dot"></span> En Mantención</span>
+    </div>
+    <p>Usar el filtro de estado para ver rápidamente qué equipos están operativos y cuáles están detenidos.</p>
+
+    <div class="call info"><span>ℹ️</span><div><em>Exportar kit de repuestos a Excel</em>En la pestaña <strong>Kit de Repuestos</strong> de cada activo, clic en <strong>Exportar Excel</strong>. Descarga el listado completo de insumos del kit con SKU, descripción y cantidades recomendadas.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 20: CAP 11 — COTIZACIONES ══ -->
+<div class="page">
+  <div class="sec-head" data-n="11">
+    <p class="sec-n">Capítulo 11</p>
+    <h2 class="sec-h">Cotizaciones</h2>
+    <p class="sec-d">Creación de cotizaciones a clientes, aprobación, rechazo y previsualización sin PDF.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Flujo de una cotización</div>
+    <div class="rule"></div>
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Crear la cotización</div><div class="sd">Agregar ítems con nombre, cantidad y precio unitario. El total se calcula automáticamente.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Previsualizar (sin descargar)</div><div class="sd">Clic en el ícono 👁️ para ver la cotización como imagen en pantalla antes de compartirla. No es necesario descargar el PDF para revisarla.</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">Descargar PDF</div><div class="sd">Para enviar al cliente, descargar el PDF oficial con el formato corporativo de Procesadora Insuban Spa.</div></div></div>
+    <div class="step"><div class="sn">4</div><div class="sb"><div class="st">Aprobar o Rechazar</div><div class="sd">Desde el menú ⋮ de la cotización, cambiar el estado a Aprobada o Rechazada. Una cotización aprobada puede convertirse en Orden de Compra.</div></div></div>
+
+    <!-- Cotizaciones mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / cotizaciones</div></div>
+      <div class="mth"><span style="flex:1.5;">N° Cot.</span><span style="flex:2;">Cliente</span><span style="flex:1.5;">Monto Total</span><span style="flex:1;">Estado</span><span style="flex:1.5;">Acciones</span></div>
+      <div class="mtr"><span style="flex:1.5;">#COT-012</span><span style="flex:2;">Inversiones Alfa</span><span style="flex:1.5;">$380.000</span><span style="flex:1;"><span class="mbadge bwrn" style="font-size:2.3mm;color:#000;">Pendiente</span></span><span style="flex:1.5;display:flex;gap:1mm;"><span style="font-size:3.5mm;cursor:pointer;">👁️</span><span style="font-size:3.5mm;cursor:pointer;">📥</span><span style="font-size:3.5mm;">⋮</span></span></div>
+      <div class="mtr"><span style="flex:1.5;">#COT-011</span><span style="flex:2;">Coexca S.A.</span><span style="flex:1.5;">$142.000</span><span style="flex:1;"><span class="mbadge bsuc" style="font-size:2.3mm;">Aprobada</span></span><span style="flex:1.5;display:flex;gap:1mm;"><span style="font-size:3.5mm;">👁️</span><span style="font-size:3.5mm;">📥</span><span style="font-size:3.5mm;">⋮</span></span></div>
+      <div class="mtr"><span style="flex:1.5;">#COT-010</span><span style="flex:2;">Prov. Camer</span><span style="flex:1.5;">$95.000</span><span style="flex:1;"><span class="mbadge bdng" style="font-size:2.3mm;">Rechazada</span></span><span style="flex:1.5;display:flex;gap:1mm;"><span style="font-size:3.5mm;">👁️</span><span style="font-size:3.5mm;">📥</span><span style="font-size:3.5mm;">⋮</span></span></div>
+    </div>
+
+    <div class="call warn"><span>⚠️</span><div><em>Estados de cotización</em>Solo se puede Aprobar o Rechazar una cotización en estado <strong>Pendiente</strong>. Una vez aprobada o rechazada, el estado es inmutable.</div></div>
+    <div class="call info"><span>ℹ️</span><div><em>Previsualización rápida</em>El ícono 👁️ abre un visor en pantalla completa sin necesidad de descargar el PDF. Permite revisar el formato y contenido antes de enviarlo al cliente.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 21: CAP 12 — CRONOGRAMA ══ -->
+<div class="page">
+  <div class="sec-head" data-n="12">
+    <p class="sec-n">Capítulo 12</p>
+    <h2 class="sec-h">Cronograma</h2>
+    <p class="sec-d">Planificación visual de mantenimientos, compras programadas y eventos del equipo.</p>
+  </div>
+  <div class="pad-s">
+    <div class="h2">Vista del cronograma</div>
+    <div class="rule"></div>
+    <p>El cronograma muestra en formato de calendario los eventos del sistema: OTs programadas, mantenciones preventivas y órdenes de compra con fecha comprometida. Se puede navegar por día, semana o mes.</p>
+
+    <!-- Cronograma calendar mockup -->
+    <div class="mock" style="margin-bottom:3mm;">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">insuorders.insuban.cl / cronograma</div></div>
+      <div class="mbody" style="padding:2.5mm 3mm;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2mm;">
+          <div style="font-weight:700;font-size:3.5mm;">◀ Junio 2026 ▶</div>
+          <div style="display:flex;gap:1.5mm;">
+            <div style="padding:.8mm 2.5mm;background:#f8f9fa;border:1px solid #e2e8f0;border-radius:1.5mm;font-size:2.7mm;">Día</div>
+            <div style="padding:.8mm 2.5mm;background:#0d6efd;color:white;border-radius:1.5mm;font-size:2.7mm;">Semana</div>
+            <div style="padding:.8mm 2.5mm;background:#f8f9fa;border:1px solid #e2e8f0;border-radius:1.5mm;font-size:2.7mm;">Mes</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1mm;">
+          <div style="font-size:2.5mm;font-weight:700;text-align:center;color:#6c757d;padding:1mm;">Lun</div><div style="font-size:2.5mm;font-weight:700;text-align:center;color:#6c757d;padding:1mm;">Mar</div><div style="font-size:2.5mm;font-weight:700;text-align:center;color:#6c757d;padding:1mm;">Mié</div><div style="font-size:2.5mm;font-weight:700;text-align:center;color:#6c757d;padding:1mm;">Jue</div><div style="font-size:2.5mm;font-weight:700;text-align:center;color:#6c757d;padding:1mm;">Vie</div><div style="font-size:2.5mm;font-weight:700;text-align:center;color:#6c757d;padding:1mm;">Sáb</div><div style="font-size:2.5mm;font-weight:700;text-align:center;color:#6c757d;padding:1mm;">Dom</div>
+          <div style="font-size:2.7mm;text-align:center;padding:1.5mm;border:1px solid #e2e8f0;border-radius:1mm;">23</div>
+          <div style="font-size:2.7mm;text-align:center;padding:1.5mm;border:1px solid #e2e8f0;border-radius:1mm;">24<div style="background:#0d6efd;color:white;border-radius:.5mm;font-size:2mm;padding:.2mm 1mm;margin-top:.5mm;">Mant. TSS029</div></div>
+          <div style="font-size:2.7mm;text-align:center;padding:1.5mm;border:1px solid #e2e8f0;border-radius:1mm;">25</div>
+          <div style="font-size:2.7mm;text-align:center;padding:1.5mm;border:1px solid #e2e8f0;border-radius:1mm;">26<div style="background:#fd7e14;color:white;border-radius:.5mm;font-size:2mm;padding:.2mm 1mm;margin-top:.5mm;">OC Sodimac</div></div>
+          <div style="font-size:2.7mm;text-align:center;padding:1.5mm;border:1px solid #e2e8f0;border-radius:1mm;background:#f8f9fa;font-weight:800;">27</div>
+          <div style="font-size:2.7mm;text-align:center;padding:1.5mm;border:1px solid #e2e8f0;border-radius:1mm;color:#dee2e6;">28</div>
+          <div style="font-size:2.7mm;text-align:center;padding:1.5mm;border:1px solid #e2e8f0;border-radius:1mm;color:#dee2e6;">29</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2">Tipos de eventos</div>
+    <div class="rule"></div>
+    <table class="dtbl">
+      <thead><tr><th>Color</th><th>Tipo de evento</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td>🔵 Azul</td><td><strong>Mantención programada</strong></td><td>OT de mantención preventiva con fecha definida</td></tr>
+        <tr><td>🟠 Naranja</td><td><strong>Compra programada</strong></td><td>Orden de compra con fecha esperada de entrega</td></tr>
+        <tr><td>🟢 Verde</td><td><strong>Evento general</strong></td><td>Otros eventos creados manualmente en el sistema</td></tr>
+      </tbody>
+    </table>
+
+    <div class="call info"><span>ℹ️</span><div><em>Restricciones de edición</em>No se pueden editar ni eliminar eventos de fechas pasadas, ni eventos asociados a OTs en estado Finalizada o Anulada.</div></div>
+    <div class="call warn"><span>⚠️</span><div><em>Mantenciones preventivas</em>Las OTs de mantención preventiva programadas en el cronograma se crean desde el módulo de Mantención con fecha planificada. El cronograma las muestra automáticamente.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 22: FINAL ══ -->
+<div class="page">
+  <div class="final-bg">
+    <div class="fi-icon">I</div>
+    <div class="fi-title">InsuOrders</div>
+    <div class="fi-rule"></div>
+    <div class="fi-sub">Manual de Usuarios · Versión 1.17 · Junio 2026</div>
+    <div class="fi-grid">
+      <div class="fi-col">
+        <div class="fi-col-h">Sistema</div>
+        <div class="fi-col-v">12 módulos</div>
+        <div class="fi-col-v" style="margin-top:.5mm;">1 plataforma</div>
+      </div>
+      <div class="fi-col">
+        <div class="fi-col-h">Empresa</div>
+        <div class="fi-col-v">Procesadora</div>
+        <div class="fi-col-v" style="margin-top:.5mm;">Insuban Spa</div>
+      </div>
+      <div class="fi-col">
+        <div class="fi-col-h">Uso</div>
+        <div class="fi-col-v">Interno</div>
+        <div class="fi-col-v" style="margin-top:.5mm;">Confidencial</div>
+      </div>
+    </div>
+    <div class="fi-foot">PROCESADORA INSUBAN SPA · USO INTERNO · CONFIDENCIAL</div>
+  </div>
+</div>
+
+</body>
+</html>

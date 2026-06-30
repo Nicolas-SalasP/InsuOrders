@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal de Solicitudes — Guía del Cliente · InsuOrders</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Cada .page es exactamente una hoja A4 */
+  @page { margin: 0; size: A4; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #e5e7eb;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  :root {
+    --red:   #DC2626;
+    --red2:  #FEE2E2;
+    --ink:   #1C1917;
+    --sand:  #FAF7F2;
+    --stone: #78716C;
+    --line:  #E7E5E4;
+    --green: #16A34A;
+    --amber: #D97706;
+    --blue:  #2563EB;
+  }
+
+  /* ─── PÁGINA ─── */
+  .page {
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden;
+    position: relative;
+    background: white;
+    margin: 0 auto 8px;
+    page-break-after: always;
+    break-after: page;
+  }
+  .page:last-child { page-break-after: auto; break-after: auto; margin-bottom: 0; }
+
+  /* Área de contenido con márgenes internos */
+  .pad { padding: 14mm 18mm; }
+  .pad-sm { padding: 10mm 18mm; }
+
+  /* ─── PORTADA ─── */
+  .cover-bg {
+    background: var(--ink);
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    padding: 14mm 18mm;
+    position: relative; overflow: hidden;
+  }
+  .arc1 {
+    position: absolute; bottom: -18mm; right: -18mm;
+    width: 80mm; height: 80mm; border-radius: 50%;
+    border: 12mm solid var(--red); opacity: 0.2;
+  }
+  .arc2 {
+    position: absolute; top: -8mm; left: 30mm;
+    width: 32mm; height: 32mm; border-radius: 50%;
+    border: 6mm solid var(--red); opacity: 0.1;
+  }
+  .logo-row { display: flex; align-items: center; gap: 3mm; z-index: 1; position: relative; }
+  .logo-box {
+    width: 10mm; height: 10mm; background: var(--red);
+    border-radius: 2.5mm; display: flex; align-items: center;
+    justify-content: center; color: white; font-weight: 800; font-size: 5mm;
+  }
+  .logo-name { color: white; font-weight: 700; font-size: 4mm; }
+  .logo-sub  { color: rgba(255,255,255,.35); font-size: 3mm; font-weight: 300; }
+
+  .cover-main { z-index: 1; position: relative; }
+  .cover-tag {
+    display: inline-block;
+    background: rgba(220,38,38,.18); border: 1px solid rgba(220,38,38,.35);
+    color: #FCA5A5; font-size: 2.8mm; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    padding: 1.5mm 4mm; border-radius: 10mm; margin-bottom: 5mm;
+  }
+  .cover-h1 { font-size: 22mm; font-weight: 800; color: white; line-height: .95; letter-spacing: -1px; }
+  .cover-h1 em { font-style: normal; color: var(--red); }
+  .cover-desc { font-size: 4mm; color: rgba(255,255,255,.45); font-weight: 300; max-width: 80mm; margin-top: 5mm; }
+
+  .cover-foot { display: flex; justify-content: space-between; align-items: flex-end; z-index: 1; position: relative; }
+  .cover-foot-txt { font-size: 2.8mm; color: rgba(255,255,255,.25); letter-spacing: .5px; }
+  .cover-pill {
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
+    color: rgba(255,255,255,.4); font-size: 2.8mm; padding: 1.5mm 4mm; border-radius: 10mm;
+  }
+
+  /* ─── ÍNDICE ─── */
+  .index-bg { background: var(--sand); width: 100%; height: 100%; padding: 14mm 18mm; }
+  .idx-label { font-size: 2.8mm; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--red); margin-bottom: 2mm; }
+  .idx-title { font-size: 11mm; font-weight: 800; color: var(--ink); line-height: 1.05; margin-bottom: 10mm; }
+  .idx-item { display: flex; align-items: center; padding: 3.5mm 0; border-bottom: 1px solid var(--line); gap: 4mm; }
+  .idx-num  { font-size: 7mm; font-weight: 800; color: var(--red); width: 9mm; flex-shrink: 0; line-height: 1; }
+  .idx-name { font-size: 4mm; font-weight: 500; flex: 1; }
+  .idx-dots { flex: 1; border-bottom: 2px dotted var(--line); height: 1px; margin: 0 2mm; }
+
+  /* ─── CABECERA DE SECCIÓN ─── */
+  .sec-head {
+    background: var(--ink); padding: 8mm 18mm 6mm;
+    position: relative; overflow: hidden;
+  }
+  .sec-head::after {
+    content: attr(data-n);
+    position: absolute; right: 12mm; top: 50%;
+    transform: translateY(-50%);
+    font-size: 28mm; font-weight: 800;
+    color: rgba(255,255,255,.04); line-height: 1;
+  }
+  .sec-n  { font-size: 2.6mm; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--red); margin-bottom: 1mm; }
+  .sec-h  { font-size: 8mm; font-weight: 800; color: white; line-height: 1.05; }
+  .sec-d  { font-size: 3.2mm; color: rgba(255,255,255,.4); margin-top: 1mm; font-weight: 300; }
+
+  /* ─── TIPOGRAFÍA ─── */
+  .h2 { font-size: 5mm; font-weight: 700; color: var(--ink); margin: 5mm 0 1mm; }
+  .h2:first-child { margin-top: 0; }
+  .rule { width: 7mm; height: .7mm; background: var(--red); border-radius: .5mm; margin-bottom: 3mm; }
+  p { color: #57534E; margin-bottom: 2.5mm; font-size: 3.4mm; }
+  strong { color: var(--ink); }
+  hr.div { border: none; border-top: 1px solid var(--line); margin: 4mm 0; }
+
+  /* ─── STEPS ─── */
+  .step  { display: flex; gap: 3.5mm; margin-bottom: 2.5mm; align-items: flex-start; }
+  .sn    { width: 7mm; height: 7mm; min-width: 7mm; background: var(--red); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 3mm; }
+  .sb    { flex: 1; padding-top: 1mm; }
+  .st    { font-weight: 700; color: var(--ink); margin-bottom: .5mm; font-size: 3.4mm; }
+  .sd    { color: #78716C; font-size: 3.1mm; line-height: 1.5; }
+
+  /* ─── CALLOUTS ─── */
+  .call  { border-radius: 2mm; padding: 2.5mm 3mm; margin: 2.5mm 0; display: flex; gap: 2mm; font-size: 3.1mm; }
+  .call em { font-style: normal; font-weight: 700; display: block; margin-bottom: .5mm; }
+  .call.warn   { background: #FFFBEB; border-left: 2px solid var(--amber); }
+  .call.warn em{ color: var(--amber); }
+  .call.info   { background: #EFF6FF; border-left: 2px solid var(--blue); }
+  .call.info em{ color: var(--blue); }
+  .call.ok     { background: #F0FDF4; border-left: 2px solid var(--green); }
+  .call.ok em  { color: var(--green); }
+  .call.danger { background: var(--red2); border-left: 2px solid var(--red); }
+  .call.danger em { color: var(--red); }
+
+  /* ─── TIPO GRID ─── */
+  .tgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; margin: 2.5mm 0; }
+  .tcard { border-radius: 2.5mm; padding: 3mm; border: 1.5px solid var(--line); position: relative; }
+  .tcard.sel { border-color: var(--red); background: var(--red2); }
+  .ti   { font-size: 6mm; margin-bottom: 1.5mm; display: block; }
+  .tn   { font-weight: 700; font-size: 3.4mm; margin-bottom: 1mm; }
+  .td   { font-size: 2.9mm; color: #78716C; }
+  .tex  { font-size: 2.7mm; color: #A8A29E; font-style: italic; margin-top: 1mm; }
+  .ttag { position: absolute; top: 2mm; right: 2mm; background: var(--red); color: white; font-size: 2.3mm; font-weight: 700; padding: .3mm 2mm; border-radius: 10mm; }
+
+  /* ─── FLOW ─── */
+  .flow { display: flex; margin: 3mm 0; }
+  .fstep { flex: 1; padding: 2.5mm 2mm; background: var(--sand); border: 1px solid var(--line); text-align: center; position: relative; }
+  .fstep:first-child { border-radius: 2mm 0 0 2mm; }
+  .fstep:last-child  { border-radius: 0 2mm 2mm 0; }
+  .fstep::after { content: '→'; position: absolute; right: -3mm; top: 50%; transform: translateY(-50%); color: var(--red); font-size: 4mm; font-weight: 700; z-index: 1; }
+  .fstep:last-child::after { display: none; }
+  .fdot { width: 2.5mm; height: 2.5mm; border-radius: 50%; margin: 0 auto 1mm; }
+  .fn   { font-size: 2.9mm; font-weight: 700; }
+  .fh   { font-size: 2.5mm; color: var(--stone); margin-top: .3mm; }
+  .dp   { background: var(--amber); }
+  .dpr  { background: var(--blue); }
+  .dd   { background: var(--green); }
+  .dc   { background: #94A3B8; }
+
+  /* ─── COMPARE ─── */
+  .cmp  { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; margin: 2.5mm 0; }
+  .cb   { border-radius: 2.5mm; padding: 3mm; font-size: 3mm; }
+  .cb.g { background: #F0FDF4; border: 1px solid #BBF7D0; }
+  .cb.b { background: var(--red2); border: 1px solid #FECACA; }
+  .cl   { font-size: 2.5mm; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 1.5mm; }
+  .cb.g .cl { color: var(--green); }
+  .cb.b .cl { color: var(--red); }
+  .cb li { margin-left: 3.5mm; margin-bottom: .7mm; color: #57534E; }
+
+  /* ─── PRIO TABLE ─── */
+  .ptbl { width: 100%; border-collapse: collapse; margin: 2.5mm 0; font-size: 3.1mm; }
+  .ptbl th { background: var(--ink); color: white; padding: 2.5mm 3mm; text-align: left; font-size: 2.8mm; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+  .ptbl th:first-child { border-radius: 2mm 0 0 0; }
+  .ptbl th:last-child  { border-radius: 0 2mm 0 0; }
+  .ptbl td { padding: 2.5mm 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .ptbl tr:last-child td { border-bottom: none; }
+  .pb   { display: inline-block; padding: .8mm 2.5mm; border-radius: 10mm; font-size: 2.7mm; font-weight: 700; }
+  .pb-b { background: #F0FDF4; color: var(--green); border: 1px solid #BBF7D0; }
+  .pb-m { background: #EFF6FF; color: var(--blue);  border: 1px solid #BFDBFE; }
+  .pb-a { background: #FFFBEB; color: var(--amber); border: 1px solid #FDE68A; }
+  .pb-c { background: var(--red2); color: var(--red); border: 1px solid #FECACA; }
+
+  /* ─── UBICACIONES ─── */
+  .ubis { display: flex; flex-wrap: wrap; gap: 1.5mm; margin: 2mm 0; }
+  .utag { background: var(--sand); border: 1px solid var(--line); border-radius: 2mm; padding: 1mm 2.5mm; font-size: 3mm; font-weight: 500; }
+  .ugr  { font-size: 2.5mm; font-weight: 700; letter-spacing: 1px; color: var(--stone); text-transform: uppercase; width: 100%; margin-top: 1.5mm; }
+
+  /* ─── MOCK SCREENS ─── */
+  .mock {
+    border: 1px solid #d1d5db; border-radius: 2.5mm;
+    overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.09);
+    margin: 3mm 0; font-size: 3mm;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.4; background: white;
+  }
+  .mbar {
+    background: #f1f5f9; padding: 2mm 3mm;
+    display: flex; align-items: center; gap: 1.5mm;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .dot  { width: 2.5mm; height: 2.5mm; border-radius: 50%; flex-shrink: 0; }
+  .dr   { background: #fc5c57; }
+  .dy   { background: #fdbc2c; }
+  .dg   { background: #27c93f; }
+  .murl {
+    background: white; border: 1px solid #e2e8f0; border-radius: 1.5mm;
+    padding: .8mm 3mm; font-size: 2.7mm; color: #94a3b8; margin: 0 auto;
+    min-width: 50mm; text-align: center;
+  }
+
+  /* Bootstrap-like helpers inside mocks */
+  .mbtn { display: inline-flex; align-items: center; gap: 1.5mm; padding: 2mm 4mm; border-radius: 1.5mm; font-weight: 600; font-size: 3mm; }
+  .mpri { background: #0d6efd; color: white; }
+  .mdng { background: #dc3545; color: white; }
+  .msuc { background: #198754; color: white; }
+  .mpill { border-radius: 10mm; }
+  .mbadge { display: inline-block; padding: 1mm 2.5mm; border-radius: 10mm; font-size: 2.5mm; font-weight: 700; }
+  .bwrn { background: #ffc107; color: #000; }
+  .bpri { background: #0d6efd; color: white; }
+  .bsuc { background: #198754; color: white; }
+  .bdng { background: #dc3545; color: white; }
+  .mcard { background: white; border-radius: 3mm; border: 1px solid #e2e8f0; overflow: hidden; }
+  .mch   { background: white; padding: 3mm 4mm 1mm; }
+  .mcb   { padding: 2.5mm 4mm; }
+  .mcf   { background: #f8f9fa; padding: 2mm 4mm; border-top: 1px solid #e2e8f0; font-size: 2.7mm; color: #6c757d; display: flex; justify-content: space-between; }
+
+  /* ─── FINAL PAGE ─── */
+  .final-bg {
+    background: var(--ink); width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 14mm 18mm;
+  }
+  .fi-icon { width: 16mm; height: 16mm; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7mm; margin: 0 auto 5mm; }
+  .fi-title { font-size: 10mm; color: white; font-weight: 800; }
+  .fi-rule  { width: 10mm; height: .7mm; background: var(--red); margin: 4mm auto; }
+  .fi-sub   { color: rgba(255,255,255,.35); font-size: 3.5mm; font-weight: 300; }
+  .fi-foot  { color: rgba(255,255,255,.15); font-size: 2.8mm; letter-spacing: 1px; margin-top: 8mm; }
+
+  /* Pantalla: viewer de páginas */
+  @media screen {
+    body { padding: 10mm; }
+  }
+  @media print {
+    body { background: white; padding: 0; }
+    .page { margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ PÁGINA 1: PORTADA ══ -->
+<div class="page">
+  <div class="cover-bg">
+    <div class="arc1"></div>
+    <div class="arc2"></div>
+    <div class="logo-row">
+      <div class="logo-box">I</div>
+      <div>
+        <div class="logo-name">InsuOrders</div>
+        <div class="logo-sub">Procesadora Insuban Spa</div>
+      </div>
+    </div>
+    <div class="cover-main">
+      <div class="cover-tag">Guía de Usuario</div>
+      <div class="cover-h1">Portal de<br><em>Solicitudes</em></div>
+      <p class="cover-desc">Todo lo que necesitas saber para pedir un trabajo de mantención, seguir su estado y revisar cómo quedó.</p>
+    </div>
+    <div class="cover-foot">
+      <span class="cover-foot-txt">PROCESADORA INSUBAN SPA · USO INTERNO</span>
+      <span class="cover-pill">Junio 2026</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 2: ÍNDICE ══ -->
+<div class="page">
+  <div class="index-bg">
+    <p class="idx-label">Contenido</p>
+    <h2 class="idx-title">¿Qué encontrarás<br>en esta guía?</h2>
+    <div class="idx-item"><span class="idx-num">01</span><span class="idx-name">Cómo ingresar al sistema</span><span class="idx-dots"></span></div>
+    <div class="idx-item"><span class="idx-num">02</span><span class="idx-name">El panel principal de solicitudes</span><span class="idx-dots"></span></div>
+    <div class="idx-item"><span class="idx-num">03</span><span class="idx-name">Cómo crear una nueva solicitud</span><span class="idx-dots"></span></div>
+    <div class="idx-item"><span class="idx-num">04</span><span class="idx-name">Consejos para una buena solicitud</span><span class="idx-dots"></span></div>
+    <div class="idx-item"><span class="idx-num">05</span><span class="idx-name">Seguimiento y resultados</span><span class="idx-dots"></span></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 3: SECCIÓN 01 ══ -->
+<div class="page">
+  <div class="sec-head" data-n="01">
+    <p class="sec-n">Sección 01</p>
+    <h2 class="sec-h">Cómo ingresar al sistema</h2>
+    <p class="sec-d">Acceso, credenciales y pantalla inicial.</p>
+  </div>
+  <div class="pad-sm">
+    <div class="h2">Acceder al Portal</div>
+    <div class="rule"></div>
+    <p>InsuOrders funciona desde cualquier navegador web — no se necesita instalar nada. Puedes usarlo desde el computador, tablet o teléfono.</p>
+
+    <div class="step">
+      <div class="sn">1</div>
+      <div class="sb"><div class="st">Abre el navegador</div><div class="sd">Chrome, Edge o Safari. Escribe la dirección del sistema o ábrela desde el acceso directo guardado.</div></div>
+    </div>
+    <div class="step">
+      <div class="sn">2</div>
+      <div class="sb"><div class="st">Ingresa tu usuario y contraseña</div><div class="sd">Los datos de acceso los entrega el área de TI o el administrador. Haz clic en <strong>Entrar</strong>.</div></div>
+    </div>
+    <div class="step">
+      <div class="sn">3</div>
+      <div class="sb"><div class="st">El sistema te lleva directamente al Portal</div><div class="sd">Si tu perfil es de <strong>Cliente / Solicitante</strong>, la pantalla que verás al entrar es el Portal de Solicitudes.</div></div>
+    </div>
+
+    <!-- Mockup: Login -->
+    <div class="mock">
+      <div class="mbar">
+        <div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div>
+        <div class="murl">🔒 insuorders.insuban.cl/login</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#f5f7fa,#c3cfe2);padding:8mm 5mm;display:flex;justify-content:center;align-items:center;">
+        <div style="background:white;border-radius:3.5mm;padding:8mm 7mm;width:70mm;box-shadow:0 4px 16px rgba(0,0,0,.12);">
+          <div style="text-align:center;margin-bottom:5mm;">
+            <div style="font-size:9mm;margin-bottom:1.5mm;">🏭</div>
+            <div style="font-size:5mm;font-weight:800;color:#1e293b;">InsuOrders</div>
+            <div style="font-size:3mm;color:#94a3b8;margin-top:.5mm;">Acceso al Sistema</div>
+          </div>
+          <div style="position:relative;margin-bottom:3mm;">
+            <div style="border:1px solid #86b7fe;border-radius:1.5mm;padding:2mm 3mm;font-size:3mm;color:#64748b;box-shadow:0 0 0 2px rgba(13,110,253,.1);">jperez</div>
+            <div style="position:absolute;top:-2mm;left:2.5mm;background:white;padding:0 1mm;font-size:2.5mm;color:#0d6efd;font-weight:600;">Usuario</div>
+          </div>
+          <div style="position:relative;margin-bottom:4.5mm;">
+            <div style="border:1px solid #dee2e6;border-radius:1.5mm;padding:2mm 3mm;font-size:3mm;color:#64748b;letter-spacing:2px;">••••••••</div>
+            <div style="position:absolute;top:-2mm;left:2.5mm;background:white;padding:0 1mm;font-size:2.5mm;color:#6c757d;font-weight:600;">Contraseña</div>
+          </div>
+          <div class="mbtn mpri" style="width:100%;justify-content:center;border-radius:2mm;font-size:3.5mm;padding:2.5mm;">Entrar</div>
+          <div style="text-align:center;margin-top:4mm;font-size:2.5mm;color:#94a3b8;">© 2026 Procesadora Insuban Spa</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="call info">
+      <span>ℹ️</span>
+      <div><em>¿Olvidaste tu contraseña?</em>Contacta a Nicolás Salas (TI) o a tu jefe directo. No compartas tu contraseña con otras personas.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 4: SECCIÓN 02 ══ -->
+<div class="page">
+  <div class="sec-head" data-n="02">
+    <p class="sec-n">Sección 02</p>
+    <h2 class="sec-h">El panel de solicitudes</h2>
+    <p class="sec-d">Qué ves al entrar y cómo navegar.</p>
+  </div>
+  <div class="pad-sm">
+    <div class="h2">La pantalla principal</div>
+    <div class="rule"></div>
+    <p>Al ingresar verás todas las solicitudes. Hay dos vistas y filtros de estado para encontrar rápido lo que buscas.</p>
+
+    <!-- Mockup: Panel principal -->
+    <div class="mock">
+      <div class="mbar">
+        <div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div>
+        <div class="murl">insuorders.insuban.cl/portal-cliente</div>
+      </div>
+      <div style="background:#f8f9fa;padding:3mm;">
+        <div style="background:white;border-radius:3mm;padding:3mm 4mm;display:flex;justify-content:space-between;align-items:center;margin-bottom:2.5mm;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+          <div>
+            <div style="font-size:4mm;font-weight:800;color:#1e293b;">📋 Portal de Solicitudes</div>
+            <div style="font-size:2.7mm;color:#94a3b8;margin-top:.5mm;">Revisa el estado de los requerimientos o crea uno nuevo.</div>
+          </div>
+          <div style="display:flex;gap:2mm;align-items:center;">
+            <div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10mm;display:flex;padding:.5mm;">
+              <div style="background:white;border-radius:10mm;padding:1mm 3mm;font-size:2.7mm;font-weight:600;color:#1e293b;border:1px solid #e2e8f0;box-shadow:0 1px 2px rgba(0,0,0,.06);">Ver Todas</div>
+              <div style="padding:1mm 3mm;font-size:2.7mm;color:#94a3b8;">Mis Solicitudes</div>
+            </div>
+            <div class="mbtn mpri mpill" style="font-size:2.7mm;padding:2mm 3.5mm;">+ NUEVA SOLICITUD</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:1.5mm;flex-wrap:wrap;margin-bottom:2.5mm;">
+          <div class="mbtn mpill" style="background:#1e293b;color:white;font-size:2.5mm;padding:1.5mm 3mm;">Cualquier Estado</div>
+          <div class="mbtn mpill" style="background:white;color:#6c757d;border:1px solid #e2e8f0;font-size:2.5mm;padding:1.5mm 3mm;">Pendientes</div>
+          <div class="mbtn mpill" style="background:white;color:#6c757d;border:1px solid #e2e8f0;font-size:2.5mm;padding:1.5mm 3mm;">En Proceso</div>
+          <div class="mbtn mpill" style="background:white;color:#6c757d;border:1px solid #e2e8f0;font-size:2.5mm;padding:1.5mm 3mm;">Terminadas</div>
+          <div class="mbtn mpill" style="background:white;color:#6c757d;border:1px solid #e2e8f0;font-size:2.5mm;padding:1.5mm 3mm;">Canceladas</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2mm;">
+          <div class="mcard">
+            <div class="mch"><div style="display:flex;justify-content:space-between;"><span class="mbadge bwrn">PENDIENTE</span><span style="font-size:2.5mm;color:#6c757d;font-family:monospace;background:#f8f9fa;padding:.5mm 1.5mm;border-radius:1mm;">#74</span></div></div>
+            <div class="mcb"><div style="font-size:3mm;font-weight:700;color:#1e293b;margin-bottom:1.5mm;">Fuga de agua baño casino</div><div style="font-size:2.5mm;color:#6c757d;background:#f8f9fa;border-radius:1.5mm;padding:1mm 2mm;">📍 Planta 1</div></div>
+            <div class="mcf"><span>📅 25/06/2026</span><span>👷 Sin Asignar</span></div>
+          </div>
+          <div class="mcard">
+            <div class="mch"><div style="display:flex;justify-content:space-between;"><span class="mbadge bpri">EN PROCESO</span><span style="font-size:2.5mm;color:#6c757d;font-family:monospace;background:#f8f9fa;padding:.5mm 1.5mm;border-radius:1mm;">#71</span></div></div>
+            <div class="mcb"><div style="font-size:3mm;font-weight:700;color:#1e293b;margin-bottom:1.5mm;">Motor quemado Tubing 02</div><div style="font-size:2.5mm;color:#6c757d;background:#f8f9fa;border-radius:1.5mm;padding:1mm 2mm;">⚙️ TSS044 — Tubing 02</div></div>
+            <div class="mcf"><span>📅 22/06/2026</span><span>👷 R. Fuentes</span></div>
+          </div>
+          <div class="mcard">
+            <div class="mch"><div style="display:flex;justify-content:space-between;"><span class="mbadge bsuc">FINALIZADA</span><span style="font-size:2.5mm;color:#6c757d;font-family:monospace;background:#f8f9fa;padding:.5mm 1.5mm;border-radius:1mm;">#68</span></div></div>
+            <div class="mcb"><div style="font-size:3mm;font-weight:700;color:#1e293b;margin-bottom:1.5mm;">Cambio dispensador casino</div><div style="font-size:2.5mm;color:#6c757d;background:#f8f9fa;border-radius:1.5mm;padding:1mm 2mm;">🏢 Taller de Mantención</div></div>
+            <div class="mcf"><span>📅 18/06/2026</span><span>👷 J. Muñoz</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h2" style="margin-top:3mm;">Estados de una solicitud</div>
+    <div class="rule"></div>
+    <p>Cada solicitud pasa por etapas. Así sabes en qué punto está tu pedido sin preguntar a nadie.</p>
+    <div class="flow">
+      <div class="fstep"><div class="fdot dp"></div><div class="fn">Pendiente</div><div class="fh">Esperando asignación</div></div>
+      <div class="fstep"><div class="fdot dpr"></div><div class="fn">En Proceso</div><div class="fh">Técnico trabajando</div></div>
+      <div class="fstep"><div class="fdot dd"></div><div class="fn">Terminada</div><div class="fh">Trabajo finalizado</div></div>
+      <div class="fstep"><div class="fdot dc"></div><div class="fn">Cancelada</div><div class="fh">Anulada por mantención</div></div>
+    </div>
+    <div class="call ok" style="margin-top:2mm;">
+      <span>✅</span>
+      <div><em>¿Cuándo se termina?</em>El estado cambia a <strong>Terminada</strong> cuando el técnico cierra la orden. En la tarjeta verás el reporte final del técnico con fotos.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 5: SECCIÓN 03 — Pasos 1–3 ══ -->
+<div class="page">
+  <div class="sec-head" data-n="03">
+    <p class="sec-n">Sección 03</p>
+    <h2 class="sec-h">Cómo crear una solicitud</h2>
+    <p class="sec-d">Paso a paso para pedir un trabajo de mantención.</p>
+  </div>
+  <div class="pad-sm">
+    <div class="call ok" style="margin-top:0;margin-bottom:3mm;">
+      <span>📸</span>
+      <div><em>El truco más importante</em>Una foto vale más que mil palabras. Una buena imagen permite que el técnico llegue con las herramientas correctas y resuelva más rápido.</div>
+    </div>
+
+    <div class="h2">Paso 1 — Abrir el formulario</div>
+    <div class="rule"></div>
+    <p>Haz clic en el botón <strong>+ NUEVA SOLICITUD</strong> en la esquina superior derecha del panel.</p>
+
+    <div class="h2">Paso 2 — Escribir el título</div>
+    <div class="rule"></div>
+    <p>El título debe ser <strong>breve pero específico</strong>. Es lo primero que ve mantención.</p>
+    <div class="cmp">
+      <div class="cb g"><div class="cl">✓ Bien</div><ul><li>Motor quemado en Tubing 02</li><li>Goteo en cañería Planta 2</li><li>Cambio dispensador casino</li><li>Cadena rota máquina TSS044</li></ul></div>
+      <div class="cb b"><div class="cl">✗ Evitar</div><ul><li>Problema con máquina</li><li>Hay que reparar algo</li><li>Falla</li><li>Urgente revisar</li></ul></div>
+    </div>
+
+    <hr class="div">
+
+    <div class="h2">Paso 3 — Elegir el tipo de requerimiento</div>
+    <div class="rule"></div>
+    <p>Selecciona si el problema es de <strong>infraestructura</strong> (edificio, instalaciones) o de <strong>maquinaria</strong> (equipos de producción).</p>
+
+    <!-- Mockup: Formulario tipo selector -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">Modal: Nueva Solicitud</div></div>
+      <div style="background:#0d6efd;padding:3mm 4mm;display:flex;justify-content:space-between;align-items:center;">
+        <div style="color:white;font-weight:700;font-size:3.5mm;">➕ Nueva Solicitud</div>
+        <div style="color:rgba(255,255,255,.6);">✕</div>
+      </div>
+      <div style="padding:3.5mm 4mm;">
+        <div style="font-size:2.5mm;font-weight:700;text-transform:uppercase;color:#6c757d;letter-spacing:.5px;margin-bottom:1.5mm;">¿Qué necesitas? (Título breve)</div>
+        <div style="border:1px solid #86b7fe;border-radius:1.5mm;padding:2mm 3mm;font-size:4mm;font-weight:700;color:#0d6efd;box-shadow:0 0 0 2px rgba(13,110,253,.1);margin-bottom:3.5mm;">Motor quemado en Tubing 02</div>
+        <div style="font-size:2.5mm;font-weight:700;text-transform:uppercase;color:#6c757d;text-align:center;margin-bottom:1.5mm;">Tipo de Requerimiento</div>
+        <div style="display:flex;border-radius:1.5mm;overflow:hidden;border:1px solid #0d6efd;">
+          <div style="flex:1;background:#f8f9fa;padding:3mm 2mm;text-align:center;font-size:3mm;color:#0d6efd;font-weight:600;border-right:1px solid #bfdbfe;"><div style="font-size:5mm;margin-bottom:1mm;">🏢</div>Infraestructura</div>
+          <div style="flex:1;background:#0d6efd;padding:3mm 2mm;text-align:center;font-size:3mm;color:white;font-weight:700;"><div style="font-size:5mm;margin-bottom:1mm;">⚙️</div>Maquinaria</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 6: SECCIÓN 03 — Pasos 4–6 ══ -->
+<div class="page">
+  <div style="background:#f8f9fa;padding:3mm 18mm 2mm;border-bottom:2px solid var(--red);">
+    <span style="font-size:2.8mm;font-weight:700;color:var(--red);letter-spacing:2px;text-transform:uppercase;">Sección 03 — continuación</span>
+  </div>
+  <div class="pad-sm" style="padding-top:5mm;">
+    <div class="h2" style="margin-top:0;">Paso 4 — Seleccionar la máquina <small style="font-size:.75em;color:var(--stone);">(solo Maquinaria)</small></div>
+    <div class="rule"></div>
+    <p>Escribe las primeras letras del código o nombre. El sistema mostrará sugerencias — selecciona la máquina correcta.</p>
+
+    <!-- Mockup: Buscador de máquinas -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">Buscador de Máquinas</div></div>
+      <div style="padding:3mm 4mm;">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:2mm;padding:3mm;">
+          <div style="display:flex;border:1px solid #0d6efd;border-radius:1.5mm;overflow:hidden;background:white;margin-bottom:1.5mm;">
+            <div style="padding:2mm 3mm;color:#0d6efd;border-right:1px solid #bfdbfe;font-size:3.5mm;">🔍</div>
+            <div style="flex:1;padding:2mm 3mm;font-size:3mm;color:#1e293b;">TSS</div>
+          </div>
+          <div style="background:white;border:1px solid #0d6efd;border-radius:1.5mm;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.08);">
+            <div style="padding:2mm 3mm;border-bottom:1px solid #f1f5f9;background:#eff6ff;"><div style="font-weight:700;color:#1e293b;font-size:3mm;">Tubing 02</div><div style="font-size:2.5mm;color:#94a3b8;">📷 TSS044</div></div>
+            <div style="padding:2mm 3mm;border-bottom:1px solid #f1f5f9;"><div style="font-weight:700;color:#1e293b;font-size:3mm;">Selladora</div><div style="font-size:2.5mm;color:#94a3b8;">📷 TSS029</div></div>
+            <div style="padding:2mm 3mm;"><div style="font-weight:700;color:#1e293b;font-size:3mm;">Tubing 01</div><div style="font-size:2.5mm;color:#94a3b8;">📷 TSS058</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="call warn">
+      <span>⚠️</span>
+      <div><em>¿La máquina no aparece?</em>Selecciona <strong>Infraestructura</strong> y en los Detalles Adicionales escribe el número de placa. Mantención lo registrará.</div>
+    </div>
+
+    <hr class="div">
+
+    <div class="h2">Paso 5 — Indicar la ubicación</div>
+    <div class="rule"></div>
+    <p>Selecciona desde el listado el lugar exacto donde está el problema.</p>
+    <div class="ubis">
+      <span class="ugr">Insuban</span>
+      <span class="utag">📍 Planta 1</span><span class="utag">📍 Planta 2</span><span class="utag">📍 Patio</span>
+      <span class="utag">📍 Hor</span><span class="utag">📍 Lavandería</span><span class="utag">📍 Taller de Mantención</span>
+      <span class="ugr">Externos</span>
+      <span class="utag">📍 Comafri</span><span class="utag">📍 Coexca</span><span class="utag">📍 Camer</span>
+    </div>
+    <div class="call info">
+      <span>ℹ️</span>
+      <div><em>¿No está tu ubicación?</em>Selecciona la más cercana y detalla el lugar exacto en el campo de Detalles Adicionales.</div>
+    </div>
+
+    <hr class="div">
+
+    <div class="h2">Paso 6 — Detalles adicionales</div>
+    <div class="rule"></div>
+    <p>Describe el problema con todo el detalle posible. Piensa en qué necesitaría el técnico para llegar preparado.</p>
+    <div class="cmp">
+      <div class="cb g"><div class="cl">✓ Descripción útil</div><ul><li>Qué está fallando exactamente</li><li>Cuándo empezó el problema</li><li>Si hace ruido o huele a quemado</li><li>Si afecta la producción</li></ul></div>
+      <div class="cb b"><div class="cl">✗ Evitar</div><ul><li>"Está fallando"</li><li>"No funciona bien"</li><li>Dejar el campo en blanco</li><li>"Ver con el técnico"</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 7: SECCIÓN 03 — Pasos 7–9 ══ -->
+<div class="page">
+  <div style="background:#f8f9fa;padding:3mm 18mm 2mm;border-bottom:2px solid var(--red);">
+    <span style="font-size:2.8mm;font-weight:700;color:var(--red);letter-spacing:2px;text-transform:uppercase;">Sección 03 — continuación</span>
+  </div>
+  <div class="pad-sm" style="padding-top:5mm;">
+
+    <div class="h2" style="margin-top:0;">Paso 7 — Adjuntar evidencia</div>
+    <div class="rule"></div>
+    <p>Toca o haz clic en <strong>Elegir archivos</strong> para adjuntar fotos o videos. Se pueden subir varios archivos a la vez.</p>
+    <div class="call ok">
+      <span>💡</span>
+      <div><em>¿Qué fotos subir?</em>Foto de la placa de la máquina + foto del defecto o zona afectada. Si es posible, un video de 5-10 segundos mostrando el problema en funcionamiento.</div>
+    </div>
+
+    <hr class="div">
+
+    <div class="h2">Paso 8 — Seleccionar la prioridad</div>
+    <div class="rule"></div>
+    <p>Elige el nivel de urgencia. La prioridad afecta directamente cuándo atienden tu solicitud.</p>
+    <table class="ptbl">
+      <thead><tr><th>Prioridad</th><th>Cuándo usarla</th><th>Tiempo de atención</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pb pb-b">Baja</span></td><td>Problema menor, no afecta operaciones.</td><td>Sin urgencia, se agenda</td></tr>
+        <tr><td><span class="pb pb-m">Media</span></td><td>Falla que molesta pero no detiene el trabajo.</td><td>Dentro del día o al día siguiente</td></tr>
+        <tr><td><span class="pb pb-a">Alta</span></td><td>Afecta la producción o es riesgo leve.</td><td>Lo antes posible</td></tr>
+        <tr><td><span class="pb pb-c">Crítico</span></td><td>Producción detenida o peligro de accidente.</td><td>Inmediato</td></tr>
+      </tbody>
+    </table>
+    <div class="call danger">
+      <span>🔴</span>
+      <div><em>Usar "Crítico" solo en emergencias reales.</em>Usarlo en problemas menores hace que las emergencias reales se pierdan entre el listado y los tiempos de respuesta empeoran para todos.</div>
+    </div>
+
+    <hr class="div">
+
+    <div class="h2">Paso 9 — Crear la solicitud</div>
+    <div class="rule"></div>
+    <p>Una vez completados todos los campos, haz clic en <strong>Crear Solicitud</strong>. El sistema confirma con un número de folio. Guárdalo para buscarlo después.</p>
+
+    <!-- Mockup: Confirmación exitosa -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">Solicitud enviada</div></div>
+      <div style="padding:7mm 5mm;text-align:center;">
+        <div style="width:14mm;height:14mm;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 3mm;font-size:7mm;">✅</div>
+        <div style="font-size:5.5mm;font-weight:800;color:#198754;margin-bottom:1.5mm;">¡Solicitud Creada!</div>
+        <div style="font-size:3.2mm;color:#6c757d;margin-bottom:4mm;">Folio Nº <strong style="color:#1e293b;font-size:4mm;">77</strong></div>
+        <div class="mbtn msuc" style="border-radius:2mm;font-size:3.3mm;padding:2.5mm 8mm;">Entendido, gracias</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 8: SECCIÓN 04 ══ -->
+<div class="page">
+  <div class="sec-head" data-n="04">
+    <p class="sec-n">Sección 04</p>
+    <h2 class="sec-h">Consejos para una buena solicitud</h2>
+    <p class="sec-d">Pequeños detalles que aceleran mucho la respuesta.</p>
+  </div>
+  <div class="pad-sm">
+    <div class="h2">Lo que más ayuda al equipo de mantención</div>
+    <div class="rule"></div>
+    <div class="step"><div class="sn">💡</div><div class="sb"><div class="st">Fotografía la placa de la máquina</div><div class="sd">Antes de escribir el nombre, sácale una foto a la placa de identificación y adjúntala. El código evita confusiones entre máquinas similares.</div></div></div>
+    <div class="step"><div class="sn">💡</div><div class="sb"><div class="st">Un video corto del problema vale mucho</div><div class="sd">Si la máquina hace un ruido extraño o la falla ocurre al encenderla, graba 10 segundos. Muchos problemas se diagnostican antes de llegar al lugar.</div></div></div>
+    <div class="step"><div class="sn">💡</div><div class="sb"><div class="st">Menciona si el problema es intermitente</div><div class="sd">Escribe si la falla ocurre "solo cuando hace frío", "solo al arrancar", "cada cierto tiempo", etc. Eso cambia completamente el diagnóstico.</div></div></div>
+    <div class="step"><div class="sn">💡</div><div class="sb"><div class="st">Indica si afecta la producción</div><div class="sd">Si el problema paraliza una línea completa o bloquea el uso de una sala, dilo claramente en el título o descripción. No queda solo implícito en la prioridad.</div></div></div>
+    <div class="step"><div class="sn">💡</div><div class="sb"><div class="st">No dupliques solicitudes</div><div class="sd">Antes de crear una nueva, revisa en <strong>"Ver Todas"</strong> si alguien ya reportó el mismo problema. Dos órdenes por lo mismo generan trabajo doble.</div></div></div>
+
+    <hr class="div">
+
+    <div class="h2">Errores frecuentes que retrasan la atención</div>
+    <div class="rule"></div>
+    <div class="call danger"><span>🚫</span><div><em>Título demasiado vago</em>"Problema con máquina" no le dice nada al técnico. Siempre incluye qué falla y dónde.</div></div>
+    <div class="call danger"><span>🚫</span><div><em>Prioridad Crítico sin serlo</em>Usar "Crítico" en problemas menores hace que las emergencias reales se pierdan.</div></div>
+    <div class="call danger"><span>🚫</span><div><em>No adjuntar evidencia</em>El técnico puede llegar con las herramientas equivocadas y tener que volver. Una foto evita ese viaje extra.</div></div>
+    <div class="call danger"><span>🚫</span><div><em>Ubicación genérica</em>Seleccionar "Planta 1" cuando el problema está en "la cámara de frío del fondo" hace que el técnico tenga que buscar. Añade el detalle en la descripción.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 9: SECCIÓN 05 ══ -->
+<div class="page">
+  <div class="sec-head" data-n="05">
+    <p class="sec-n">Sección 05</p>
+    <h2 class="sec-h">Seguimiento y resultados</h2>
+    <p class="sec-d">Cómo saber en qué está tu solicitud y ver el informe final.</p>
+  </div>
+  <div class="pad-sm">
+    <div class="h2">Revisar el estado de tu solicitud</div>
+    <div class="rule"></div>
+    <p>No necesitas preguntar al equipo de mantención. El portal se actualiza en tiempo real.</p>
+    <div class="step"><div class="sn">1</div><div class="sb"><div class="st">Entra al Portal y selecciona "Mis Solicitudes"</div><div class="sd">Así filtras solo las que creaste tú y no tienes que buscar entre todas las del sistema.</div></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><div class="st">Identifica el estado con el badge de color</div><div class="sd"><strong>Pendiente</strong> (amarillo) · <strong>En Proceso</strong> (azul) · <strong>Terminada</strong> (verde) · <strong>Cancelada</strong> (gris).</div></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><div class="st">Usa los filtros para buscar más rápido</div><div class="sd">Los botones en la parte superior del panel (Pendientes, En Proceso, Terminadas, Canceladas) filtran el listado.</div></div></div>
+
+    <!-- Mockup: Tarjeta terminada con informe técnico -->
+    <div class="mock">
+      <div class="mbar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="murl">Solicitud Finalizada</div></div>
+      <div style="background:#f8f9fa;padding:3mm;display:flex;justify-content:center;">
+        <div class="mcard" style="width:80mm;">
+          <div class="mch"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><span class="mbadge bsuc">FINALIZADA</span><span style="font-size:2.5mm;color:#6c757d;font-family:monospace;background:#f8f9fa;padding:.5mm 1.5mm;border-radius:1mm;">#71</span></div></div>
+          <div class="mcb">
+            <div style="font-size:3.5mm;font-weight:700;color:#1e293b;margin-bottom:1.5mm;">Motor quemado en Tubing 02</div>
+            <div style="font-size:2.7mm;color:#6c757d;background:#f8f9fa;border-radius:1.5mm;padding:1mm 2mm;margin-bottom:2mm;">📍 Planta 2 · ⚙️ TSS044</div>
+            <!-- Reporte del técnico -->
+            <div style="background:#d1fae5;border:1px solid #a7f3d0;border-radius:2mm;padding:2.5mm 3mm;">
+              <div style="font-size:2.8mm;font-weight:700;color:#065f46;margin-bottom:1.5mm;">✅ Reporte de Finalización</div>
+              <div style="font-size:2.7mm;color:#374151;margin-bottom:1mm;"><strong>Cierre:</strong> 24/06/2026 a las 15:32</div>
+              <div style="font-size:2.7mm;color:#374151;background:white;border:1px solid #a7f3d0;border-radius:1.5mm;padding:2mm;margin-bottom:2mm;">Se realizó el cambio del motor de 2HP. Motor anterior presentaba quemadura en bobinado. Equipo operativo al 100%.</div>
+              <div style="font-size:2.5mm;color:#374151;margin-bottom:1mm;"><strong>Evidencia del Técnico:</strong></div>
+              <div style="display:flex;gap:2mm;">
+                <div style="width:12mm;height:10mm;background:linear-gradient(135deg,#6ee7b7,#34d399);border-radius:1.5mm;display:flex;align-items:center;justify-content:center;font-size:4.5mm;">📷</div>
+                <div style="width:12mm;height:10mm;background:linear-gradient(135deg,#a7f3d0,#6ee7b7);border-radius:1.5mm;display:flex;align-items:center;justify-content:center;font-size:4.5mm;">📷</div>
+              </div>
+            </div>
+          </div>
+          <div class="mcf"><span>📅 22/06/2026</span><span>👷 R. Fuentes</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="call info" style="margin-top:2mm;">
+      <span>ℹ️</span>
+      <div><em>¿El trabajo no quedó bien?</em>Crea una <strong>nueva solicitud</strong> describiendo qué quedó pendiente y menciona el folio de la solicitud anterior.</div>
+    </div>
+
+    <hr class="div">
+
+    <div class="h2">Preguntas frecuentes</div>
+    <div class="rule"></div>
+    <div class="call info"><span>❓</span><div><em>¿Cuánto demora en atenderse?</em>Depende de la prioridad. Urgentes: inmediato. Media: mismo día o al siguiente. Baja: se agenda.</div></div>
+    <div class="call info"><span>❓</span><div><em>¿Puedo editar o cancelar mi solicitud?</em>No desde el portal. Si necesitas un cambio, comunícate directamente con el jefe de mantención.</div></div>
+    <div class="call ok"><span>✅</span><div><em>¿Ya existe una solicitud para mi problema?</em>Antes de crear una nueva, usa "Ver Todas" para verificar. Así evitas duplicar órdenes de trabajo.</div></div>
+  </div>
+</div>
+
+<!-- ══ PÁGINA 10: FINAL ══ -->
+<div class="page">
+  <div class="final-bg">
+    <div class="fi-icon">📋</div>
+    <div class="fi-title">¿Tienes dudas?</div>
+    <div class="fi-rule"></div>
+    <div class="fi-sub">Contacta al equipo de TI o a tu jefe directo.<br>Nicolás Salas · nsalas@insuban.cl</div>
+    <div class="fi-foot">PROCESADORA INSUBAN SPA · USO INTERNO · JUNIO 2026</div>
+  </div>
+</div>
+
+</body>
+</html>
